@@ -1,0 +1,118 @@
+{
+    "T2*": {
+        "__dtype__": "UFloat",
+        "nominal_value": 2.578342425363367e-05,
+        "std_dev": 2.278245733401599e-06
+    },
+    "fitted_detuning": {
+        "__dtype__": "UFloat",
+        "nominal_value": 450982.11416847236,
+        "std_dev": 538.5711960539063
+    },
+    "detuning": {
+        "__dtype__": "UFloat",
+        "nominal_value": 450982.11416847236,
+        "std_dev": 538.5711960539063
+    },
+    "fit_success": true,
+    "fit_msg": "Summary\n$T_2^*$: 25.8$\\pm$2.3 \u03bcs\n\nartificial detuning: 0 Hz\nfitted detuning: 450.98$\\pm$0.54 kHz\nactual detuning: 450.98$\\pm$0.54 kHz\n",
+    "fit_result": {
+        "Ramsey_decay": {
+            "success": true,
+            "message": "Fit succeeded.",
+            "params": {
+                "tau": {
+                    "name": "tau",
+                    "user_data": null,
+                    "init_value": 3.3208e-05,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 2.278245733401599e-06,
+                    "correl": {
+                        "frequency": -0.008289739352029396,
+                        "phase": 0.014725278143445044,
+                        "amplitude": -0.7466235031161055,
+                        "offset": -0.01026060522262898
+                    },
+                    "value": 2.578342425363367e-05
+                },
+                "n_factor": {
+                    "name": "n_factor",
+                    "user_data": null,
+                    "init_value": 1,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.0,
+                    "correl": null,
+                    "value": 1
+                },
+                "frequency": {
+                    "name": "frequency",
+                    "user_data": null,
+                    "init_value": 460000.0,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 538.5711960539063,
+                    "correl": {
+                        "tau": -0.008289739352029396,
+                        "phase": -0.7387341811053125,
+                        "amplitude": 0.014651320497369532,
+                        "offset": -0.007945697339019429
+                    },
+                    "value": 450982.11416847236
+                },
+                "phase": {
+                    "name": "phase",
+                    "user_data": null,
+                    "init_value": 1.0460246899392578,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.05325955458190165,
+                    "correl": {
+                        "tau": 0.014725278143445044,
+                        "frequency": -0.7387341811053125,
+                        "amplitude": -0.021755400946593437,
+                        "offset": 0.010991511961401067
+                    },
+                    "value": 1.4387002790538845
+                },
+                "amplitude": {
+                    "name": "amplitude",
+                    "user_data": null,
+                    "init_value": 0.00020250114313843834,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 7.965681922293563e-06,
+                    "correl": {
+                        "tau": -0.7466235031161055,
+                        "frequency": 0.014651320497369532,
+                        "phase": -0.021755400946593437,
+                        "offset": 0.02189223019812084
+                    },
+                    "value": 0.00014608401428373163
+                },
+                "offset": {
+                    "name": "offset",
+                    "user_data": null,
+                    "init_value": 0.0010368503236722643,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 1.879554753105171e-06,
+                    "correl": {
+                        "tau": -0.01026060522262898,
+                        "frequency": -0.007945697339019429,
+                        "phase": 0.010991511961401067,
+                        "amplitude": 0.02189223019812084
+                    },
+                    "value": 0.0010379683890440645
+                }
+            }
+        }
+    }
+}

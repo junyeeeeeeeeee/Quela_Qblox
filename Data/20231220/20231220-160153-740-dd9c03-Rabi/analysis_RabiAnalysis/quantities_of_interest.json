@@ -1,0 +1,81 @@
+{
+    "fit_success": true,
+    "Pi-pulse amplitude": {
+        "__dtype__": "UFloat",
+        "nominal_value": 0.12763381508497787,
+        "std_dev": 0.001285520591459485
+    },
+    "fit_msg": "Summary\nPi-pulse amplitude: 127.6$\\pm$1.3 mV\nOscillation amplitude: 120$\\pm$12 \u03bcV\nOffset: 992.4$\\pm$8.5 \u03bcV\n",
+    "fit_result": {
+        "Rabi_oscillation": {
+            "success": true,
+            "message": "Fit succeeded.",
+            "params": {
+                "frequency": {
+                    "name": "frequency",
+                    "user_data": null,
+                    "init_value": 4.25531914893617,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.039456407609166785,
+                    "correl": {
+                        "amplitude": 0.04926439382245609,
+                        "offset": 0.006163585310617877
+                    },
+                    "value": 3.917457138353992
+                },
+                "amplitude": {
+                    "name": "amplitude",
+                    "user_data": null,
+                    "init_value": 0.00029636635937567565,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 1.2088763278399065e-05,
+                    "correl": {
+                        "frequency": 0.04926439382245609,
+                        "offset": -0.07602141876548192
+                    },
+                    "value": 0.00011983123906667004
+                },
+                "offset": {
+                    "name": "offset",
+                    "user_data": null,
+                    "init_value": 0.0009988731948012857,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 8.549873177102321e-06,
+                    "correl": {
+                        "frequency": 0.006163585310617877,
+                        "amplitude": -0.07602141876548192
+                    },
+                    "value": 0.0009923887945296416
+                },
+                "phase": {
+                    "name": "phase",
+                    "user_data": null,
+                    "init_value": 3.141592653589793,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.0,
+                    "correl": null,
+                    "value": 3.141592653589793
+                },
+                "amp180": {
+                    "name": "amp180",
+                    "user_data": null,
+                    "init_value": 0.11750000000000001,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.001285520591459485,
+                    "correl": null,
+                    "value": 0.12763381508497787
+                }
+            }
+        }
+    }
+}
