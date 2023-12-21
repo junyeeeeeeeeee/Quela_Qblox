@@ -1,0 +1,70 @@
+{
+    "fit_success": true,
+    "T1": {
+        "__dtype__": "UFloat",
+        "nominal_value": 4.8289144682911456e-06,
+        "std_dev": 8.301183647869524e-07
+    },
+    "fit_msg": "Summary\n$T1$: 4.83$\\pm$0.83 \u03bcs\namplitude: 344$\\pm$29 \u03bcV\noffset: 801$\\pm$11 \u03bcV",
+    "fit_result": {
+        "exp_decay_func": {
+            "success": true,
+            "message": "Fit succeeded.",
+            "params": {
+                "tau": {
+                    "name": "tau",
+                    "user_data": null,
+                    "init_value": 1.5039999999999998e-05,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 8.301183647869524e-07,
+                    "correl": {
+                        "amplitude": -0.39210516403340545,
+                        "offset": -0.6588294901172354
+                    },
+                    "value": 4.8289144682911456e-06
+                },
+                "amplitude": {
+                    "name": "amplitude",
+                    "user_data": null,
+                    "init_value": 0.0003610573106350624,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 2.8951702102261703e-05,
+                    "correl": {
+                        "tau": -0.39210516403340545,
+                        "offset": -0.12800525636845733
+                    },
+                    "value": 0.0003442562884919999
+                },
+                "offset": {
+                    "name": "offset",
+                    "user_data": null,
+                    "init_value": 0.0008039888595408941,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 1.0829017826489987e-05,
+                    "correl": {
+                        "tau": -0.6588294901172354,
+                        "amplitude": -0.12800525636845733
+                    },
+                    "value": 0.0008008673146041993
+                },
+                "n_factor": {
+                    "name": "n_factor",
+                    "user_data": null,
+                    "init_value": 1,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.0,
+                    "correl": null,
+                    "value": 1
+                }
+            }
+        }
+    }
+}

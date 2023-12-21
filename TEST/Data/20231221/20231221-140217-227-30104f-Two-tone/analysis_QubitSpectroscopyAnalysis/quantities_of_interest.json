@@ -1,0 +1,61 @@
+{
+    "fit_success": false,
+    "frequency_01": {
+        "__dtype__": "UFloat",
+        "nominal_value": 3903093744.1070266,
+        "std_dev": NaN
+    },
+    "fit_msg": "Warning: fit failed. lmfit was not\nable to fit the data.",
+    "fit_result": {
+        "Lorentzian_peak": {
+            "success": false,
+            "message": "Tolerance seems to be too small. Could not estimate error-bars.",
+            "params": {
+                "x0": {
+                    "name": "x0",
+                    "user_data": null,
+                    "init_value": 3804000000.0,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 3903093744.1070266
+                },
+                "width": {
+                    "name": "width",
+                    "user_data": null,
+                    "init_value": 28284271.2474619,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 10486722379.983639
+                },
+                "a": {
+                    "name": "a",
+                    "user_data": null,
+                    "init_value": 11049.628072513171,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 763301100.8206584
+                },
+                "c": {
+                    "name": "c",
+                    "user_data": null,
+                    "init_value": 0.0013432077793263293,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": -0.07139601736127506
+                }
+            }
+        }
+    }
+}
