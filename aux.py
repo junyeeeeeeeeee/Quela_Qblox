@@ -144,3 +144,43 @@ def connect_clusters():
     display(connect_options)
     return connect_options, ip_addresses
  
+# Create quantum device with given q number
+def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
+    """
+        Create the QuantumDevice with the given qubit number and the hardware config.
+    """
+    quantum_device = QuantumDevice("academia_sinica_device")
+    quantum_device.hardware_config(HARDWARE_CONFIG)
+    
+    # store references
+    quantum_device._device_elements = list()
+
+    for i in range(1,num_qubits + 1):
+        qubit = BasicTransmonElement(f"q{i}")
+        qubit.measure.acq_channel(i)
+        quantum_device.add_element(qubit)
+        quantum_device._device_elements.append(qubit)
+    
+    return quantum_device
+
+# def set attenuation for all qubit
+def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
+    """
+        Set the attenuations for RO/XY by the given mode and atte. values.\n
+        atte_value: integer multiple of 2,\n
+        mode: 'ro' or 'xy',\n
+        target_q: ['q1']
+    """
+    # Check atte value
+    if atte_value%2 != 0:
+        raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
+    # set atte.
+    if mode.lower() == 'ro':
+        for q_name in target_q:
+            set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
+    elif mode.lower() == 'xy':
+        for q_name in target_q:
+            set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+    else:
+        raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
+        
