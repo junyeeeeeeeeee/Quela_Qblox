@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-
+import matplotlib.pyplot as plt
 import ipywidgets as widgets
 import numpy as np
 import quantify_core.data.handling as dh
@@ -59,6 +59,7 @@ def configure_measurement_control_loop(
 
     meas_ctrl = MeasurementControl("meas_ctrl")
     ic = InstrumentCoordinator("ic")
+    ic.timeout(60*60)
 
     # Add cluster to instrument coordinator
     ic_cluster = ClusterComponent(cluster)
@@ -123,11 +124,13 @@ def two_tone_spec_sched_nco(
     return sched
 
 # close all instruments
-def close_instr():
+def shut_down(cluster:Cluster,flux_map:dict):
     '''
         Disconnect all the instruments.
     '''
-    Instrument.close_all()  
+    reset_offset(flux_map)
+    cluster.reset() 
+    Instrument.close_all() 
 
 # connect to clusters
 def connect_clusters():
@@ -144,3 +147,96 @@ def connect_clusters():
     display(connect_options)
     return connect_options, ip_addresses
  
+# Create quantum device with given q number
+def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
+    """
+        Create the QuantumDevice with the given qubit number and the hardware config.
+    """
+    quantum_device = QuantumDevice("academia_sinica_device")
+    quantum_device.hardware_config(HARDWARE_CONFIG)
+    
+    # store references
+    quantum_device._device_elements = list()
+
+    for i in range(1,num_qubits + 1):
+        qubit = BasicTransmonElement(f"q{i}")
+        qubit.measure.acq_channel(i)
+        quantum_device.add_element(qubit)
+        quantum_device._device_elements.append(qubit)
+    
+    return quantum_device
+
+# def set attenuation for all qubit
+def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
+    """
+        Set the attenuations for RO/XY by the given mode and atte. values.\n
+        atte_value: integer multiple of 2,\n
+        mode: 'ro' or 'xy',\n
+        target_q: ['q1']
+    """
+    # Check atte value
+    if atte_value%2 != 0:
+        raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
+    # set atte.
+    if mode.lower() == 'ro':
+        for q_name in target_q:
+            set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
+    elif mode.lower() == 'xy':
+        for q_name in target_q:
+            set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+    else:
+        raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
+    
+def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
+    item_num = len(list(results.keys()))
+    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
+    for idx, q in enumerate(list(results.keys())):
+        fr = results[q].run().quantities_of_interest["fr"].nominal_value
+        dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+        ax[idx].axvline(fr, color = "red", ls = "--")
+        ax[idx].set_title(f"{q} resonator")
+    
+    fig.suptitle(f"Resonator spectroscopy, {quantum_device.cfg_sched_repetitions()} repetitions")
+    fig.tight_layout()
+    plt.show()
+    
+def PDresults_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
+    item_num = len(list(results.keys()))
+
+    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
+    for idx, q in enumerate(list(results.keys())):
+        if show_mode == 'pha':
+            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+        else:
+            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+        ax[idx].axhline(quantum_device.get_element(q).clock_freqs.readout(), color = "red", ls = "--")
+        ax[idx].set_title(f"{q} resonator")
+        
+    fig.suptitle(f"Resonator Dispersive, {quantum_device.cfg_sched_repetitions()} repetitions")
+    fig.tight_layout()
+    plt.show()
+
+def FD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
+    item_num = len(list(results.keys()))
+    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
+    for idx, q in enumerate(list(results.keys())):
+        dressed_f = results[q].quantities_of_interest["freq_0"]
+        offset = results[q].quantities_of_interest["offset_0"].nominal_value
+        if show_mode == 'pha':
+            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+        else:
+            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+        ax[idx].axhline(dressed_f, color = "red", ls = "--")
+        ax[idx].axvline(offset, color = "red", ls = "--")
+        ax[idx].set_title(f"{q} resonator")
+        
+    fig.suptitle(f"Resonator Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
+    fig.tight_layout()
+    plt.show()
+
+def reset_offset(flux_callable_map:dict):
+    for i in flux_callable_map:
+        flux_callable_map[i](0.0)
+
+
+        
