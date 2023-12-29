@@ -1,0 +1,37 @@
+{
+    "basic_information":{
+        "chip_name": "",
+        "chip_file": "",
+        "create_time": 0
+        
+    },
+    "1Q_information":{
+        "q1":{
+            "res_freq": 0,
+            "Qc": 0,
+            "Qi": 0,
+            "sweet_spot":{
+                "f01_freq": 0,
+                "f12_freq": 0,
+                "flux": 0
+            },
+            "idle_point":{
+                "f01_freq": 0,
+                "f12_freq": 0,
+                "flux": 0
+            },
+            "X_gate": {},
+            "Z_gate": {}
+        },
+        "q2":{
+            
+        },
+        "q3":{
+            
+        }
+        
+    },
+    "2Q_information":{
+        
+    }
+}
