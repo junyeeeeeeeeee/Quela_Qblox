@@ -233,6 +233,24 @@ def FD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:s
     fig.suptitle(f"Resonator Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
     fig.tight_layout()
     plt.show()
+    
+def QFD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
+    item_num = len(list(results.keys()))
+    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
+    for idx, q in enumerate(list(results.keys())):
+        dressed_f = results[q].quantities_of_interest["freq_0"]
+        offset = results[q].quantities_of_interest["offset_0"].nominal_value
+        if show_mode == 'pha':
+            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+        else:
+            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+        ax[idx].axhline(dressed_f, color = "red", ls = "--")
+        ax[idx].axvline(offset, color = "red", ls = "--")
+        ax[idx].set_title(f"{q} resonator")
+        
+    fig.suptitle(f"Qubit Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
+    fig.tight_layout()
+    plt.show()
 
 def reset_offset(flux_callable_map:dict):
     for i in flux_callable_map:
