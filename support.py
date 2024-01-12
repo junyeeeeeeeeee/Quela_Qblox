@@ -190,11 +190,18 @@ def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:l
 def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
     item_num = len(list(results.keys()))
     fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        fr = results[q].run().quantities_of_interest["fr"].nominal_value
-        dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axvline(fr, color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
+    if item_num == 1:
+        for idx, q in enumerate(list(results.keys())):
+            fr = results[q].run().quantities_of_interest["fr"].nominal_value
+            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax)
+            ax.axvline(fr, color = "red", ls = "--")
+            ax.set_title(f"{q} resonator")
+    else:  
+        for idx, q in enumerate(list(results.keys())):
+            fr = results[q].run().quantities_of_interest["fr"].nominal_value
+            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+            ax[idx].axvline(fr, color = "red", ls = "--")
+            ax[idx].set_title(f"{q} resonator")
     
     fig.suptitle(f"Resonator spectroscopy, {quantum_device.cfg_sched_repetitions()} repetitions")
     fig.tight_layout()
@@ -202,15 +209,23 @@ def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
     
 def PDresults_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
     item_num = len(list(results.keys()))
-
     fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        if show_mode == 'pha':
-            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
-        else:
-            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axhline(quantum_device.get_element(q).clock_freqs.readout(), color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
+    if item_num == 1:
+        for idx, q in enumerate(list(results.keys())):
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax)
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax)
+            ax.axhline(quantum_device.get_element(q).clock_freqs.readout(), color = "red", ls = "--")
+            ax.set_title(f"{q} resonator")
+    else:  
+        for idx, q in enumerate(list(results.keys())):
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+            ax[idx].axhline(quantum_device.get_element(q).clock_freqs.readout(), color = "red", ls = "--")
+            ax[idx].set_title(f"{q} resonator")
         
     fig.suptitle(f"Resonator Dispersive, {quantum_device.cfg_sched_repetitions()} repetitions")
     fig.tight_layout()
@@ -219,18 +234,52 @@ def PDresults_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:st
 def FD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
     item_num = len(list(results.keys()))
     fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        dressed_f = results[q].quantities_of_interest["freq_0"]
-        offset = results[q].quantities_of_interest["offset_0"].nominal_value
-        if show_mode == 'pha':
-            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
-        else:
-            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axhline(dressed_f, color = "red", ls = "--")
-        ax[idx].axvline(offset, color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
+    if item_num == 1:
+        for idx, q in enumerate(list(results.keys())):
+            dressed_f = results[q].quantities_of_interest["freq_0"]
+            offset = results[q].quantities_of_interest["offset_0"].nominal_value
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax)
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax)
+            ax.axhline(dressed_f, color = "red", ls = "--")
+            ax.axvline(offset, color = "red", ls = "--")
+            ax.set_title(f"{q} resonator")
+    else: 
+        for idx, q in enumerate(list(results.keys())):
+            dressed_f = results[q].quantities_of_interest["freq_0"]
+            offset = results[q].quantities_of_interest["offset_0"].nominal_value
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+            ax[idx].axhline(dressed_f, color = "red", ls = "--")
+            ax[idx].axvline(offset, color = "red", ls = "--")
+            ax[idx].set_title(f"{q} resonator")
         
     fig.suptitle(f"Resonator Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
+    fig.tight_layout()
+    plt.show()
+    
+def QFD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
+    item_num = len(list(results.keys()))
+    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
+    if item_num == 1:
+        for idx, q in enumerate(list(results.keys())):
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax)
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax)
+            ax.set_title(f"{q} resonator")
+    else: 
+        for idx, q in enumerate(list(results.keys())):
+            if show_mode == 'pha':
+                dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
+            else:
+                dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
+            ax[idx].set_title(f"{q} resonator")
+        
+    fig.suptitle(f"Qubit Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
     fig.tight_layout()
     plt.show()
 
