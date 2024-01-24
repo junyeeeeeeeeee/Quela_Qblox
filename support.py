@@ -1,6 +1,7 @@
 import warnings
 from pathlib import Path
 import matplotlib.pyplot as plt
+import plotly.io as pio
 import ipywidgets as widgets
 import numpy as np
 import quantify_core.data.handling as dh
@@ -26,6 +27,7 @@ from quantify_scheduler.resources import ClockResource
 from quantify_scheduler.schedules import heterodyne_spec_sched_nco, rabi_sched, t1_sched
 from quantify_scheduler.schedules.timedomain_schedules import ramsey_sched
 from quantify_scheduler.schedules.schedule import Schedule
+from quantify_scheduler.backends.graph_compilation import SerialCompiler
 from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis, QubitSpectroscopyAnalysis
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
 from utils.tutorial_analysis_classes import (
@@ -40,10 +42,53 @@ from utils.tutorial_utils import (
     show_readout_args,
 )
 
+# close all instruments
+def shut_down(cluster:Cluster,flux_map:dict):
+    '''
+        Disconnect all the instruments.
+    '''
+    reset_offset(flux_map)
+    cluster.reset() 
+    Instrument.close_all() 
+
+# connect to clusters
+def connect_clusters():
+    with PlugAndPlay() as p:            # Scan for available devices and display
+        device_list = p.list_devices()  # Get info of all devices
+
+    names = {dev_id: dev_info["description"]["name"] for dev_id, dev_info in device_list.items()}
+    ip_addresses = {dev_id: dev_info["identity"]["ip"] for dev_id, dev_info in device_list.items()}
+
+    connect_options = widgets.Dropdown(         # Create widget for names and ip addresses *** Should be change into other interface in the future
+        options=[(f"{names[dev_id]} @{ip_addresses[dev_id]}", dev_id) for dev_id in device_list],
+        description="Select Device",
+    )
+    display(connect_options)
+    return connect_options, ip_addresses
+ 
+# Create quantum device with given q number
+def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
+    """
+        Create the QuantumDevice with the given qubit number and the hardware config.
+    """
+    quantum_device = QuantumDevice("academia_sinica_device")
+    quantum_device.hardware_config(HARDWARE_CONFIG)
+    
+    # store references
+    quantum_device._device_elements = list()
+
+    for i in range(1,num_qubits + 1):
+        qubit = BasicTransmonElement(f"q{i}")
+        qubit.measure.acq_channel(i)
+        quantum_device.add_element(qubit)
+        quantum_device._device_elements.append(qubit)
+    
+    return quantum_device
+
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
     device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
-) ->(MeasurementControl,InstrumentCoordinator):
+) -> (MeasurementControl, InstrumentCoordinator):
     # Close QCoDeS instruments with conflicting names
     for name in [
         "PlotMonitor",
@@ -76,7 +121,46 @@ def configure_measurement_control_loop(
 
     return (meas_ctrl, ic)
 
+def qubits_meas(quantum_device:QuantumDevice, qubit_want_to_meas:list)->list:
+    ro_elements = []
+    for q in range(5):
+        if qubit_want_to_meas[q] == 1:
+            ro_elements.append(quantum_device._device_elements[q].name)
+        else:
+            pass
+    return ro_elements
 
+def pulse_preview(quantum_device:QuantumDevice,sche_func:Schedule, sche_kwargs:dict, **kwargs):
+    
+    pio.renderers.default='browser'
+    device_compiler = SerialCompiler("Device compiler", quantum_device)
+    comp_sched = device_compiler.compile(
+        sche_func(**sche_kwargs)
+    )
+    sche_func(**sche_kwargs).plot_circuit_diagram()
+    comp_sched.plot_pulse_diagram(plot_backend="plotly",**kwargs).show()
+
+# def set attenuation for all qubit
+def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
+    """
+        Set the attenuations for RO/XY by the given mode and atte. values.\n
+        atte_value: integer multiple of 2,\n
+        mode: 'ro' or 'xy',\n
+        target_q: ['q1']
+    """
+    # Check atte value
+    if atte_value%2 != 0:
+        raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
+    # set atte.
+    if mode.lower() == 'ro':
+        for q_name in target_q:
+            set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
+    elif mode.lower() == 'xy':
+        for q_name in target_q:
+            set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+    else:
+        raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
+    
 def two_tone_spec_sched_nco(
     qubit_name: str,
     spec_pulse_amp: float,
@@ -122,70 +206,6 @@ def two_tone_spec_sched_nco(
         sched.add(Measure(qubit_name, acq_index=acq_idx))
 
     return sched
-
-# close all instruments
-def shut_down(cluster:Cluster,flux_map:dict):
-    '''
-        Disconnect all the instruments.
-    '''
-    reset_offset(flux_map)
-    cluster.reset() 
-    Instrument.close_all() 
-
-# connect to clusters
-def connect_clusters():
-    with PlugAndPlay() as p:            # Scan for available devices and display
-        device_list = p.list_devices()  # Get info of all devices
-
-    names = {dev_id: dev_info["description"]["name"] for dev_id, dev_info in device_list.items()}
-    ip_addresses = {dev_id: dev_info["identity"]["ip"] for dev_id, dev_info in device_list.items()}
-
-    connect_options = widgets.Dropdown(         # Create widget for names and ip addresses *** Should be change into other interface in the future
-        options=[(f"{names[dev_id]} @{ip_addresses[dev_id]}", dev_id) for dev_id in device_list],
-        description="Select Device",
-    )
-    display(connect_options)
-    return connect_options, ip_addresses
- 
-# Create quantum device with given q number
-def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
-    """
-        Create the QuantumDevice with the given qubit number and the hardware config.
-    """
-    quantum_device = QuantumDevice("academia_sinica_device")
-    quantum_device.hardware_config(HARDWARE_CONFIG)
-    
-    # store references
-    quantum_device._device_elements = list()
-
-    for i in range(1,num_qubits + 1):
-        qubit = BasicTransmonElement(f"q{i}")
-        qubit.measure.acq_channel(i)
-        quantum_device.add_element(qubit)
-        quantum_device._device_elements.append(qubit)
-    
-    return quantum_device
-
-# def set attenuation for all qubit
-def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
-    """
-        Set the attenuations for RO/XY by the given mode and atte. values.\n
-        atte_value: integer multiple of 2,\n
-        mode: 'ro' or 'xy',\n
-        target_q: ['q1']
-    """
-    # Check atte value
-    if atte_value%2 != 0:
-        raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
-    # set atte.
-    if mode.lower() == 'ro':
-        for q_name in target_q:
-            set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
-    elif mode.lower() == 'xy':
-        for q_name in target_q:
-            set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
-    else:
-        raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
     
 def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
     item_num = len(list(results.keys()))
