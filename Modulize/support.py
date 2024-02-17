@@ -1,3 +1,4 @@
+from quantify_scheduler.json_utils import SchedulerJSONDecoder
 
 import warnings
 from pathlib import Path
@@ -322,5 +323,21 @@ def SQRB_schedule(
     
     return sched
 
+# TODO: Fast save and rebuild QuantumDevice -> needa test
+def QD_reloader(path:str)->QuantumDevice:
+    """
+    Reload the QuantumDevice from a given json file path contain the serialized QD.
+    """
+    container = QuantumDevice("academia_sinica_device")
+    gift = container.from_json_file(cls=SchedulerJSONDecoder, filename=path)
+    return  gift
+
+def QD_keeper(QD:QuantumDevice,path:str):
+    """
+    Save the given QuantumDevice to a json file with the given path. \n
+    It will generate the file namme with the time.
+    """
+    file_name = QD.to_json_file(path)
+    print(f"The QuantumDevice had been saved at path={file_name}")
 
 
