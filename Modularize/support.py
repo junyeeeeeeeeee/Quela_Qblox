@@ -323,7 +323,7 @@ def SQRB_schedule(
     
     return sched
 
-# TODO: Fast save and rebuild QuantumDevice -> needa test
+# TODO: Fast save and rebuild QuantumDevice -> need a test
 def QD_reloader(path:str)->QuantumDevice:
     """
     Reload the QuantumDevice from a given json file path contain the serialized QD.
@@ -341,3 +341,12 @@ def QD_keeper(QD:QuantumDevice,path:str):
     print(f"The QuantumDevice had been saved at path={file_name}")
 
 
+# generate time label for netCDF file name
+def get_time_now()->str:
+    """
+    Since we save the Xarray into netCDF, we use the current time to encode the file name.\n
+    Ex: 19:23:34 return H19M23S34 
+    """
+    import datetime
+    current_time = datetime.datetime.now()
+    return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
