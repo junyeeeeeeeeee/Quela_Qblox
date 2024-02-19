@@ -136,6 +136,7 @@ def shut_down(cluster:Cluster,flux_map:dict):
     reset_offset(flux_map)
     cluster.reset() 
     Instrument.close_all() 
+    print("All instr are closed and zeroed all flux bias!")
 
 # connect to clusters
 def connect_clusters():
@@ -329,13 +330,13 @@ def QD_reloader(path:str)->QuantumDevice:
     Reload the QuantumDevice from a given json file path contain the serialized QD.
     """
     container = QuantumDevice("academia_sinica_device")
-    gift = container.from_json_file(cls=SchedulerJSONDecoder, filename=path)
+    gift = container.from_json_file(filename=path)
     return  gift
 
 def QD_keeper(QD:QuantumDevice,path:str):
     """
     Save the given QuantumDevice to a json file with the given path. \n
-    It will generate the file namme with the time.
+    It will generate the file named with the time.
     """
     file_name = QD.to_json_file(path)
     print(f"The QuantumDevice had been saved at path={file_name}")
@@ -350,3 +351,22 @@ def get_time_now()->str:
     import datetime
     current_time = datetime.datetime.now()
     return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
+
+# build the folder for the data today
+def build_folder_today(parent_path:str):
+    """
+    Build up and return the folder named by the current date in the parent path.\n
+    Ex. parent_path='D:/Examples/'
+    """
+    import os
+    import datetime
+    current_time = datetime.datetime.now()
+    folder = f"{current_time.year}_{current_time.month}_{current_time.day}"
+    new_folder = os.path.join(parent_path, folder) 
+    if not os.path.isdir(new_folder):
+        os.mkdir(new_folder) 
+        print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} had been created!")
+    else:
+        print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} exist!")
+    return new_folder
+

@@ -319,7 +319,7 @@ if executor:
 
 #flux_settable_map['q1']() flux check
 
-
+shut_down(cluster,flux_settable_map)
 
 
 

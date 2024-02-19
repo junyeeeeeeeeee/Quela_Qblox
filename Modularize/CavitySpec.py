@@ -1,12 +1,14 @@
 from numpy import array, linspace
-
+from Modularize.support import build_folder_today
+from Modularize.path_book import meas_raw_dir
 from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
-from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
+from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support import QuantumDevice, get_time_now
 from quantify_core.measurement.control import MeasurementControl
+import os
 
 # TODO: Need a test on machine @ 02/17
 def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=5e6,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
@@ -25,9 +27,9 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
     spec_sched_kwargs = dict(   
         frequencies=freq,
         q=q,
-        R_amp=qubit_info.measure.pulse_amp(),
-        R_duration=qubit_info.measure.pulse_duration(),
-        R_integration=qubit_info.measure.integration_time(),
+        R_amp={str(q):qubit_info.measure.pulse_amp()},
+        R_duration={str(q):qubit_info.measure.pulse_duration()},
+        R_integration={str(q):qubit_info.measure.integration_time()},
         R_inte_delay=qubit_info.measure.acq_delay(),
         powerDep=False,
     )
@@ -48,11 +50,12 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
         meas_ctrl.setpoints(ro_f_samples)
         
         rs_ds = meas_ctrl.run("One-tone")
+        analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         # save the xarrry into netCDF
         exp_timeLabel = get_time_now()
-        rs_ds.to_netcdf(f"CavitySpectro_{exp_timeLabel}.nc")
+        raw_folder = build_folder_today(meas_raw_dir)
+        rs_ds.to_netcdf(os.path.join(raw_folder,f"CavitySpectro_{exp_timeLabel}.nc"))
         print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
-        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -72,16 +75,23 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
 
 
 if __name__ == "__main__":
-    from Modularize.support import QD_reloader, connect_clusters, configure_measurement_control_loop
+    from Modularize.support import QD_reloader, QD_keeper, connect_clusters, configure_measurement_control_loop, shut_down
     from qblox_instruments import Cluster
-    # Reload the QuantumDevice
-    QD_path = ''
-    quantum_device = QD_reloader(QD_path)
+    from Modularize.path_book import qdevice_backup_dir
+    # Reload the QuantumDevice or build up a new one
+    QD_path = '/Users/ratiswu/Documents/GitHub/Quela_Qblox/Modularize/QD_backup/2024_2_19/academia_sinica_device_2024-02-19_06-36-36_UTC.json'
+    if QD_path != '':
+        quantum_device = QD_reloader(QD_path)
+        print("Quantum device successfully reloaded!")
+    else:
+        from Modularize.Experiment_setup import hardware_cfg
+        from Modularize.support import create_quantum_device
+        quantum_device = create_quantum_device(hardware_cfg, num_qubits=5)
     # Connect to the Qblox cluster
     connect, ip = connect_clusters()
     cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
     meas_ctrl, instrument_coordinator = configure_measurement_control_loop(quantum_device, cluster)
-
+    
     # TODO: keep the particular bias into chip spec, and it should be fast loaded
     flux_settable_map: callable = {
         "q1":cluster.module2.out0_offset,
@@ -93,7 +103,7 @@ if __name__ == "__main__":
     # default the offset in circuit
     for i in flux_settable_map:
         flux_settable_map[i](0.00)
-
+    
     # guess
     ro_bare=dict(
         q1 = 5.720 * 1e9,
@@ -102,12 +112,26 @@ if __name__ == "__main__":
         q4 = 6 * 1e9,
         q5 = 6.1 * 1e9,
     )
-
-    CS_results = Cavity_spec(quantum_device,meas_ctrl,ro_bare,q='q1')
-    if CS_results != {}:
-        for q in CS_results:
-            print(f'Cavity @ {CS_results[q].quantities_of_interest["fr"].nominal_value} Hz')
-
-
-
-
+    error_log = []
+    for qb in ro_bare:
+        print(qb)
+        if QD_path == '':
+            qubit = quantum_device.get_element(qb)
+            qubit.reset.duration(150e-6)
+            qubit.measure.acq_delay(0)
+            qubit.measure.pulse_amp(0.1)
+            qubit.measure.pulse_duration(2e-6)
+            qubit.measure.integration_time(2e-6)
+        CS_results = Cavity_spec(quantum_device,meas_ctrl,ro_bare,q=qb)
+        if CS_results != {}:
+            print(f'Cavity @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
+            quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
+        else:
+            error_log.append(qb)
+    print(f"Cavity Spectroscopy error qubit: {error_log}")
+    exp_timeLabel = get_time_now()
+    qd_folder = build_folder_today(qdevice_backup_dir)
+    QD_keeper(quantum_device,qd_folder)
+    print('CavitySpectro done!')
+    
+    # shut_down(cluster,flux_settable_map)
