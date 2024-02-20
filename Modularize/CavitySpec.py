@@ -54,7 +54,7 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
         # save the xarrry into netCDF
         exp_timeLabel = get_time_now()
         raw_folder = build_folder_today(meas_raw_dir)
-        rs_ds.to_netcdf(os.path.join(raw_folder,f"CavitySpectro_{exp_timeLabel}.nc"))
+        rs_ds.to_netcdf(os.path.join(raw_folder,f"{q}_CavitySpectro_{exp_timeLabel}.nc"))
         print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
@@ -75,22 +75,18 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
 
 
 if __name__ == "__main__":
-    from Modularize.support import QD_reloader, QD_keeper, connect_clusters, configure_measurement_control_loop, shut_down
-    from qblox_instruments import Cluster
+    from Modularize.support import QD_keeper, init_meas, CSresults_alignPlot
     from Modularize.path_book import qdevice_backup_dir
+    from numpy import NaN
+    
+
     # Reload the QuantumDevice or build up a new one
-    QD_path = '/Users/ratiswu/Documents/GitHub/Quela_Qblox/Modularize/QD_backup/2024_2_19/academia_sinica_device_2024-02-19_06-36-36_UTC.json'
-    if QD_path != '':
-        quantum_device = QD_reloader(QD_path)
-        print("Quantum device successfully reloaded!")
-    else:
-        from Modularize.Experiment_setup import hardware_cfg
-        from Modularize.support import create_quantum_device
-        quantum_device = create_quantum_device(hardware_cfg, num_qubits=5)
-    # Connect to the Qblox cluster
-    connect, ip = connect_clusters()
-    cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-    meas_ctrl, instrument_coordinator = configure_measurement_control_loop(quantum_device, cluster)
+    QD_path = 'Modularize/QD_backup/2024_2_20/QD_H17M6S29.pkl'
+    hwcfg_path = 'Modularize/HWcfg/2024_2_20/HWconfig_H17M3S31.json'
+    cluster, quantum_device, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,HWcfg_path=hwcfg_path)
+
+    
+    # print(quantum_device.generate_hardware_compilation_config()) # see the hardwawe config in the QuantumDevice
     
     # TODO: keep the particular bias into chip spec, and it should be fast loaded
     flux_settable_map: callable = {
@@ -115,13 +111,15 @@ if __name__ == "__main__":
     error_log = []
     for qb in ro_bare:
         print(qb)
+        qubit = quantum_device.get_element(qb)
         if QD_path == '':
-            qubit = quantum_device.get_element(qb)
             qubit.reset.duration(150e-6)
             qubit.measure.acq_delay(0)
             qubit.measure.pulse_amp(0.1)
             qubit.measure.pulse_duration(2e-6)
             qubit.measure.integration_time(2e-6)
+        else:
+            qubit.clock_freqs.readout(NaN)
         CS_results = Cavity_spec(quantum_device,meas_ctrl,ro_bare,q=qb)
         if CS_results != {}:
             print(f'Cavity @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
@@ -134,4 +132,4 @@ if __name__ == "__main__":
     QD_keeper(quantum_device,qd_folder)
     print('CavitySpectro done!')
     
-    # shut_down(cluster,flux_settable_map)
+    

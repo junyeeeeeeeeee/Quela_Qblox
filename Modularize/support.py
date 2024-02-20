@@ -154,21 +154,33 @@ def connect_clusters():
     return connect_options, ip_addresses
  
 # Create quantum device with given q number
-def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
+def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='',hwcfg_path:str='') -> QuantumDevice:
     """
-        Create the QuantumDevice with the given qubit number and the hardware config.
+        Create the QuantumDevice with the given qubit number by the following 2 cases:\n
+        Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
+        Case 2: QD_path and hwcfg_path are both given, load the QD with that given path.\n
     """
-    quantum_device = QuantumDevice("academia_sinica_device")
-    quantum_device.hardware_config(HARDWARE_CONFIG)
-    
-    # store references
-    quantum_device._device_elements = list()
+    if QD_path == '' and hwcfg_path == '':
+        quantum_device = QuantumDevice("academia_sinica_device")
+        quantum_device.hardware_config(HARDWARE_CONFIG)
+        
+        # store references
+        quantum_device._device_elements = list()
 
-    for i in range(1,num_qubits + 1):
-        qubit = BasicTransmonElement(f"q{i}")
-        qubit.measure.acq_channel(i)
-        quantum_device.add_element(qubit)
-        quantum_device._device_elements.append(qubit)
+        for i in range(1,num_qubits + 1):
+            qubit = BasicTransmonElement(f"q{i}")
+            qubit.measure.acq_channel(i)
+            quantum_device.add_element(qubit)
+            quantum_device._device_elements.append(qubit)
+        
+        from Modularize.path_book import hwcfg_dir
+        hwcfg_folder = build_folder_today(hwcfg_dir)
+        HWcfg_keeper(HARDWARE_CONFIG,hwcfg_folder)
+    elif QD_path != '' and hwcfg_path != '':
+            quantum_device = QD_loader(QD_path, hwcfg_path)
+            print("Quantum device successfully reloaded!")
+    else: 
+        raise ValueError("Check your args please, something went wrong there!")
     
     return quantum_device
 
@@ -325,12 +337,14 @@ def SQRB_schedule(
     return sched
 
 # TODO: Fast save and rebuild QuantumDevice -> need a test
-def QD_reloader(path:str)->QuantumDevice:
+def QD_loader(QD_path:str, hwcfg_path:str)->QuantumDevice:
     """
     Reload the QuantumDevice from a given json file path contain the serialized QD.
     """
-    container = QuantumDevice("academia_sinica_device")
-    gift = container.from_json_file(filename=path)
+    import pickle
+    with open(QD_path, 'rb') as inp:
+        gift = pickle.load(inp)
+    gift.hardware_config(HWcfg_loader(hwcfg_path))
     return  gift
 
 def QD_keeper(QD:QuantumDevice,path:str):
@@ -338,8 +352,15 @@ def QD_keeper(QD:QuantumDevice,path:str):
     Save the given QuantumDevice to a json file with the given path. \n
     It will generate the file named with the time.
     """
-    file_name = QD.to_json_file(path)
-    print(f"The QuantumDevice had been saved at path={file_name}")
+    import pickle
+    import os
+    timeLabel = get_time_now()
+    filename = f"QD_{timeLabel}.pkl"
+    QD_backup = os.path.join(path,filename)
+    with open(QD_backup, 'wb') as file:
+        pickle.dump(QD, file)
+        print(f'QuantumDevice successfully saved to the given path with the time label={timeLabel} !')
+    
 
 
 # generate time label for netCDF file name
@@ -370,3 +391,45 @@ def build_folder_today(parent_path:str):
         print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} exist!")
     return new_folder
 
+# save the hardware config into json file
+def HWcfg_keeper(HWcfg:dict,path:str):
+    """
+        Save the given hardware config into the given path with a json format.
+    """
+    import os
+    from json import dump
+
+    timeLabel = get_time_now()
+    filename = os.path.join(path,f"HWconfig_{timeLabel}.json")
+    with open(filename, 'w') as fp:
+        dump(HWcfg, fp)
+    print(f"Successfully save the hardware config with the time label={timeLabel} !")
+
+def HWcfg_loader(path:str)->dict:
+    """
+    load the serialized hardware config json 
+    """
+    from json import load
+    with open(path, 'r') as f:
+        gift = load(f)
+    return gift
+
+# initialize a measurement
+def init_meas(QuantumDevice_path:str='',HWcfg_path:str='',qubit_number:int=5)->(Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator):
+    """
+    Initialize a measurement by the following 2 cases:\n
+    ### Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
+    ### Case 2: QD_path and hwcfg_path are both given, load the QD with that given path.\n
+    # Return `cluster`, `quantum_device`, `meas_ctrl`, `ic`
+    """
+    from Experiment_setup import hardware_cfg
+    import quantify_core.data.handling as dh
+    meas_datadir = '.data'
+    dh.set_datadir(meas_datadir)
+    quantum_device = create_quantum_device(HARDWARE_CONFIG=hardware_cfg,num_qubits=qubit_number,QD_path=QuantumDevice_path,hwcfg_path=HWcfg_path)
+    # Connect to the Qblox cluster
+    connect, ip = connect_clusters()
+    cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    meas_ctrl, ic = configure_measurement_control_loop(quantum_device, cluster)
+
+    return (cluster, quantum_device, meas_ctrl, ic)
