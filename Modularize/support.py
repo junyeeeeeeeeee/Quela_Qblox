@@ -335,7 +335,7 @@ def SQRB_schedule(
     sched.add(Measure(qubit))
     
     return sched
-t
+
 def QD_loader(QD_path:str, hwcfg_path:str)->QuantumDevice:
     """
     Reload the QuantumDevice from a given json file path contain the serialized QD.
