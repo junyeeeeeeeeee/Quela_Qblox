@@ -45,6 +45,38 @@ from utils.tutorial_utils import (
     show_readout_args,
 )
 
+# TODO: Test this class to store the bias info
+# dict to save the filux bias information
+class FluxBiasDict():
+    def __init__(self,qb_number:int):
+        self.__bias_dict = {}
+        self.q_num = qb_number
+        self.init_bias()
+    def get_bias_dict(self):
+        return self.__bias_dict
+    def init_bias(self):
+        for i in range(self.q_num):
+            self.__bias_dict[f"q{i}"] = {}
+            for bias_position in ["SweetSpot","TuneAway"]:
+                self.__bias_dict[f"q{i}"][bias_position] = 0.0
+    def set_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
+        """
+            Set the sweet spot bias for the given qubit, target_q label starts from 0.\n
+            Ex. target_q = 'q0'
+        """
+        self.__bias_dict[target_q]["SweetSpot"] = bias
+    def set_tuneawayBias_for(self,target_q:str='q0',bias:float=0.0):
+        """
+            Set the tune away bias for the given qubit, target_q label starts from 0.\n
+            Ex. target_q = 'q0'
+        """
+        self.__bias_dict[target_q]["TuneAway"] = bias
+    def super_from_dict(self,target_bias_dict:dict):
+        for q_old in target_bias_dict:
+            for bias_position in ["SweetSpot","TuneAway"]:
+                self.__bias_dict[q_old][bias_position] = target_bias_dict[q_old][bias_position]
+
+
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
     device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
@@ -154,13 +186,13 @@ def connect_clusters():
     return connect_options, ip_addresses
  
 # Create quantum device with given q number
-def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='',hwcfg_path:str='') -> QuantumDevice:
+def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='') -> (QuantumDevice,FluxBiasDict,dict):
     """
         Create the QuantumDevice with the given qubit number by the following 2 cases:\n
         Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
         Case 2: QD_path and hwcfg_path are both given, load the QD with that given path.\n
     """
-    if QD_path == '' and hwcfg_path == '':
+    if QD_path == '':
         quantum_device = QuantumDevice("academia_sinica_device")
         quantum_device.hardware_config(HARDWARE_CONFIG)
         
@@ -173,16 +205,14 @@ def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='
             quantum_device.add_element(qubit)
             quantum_device._device_elements.append(qubit)
         
-        from Modularize.path_book import hwcfg_dir
-        hwcfg_folder = build_folder_today(hwcfg_dir)
-        HWcfg_keeper(HARDWARE_CONFIG,hwcfg_folder)
-    elif QD_path != '' and hwcfg_path != '':
-            quantum_device = QD_loader(QD_path, hwcfg_path)
-            print("Quantum device successfully reloaded!")
-    else: 
-        raise ValueError("Check your args please, something went wrong there!")
+        FluxBiasRecorder = FluxBiasDict(qb_number=num_qubits)
+        hcfg = HARDWARE_CONFIG
     
-    return quantum_device
+    else:
+        quantum_device, FluxBiasRecorder, hcfg = QD_loader(QD_path)
+        print("Quantum device successfully reloaded!")
+    
+    return (quantum_device, FluxBiasRecorder, hcfg)
 
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
@@ -336,29 +366,35 @@ def SQRB_schedule(
     
     return sched
 
-def QD_loader(QD_path:str, hwcfg_path:str)->QuantumDevice:
+def QD_loader(QD_path:str) -> (QuantumDevice,FluxBiasDict,dict):
     """
-    Reload the QuantumDevice from a given json file path contain the serialized QD.
+    Load the QuantumDevice, FluxBiasDict and hardware config from a given json file path contain the serialized QD.
     """
     import pickle
     with open(QD_path, 'rb') as inp:
         gift = pickle.load(inp)
-    gift.hardware_config(HWcfg_loader(hwcfg_path))
-    return  gift
+    biasdict = gift["Flux"]
+    BiasRecorder = FluxBiasDict(qb_number=len(list(biasdict.keys())))
+    quantum_device = gift["QD"]
+    hcfg = gift["Hcfg"]
+    quantum_device.hardware_config(hcfg)
+    return  (quantum_device, BiasRecorder, hcfg)
 
-def QD_keeper(QD:QuantumDevice,path:str):
+def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,Hcfg:dict,path:str):
     """
-    Save the given QuantumDevice to a json file with the given path. \n
+    Merge the `QuantumDevice`, `FluxBiasDict` and `Hardware config` into a Dictionary, and the key is 'QD', 'Flux' and 'Hcfg' accordingly.\n
+    And save the merged dictionary to a json file with the given path. \n
     It will generate the file named with the time.
     """
     import pickle
     import os
     timeLabel = get_time_now()
-    filename = f"QD_{timeLabel}.pkl"
+    filename = f"SumInfo_{timeLabel}.pkl"
     QD_backup = os.path.join(path,filename)
+    merged_file = {"QD":QD,"Flux":FluxDict,"Hcfg":Hcfg}
     with open(QD_backup, 'wb') as file:
-        pickle.dump(QD, file)
-        print(f'QuantumDevice successfully saved to the given path with the time label={timeLabel} !')
+        pickle.dump(merged_file, file)
+        print(f'Summarized info had successfully saved to the given path with the time label={timeLabel} !')
     
 
 
@@ -390,45 +426,31 @@ def build_folder_today(parent_path:str):
         print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} exist!")
     return new_folder
 
-# save the hardware config into json file
-def HWcfg_keeper(HWcfg:dict,path:str):
-    """
-        Save the given hardware config into the given path with a json format.
-    """
-    import os
-    from json import dump
-
-    timeLabel = get_time_now()
-    filename = os.path.join(path,f"HWconfig_{timeLabel}.json")
-    with open(filename, 'w') as fp:
-        dump(HWcfg, fp)
-    print(f"Successfully save the hardware config with the time label={timeLabel} !")
-
-def HWcfg_loader(path:str)->dict:
-    """
-    load the serialized hardware config json 
-    """
-    from json import load
-    with open(path, 'r') as f:
-        gift = load(f)
-    return gift
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',HWcfg_path:str='',qubit_number:int=5)->(Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator):
+def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->(Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator, FluxBiasDict, dict):
     """
     Initialize a measurement by the following 2 cases:\n
-    ### Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
-    ### Case 2: QD_path and hwcfg_path are both given, load the QD with that given path.\n
-    # Return `cluster`, `quantum_device`, `meas_ctrl`, `ic`
+    ### Case 1: QD_path isn't given, create a new QD accordingly.\n
+    ### Case 2: QD_path is given, load the QD with that given path.\n
+    ## Return `cluster`, `quantum_device`, `meas_ctrl`, `ic`, `FluxBiasDict` and `Hardware config`.\n
+    args:\n
+    mode: 'new' or 'load'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
-    from Experiment_setup import hardware_cfg
+    
     import quantify_core.data.handling as dh
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
-    quantum_device = create_quantum_device(HARDWARE_CONFIG=hardware_cfg,num_qubits=qubit_number,QD_path=QuantumDevice_path,hwcfg_path=HWcfg_path)
+    if mode.lower() == 'new':
+        from Experiment_setup import hardware_cfg
+        cfg, pth = hardware_cfg, ''
+    elif mode.lower() == 'load':
+        cfg, pth = {}, QuantumDevice_path 
+
+    quantum_device, FluxBiasRecorder, hcfg = create_quantum_device(HARDWARE_CONFIG=cfg,num_qubits=qubit_number, QD_path=pth)
     # Connect to the Qblox cluster
     connect, ip = connect_clusters()
     cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
     meas_ctrl, ic = configure_measurement_control_loop(quantum_device, cluster)
-
-    return (cluster, quantum_device, meas_ctrl, ic)
+    
+    return (cluster, quantum_device, meas_ctrl, ic, FluxBiasRecorder, hcfg)
