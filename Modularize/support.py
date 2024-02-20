@@ -71,7 +71,7 @@ class FluxBiasDict():
             Ex. target_q = 'q0'
         """
         self.__bias_dict[target_q]["TuneAway"] = bias
-    def super_from_dict(self,target_bias_dict:dict):
+    def activate_from_dict(self,target_bias_dict:dict):
         for q_old in target_bias_dict:
             for bias_position in ["SweetSpot","TuneAway"]:
                 self.__bias_dict[q_old][bias_position] = target_bias_dict[q_old][bias_position]
@@ -375,6 +375,7 @@ def QD_loader(QD_path:str) -> (QuantumDevice,FluxBiasDict,dict):
         gift = pickle.load(inp)
     biasdict = gift["Flux"]
     BiasRecorder = FluxBiasDict(qb_number=len(list(biasdict.keys())))
+    BiasRecorder.activate_from_dict(biasdict)
     quantum_device = gift["QD"]
     hcfg = gift["Hcfg"]
     quantum_device.hardware_config(hcfg)
