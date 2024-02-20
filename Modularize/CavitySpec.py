@@ -10,7 +10,6 @@ from Modularize.support import QuantumDevice, get_time_now
 from quantify_core.measurement.control import MeasurementControl
 import os
 
-# TODO: Need a test on machine @ 02/17
 def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=5e6,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
     """
         Do the cavity search by the given QuantumDevice with a given target qubit q. \n
