@@ -48,6 +48,9 @@ from utils.tutorial_utils import (
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
 class FluxBiasDict():
+    """
+    This class helps to memorize the flux bias. 
+    """
     def __init__(self,qb_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
@@ -58,6 +61,9 @@ class FluxBiasDict():
         """
         return self.__bias_dict
     def init_bias(self):
+        """
+        Initialize the dict when you create this object.
+        """
         for i in range(self.q_num):
             self.__bias_dict[f"q{i}"] = {}
             for bias_position in ["SweetSpot","TuneAway"]:
@@ -74,10 +80,13 @@ class FluxBiasDict():
             Ex. target_q = 'q0'
         """
         self.__bias_dict[target_q]["TuneAway"] = bias
-    def activate_from_dict(self,target_bias_dict:dict):
-        for q_old in target_bias_dict:
-            for bias_position in ["SweetSpot","TuneAway"]:
-                self.__bias_dict[q_old][bias_position] = target_bias_dict[q_old][bias_position]
+    def activate_from_dict(self,old_bias_dict:dict):
+        """
+        Activate the dict which super from the old record.
+        """
+        for q_old in old_bias_dict:
+            for bias_position in old_bias_dict[q_old]:
+                self.__bias_dict[q_old][bias_position] = old_bias_dict[q_old][bias_position]
 
 
 # Configure_measurement_control_loop
