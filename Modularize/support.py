@@ -53,6 +53,9 @@ class FluxBiasDict():
         self.q_num = qb_number
         self.init_bias()
     def get_bias_dict(self):
+        """
+        Return the dictionary contain the bias info.
+        """
         return self.__bias_dict
     def init_bias(self):
         for i in range(self.q_num):
@@ -199,7 +202,7 @@ def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='
         # store references
         quantum_device._device_elements = list()
 
-        for i in range(1,num_qubits + 1):
+        for i in range(num_qubits):
             qubit = BasicTransmonElement(f"q{i}")
             qubit.measure.acq_channel(i)
             quantum_device.add_element(qubit)
@@ -209,8 +212,11 @@ def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='
         hcfg = HARDWARE_CONFIG
     
     else:
-        quantum_device, FluxBiasRecorder, hcfg = QD_loader(QD_path)
+        quantum_device, bias_dict, hcfg = QD_loader(QD_path)
         print("Quantum device successfully reloaded!")
+        FluxBiasRecorder = FluxBiasDict(qb_number=len(list(bias_dict.keys())))
+        FluxBiasRecorder.activate_from_dict(bias_dict)
+
     
     return (quantum_device, FluxBiasRecorder, hcfg)
 
@@ -366,20 +372,18 @@ def SQRB_schedule(
     
     return sched
 
-def QD_loader(QD_path:str) -> (QuantumDevice,FluxBiasDict,dict):
+def QD_loader(QD_path:str) -> (QuantumDevice,dict,dict):
     """
-    Load the QuantumDevice, FluxBiasDict and hardware config from a given json file path contain the serialized QD.
+    Load the QuantumDevice, Bias config and hardware config from a given json file path contain the serialized QD.
     """
     import pickle
     with open(QD_path, 'rb') as inp:
         gift = pickle.load(inp)
     biasdict = gift["Flux"]
-    BiasRecorder = FluxBiasDict(qb_number=len(list(biasdict.keys())))
-    BiasRecorder.activate_from_dict(biasdict)
     quantum_device = gift["QD"]
     hcfg = gift["Hcfg"]
     quantum_device.hardware_config(hcfg)
-    return  (quantum_device, BiasRecorder, hcfg)
+    return  (quantum_device, biasdict, hcfg)
 
 def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,Hcfg:dict,path:str):
     """
@@ -392,7 +396,7 @@ def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,Hcfg:dict,path:str):
     timeLabel = get_time_now()
     filename = f"SumInfo_{timeLabel}.pkl"
     QD_backup = os.path.join(path,filename)
-    merged_file = {"QD":QD,"Flux":FluxDict,"Hcfg":Hcfg}
+    merged_file = {"QD":QD,"Flux":FluxDict.get_bias_dict(),"Hcfg":Hcfg}
     with open(QD_backup, 'wb') as file:
         pickle.dump(merged_file, file)
         print(f'Summarized info had successfully saved to the given path with the time label={timeLabel} !')
@@ -436,17 +440,19 @@ def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->(Cl
     ### Case 2: QD_path is given, load the QD with that given path.\n
     ## Return `cluster`, `quantum_device`, `meas_ctrl`, `ic`, `FluxBiasDict` and `Hardware config`.\n
     args:\n
-    mode: 'new' or 'load'. 'new' need a self defined hardware config. 'load' load the given path. 
+    mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
     
     import quantify_core.data.handling as dh
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
-    if mode.lower() == 'new':
+    if mode.lower() in ['new', 'n']:
         from Experiment_setup import hardware_cfg
         cfg, pth = hardware_cfg, ''
-    elif mode.lower() == 'load':
+    elif mode.lower() in ['load', 'l']:
         cfg, pth = {}, QuantumDevice_path 
+    else:
+        raise KeyError("The given mode can not be recognized!")
 
     quantum_device, FluxBiasRecorder, hcfg = create_quantum_device(HARDWARE_CONFIG=cfg,num_qubits=qubit_number, QD_path=pth)
     # Connect to the Qblox cluster

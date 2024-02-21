@@ -27,8 +27,8 @@ hardware_cfg = {
                 "lo_freq": 4e9,
                 "portclock_configs": [
                     {
-                        "port": "q1:mw",
-                        "clock": "q1.01",
+                        "port": "q0:mw",
+                        "clock": "q0.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -41,8 +41,8 @@ hardware_cfg = {
                 "lo_freq": 4e9,
                 "portclock_configs": [
                     {
-                        "port": "q2:mw",
-                        "clock": "q2.01",
+                        "port": "q1:mw",
+                        "clock": "q1.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -58,8 +58,8 @@ hardware_cfg = {
                 "lo_freq": 4e9,
                 "portclock_configs": [
                     {
-                        "port": "q3:mw",
-                        "clock": "q3.01",
+                        "port": "q2:mw",
+                        "clock": "q2.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -72,8 +72,8 @@ hardware_cfg = {
                 "lo_freq": 4e9,
                 "portclock_configs": [
                     {
-                        "port": "q4:mw",
-                        "clock": "q4.01",
+                        "port": "q3:mw",
+                        "clock": "q3.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -89,8 +89,8 @@ hardware_cfg = {
                 "lo_freq": 4e9,
                 "portclock_configs": [
                     {
-                        "port": "q5:mw",
-                        "clock": "q5.01",
+                        "port": "q4:mw",
+                        "clock": "q4.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -100,14 +100,14 @@ hardware_cfg = {
         # ============ FLUX ============#
         "cluster0_module2": {
             "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
-            "real_output_1": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
-            "real_output_2": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
-            "real_output_3": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
+            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
+            "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
+            "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
         },
         "cluster0_module10": {
             "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
+            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
         },
         # ============ READOUT ============#
         "cluster0_module8": {
@@ -119,6 +119,12 @@ hardware_cfg = {
                 "dc_mixer_offset_Q": 0.0,
                 "lo_freq": 5.95e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
+                    {
+                        "port": "q0:res",
+                        "clock": "q0.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
                     {
                         "port": "q1:res",
                         "clock": "q1.ro",
@@ -140,12 +146,6 @@ hardware_cfg = {
                     {
                         "port": "q4:res",
                         "clock": "q4.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q5:res",
-                        "clock": "q5.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },

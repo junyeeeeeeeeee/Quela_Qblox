@@ -74,38 +74,37 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
 
 
 if __name__ == "__main__":
-    from Modularize.support import QD_keeper, init_meas, CSresults_alignPlot
+    from Modularize.support import QD_keeper, init_meas
     from Modularize.path_book import qdevice_backup_dir
     from numpy import NaN
     
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_20/QD_H17M6S29.pkl'
-    hwcfg_path = 'Modularize/HWcfg/2024_2_20/HWconfig_H17M3S31.json'
-    cluster, quantum_device, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,HWcfg_path=hwcfg_path)
+    QD_path = 'Modularize/QD_backup/2024_2_21/SumInfo_H8M56S53.pkl'
+    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='l')
 
-    
+    print(FluxRecorder.get_bias_dict())
     # print(quantum_device.generate_hardware_compilation_config()) # see the hardwawe config in the QuantumDevice
     
     # TODO: keep the particular bias into chip spec, and it should be fast loaded
     flux_settable_map: callable = {
-        "q1":cluster.module2.out0_offset,
-        "q2":cluster.module2.out1_offset,
-        "q3":cluster.module2.out2_offset,
-        "q4":cluster.module2.out3_offset,
-        "q5":cluster.module10.out0_offset
+        "q0":cluster.module2.out0_offset,
+        "q1":cluster.module2.out1_offset,
+        "q2":cluster.module2.out2_offset,
+        "q3":cluster.module2.out3_offset,
+        "q4":cluster.module10.out0_offset
     }
     # default the offset in circuit
     for i in flux_settable_map:
-        flux_settable_map[i](0.00)
+        flux_settable_map[i](0.0)
     
     # guess
     ro_bare=dict(
-        q1 = 5.720 * 1e9,
-        q2 = 5.8 * 1e9,
-        q3 = 5.9 * 1e9,
-        q4 = 6 * 1e9,
-        q5 = 6.1 * 1e9,
+        q0 = 5.720 * 1e9,
+        q1 = 5.8 * 1e9,
+        q2 = 5.9 * 1e9,
+        q3 = 6 * 1e9,
+        q4 = 6.1 * 1e9,
     )
     error_log = []
     for qb in ro_bare:
@@ -128,7 +127,7 @@ if __name__ == "__main__":
     print(f"Cavity Spectroscopy error qubit: {error_log}")
     exp_timeLabel = get_time_now()
     qd_folder = build_folder_today(qdevice_backup_dir)
-    QD_keeper(quantum_device,qd_folder)
+    QD_keeper(quantum_device,FluxRecorder,Hcfg,qd_folder)
     print('CavitySpectro done!')
     
     
