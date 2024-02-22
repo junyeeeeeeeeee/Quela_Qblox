@@ -1,5 +1,5 @@
 from quantify_scheduler.json_utils import SchedulerJSONDecoder
-
+from typing import Tuple
 import warnings
 from pathlib import Path
 from typing import List, Union, Literal
@@ -55,7 +55,7 @@ class FluxBiasDict():
         self.__bias_dict = {}
         self.q_num = qb_number
         self.init_bias()
-    def get_bias_dict(self):
+    def get_bias_dict(self)->dict:
         """
         Return the dictionary contain the bias info.
         """
@@ -92,7 +92,7 @@ class FluxBiasDict():
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
     device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
-) ->(MeasurementControl,InstrumentCoordinator):
+) ->Tuple[MeasurementControl,InstrumentCoordinator]:
     # Close QCoDeS instruments with conflicting names
     for name in [
         "PlotMonitor",
@@ -198,7 +198,7 @@ def connect_clusters():
     return connect_options, ip_addresses
  
 # Create quantum device with given q number
-def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='') -> (QuantumDevice,FluxBiasDict,dict):
+def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='') -> Tuple[QuantumDevice,FluxBiasDict]:
     """
         Create the QuantumDevice with the given qubit number by the following 2 cases:\n
         Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
@@ -218,16 +218,14 @@ def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='
             quantum_device._device_elements.append(qubit)
         
         FluxBiasRecorder = FluxBiasDict(qb_number=num_qubits)
-        hcfg = HARDWARE_CONFIG
     
     else:
-        quantum_device, bias_dict, hcfg = QD_loader(QD_path)
+        quantum_device, bias_dict = QD_loader(QD_path)
         print("Quantum device successfully reloaded!")
         FluxBiasRecorder = FluxBiasDict(qb_number=len(list(bias_dict.keys())))
         FluxBiasRecorder.activate_from_dict(bias_dict)
-
-    
-    return (quantum_device, FluxBiasRecorder, hcfg)
+        
+    return (quantum_device, FluxBiasRecorder)
 
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
@@ -381,9 +379,9 @@ def SQRB_schedule(
     
     return sched
 
-def QD_loader(QD_path:str) -> (QuantumDevice,dict,dict):
+def QD_loader(QD_path:str) -> Tuple[QuantumDevice,dict]:
     """
-    Load the QuantumDevice, Bias config and hardware config from a given json file path contain the serialized QD.
+    Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
     """
     import pickle
     with open(QD_path, 'rb') as inp:
@@ -392,20 +390,31 @@ def QD_loader(QD_path:str) -> (QuantumDevice,dict,dict):
     quantum_device = gift["QD"]
     hcfg = gift["Hcfg"]
     quantum_device.hardware_config(hcfg)
-    return  (quantum_device, biasdict, hcfg)
+    return  (quantum_device, biasdict)
 
-def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,Hcfg:dict,path:str):
+
+def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,path:str,**kwargs):
     """
-    Merge the `QuantumDevice`, `FluxBiasDict` and `Hardware config` into a Dictionary, and the key is 'QD', 'Flux' and 'Hcfg' accordingly.\n
+    Merge the `QuantumDevice`, `FluxBiasDict`, `Hardware config` into a Dictionary, and the key is 'QD', 'Flux', 'Hcfg' and 'Fctrl' accordingly.\n
     And save the merged dictionary to a json file with the given path. \n
-    It will generate the file named with the time.
+    It will generate the file named with the time.\n
+    ps. `kwargs` is for (1) log message, please use 'Log' as the key.\n
+    Ex. Log='Only measured 4 qubits!'
     """
     import pickle
     import os
     timeLabel = get_time_now()
     filename = f"SumInfo_{timeLabel}.pkl"
     QD_backup = os.path.join(path,filename)
-    merged_file = {"QD":QD,"Flux":FluxDict.get_bias_dict(),"Hcfg":Hcfg}
+    # Additional options determinations
+    ## (1) Log messages
+    if "Log" in list(kwargs.keys()):
+        MSG = kwargs["Log"]
+    else:
+        print("No log message when saving the QD")
+        MSG = ''
+    Hcfg = QD.generate_hardware_config()
+    merged_file = {"QD":QD,"Flux":FluxDict.get_bias_dict(),"Hcfg":Hcfg,"Log":MSG}
     with open(QD_backup, 'wb') as file:
         pickle.dump(merged_file, file)
         print(f'Summarized info had successfully saved to the given path with the time label={timeLabel} !')
@@ -442,7 +451,7 @@ def build_folder_today(parent_path:str):
 
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->(Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator, FluxBiasDict, dict):
+def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->Tuple[Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator, FluxBiasDict, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -463,10 +472,34 @@ def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->(Cl
     else:
         raise KeyError("The given mode can not be recognized!")
 
-    quantum_device, FluxBiasRecorder, hcfg = create_quantum_device(HARDWARE_CONFIG=cfg,num_qubits=qubit_number, QD_path=pth)
+    quantum_device, FluxBiasRecorder = create_quantum_device(HARDWARE_CONFIG=cfg,num_qubits=qubit_number, QD_path=pth)
+
     # Connect to the Qblox cluster
     connect, ip = connect_clusters()
     cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
     meas_ctrl, ic = configure_measurement_control_loop(quantum_device, cluster)
-    
+    hcfg = quantum_device.generate_hardware_config()
     return (cluster, quantum_device, meas_ctrl, ic, FluxBiasRecorder, hcfg)
+
+# def add log message into the sumInfo
+def leave_LogMSG(MSG:str,sumInfo_path:str):
+    """
+    Leave the log message in the sumInfo with the given path.
+    """
+    import pickle
+    with open(sumInfo_path, 'rb') as inp:
+        gift = pickle.load(inp)
+    gift["Log"] = MSG
+    with open(sumInfo_path, 'wb') as file:
+        pickle.dump(gift, file)
+        print("Log message had been added!")
+
+
+# set attenuations
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=10):
+    """
+    Attenuation setting includes XY and RO. We don't change it once we set it.
+    """
+    # atte. setting
+    set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
+    set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 

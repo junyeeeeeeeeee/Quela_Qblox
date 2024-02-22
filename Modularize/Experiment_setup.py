@@ -80,23 +80,23 @@ hardware_cfg = {
                 ],
             },
         },
-        "cluster0_module12": {
-            "instrument_type": "QCM_RF",
-            "complex_output_0": {
-                "output_att": 0,
-                "dc_mixer_offset_I": 0.0,
-                "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 4e9,
-                "portclock_configs": [
-                    {
-                        "port": "q4:mw",
-                        "clock": "q4.01",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    }
-                ],
-            },
-        },
+        # "cluster0_module12": {
+        #     "instrument_type": "QCM_RF",
+        #     "complex_output_0": {
+        #         "output_att": 0,
+        #         "dc_mixer_offset_I": 0.0,
+        #         "dc_mixer_offset_Q": 0.0,
+        #         "lo_freq": 4e9,
+        #         "portclock_configs": [
+        #             {
+        #                 "port": "q4:mw",
+        #                 "clock": "q4.01",
+        #                 "mixer_amp_ratio": 1.0,
+        #                 "mixer_phase_error_deg": 0.0,
+        #             }
+        #         ],
+        #     },
+        # },
         # ============ FLUX ============#
         "cluster0_module2": {
             "instrument_type": "QCM",
@@ -105,10 +105,10 @@ hardware_cfg = {
             "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
             "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
         },
-        "cluster0_module10": {
-            "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
-        },
+        # "cluster0_module10": {
+        #     "instrument_type": "QCM",
+        #     "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
+        # },
         # ============ READOUT ============#
         "cluster0_module8": {
             "instrument_type": "QRM_RF",
@@ -154,6 +154,8 @@ hardware_cfg = {
         },
     },
 }
+
+
 if __name__ == '__main__':
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)

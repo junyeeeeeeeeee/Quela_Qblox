@@ -10,7 +10,7 @@ from Modularize.support import QuantumDevice, get_time_now
 from quantify_core.measurement.control import MeasurementControl
 import os
 
-def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=5e6,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=20e6,n_avg:int=100,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
     """
         Do the cavity search by the given QuantumDevice with a given target qubit q. \n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay! 
@@ -55,6 +55,7 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
         raw_folder = build_folder_today(meas_raw_dir)
         rs_ds.to_netcdf(os.path.join(raw_folder,f"{q}_CavitySpectro_{exp_timeLabel}.nc"))
         print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
+
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -74,38 +75,42 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
 
 
 if __name__ == "__main__":
-    from Modularize.support import QD_keeper, init_meas
+    from Modularize.support import QD_keeper, init_meas, init_system_atte, shut_down
     from Modularize.path_book import qdevice_backup_dir
     from numpy import NaN
     
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_21/SumInfo_H8M56S53.pkl'
-    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='l')
-
+    QD_path = ''
+    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='n')
+    
     print(FluxRecorder.get_bias_dict())
     # print(quantum_device.generate_hardware_compilation_config()) # see the hardwawe config in the QuantumDevice
     
     # TODO: keep the particular bias into chip spec, and it should be fast loaded
-    flux_settable_map: callable = {
+    Fctrl: callable = {
         "q0":cluster.module2.out0_offset,
         "q1":cluster.module2.out1_offset,
         "q2":cluster.module2.out2_offset,
         "q3":cluster.module2.out3_offset,
-        "q4":cluster.module10.out0_offset
+        # "q4":cluster.module10.out0_offset
     }
     # default the offset in circuit
-    for i in flux_settable_map:
-        flux_settable_map[i](0.0)
-    
+    for i in Fctrl:
+        Fctrl[i](0.0)
+    # Set the system attenuations
+    init_system_atte(quantum_device,list(Fctrl.keys()))
+    for i in range(6):
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
     # guess
     ro_bare=dict(
         q0 = 5.720 * 1e9,
         q1 = 5.8 * 1e9,
         q2 = 5.9 * 1e9,
         q3 = 6 * 1e9,
-        q4 = 6.1 * 1e9,
     )
+    # q4 = 6.1 * 1e9,
     error_log = []
     for qb in ro_bare:
         print(qb)
@@ -117,17 +122,19 @@ if __name__ == "__main__":
             qubit.measure.pulse_duration(2e-6)
             qubit.measure.integration_time(2e-6)
         else:
+            # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
         CS_results = Cavity_spec(quantum_device,meas_ctrl,ro_bare,q=qb)
         if CS_results != {}:
-            print(f'Cavity @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
+            print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
             quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:
             error_log.append(qb)
     print(f"Cavity Spectroscopy error qubit: {error_log}")
     exp_timeLabel = get_time_now()
     qd_folder = build_folder_today(qdevice_backup_dir)
-    QD_keeper(quantum_device,FluxRecorder,Hcfg,qd_folder)
+    # Hcfg = quantum_device.generate_hardware_config()
+    QD_keeper(quantum_device,FluxRecorder,Hcfg,qd_folder,Log="q4 absent!")
     print('CavitySpectro done!')
-    
+    shut_down(cluster,Fctrl)
     
