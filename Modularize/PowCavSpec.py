@@ -87,7 +87,7 @@ if __name__ == "__main__":
     from Modularize.path_book import qdevice_backup_dir
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_22/SumInfo_H18M24S16.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo_H10M35S13.pkl'
     cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     Fctrl: callable = {
@@ -110,10 +110,12 @@ if __name__ == "__main__":
     error_log = []
     for qb in Fctrl:
         print(qb)
-        qubit = quantum_device.get_element(qb)
         PD_results = PowerDep_spec(quantum_device,meas_ctrl,q=qb)
-        if PD_results != {}:
+        if PD_results == {}:
             error_log.append(qb)
+        else:
+            # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
+            pass
 
     print(f"Power dependence error qubit: {error_log}")
     exp_timeLabel = get_time_now()
