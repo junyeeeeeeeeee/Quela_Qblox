@@ -1051,6 +1051,7 @@ def Single_shot_fit_plot(results:dict):
     ax.scatter(c_I,c_Q,c='k',s=15)
     ax.add_patch(Ellipse(xy=[c_I,c_Q],width=sig*4,height=sig*4,fill=False, alpha=0.8, facecolor= None, edgecolor="w", linewidth=0.8, linestyle='--',angle=0))
     fig.tight_layout()
+    plt.show()
     
 def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool,IF:float):
     fc=fc

@@ -81,11 +81,11 @@ def FluxCav_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,flux_
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import QD_keeper, init_meas, init_system_atte, shut_down
-    from Modularize.path_book import qdevice_backup_dir
+    from Modularize.support import init_meas, init_system_atte, shut_down
+    
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo_H10M49S11.pkl'
-    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo.pkl'
+    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     Fctrl: callable = {
         "q0":cluster.module2.out0_offset,
@@ -99,26 +99,25 @@ if __name__ == "__main__":
     for i in Fctrl:
         Fctrl[i](0.0)
     # Set system attenuation
-    init_system_atte(quantum_device,list(Fctrl.keys()))
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
 
     error_log = []
-    for qb in ["q0"]:
+    for qb in ["q0","q1","q3"]:
         print(qb)
-        FD_results = FluxCav_spec(quantum_device,meas_ctrl,Fctrl,q=qb)
+        FD_results = FluxCav_spec(QDmanager.quantum_device,meas_ctrl,Fctrl,q=qb)
         if FD_results == {}:
             error_log.append(qb)
         else:
-            qubit = quantum_device.get_element(qb)
+            qubit = QDmanager.quantum_device.get_element(qb)
             print(f"@ {qb} fitting ans: {FD_results[qb].quantities_of_interest}")
             qubit.clock_freqs.readout(FD_results[qb].quantities_of_interest["freq_0"])
-            FluxRecorder.set_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
+            QDmanager.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
 
     print(f"Flux dependence error qubit: {error_log}")
-    exp_timeLabel = get_time_now()
-    qd_folder = build_folder_today(qdevice_backup_dir)
-    QD_keeper(quantum_device,FluxRecorder,qd_folder,Log="after FD q4 absent!")
+    QDmanager.refresh_log("after FluxDep")
+    QDmanager.QD_keeper()
     print('Flux dependence done!')
     shut_down(cluster,Fctrl)

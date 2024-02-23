@@ -83,12 +83,12 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import QD_keeper, init_meas, init_system_atte, shut_down
-    from Modularize.path_book import qdevice_backup_dir
+    from Modularize.support import init_meas, init_system_atte, shut_down
+
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo_H10M35S13.pkl'
-    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo.pkl'
+    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     Fctrl: callable = {
         "q0":cluster.module2.out0_offset,
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     for i in Fctrl:
         Fctrl[i](0.0)
     # Set system attenuation
-    init_system_atte(quantum_device,list(Fctrl.keys()))
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     error_log = []
     for qb in Fctrl:
         print(qb)
-        PD_results = PowerDep_spec(quantum_device,meas_ctrl,q=qb)
+        PD_results = PowerDep_spec(QDmanager.quantum_device,meas_ctrl,q=qb)
         if PD_results == {}:
             error_log.append(qb)
         else:
@@ -118,8 +118,7 @@ if __name__ == "__main__":
             pass
 
     print(f"Power dependence error qubit: {error_log}")
-    exp_timeLabel = get_time_now()
-    qd_folder = build_folder_today(qdevice_backup_dir)
-    QD_keeper(quantum_device,FluxRecorder,qd_folder,Log="after PD q4 absent!")
+    QDmanager.refresh_log('after PowerDep')
+    QDmanager.QD_keeper()
     print('Power dependence done!')
     shut_down(cluster,Fctrl)

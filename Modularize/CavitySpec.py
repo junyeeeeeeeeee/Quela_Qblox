@@ -10,7 +10,7 @@ from Modularize.support import QuantumDevice, get_time_now
 from quantify_core.measurement.control import MeasurementControl
 import os
 
-def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=20e6,n_avg:int=100,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
     """
         Do the cavity search by the given QuantumDevice with a given target qubit q. \n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay! 
@@ -75,15 +75,14 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
 
 
 if __name__ == "__main__":
-    from Modularize.support import QD_keeper, init_meas, init_system_atte, shut_down
+    from Modularize.support import init_meas, init_system_atte, shut_down
     from Modularize.path_book import qdevice_backup_dir
     from numpy import NaN
     
 
     # Reload the QuantumDevice or build up a new one
     QD_path = ''
-    cluster, quantum_device, meas_ctrl, ic, FluxRecorder, Hcfg = init_meas(QuantumDevice_path=QD_path,mode='n')
-    print(FluxRecorder.get_bias_dict())
+    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='n')
     
     # TODO: keep the particular bias into chip spec, and it should be fast loaded
     Fctrl: callable = {
@@ -97,22 +96,22 @@ if __name__ == "__main__":
     for i in Fctrl:
         Fctrl[i](0.0)
     # Set the system attenuations
-    init_system_atte(quantum_device,list(Fctrl.keys()))
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
     # guess
     ro_bare=dict(
-        q0 = 5.720 * 1e9,
-        q1 = 5.8 * 1e9,
-        q2 = 5.9 * 1e9,
-        q3 = 6 * 1e9,
+        q0 = 5.72e9,
+        q1 = 6e9,
+        q2 = 5.81e9,
+        q3 = 6.1e9,
     )
-    # q4 = 6.1 * 1e9,
+    # q4 = 5.9e9,
     error_log = []
     for qb in ro_bare:
         print(qb)
-        qubit = quantum_device.get_element(qb)
+        qubit = QDmanager.quantum_device.get_element(qb)
         if QD_path == '':
             qubit.reset.duration(150e-6)
             qubit.measure.acq_delay(0)
@@ -122,16 +121,16 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results = Cavity_spec(quantum_device,meas_ctrl,ro_bare,q=qb)
+        CS_results = Cavity_spec(QDmanager.quantum_device,meas_ctrl,ro_bare,q=qb)
         if CS_results != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
-            quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
+            QDmanager.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:
             error_log.append(qb)
     print(f"Cavity Spectroscopy error qubit: {error_log}")
-    exp_timeLabel = get_time_now()
-    qd_folder = build_folder_today(qdevice_backup_dir)
-    QD_keeper(quantum_device,FluxRecorder,qd_folder,Log="q4 absent!")
+
+    QDmanager.refresh_log("q2 absent!")
+    QDmanager.QD_keeper()
     print('CavitySpectro done!')
     shut_down(cluster,Fctrl)
     
