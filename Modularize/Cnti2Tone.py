@@ -1,5 +1,5 @@
 from numpy import array, linspace
-from Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array
+from Modularize.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array
 from Modularize.support import build_folder_today
 from Modularize.path_book import meas_raw_dir
 from utils.tutorial_utils import show_args
@@ -10,7 +10,7 @@ from quantify_core.measurement.control import MeasurementControl
 import os
 
 
-def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_guess:dict,xyf_span_Hz:int=200e6,xyamp:float=0.02,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ=[0,0]):
+def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_guess:dict,xyf_span_Hz:int=200e6,xyamp:float=0.02,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     
     sche_func = Two_tone_sche   
     analysis_result = {}
@@ -73,9 +73,8 @@ def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_
         show_args(exp_kwargs, title="Two_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
-        data = 0 
 
-    return analysis_result, data
+    return analysis_result
 
 
 
@@ -84,13 +83,13 @@ def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Pulse_schedule_library import Fit_analysis_plot
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_25/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    print(QDmanager.refIQ)
+    
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
 
     XYf_guess=dict(
-        q0 = 4.123e9,
+        q0 = 4.13e9,
         q1 = 4.232e9,
         q2 = 3.841e9,
         q3 = 4.022e9,
@@ -119,10 +118,20 @@ if __name__ == "__main__":
         for qb in ["q0","q1","q3"]:
             qubit = QDmanager.quantum_device.get_element(qb)
             qubit.clock_freqs.f01(NaN)
-            Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(target_q=qb))
-            QS_results, dis = Two_tone_spec(QDmanager.quantum_device,meas_ctrl,XYf_guess,q=qb,ref_IQ=QDmanager.refIQ[qb])
-            Fctrl[qb](0.0)
-            Fit_analysis_plot(QS_results[qb],P_rescale=True,Dis=dis)
+            for i in Fctrl:
+                if i != qb:
+                    tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
+                    if abs(tuneaway) <= 0.3:
+                        Fctrl[i](tuneaway)
+                    else:
+                        raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
+
+
+            Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(qb))
+            QS_results = Two_tone_spec(QDmanager.quantum_device,meas_ctrl,XYf_guess,q=qb,ref_IQ=QDmanager.refIQ[qb])
+            
+            reset_offset(Fctrl)
+            Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
             Revised_f01= QS_results[qb].attrs['f01_fit']
             qubit = QDmanager.quantum_device.get_element(qb)
             qubit.clock_freqs.f01(Revised_f01)

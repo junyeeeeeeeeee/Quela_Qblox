@@ -45,21 +45,41 @@ from utils.tutorial_utils import (
     show_readout_args,
 )
 
+def quadratic(x,a,b,c):
+    return a*(x**2)+b*x+c
+
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
 class FluxBiasDict():
     """
     This class helps to memorize the flux bias. 
     """
+    from numpy import ndarray
     def __init__(self,qb_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
         self.init_bias()
+
+    def sin_for_cav(self,target_q:str,bias_ary:ndarray):
+        """
+        Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
+        """
+        from utils.tutorial_analysis_classes import _helper_sinus
+        return _helper_sinus(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
+    
+    def quadra_for_qub(self,target_q:str,bias_ary:ndarray):
+        """
+        Return the XYF curve data fit by quadratic about target_q with the bias array.
+        """
+        return quadratic(bias_ary,*self.__bias_dict[target_q]["qubFitParas"])
+
+
     def get_bias_dict(self)->dict:
         """
         Return the dictionary contain the bias info.
         """
         return self.__bias_dict
+    
     def init_bias(self):
         """
         Initialize the dict when you create this object.
@@ -68,18 +88,54 @@ class FluxBiasDict():
             self.__bias_dict[f"q{i}"] = {}
             for bias_position in ["SweetSpot","TuneAway"]:
                 self.__bias_dict[f"q{i}"][bias_position] = 0.0
+            
+            self.__bias_dict[f"q{i}"]["Period"] = 0.0
+            self.__bias_dict[f"q{i}"]["cavFitParas"] = []
+            self.__bias_dict[f"q{i}"]["qubFitParas"] = []
+
     def save_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
         """
             Set the sweet spot bias for the given qubit, target_q label starts from 0.\n
             Ex. target_q = 'q0'
         """
         self.__bias_dict[target_q]["SweetSpot"] = bias
-    def save_tuneawayBias_for(self,target_q:str='q0',bias:float=0.0):
+
+    def save_tuneawayBias_for(self,mode:str,target_q:str='q0',bias:float=0.0):
         """
             Set the tune away bias for the given qubit, target_q label starts from 0.\n
-            Ex. target_q = 'q0'
+            Ex. target_q = 'q0'\n
+            mode = 'manual' | 'auto'. `'manual'` get the given bias in args, `'auto'` calculated by the stored offset and period. 
         """
-        self.__bias_dict[target_q]["TuneAway"] = bias
+        if mode == 'manual':
+            self.__bias_dict[target_q]["TuneAway"] = bias
+        elif mode == 'auto':
+            offset = self.get_sweetBiasFor(target_q)
+            T = self.get_PeriodFor(target_q)
+            tuneaway = offset + T/2 if abs(offset + T/2) < abs(offset - T/2) else offset - T/2
+            self.__bias_dict[target_q]["TuneAway"] = tuneaway
+        else:
+            raise KeyError("Wrong mode!")
+        
+    def save_period_for(self,target_q:str,period:float):
+        """
+        Save the period for the target_q with that given period.
+        """
+        self.__bias_dict[target_q]["Period"] = period
+
+    def save_cavFittingParas_for(self,target_q:str,amp:float,f:float,phi:float,offset:float):
+        """
+        Save the fitting fuction parameters for flux dep cavity, includes amplitude, frequency, phase and offset for a sin in the form:\n
+        `A*sin(fx+phi)+offset`
+        """
+        self.__bias_dict[target_q]["cavFitParas"] = [f,amp,phi,offset]
+
+    def save_qubFittingParas_for(self,target_q:str,a:float,b:float,c:float):
+        """
+        Save the fitting function parameters for flux dep qubit, includes a, b, c for the quadratic form:\n
+        `ax**2+bx+c`
+        """
+        self.__bias_dict[target_q]["qubFitParas"] = [a,b,c]
+    
     def activate_from_dict(self,old_bias_dict:dict):
         """
         Activate the dict which super from the old record.
@@ -87,16 +143,24 @@ class FluxBiasDict():
         for q_old in old_bias_dict:
             for bias_position in old_bias_dict[q_old]:
                 self.__bias_dict[q_old][bias_position] = old_bias_dict[q_old][bias_position]
+
     def get_sweetBiasFor(self,target_q:str):
         """
         Return the sweetSpot bias for the target qubit.
         """
         return self.__bias_dict[target_q]["SweetSpot"]
+    
     def get_tuneawayBiasFor(self,target_q:str):
         """
         Return the tuneAway bias for the target qubit.
         """
         return self.__bias_dict[target_q]["TuneAway"]
+    
+    def get_PeriodFor(self,target_q:str):
+        """
+        Return the period for the target_q.
+        """
+        return self.__bias_dict[target_q]["Period"]
     
 
 class QDmanager():
@@ -147,9 +211,8 @@ class QDmanager():
         Save the merged dictionary to a json file with the given path. \n
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
-        import pickle
-        import os
-        if self.path == '':
+        import pickle, os, datetime
+        if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
             from Modularize.path_book import qdevice_backup_dir
             qd_folder = build_folder_today(qdevice_backup_dir)
             self.path = os.path.join(qd_folder,"SumInfo.pkl")
@@ -180,7 +243,7 @@ class QDmanager():
 
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
+def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -208,8 +271,12 @@ def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->Tup
         Qmanager.QD_loader()
 
     # Connect to the Qblox cluster
-    connect, ip = connect_clusters()
-    cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    if not vpn:
+        connect, ip = connect_clusters()
+        cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    else:
+        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+        
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     
     return Qmanager, cluster, meas_ctrl, ic
