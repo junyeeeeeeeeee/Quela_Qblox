@@ -1,5 +1,5 @@
 from quantify_scheduler.json_utils import SchedulerJSONDecoder
-
+from typing import Tuple
 import warnings
 from pathlib import Path
 from typing import List, Union, Literal
@@ -45,21 +45,41 @@ from utils.tutorial_utils import (
     show_readout_args,
 )
 
+def quadratic(x,a,b,c):
+    return a*(x**2)+b*x+c
+
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
 class FluxBiasDict():
     """
     This class helps to memorize the flux bias. 
     """
+    from numpy import ndarray
     def __init__(self,qb_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
         self.init_bias()
-    def get_bias_dict(self):
+
+    def sin_for_cav(self,target_q:str,bias_ary:ndarray):
+        """
+        Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
+        """
+        from utils.tutorial_analysis_classes import _helper_sinus
+        return _helper_sinus(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
+    
+    def quadra_for_qub(self,target_q:str,bias_ary:ndarray):
+        """
+        Return the XYF curve data fit by quadratic about target_q with the bias array.
+        """
+        return quadratic(bias_ary,*self.__bias_dict[target_q]["qubFitParas"])
+
+
+    def get_bias_dict(self)->dict:
         """
         Return the dictionary contain the bias info.
         """
         return self.__bias_dict
+    
     def init_bias(self):
         """
         Initialize the dict when you create this object.
@@ -68,18 +88,54 @@ class FluxBiasDict():
             self.__bias_dict[f"q{i}"] = {}
             for bias_position in ["SweetSpot","TuneAway"]:
                 self.__bias_dict[f"q{i}"][bias_position] = 0.0
-    def set_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
+            
+            self.__bias_dict[f"q{i}"]["Period"] = 0.0
+            self.__bias_dict[f"q{i}"]["cavFitParas"] = []
+            self.__bias_dict[f"q{i}"]["qubFitParas"] = []
+
+    def save_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
         """
             Set the sweet spot bias for the given qubit, target_q label starts from 0.\n
             Ex. target_q = 'q0'
         """
         self.__bias_dict[target_q]["SweetSpot"] = bias
-    def set_tuneawayBias_for(self,target_q:str='q0',bias:float=0.0):
+
+    def save_tuneawayBias_for(self,mode:str,target_q:str='q0',bias:float=0.0):
         """
             Set the tune away bias for the given qubit, target_q label starts from 0.\n
-            Ex. target_q = 'q0'
+            Ex. target_q = 'q0'\n
+            mode = 'manual' | 'auto'. `'manual'` get the given bias in args, `'auto'` calculated by the stored offset and period. 
         """
-        self.__bias_dict[target_q]["TuneAway"] = bias
+        if mode == 'manual':
+            self.__bias_dict[target_q]["TuneAway"] = bias
+        elif mode == 'auto':
+            offset = self.get_sweetBiasFor(target_q)
+            T = self.get_PeriodFor(target_q)
+            tuneaway = offset + T/2 if abs(offset + T/2) < abs(offset - T/2) else offset - T/2
+            self.__bias_dict[target_q]["TuneAway"] = tuneaway
+        else:
+            raise KeyError("Wrong mode!")
+        
+    def save_period_for(self,target_q:str,period:float):
+        """
+        Save the period for the target_q with that given period.
+        """
+        self.__bias_dict[target_q]["Period"] = period
+
+    def save_cavFittingParas_for(self,target_q:str,amp:float,f:float,phi:float,offset:float):
+        """
+        Save the fitting fuction parameters for flux dep cavity, includes amplitude, frequency, phase and offset for a sin in the form:\n
+        `A*sin(fx+phi)+offset`
+        """
+        self.__bias_dict[target_q]["cavFitParas"] = [f,amp,phi,offset]
+
+    def save_qubFittingParas_for(self,target_q:str,a:float,b:float,c:float):
+        """
+        Save the fitting function parameters for flux dep qubit, includes a, b, c for the quadratic form:\n
+        `ax**2+bx+c`
+        """
+        self.__bias_dict[target_q]["qubFitParas"] = [a,b,c]
+    
     def activate_from_dict(self,old_bias_dict:dict):
         """
         Activate the dict which super from the old record.
@@ -88,11 +144,147 @@ class FluxBiasDict():
             for bias_position in old_bias_dict[q_old]:
                 self.__bias_dict[q_old][bias_position] = old_bias_dict[q_old][bias_position]
 
+    def get_sweetBiasFor(self,target_q:str):
+        """
+        Return the sweetSpot bias for the target qubit.
+        """
+        return self.__bias_dict[target_q]["SweetSpot"]
+    
+    def get_tuneawayBiasFor(self,target_q:str):
+        """
+        Return the tuneAway bias for the target qubit.
+        """
+        return self.__bias_dict[target_q]["TuneAway"]
+    
+    def get_PeriodFor(self,target_q:str):
+        """
+        Return the period for the target_q.
+        """
+        return self.__bias_dict[target_q]["Period"]
+    
+
+class QDmanager():
+    def __init__(self,QD_path:str=''):
+        self.path = QD_path
+        self.refIQ = {}
+        self.Hcfg = {}
+        self.Log = "" 
+    
+    def memo_refIQ(self,ref_dict:dict):
+        """
+        Memorize the reference IQ according to the given ref_dict, which the key named in "q0"..., and the value is composed in list by IQ values.\n
+        Ex. ref_dict={"q0":[0.03,-0.004],...} 
+        """
+        for q in ref_dict:
+            self.refIQ[q] = ref_dict[q]
+    
+    def refresh_log(self,message:str):
+        """
+        Leave the message for this file.
+        """
+        self.Log = message
+
+    def QD_loader(self):
+        """
+        Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
+        """
+        import pickle
+        with open(self.path, 'rb') as inp:
+            gift = pickle.load(inp)
+        # string and int
+        self.Log = gift["Log"]
+        self.q_num = len(list(gift["Flux"].keys()))
+        # class    
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
+        self.Fluxmanager.activate_from_dict(gift["Flux"])
+        self.quantum_device :QuantumDevice = gift["QD"]
+        # dict
+        self.Hcfg = gift["Hcfg"]
+        self.refIQ = gift["refIQ"]
+   
+
+        self.quantum_device.hardware_config(self.Hcfg)
+        print("Old friends loaded!")
+    
+    def QD_keeper(self, special_path:str=''):
+        """
+        Save the merged dictionary to a json file with the given path. \n
+        Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
+        """
+        import pickle, os, datetime
+        if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
+            from Modularize.path_book import qdevice_backup_dir
+            qd_folder = build_folder_today(qdevice_backup_dir)
+            self.path = os.path.join(qd_folder,"SumInfo.pkl")
+        Hcfg = self.quantum_device.generate_hardware_config()
+        merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
+        
+        with open(self.path if special_path == '' else special_path, 'wb') as file:
+            pickle.dump(merged_file, file)
+            print(f'Summarized info had successfully saved to the given path!')
+    
+    def build_new_QD(self,qubit_number:int,Hcfg:dict):
+        print("Building up a new quantum device system....")
+        self.q_num = qubit_number
+        self.Hcfg = Hcfg
+        self.quantum_device = QuantumDevice("academia_sinica_device")
+        self.quantum_device.hardware_config(self.Hcfg)
+        
+        # store references
+        self.quantum_device._device_elements = list()
+
+        for i in range(qubit_number):
+            qubit = BasicTransmonElement(f"q{i}")
+            qubit.measure.acq_channel(i)
+            self.quantum_device.add_element(qubit)
+            self.quantum_device._device_elements.append(qubit)
+
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
+
+
+# initialize a measurement
+def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
+    """
+    Initialize a measurement by the following 2 cases:\n
+    ### Case 1: QD_path isn't given, create a new QD accordingly.\n
+    ### Case 2: QD_path is given, load the QD with that given path.\n
+    args:\n
+    mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
+    """
+    
+    import quantify_core.data.handling as dh
+    meas_datadir = '.data'
+    dh.set_datadir(meas_datadir)
+    if mode.lower() in ['new', 'n']:
+        from Experiment_setup import hardware_cfg
+        cfg, pth = hardware_cfg, ''
+    elif mode.lower() in ['load', 'l']:
+        cfg, pth = {}, QuantumDevice_path 
+    else:
+        raise KeyError("The given mode can not be recognized!")
+    
+    Qmanager = QDmanager(pth)
+    if pth == '':
+        Qmanager.build_new_QD(qubit_number,cfg)
+        Qmanager.refresh_log("new-born!")
+    else:
+        Qmanager.QD_loader()
+
+    # Connect to the Qblox cluster
+    if not vpn:
+        connect, ip = connect_clusters()
+        cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    else:
+        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+        
+    meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
+    
+    return Qmanager, cluster, meas_ctrl, ic
 
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
     device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
-) ->(MeasurementControl,InstrumentCoordinator):
+) ->Tuple[MeasurementControl,InstrumentCoordinator]:
     # Close QCoDeS instruments with conflicting names
     for name in [
         "PlotMonitor",
@@ -197,38 +389,6 @@ def connect_clusters():
     display(connect_options)
     return connect_options, ip_addresses
  
-# Create quantum device with given q number
-def create_quantum_device(HARDWARE_CONFIG:dict={},num_qubits:int=5,QD_path:str='') -> (QuantumDevice,FluxBiasDict,dict):
-    """
-        Create the QuantumDevice with the given qubit number by the following 2 cases:\n
-        Case 1: QD_path and hwcfg_path are both '', create a new QD accordingly.\n
-        Case 2: QD_path and hwcfg_path are both given, load the QD with that given path.\n
-    """
-    if QD_path == '':
-        quantum_device = QuantumDevice("academia_sinica_device")
-        quantum_device.hardware_config(HARDWARE_CONFIG)
-        
-        # store references
-        quantum_device._device_elements = list()
-
-        for i in range(num_qubits):
-            qubit = BasicTransmonElement(f"q{i}")
-            qubit.measure.acq_channel(i)
-            quantum_device.add_element(qubit)
-            quantum_device._device_elements.append(qubit)
-        
-        FluxBiasRecorder = FluxBiasDict(qb_number=num_qubits)
-        hcfg = HARDWARE_CONFIG
-    
-    else:
-        quantum_device, bias_dict, hcfg = QD_loader(QD_path)
-        print("Quantum device successfully reloaded!")
-        FluxBiasRecorder = FluxBiasDict(qb_number=len(list(bias_dict.keys())))
-        FluxBiasRecorder.activate_from_dict(bias_dict)
-
-    
-    return (quantum_device, FluxBiasRecorder, hcfg)
-
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
     """
@@ -381,37 +541,6 @@ def SQRB_schedule(
     
     return sched
 
-def QD_loader(QD_path:str) -> (QuantumDevice,dict,dict):
-    """
-    Load the QuantumDevice, Bias config and hardware config from a given json file path contain the serialized QD.
-    """
-    import pickle
-    with open(QD_path, 'rb') as inp:
-        gift = pickle.load(inp)
-    biasdict = gift["Flux"]
-    quantum_device = gift["QD"]
-    hcfg = gift["Hcfg"]
-    quantum_device.hardware_config(hcfg)
-    return  (quantum_device, biasdict, hcfg)
-
-def QD_keeper(QD:QuantumDevice,FluxDict:FluxBiasDict,Hcfg:dict,path:str):
-    """
-    Merge the `QuantumDevice`, `FluxBiasDict` and `Hardware config` into a Dictionary, and the key is 'QD', 'Flux' and 'Hcfg' accordingly.\n
-    And save the merged dictionary to a json file with the given path. \n
-    It will generate the file named with the time.
-    """
-    import pickle
-    import os
-    timeLabel = get_time_now()
-    filename = f"SumInfo_{timeLabel}.pkl"
-    QD_backup = os.path.join(path,filename)
-    merged_file = {"QD":QD,"Flux":FluxDict.get_bias_dict(),"Hcfg":Hcfg}
-    with open(QD_backup, 'wb') as file:
-        pickle.dump(merged_file, file)
-        print(f'Summarized info had successfully saved to the given path with the time label={timeLabel} !')
-    
-
-
 # generate time label for netCDF file name
 def get_time_now()->str:
     """
@@ -441,32 +570,26 @@ def build_folder_today(parent_path:str):
     return new_folder
 
 
-# initialize a measurement
-def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new')->(Cluster, QuantumDevice, MeasurementControl, InstrumentCoordinator, FluxBiasDict, dict):
-    """
-    Initialize a measurement by the following 2 cases:\n
-    ### Case 1: QD_path isn't given, create a new QD accordingly.\n
-    ### Case 2: QD_path is given, load the QD with that given path.\n
-    ## Return `cluster`, `quantum_device`, `meas_ctrl`, `ic`, `FluxBiasDict` and `Hardware config`.\n
-    args:\n
-    mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
-    """
-    
-    import quantify_core.data.handling as dh
-    meas_datadir = '.data'
-    dh.set_datadir(meas_datadir)
-    if mode.lower() in ['new', 'n']:
-        from Experiment_setup import hardware_cfg
-        cfg, pth = hardware_cfg, ''
-    elif mode.lower() in ['load', 'l']:
-        cfg, pth = {}, QuantumDevice_path 
-    else:
-        raise KeyError("The given mode can not be recognized!")
 
-    quantum_device, FluxBiasRecorder, hcfg = create_quantum_device(HARDWARE_CONFIG=cfg,num_qubits=qubit_number, QD_path=pth)
-    # Connect to the Qblox cluster
-    connect, ip = connect_clusters()
-    cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-    meas_ctrl, ic = configure_measurement_control_loop(quantum_device, cluster)
-    
-    return (cluster, quantum_device, meas_ctrl, ic, FluxBiasRecorder, hcfg)
+# def add log message into the sumInfo
+def leave_LogMSG(MSG:str,sumInfo_path:str):
+    """
+    Leave the log message in the sumInfo with the given path.
+    """
+    import pickle
+    with open(sumInfo_path, 'rb') as inp:
+        gift = pickle.load(inp)
+    gift["Log"] = MSG
+    with open(sumInfo_path, 'wb') as file:
+        pickle.dump(gift, file)
+        print("Log message had been added!")
+
+
+# set attenuations
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=10):
+    """
+    Attenuation setting includes XY and RO. We don't change it once we set it.
+    """
+    # atte. setting
+    set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
+    set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
