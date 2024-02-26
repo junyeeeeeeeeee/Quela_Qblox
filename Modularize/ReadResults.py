@@ -1,7 +1,7 @@
 import xarray as xr
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from numpy import pi
-results_path = 'Modularize/Meas_raw/2024_2_23/q1_FluxCavSpec_H17M6S43.nc' 
+results_path = 'Modularize/Meas_raw/2024_2_26/q1_FluxCavSpec_H11M10S5.nc' 
 ds = xr.open_dataset(results_path)
 
 import quantify_core.data.handling as dh

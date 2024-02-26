@@ -81,23 +81,15 @@ def FluxCav_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,flux_
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from numpy import pi
+    from Modularize.Experiment_setup import get_FluxController
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_25/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_26/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
-    
+    Fctrl = get_FluxController(cluster)
     # default the offset in circuit
-    for i in Fctrl:
-        Fctrl[i](0.0)
+    reset_offset(Fctrl)
     # Set system attenuation
     init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
@@ -105,15 +97,13 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
 
     error_log = []
-    for qb in ["q0","q1","q3"]:
-        print(qb)
+    for qb in Fctrl:
+        print(f"{qb} are under the measurement ...")
         FD_results = FluxCav_spec(QDmanager.quantum_device,meas_ctrl,Fctrl,q=qb)
         if FD_results == {}:
             error_log.append(qb)
         else:
-            
             qubit = QDmanager.quantum_device.get_element(qb)
-            print(f"@ {qb} fitting ans: {FD_results[qb].quantities_of_interest}")
             qubit.clock_freqs.readout(FD_results[qb].quantities_of_interest["freq_0"])
             QDmanager.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
             QDmanager.Fluxmanager.save_period_for(target_q=qb, period=2*pi/FD_results[qb].quantities_of_interest["frequency"].nominal_value)
@@ -124,11 +114,10 @@ if __name__ == "__main__":
                 phi=FD_results[qb].quantities_of_interest["shift"].nominal_value,
                 offset=FD_results[qb].quantities_of_interest["offset"].nominal_value
             )
-
-    print(f"Flux dependence error qubit: {error_log}")
+    if error_log != []:
+        print(f"Flux dependence error qubit: {error_log}")
     QDmanager.refresh_log("after FluxDep")
     QDmanager.QD_keeper()
     print('Flux dependence done!')
-    print("Flux dict: ",QDmanager.Fluxmanager.get_bias_dict())
     shut_down(cluster,Fctrl)
     

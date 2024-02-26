@@ -17,6 +17,6 @@ def fillin_PDans(QD_path:str,ans:dict):
 
 
 if __name__ == "__main__":
-    qd_path = 'Modularize/QD_backup/2024_2_23/SumInfo.pkl'
-    PDans = {"q0":[5.72e9,0.15],"q1":[6.0081e9,0.15],"q3":[6.107e9,0.2]}
+    qd_path = 'Modularize/QD_backup/2024_2_26/SumInfo.pkl'
+    PDans = {"q0":[5.72e9,0.15],"q1":[6.008e9,0.15],"q2":[5.8385e9,0.15],"q3":[6.107e9,0.2]}
     fillin_PDans(qd_path, PDans)

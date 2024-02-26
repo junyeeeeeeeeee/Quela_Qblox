@@ -155,6 +155,16 @@ hardware_cfg = {
     },
 }
 
+def get_FluxController(cluster):
+    Fctrl: callable = {
+        "q0":cluster.module2.out0_offset,
+        "q1":cluster.module2.out1_offset,
+        "q2":cluster.module2.out2_offset,
+        "q3":cluster.module2.out3_offset,
+        # "q4":cluster.module10.out0_offset
+    }
+    return Fctrl
+
 
 if __name__ == '__main__':
     meas_datadir = '.data'

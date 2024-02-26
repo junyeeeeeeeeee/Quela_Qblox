@@ -3,7 +3,7 @@ from Modularize.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit
 from quantify_scheduler.gettables import ScheduleGettable
 from utils.tutorial_utils import show_args
 
-def Single_shot_ref_check(quantum_device:QuantumDevice,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
+def Single_shot_ref_spec(quantum_device:QuantumDevice,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
     
     sche_func = Qubit_SS_sche   
     analysis_result = {}
@@ -55,30 +55,23 @@ def Single_shot_ref_check(quantum_device:QuantumDevice,shots:int=1000,run:bool=T
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+    from Modularize.Experiment_setup import get_FluxController
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_25/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_26/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
+    Fctrl = get_FluxController(cluster)
+    reset_offset(Fctrl)
+    # Set system attenuation
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
-    for q in Fctrl:
-        Fctrl[q](0.0)
-    # Set system attenuation
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
-
-    for qb in ["q0","q1","q3"]:
+    for qb in Fctrl:
         Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(target_q=qb))
-        analysis_result = Single_shot_ref_check(QDmanager.quantum_device,q=qb,want_state='g')
+        analysis_result = Single_shot_ref_spec(QDmanager.quantum_device,q=qb,want_state='g')
         try :
             I_ref, Q_ref= analysis_result[qb]['fit_pack'][0],analysis_result[qb]['fit_pack'][1]
             QDmanager.memo_refIQ({str(qb):[I_ref,Q_ref]})

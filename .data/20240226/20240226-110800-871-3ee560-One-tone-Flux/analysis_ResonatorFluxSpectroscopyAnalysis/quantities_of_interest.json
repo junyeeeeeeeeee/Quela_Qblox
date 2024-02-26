@@ -1,0 +1,91 @@
+{
+    "amplitude": {
+        "__dtype__": "UFloat",
+        "nominal_value": 433454.8363513231,
+        "std_dev": 13333.784331371751
+    },
+    "frequency": {
+        "__dtype__": "UFloat",
+        "nominal_value": 10.779942256728505,
+        "std_dev": 0.15126137426842326
+    },
+    "shift": {
+        "__dtype__": "UFloat",
+        "nominal_value": 0.19679154953375644,
+        "std_dev": 0.02883190098816211
+    },
+    "offset": {
+        "__dtype__": "UFloat",
+        "nominal_value": 6008077586.206897,
+        "std_dev": 48071.457660626256
+    },
+    "offset_0": {
+        "__dtype__": "UFloat",
+        "nominal_value": 0.1274593819279068,
+        "std_dev": 0.0032174633145143163
+    },
+    "freq_0": 6008511041.043248,
+    "fit_success": true,
+    "fit_msg": "Summary:\nf_0: 6.0085 GHz\noffset_0: 127.5$\\pm$3.2 mV\n",
+    "fit_result": {
+        "sin": {
+            "success": true,
+            "message": "Fit succeeded.",
+            "params": {
+                "amplitude": {
+                    "name": "amplitude",
+                    "user_data": null,
+                    "init_value": 420411.2194209884,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 13333.784331371751,
+                    "correl": {
+                        "frequency": 0.19899708400339475,
+                        "shift": -0.036112446010268744
+                    },
+                    "value": 433454.8363513231
+                },
+                "frequency": {
+                    "name": "frequency",
+                    "user_data": null,
+                    "init_value": 10.210176124166829,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 0.15126137426842326,
+                    "correl": {
+                        "amplitude": 0.19899708400339475,
+                        "shift": -0.08346145308136582
+                    },
+                    "value": 10.779942256728505
+                },
+                "shift": {
+                    "name": "shift",
+                    "user_data": null,
+                    "init_value": 0.0,
+                    "min": -6.283195307179586,
+                    "max": 6.283195307179586,
+                    "brute_step": null,
+                    "stderr": 0.02883190098816211,
+                    "correl": {
+                        "amplitude": -0.036112446010268744,
+                        "frequency": -0.08346145308136582
+                    },
+                    "value": 0.19679154953375644
+                },
+                "offset": {
+                    "name": "offset",
+                    "user_data": null,
+                    "init_value": 6008077586.206897,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 48071.457660626256,
+                    "correl": null,
+                    "value": 6008077586.206897
+                }
+            }
+        }
+    }
+}
