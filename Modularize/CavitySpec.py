@@ -73,6 +73,8 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
             show_args(Experi_info(q))
     return analysis_result
 
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
@@ -96,7 +98,9 @@ if __name__ == "__main__":
     for i in Fctrl:
         Fctrl[i](0.0)
     # Set the system attenuations
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
+    ro_out_att = 20
+    xy_out_att = 10
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()), ro_out_att, xy_out_att)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -132,5 +136,14 @@ if __name__ == "__main__":
     QDmanager.refresh_log("q2 absent!")
     QDmanager.QD_keeper()
     print('CavitySpectro done!')
+    
+    restore = False
+    chip_name = '5Qtest7'
+    chip_type = "5Q"
+    if restore == True:
+        import chip_data_store as cds
+        chip_info = cds.Chip_file(chip_name, chip_type, QD_path, ro_out_att, xy_out_att)
+        
+    
     shut_down(cluster,Fctrl)
     
