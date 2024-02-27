@@ -12,7 +12,7 @@ from numpy import NaN
 import os
 
 
-def Zgate_two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,xyf_span_Hz:float=300e6,xyamp:float=0.02,n_avg:int=500,Z_points:int=26,f_points:int=26,run:bool=True,q:str='q1',Experi_info={}):
+def Zgate_two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,xyf_span_Hz:float=300e6,n_avg:int=500,Z_points:int=26,f_points:int=26,run:bool=True,q:str='q1',Experi_info={}):
     
     sche_func = Z_gate_two_tone_sche
         
@@ -49,7 +49,7 @@ def Zgate_two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementContro
         frequencies=freq,
         q=q,
         Z_amp=Z_bias,
-        spec_amp=xyamp,
+        spec_amp=qubit_info.rxy.amp180(),
         spec_Du=50*1e-6,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
         R_duration={str(q):qubit_info.measure.pulse_duration()},
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     from numpy import absolute as abs
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_26/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
     Fctrl = get_FluxController(cluster)
     reset_offset(Fctrl)
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    for qb in ["q1"]:
+    for qb in Fctrl:
         for i in Fctrl:
             if i != qb:
                 tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
         center = QDmanager.Fluxmanager.get_sweetBiasFor(target_q=qb)
         half_period = QDmanager.Fluxmanager.get_PeriodFor(target_q=qb)/8
-        window_shifter = -0.05
-        results, origin_f01 = Zgate_two_tone_spec(QDmanager.quantum_device,meas_ctrl,Z_amp_start=center-half_period+window_shifter,Z_amp_end=center+half_period+window_shifter,q=qb,xyamp=0.02)
+        window_shifter = 0
+        results, origin_f01 = Zgate_two_tone_spec(QDmanager.quantum_device,meas_ctrl,Z_amp_start=center-half_period+window_shifter,Z_amp_end=center+half_period+window_shifter,q=qb)
         reset_offset(Fctrl)
         qubit = QDmanager.quantum_device.get_element(qb)
         qubit.clock_freqs.f01(origin_f01)

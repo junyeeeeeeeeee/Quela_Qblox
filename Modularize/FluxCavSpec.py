@@ -85,7 +85,7 @@ if __name__ == "__main__":
     from numpy import pi
     from Modularize.Experiment_setup import get_FluxController
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_26/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
     Fctrl = get_FluxController(cluster)
     # default the offset in circuit
