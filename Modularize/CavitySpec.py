@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from numpy import array, linspace
 from Modularize.support import build_folder_today
 from Modularize.path_book import meas_raw_dir
@@ -72,9 +75,6 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
         if Experi_info != {}:
             show_args(Experi_info(q))
     return analysis_result
-
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
