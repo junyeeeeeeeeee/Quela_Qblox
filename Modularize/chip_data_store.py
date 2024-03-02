@@ -5,6 +5,7 @@ import json
 import time
 import Modularize.support as sup
 import tkinter as tk
+import numpy as np
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
 
@@ -56,46 +57,45 @@ class Chip_file():
         if file_exist == False:
             print("File doesn't exist, creating new file...")
             # 手動輸入
-            '''
+            
             setfile = tk.Tk()
             setfile.title('Basic information window')
+            def create_file():
+                chip_type = chip_type_en.get()
+                ro_out_att = int(ro_out_att_en.get())
+                xy_out_att = int(xy_out_att_en.get())
+                if ro_out_att > 60 or xy_out_att > 60:
+                    raise ValueError("Attenuation is too high!")
+                else:
+                    self.create_chip_file(chip_type, ro_out_att, xy_out_att)
+                    setfile.destroy()
+            def validate(P):
+                if str.isdigit(P) or P == "":
+                    return True
+                else:
+                    return False
+            vcmd = (setfile.register(validate), '%P')
             chip_type_la = tk.Label(setfile, text = "chip type")
             chip_type_la.pack()
-            chip_type_en = tk.Entry(setfile, width=25)
+            chip_type_en = tk.Entry(setfile, width=20, justify='center')
             chip_type_en.pack()
             ro_out_att_la = tk.Label(setfile, text = "RO output attenuation")
             ro_out_att_la.pack()
-            ro_out_att_en = tk.Entry(setfile, width=25)
+            ro_out_att_en = tk.Entry(setfile, width=20, justify='center', validate='key', validatecommand=vcmd)
             ro_out_att_en.pack()
-            xy_out_att_la = tk.Label(setfile, text = "RO output attenuation")
+            xy_out_att_la = tk.Label(setfile, text = "XY output attenuation")
             xy_out_att_la.pack()
-            xy_out_att_en = tk.Entry(setfile, width=25)
+            xy_out_att_en = tk.Entry(setfile, width=20, justify='center', validate='key', validatecommand=vcmd)
             xy_out_att_en.pack()
-            check_button = tk.Button(setfile, text="Enter")
+            check_button = tk.Button(setfile, text="Enter", command=create_file)
             check_button.pack()
             setfile.mainloop()
-            
-            chip_type = chip_type_en.get()
-            ro_out_att = ro_out_att_en.get()
-            xy_out_att = xy_out_att_en.get()
-            '''
-            self.create_chip_file(chip_type, ro_out_att, xy_out_att)
             
         else:
             with open(self.file_name, 'r') as qu:
                 self.__chip_dict = json.load(qu)
-                
-        # check today's chip imformation
-
-        if os.path.isdir(self.path_today): 
-            with open(self.file_today, 'w') as up:
-                json.dump(self.__chip_dict, up, indent=4)
-            # if the demo_folder2 directory is  
-            # not present then create it. 
-        else:
-            os.makedirs(self.path_today)
-            with open(self.file_today, 'w') as up:
-                json.dump(self.__chip_dict, up, indent=4) 
+            self.create_today_file()
+            self.update_to_json()    
 
     def create_chip_file(self, chip_type:str = "5Q", ro_out_att:int = 20, xy_out_att:int = 10) -> None:
         """
@@ -107,11 +107,8 @@ class Chip_file():
         else:
             raise ValueError("We don't have this chip type, are you live in parallel universe?")
         
-        with open(os.path.join(self.file_path, blank_file), "r") as blank, open(self.file_name, 'w') as new:
-            new.write(blank.read())
-                
-        with open(self.file_name, 'r') as rd:
-            self.__chip_dict = json.load(rd)
+        with open(os.path.join(self.file_path, blank_file), "r") as blank:
+            self.__chip_dict = json.load(blank)
         
         self.__chip_dict["basic_information"]["chip_name"] = self.name
         self.__chip_dict["basic_information"]["chip_type"] = chip_type
@@ -120,9 +117,18 @@ class Chip_file():
         self.__chip_dict["basic_information"]["xy_att"] = xy_out_att
         self.__chip_dict["basic_information"]["create_time"] = time.strftime('%Y%m%d',time.localtime(time.time()))
         
-        with open(self.file_name, 'w') as up:
-            json.dump(self.__chip_dict, up, indent=4)
-        
+        self.create_today_file()
+        self.update_to_json()
+
+    def create_today_file(self) -> None:
+        # check today's chip imformation
+        if os.path.isdir(self.path_today): 
+            pass
+            # if the demo_folder2 directory is  
+            # not present then create it. 
+        else:
+            os.makedirs(self.path_today) 
+
     def get_chip_dict(self) -> dict:
         return self.__chip_dict
     
@@ -145,10 +151,7 @@ class Chip_file():
                 self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["acq_delay"] = qubit.measure.acq_delay()
                 self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["integ_time"] = qubit.measure.integration_time()
                 self.__chip_dict["1Q_information"][qb]["init"]["wait"]["time"] = qubit.reset.duration()
-            with open(self.file_name, 'w') as up:
-                json.dump(self.__chip_dict, up, indent=4)
-            with open(self.file_today, 'w') as up:
-                json.dump(self.__chip_dict, up, indent=4) 
+            self.update_to_json()
             print("Quantum_device updated!")     
         
     def update_Cavity_spec_bare(self, QB_name:dict = {'q0':None, 'q1':None, 'q2':None, 'q3':None, 'q4':None}, result:dict = {}) -> None:
@@ -164,3 +167,8 @@ class Chip_file():
             json.dump(self.__chip_dict, up, indent=4) 
         print("updated!")     
          
+    def update_to_json(self):
+        with open(self.file_name, 'w') as up:
+            json.dump(self.__chip_dict, up, indent=4)
+        with open(self.file_today, 'w') as up:
+            json.dump(self.__chip_dict, up, indent=4) 

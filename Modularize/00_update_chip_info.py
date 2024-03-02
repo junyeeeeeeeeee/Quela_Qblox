@@ -6,7 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import Modularize.chip_data_store as cds
 
 # ============= manually set Parameters =================
-chip_name = "5Qtest0_2"
+chip_name = "5Qtest0_6"
 QD_path = ''
 # ======================put in MeasFlow====================
 
