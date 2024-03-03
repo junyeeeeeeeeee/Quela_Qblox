@@ -19,13 +19,30 @@ How to use:
 
 class Chip_file():
     
-    def __init__(self,chip_name:str = "new_chip"):
+    def __init__(self):
         '''
         chip_name:  The name of the chip, needs to be the same as in fabricaation,
                     using the date of big current exposure + # of chip, eg. "20240206#8"
         '''
-        
-        self.name = chip_name           # chip 名稱
+        # 設定 chip 名稱
+        self.name = ""
+        setname = setfile = tk.Tk()
+        setname.title('Name window')
+        def create_name():
+            self.name = chip_name_en.get()
+            setname.destroy()
+        chip_name_la = tk.Label(setfile, text = "chip name")
+        chip_name_la.pack()
+        chip_name_en = tk.Entry(setfile, width=20, justify='center')
+        chip_name_en.pack()
+        check_button = tk.Button(setfile, text="Enter", command=create_name)
+        check_button.pack()
+        setfile.mainloop()
+        if self.name == "":
+            raise ValueError("Please set name")
+        else:
+            pass
+
         self.file = self.name+".json"   # chip 檔案名稱
         self.file_path = os.getcwd()+"\chip_information"  # chip 檔案位置
         self.file_name = os.path.join(self.file_path, self.file)    # chip 檔案完整位置+名稱
@@ -124,8 +141,6 @@ class Chip_file():
         # check today's chip imformation
         if os.path.isdir(self.path_today): 
             pass
-            # if the demo_folder2 directory is  
-            # not present then create it. 
         else:
             os.makedirs(self.path_today) 
 
