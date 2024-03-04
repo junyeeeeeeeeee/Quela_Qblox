@@ -58,14 +58,19 @@ class FluxBiasDict():
     def __init__(self,qb_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
+        self.float_cata = ["SweetSpot","TuneAway","Period"]
+        self.list_cata = ["cavFitParas","qubFitParas"] # For the fitting functions access
+        self.dict_cata = {"qubFitData":["bias_data","XYF_data"]} # For XYF-Flux fitting data storing
+
         self.init_bias()
 
     def sin_for_cav(self,target_q:str,bias_ary:ndarray):
         """
         Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
         """
-        from utils.tutorial_analysis_classes import _helper_sinus
-        return _helper_sinus(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
+        def Sin(x,amp,w,phs,offset):
+            return float(amp)*np.sin(float(w)*x+float(phs))+float(offset)
+        return Sin(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
     
     def quadra_for_qub(self,target_q:str,bias_ary:ndarray):
         """
@@ -86,12 +91,17 @@ class FluxBiasDict():
         """
         for i in range(self.q_num):
             self.__bias_dict[f"q{i}"] = {}
-            for bias_position in ["SweetSpot","TuneAway"]:
+            for bias_position in self.float_cata:
                 self.__bias_dict[f"q{i}"][bias_position] = 0.0
             
-            self.__bias_dict[f"q{i}"]["Period"] = 0.0
-            self.__bias_dict[f"q{i}"]["cavFitParas"] = []
-            self.__bias_dict[f"q{i}"]["qubFitParas"] = []
+            for para_cata in self.list_cata:
+                self.__bias_dict[f"q{i}"][para_cata] = []
+            
+            for dict_cata in self.dict_cata:
+                self.__bias_dict[f"q{i}"][dict_cata] = {}
+                for subcata in self.dict_cata[dict_cata]: 
+                    self.__bias_dict[f"q{i}"][dict_cata][subcata] = []
+
 
     def save_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
         """
@@ -134,6 +144,7 @@ class FluxBiasDict():
         Save the fitting function parameters for flux dep qubit, includes a, b, c for the quadratic form:\n
         `ax**2+bx+c`
         """
+        #TODO:
         self.__bias_dict[target_q]["qubFitParas"] = [a,b,c]
     
     def activate_from_dict(self,old_bias_dict:dict):
@@ -141,8 +152,8 @@ class FluxBiasDict():
         Activate the dict which super from the old record.
         """
         for q_old in old_bias_dict:
-            for bias_position in old_bias_dict[q_old]:
-                self.__bias_dict[q_old][bias_position] = old_bias_dict[q_old][bias_position]
+            for catas in old_bias_dict[q_old]:
+                self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
 
     def get_sweetBiasFor(self,target_q:str):
         """
@@ -162,6 +173,49 @@ class FluxBiasDict():
         """
         return self.__bias_dict[target_q]["Period"]
     
+class Notebook():
+    def __init__(self,q_number:str):
+        self.__dict = {}
+        self.q_num = q_number
+        self.cata = ["bareF","T1","T2"] # all in float
+
+        self.init_dict()
+
+    def init_dict(self):
+        for i in range(self.q_num):
+            self.__dict[f"q{i}"] = {}
+            for float_cata in self.cata:
+                self.__dict[f"q{i}"][float_cata] = 0.0
+    ## About get
+    def get_notebook(self,target_q:str=''):
+        if target_q != '':
+            return self.__dict[target_q]
+        else:
+            return self.__dict
+    ## About write and save   
+    # For bare cavity freq
+    def save_bareFreq_for(self,bare_freq:float,target_q:str="q1"):
+        self.__dict[target_q]["bareF"] = bare_freq
+    def get_bareFreqFor(self,target_q:str="q1"):
+        return self.__dict[target_q]["bareF"]
+    # For T1
+    def save_T1_for(self,T1:float,target_q:str="q1"):
+        self.__dict[target_q]["T1"] = T1
+    def get_T1For(self,target_q:str="q1"):
+        return self.__dict[target_q]["T1"]
+    # For T2
+    def save_T2_for(self,T2:float,target_q:str="q1"):
+        self.__dict[target_q]["T2"] = T2
+    def get_T2For(self,target_q:str="q1"):
+        return self.__dict[target_q]["T2"]
+    
+    # Activate notebook
+    def activate_from_dict(self,old_notebook:dict):
+        for qu in old_notebook:
+            for cata in self.cata:
+                self.__dict[qu][cata] = old_notebook[qu][cata]
+
+
 
 class QDmanager():
     def __init__(self,QD_path:str=''):
@@ -197,6 +251,8 @@ class QDmanager():
         # class    
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
         self.Fluxmanager.activate_from_dict(gift["Flux"])
+        self.Notewriter: Notebook = Notebook(q_number=self.q_num)
+        self.Notewriter.activate_from_dict(gift["Note"])
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
         self.Hcfg = gift["Hcfg"]
@@ -217,7 +273,8 @@ class QDmanager():
             qd_folder = build_folder_today(qdevice_backup_dir)
             self.path = os.path.join(qd_folder,"SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
-        merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
+        # TODO: Here is onlu for the hightlighs :)
+        merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
@@ -240,6 +297,7 @@ class QDmanager():
             self.quantum_device._device_elements.append(qubit)
 
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
+        self.Notewriter: Notebook = Notebook(self.q_num)
 
 
 # initialize a measurement
@@ -276,7 +334,7 @@ def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new',vpn:b
         cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
     else:
         cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-        
+
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     
     return Qmanager, cluster, meas_ctrl, ic
@@ -586,7 +644,7 @@ def leave_LogMSG(MSG:str,sumInfo_path:str):
 
 
 # set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=10):
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
     """
     Attenuation setting includes XY and RO. We don't change it once we set it.
     """

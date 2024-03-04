@@ -77,26 +77,17 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
-    from Modularize.path_book import qdevice_backup_dir
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+    from Experiment_setup import get_FluxController
     from numpy import NaN
     
 
     # Reload the QuantumDevice or build up a new one
     QD_path = ''
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='n')
-    
-    # TODO: keep the particular bias into chip spec, and it should be fast loaded
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
+    Fctrl = get_FluxController(cluster)
     # default the offset in circuit
-    for i in Fctrl:
-        Fctrl[i](0.0)
+    reset_offset(Fctrl)
     # Set the system attenuations
     ro_out_att = 20
     xy_out_att = 10
@@ -104,11 +95,12 @@ if __name__ == "__main__":
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+    
     # guess
     ro_bare=dict(
         q0 = 5.72e9,
         q1 = 6e9,
-        q2 = 5.81e9,
+        q2 = 5.84e9,
         q3 = 6.1e9,
     )
     # q4 = 5.9e9,
@@ -131,9 +123,10 @@ if __name__ == "__main__":
             QDmanager.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:
             error_log.append(qb)
-    print(f"Cavity Spectroscopy error qubit: {error_log}")
+    if error_log != []:
+        print(f"Cavity Spectroscopy error qubit: {error_log}")
 
-    QDmanager.refresh_log("q2 absent!")
+    QDmanager.refresh_log("After cavity search")
     QDmanager.QD_keeper()
     print('CavitySpectro done!')
     

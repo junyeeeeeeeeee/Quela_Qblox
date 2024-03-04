@@ -7,15 +7,23 @@ from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support import QuantumDevice, get_time_now
 from quantify_core.measurement.control import MeasurementControl
+from numpy import NaN
 import os
 
-
-def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_guess:dict,xyf_span_Hz:int=200e6,xyamp:float=0.02,n_avg:int=1000,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_guess:dict,xyf_span_Hz:int=400e6,xyamp:float=0.1,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     
     sche_func = Two_tone_sche   
     analysis_result = {}
     qubit_info = quantum_device.get_element(q)
-    f01_high = f01_guess[q]+100*1e6
+    if f01_guess != {}:
+        f01_high = f01_guess[q]+100*1e6
+    else:
+        f01_high = qubit_info.clock_freqs.f01()+100*1e6
+    if xyamp == 0:
+        xyamp = qubit_info.rxy.amp180(XYL)
+    # Avoid warning
+    qubit_info.clock_freqs.f01(NaN)
+
     f01_samples = linspace(f01_high-xyf_span_Hz,f01_high,points)
     set_LO_frequency(quantum_device,q=q,module_type='drive',LO_frequency=f01_high)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
@@ -74,73 +82,67 @@ def Two_tone_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,f01_
         if Experi_info != {}:
             show_args(Experi_info(q))
 
-    return analysis_result
-
-
-
-
+    return analysis_result, f01_high-100e6
 
 
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Pulse_schedule_library import Fit_analysis_plot
+    from Modularize.Pulse_schedule_library import Fit_analysis_plot
+    from Modularize.Experiment_setup import get_FluxController
+    
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_25/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
+    Fctrl = get_FluxController(cluster)
+    reset_offset(Fctrl)
+    # Set system attenuation
+    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
-    for q in Fctrl:
-        Fctrl[q](0.0)
-    # Set system attenuation
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
-
     XYf_guess=dict(
-        q0 = 4.13e9,
+        q0 = 4.1e9,
         q1 = 4.232e9,
         q2 = 3.841e9,
         q3 = 4.022e9,
     )
     # q4 = 2.5738611635902258 * 1e9,
-    from numpy import NaN
-    try :
-        for qb in ["q0","q1","q3"]:
-            qubit = QDmanager.quantum_device.get_element(qb)
-            qubit.clock_freqs.f01(NaN)
-            for i in Fctrl:
-                if i != qb:
-                    tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
-                    if abs(tuneaway) <= 0.3:
-                        Fctrl[i](tuneaway)
-                    else:
-                        raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
+    xyamp_dict = dict(
+        q0 = 0.15,
+        q1 = 0.06,
+        q2 = 0.05,
+        q3 = 0.05
+    )
+    f01_dict = XYf_guess
+    
+    for qb in XYf_guess:
+        XYL = xyamp_dict[qb]
+        qubit = QDmanager.quantum_device.get_element(qb)
+        for i in Fctrl:
+            if i != qb:
+                tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
+                if abs(tuneaway) <= 0.3:
+                    Fctrl[i](tuneaway)
+                else:
+                    raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
 
-            Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(qb))
-            QS_results = Two_tone_spec(QDmanager.quantum_device,meas_ctrl,XYf_guess,q=qb,ref_IQ=QDmanager.refIQ[qb])
-            
-            reset_offset(Fctrl)
-            Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
-            Revised_f01= QS_results[qb].attrs['f01_fit']
-            qubit = QDmanager.quantum_device.get_element(qb)
-            qubit.clock_freqs.f01(Revised_f01)
+        Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(qb))
+        QS_results, origin_f01 = Two_tone_spec(QDmanager.quantum_device,meas_ctrl,xyamp=XYL,f01_guess=f01_dict,q=qb,ref_IQ=QDmanager.refIQ[qb])
 
-        QDmanager.refresh_log("After continuous 2-tone!")
-        QDmanager.QD_keeper()
-        print('2-tone done!')
-        shut_down(cluster,Fctrl)
-    except:
-        shut_down(cluster,Fctrl)
-        raise ValueError("Something goes wrong!")
+        reset_offset(Fctrl)
+        Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
+        Revised_f01= QS_results[qb].attrs['f01_fit']
+        qubit = QDmanager.quantum_device.get_element(qb)
+        qubit.clock_freqs.f01(Revised_f01)
+        # temporarily save the xy amp for a clear f01 fig
+        qubit.rxy.amp180(XYL)
+
+    QDmanager.refresh_log("After continuous 2-tone!")
+    QDmanager.QD_keeper()
+    print('2-tone done!')
+    shut_down(cluster,Fctrl)
 

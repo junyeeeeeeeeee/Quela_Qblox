@@ -83,24 +83,15 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
-
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+    from Modularize.Experiment_setup import get_FluxController
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_23/SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
     QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
-    
+    Fctrl = get_FluxController(cluster)
     # default the offset in circuit
-    for i in Fctrl:
-        Fctrl[i](0.0)
+    reset_offset(Fctrl)
     # Set system attenuation
     init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
     for i in range(6):
@@ -116,8 +107,8 @@ if __name__ == "__main__":
         else:
             # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
             pass
-
-    print(f"Power dependence error qubit: {error_log}")
+    if error_log != []:
+        print(f"Power dependence error qubit: {error_log}")
     QDmanager.refresh_log('after PowerDep')
     QDmanager.QD_keeper()
     print('Power dependence done!')
