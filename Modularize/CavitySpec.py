@@ -83,14 +83,14 @@ if __name__ == "__main__":
     
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = ''
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr1',cluster_ip='170',mode='n')
+    QD_path = 'Modularize/QD_backup/2024_3_4/DR1#170_SumInfo.pkl'
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr1',cluster_ip='170',mode='l')
     
     Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit
     reset_offset(Fctrl)
     # Set the system attenuations
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=30)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -98,14 +98,14 @@ if __name__ == "__main__":
     # guess
     ro_bare=dict(
         q0 = 5.258e9,
-        q1 = 5.35e9,
-        q2 = 5.449e9,
-        q3 = 5.527e9,
-        q4 = 5.636e9,
+        q1 = 5.527e9,
+        q2 = 5.3575e9,
+        q3 = 5.636e9,
+        q4 = 5.449e9,
     )
     
     error_log = []
-    for qb in ro_bare:
+    for qb in ["q1"]:
         print(qb)
         qubit = QD_agent.quantum_device.get_element(qb)
         if QD_path == '':
@@ -117,7 +117,8 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)
+        
+        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=15e6)
         if CS_results != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)

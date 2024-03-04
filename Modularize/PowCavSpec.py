@@ -1,4 +1,5 @@
 from numpy import array, linspace
+from Modularize.support import QDmanager
 from Modularize.support import build_folder_today
 from Modularize.path_book import meas_raw_dir
 from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
@@ -10,12 +11,12 @@ from Modularize.support import QuantumDevice, get_time_now, PDresults_alignPlot
 from quantify_core.measurement.control import MeasurementControl
 import os
 
-def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.1,ro_p_max:float=0.7,n_avg:int=100,f_points:int=30,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.1,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 
     sche_func = One_tone_sche
         
     analysis_result = {}
-    qubit_info = quantum_device.get_element(q)
+    qubit_info = QD_agent.quantum_device.get_element(q)
     ro_f_center = qubit_info.clock_freqs.readout()
     # avoid frequency conflicts 
     from numpy import NaN
@@ -44,13 +45,13 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
     
     if run:
         gettable = ScheduleGettable(
-            quantum_device,
+            QD_agent.quantum_device,
             schedule_function=sche_func, 
             schedule_kwargs=spec_sched_kwargs,
             real_imag=False,
             batched=True,
         )
-        quantum_device.cfg_sched_repetitions(n_avg)
+        QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables([freq,ro_pulse_amp])
         meas_ctrl.setpoints_grid((ro_f_samples,ro_p_samples))
@@ -61,7 +62,8 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
         # Save the raw data into netCDF
         exp_timeLabel = get_time_now()
         raw_folder = build_folder_today(meas_raw_dir)
-        rp_ds.to_netcdf(os.path.join(raw_folder,f"{q}_PowCavSpec_{exp_timeLabel}.nc"))
+        dr_loc = QD_agent.Identity.split("#")[0]
+        rp_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_PowCavSpec_{exp_timeLabel}.nc"))
         print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
 
         analysis_result[q] = Basic2DAnalysis(tuid=rp_ds.attrs["tuid"], dataset=rp_ds).run()
@@ -75,7 +77,7 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
         sweep_para2= array(ro_p_samples[:2])
         spec_sched_kwargs['frequencies']= sweep_para1.reshape(sweep_para1.shape or (1,))
         spec_sched_kwargs['R_amp']= {q:sweep_para2.reshape(sweep_para2.shape or (1,))[0]}
-        pulse_preview(quantum_device,sche_func,spec_sched_kwargs)
+        pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
 
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -90,28 +92,31 @@ if __name__ == "__main__":
 
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_4/DR1#170_SumInfo.pkl'
-    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
-    Fctrl = get_FluxController(cluster,ip_label=QDmanager.Identity.split("#")[-1])
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
+    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit
     reset_offset(Fctrl)
-    # Set system attenuation
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
+    
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     error_log = []
-    for qb in Fctrl:
-        print(qb)
-        PD_results = PowerDep_spec(QDmanager.quantum_device,meas_ctrl,q=qb)
-        if PD_results == {}:
-            error_log.append(qb)
-        else:
-            # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
-            pass
+    for qb in ['q0']:
+        for pow in [40 ,34, 30 , 24, 20, 14, 10]:
+            # Set system attenuation
+            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=pow)
+            print(qb)
+            PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb)
+            if PD_results == {}:
+                error_log.append(qb)
+            else:
+                # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
+                pass
+        
     if error_log != []:
         print(f"Power dependence error qubit: {error_log}")
-    QDmanager.refresh_log('after PowerDep')
-    QDmanager.QD_keeper()
+    QD_agent.refresh_log('after PowerDep')
+    QD_agent.QD_keeper()
     print('Power dependence done!')
     shut_down(cluster,Fctrl)
