@@ -84,24 +84,24 @@ if __name__ == "__main__":
 
     # Reload the QuantumDevice or build up a new one
     QD_path = ''
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr2',cluster_ip='171',mode='n')
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr1',cluster_ip='170',mode='n')
     
-    Fctrl = get_FluxController(cluster,dr=QD_agent.Identity.split("#")[0])
+    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit
     reset_offset(Fctrl)
     # Set the system attenuations
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()))
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
     
     # guess
     ro_bare=dict(
-        q0 = 5.72e9,
-        q1 = 6.015e9,
-        q2 = 5.835e9,
-        q3 = 6.1e9,
-        q4 = 5.905e9,
+        q0 = 5.258e9,
+        q1 = 5.35e9,
+        q2 = 5.449e9,
+        q3 = 5.527e9,
+        q4 = 5.636e9,
     )
     
     error_log = []
