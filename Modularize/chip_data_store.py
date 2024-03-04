@@ -26,24 +26,7 @@ class Chip_file():
                     using the date of big current exposure + # of chip, eg. "20240206#8"
         '''
         # 設定 chip 名稱
-        self.name = ""
-        setfile = tk.Tk()
-        setfile.title('Name window')
-        def create_name():
-            self.name = chip_name_en.get()
-            setfile.destroy()
-        chip_name_la = tk.Label(setfile, text = "chip name")
-        chip_name_la.pack()
-        chip_name_en = tk.Entry(setfile, width=20, justify='center')
-        chip_name_en.pack()
-        check_button = tk.Button(setfile, text="Enter", command=create_name)
-        check_button.pack()
-        setfile.mainloop()
-        if self.name == "":
-            raise KeyError("Please set name")
-        else:
-            pass
-
+        self.name = UW.chip_name_window()
         self.file = self.name+".json"   # chip 檔案名稱
         self.file_path = os.getcwd()+"\chip_information"  # chip 檔案位置
         self.file_name = os.path.join(self.file_path, self.file)    # chip 檔案完整位置+名稱
@@ -75,41 +58,8 @@ class Chip_file():
         if file_exist == False:
             print("File doesn't exist, creating new file...")
             # 手動輸入
-            
-            setfile = tk.Tk()
-            setfile.title('Basic information window')
-            def create_file():
-                chip_type = chip_type_en.get()
-                ro_out_att = int(ro_out_att_en.get())
-                xy_out_att = int(xy_out_att_en.get())
-                if ro_out_att > 60 or xy_out_att > 60:
-                    raise ValueError("Attenuation is too high!")
-                elif chip_type == '' or ro_out_att == '' or xy_out_att == '':
-                    raise KeyError('You have to insert the variables!')
-                else:
-                    self.create_chip_file(chip_type, ro_out_att, xy_out_att)
-                    setfile.destroy()
-            def validate(P):
-                if str.isdigit(P) or P == "":
-                    return True
-                else:
-                    return False
-            vcmd = (setfile.register(validate), '%P')
-            chip_type_la = tk.Label(setfile, text = "chip type")
-            chip_type_la.pack()
-            chip_type_en = tk.Entry(setfile, width=20, justify='center')
-            chip_type_en.pack()
-            ro_out_att_la = tk.Label(setfile, text = "RO output attenuation")
-            ro_out_att_la.pack()
-            ro_out_att_en = tk.Entry(setfile, width=20, justify='center', validate='key', validatecommand=vcmd)
-            ro_out_att_en.pack()
-            xy_out_att_la = tk.Label(setfile, text = "XY output attenuation")
-            xy_out_att_la.pack()
-            xy_out_att_en = tk.Entry(setfile, width=20, justify='center', validate='key', validatecommand=vcmd)
-            xy_out_att_en.pack()
-            check_button = tk.Button(setfile, text="Enter", command=create_file)
-            check_button.pack()
-            setfile.mainloop()
+            chip_type, ro_out_att, xy_out_att = UW.Basic_information_window()
+            self.create_chip_file(chip_type, ro_out_att, xy_out_att)
             
         else:
             with open(self.file_name, 'r') as qu:

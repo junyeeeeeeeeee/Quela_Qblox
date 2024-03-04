@@ -83,7 +83,7 @@ if __name__ == "__main__":
     from Experiment_setup import get_FluxController
     from numpy import NaN
     import Modularize.chip_data_store as cds
-    from Modularize.UIwindow import init_meas_window
+    import Modularize.UIwindow as UW
     
     # Variables
     chip_info_restore = True
@@ -92,7 +92,12 @@ if __name__ == "__main__":
     chip_info = cds.Chip_file()
     
     # Reload the QuantumDevice or build up a new one
-    QD_agent, cluster, meas_ctrl, ic, QD_path = init_meas_window()
+    QD_path, dr, ip, mode, vpn = UW.init_meas_window()
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,
+                                                dr_loc=dr,
+                                                cluster_ip=ip,
+                                                mode=mode
+                                                vpn=vpn)
     
     Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit
@@ -139,9 +144,9 @@ if __name__ == "__main__":
     QD_agent.QD_keeper()
     print('CavitySpectro done!')
     
+    # Chip info!
     if chip_info_restore == True:
         chip_info.update_Cavity_spec_bare(result=CS_results)
         
-    
     shut_down(cluster,Fctrl)
     
