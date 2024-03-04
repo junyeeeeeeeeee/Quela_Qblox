@@ -223,7 +223,15 @@ class QDmanager():
         self.refIQ = {}
         self.Hcfg = {}
         self.Log = "" 
-    
+        self.Identity=""
+
+    def register(self,cluster_ip_adress:str,which_dr:str):
+        """
+        Register this QDmanager according to the cluster ip and in which dr.
+        """
+        specifier = cluster_ip_adress.split(".")[-1] # 192.168.1.specifier
+        self.Identity = which_dr.upper()+"#"+specifier # Ex. DR2#171
+
     def memo_refIQ(self,ref_dict:dict):
         """
         Memorize the reference IQ according to the given ref_dict, which the key named in "q0"..., and the value is composed in list by IQ values.\n
@@ -246,6 +254,7 @@ class QDmanager():
         with open(self.path, 'rb') as inp:
             gift = pickle.load(inp)
         # string and int
+        self.Identity = gift["ID"]
         self.Log = gift["Log"]
         self.q_num = len(list(gift["Flux"].keys()))
         # class    
@@ -271,19 +280,27 @@ class QDmanager():
         if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
             from Modularize.path_book import qdevice_backup_dir
             qd_folder = build_folder_today(qdevice_backup_dir)
-            self.path = os.path.join(qd_folder,"SumInfo.pkl")
+            self.path = os.path.join(qd_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is onlu for the hightlighs :)
-        merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
             print(f'Summarized info had successfully saved to the given path!')
     
-    def build_new_QD(self,qubit_number:int,Hcfg:dict):
+    def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str):
+        """
+        Build up a new Quantum Device, here are something must be given about it:\n
+        (1) qubit_number: how many qubits is in the chip.\n
+        (2) Hcfg: the hardware configuration between chip and cluster.\n
+        (3) cluster_ip: which cluster is connected. Ex, cluster_ip='192.168.1.171'\n
+        (4) dr_loc: which dr is this chip installed. Ex, dr_loc='dr4'
+        """
         print("Building up a new quantum device system....")
         self.q_num = qubit_number
         self.Hcfg = Hcfg
+        self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc)
         self.quantum_device = QuantumDevice("academia_sinica_device")
         self.quantum_device.hardware_config(self.Hcfg)
         
@@ -301,39 +318,44 @@ class QDmanager():
 
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
     ### Case 2: QD_path is given, load the QD with that given path.\n
     args:\n
+    cluster_ip: '170' for DR3 (default), '171' for DR2.
     mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
-    
     import quantify_core.data.handling as dh
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
     if mode.lower() in ['new', 'n']:
-        from Experiment_setup import hardware_cfg
-        cfg, pth = hardware_cfg, ''
+        from Experiment_setup import hcfg_map
+        cfg, pth = hcfg_map[cluster_ip], ''
+        if dr_loc == '':
+            raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
         cfg, pth = {}, QuantumDevice_path 
     else:
         raise KeyError("The given mode can not be recognized!")
     
+    # Connect to the Qblox cluster
+    if not vpn:
+        # connect, ip = connect_clusters() ## Single cluster online
+        # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+        ip, ser = connect_clusters_withinMulti(cluster_ip)
+        cluster = Cluster(name = "cluster0", identifier = ip)
+    else:
+        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+        ip = "192.168.1.170"
+    
     Qmanager = QDmanager(pth)
     if pth == '':
-        Qmanager.build_new_QD(qubit_number,cfg)
+        Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
         Qmanager.refresh_log("new-born!")
     else:
         Qmanager.QD_loader()
-
-    # Connect to the Qblox cluster
-    if not vpn:
-        connect, ip = connect_clusters()
-        cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-    else:
-        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     
@@ -439,13 +461,32 @@ def connect_clusters():
 
     names = {dev_id: dev_info["description"]["name"] for dev_id, dev_info in device_list.items()}
     ip_addresses = {dev_id: dev_info["identity"]["ip"] for dev_id, dev_info in device_list.items()}
-
     connect_options = widgets.Dropdown(         # Create widget for names and ip addresses *** Should be change into other interface in the future
         options=[(f"{names[dev_id]} @{ip_addresses[dev_id]}", dev_id) for dev_id in device_list],
         description="Select Device",
     )
     display(connect_options)
+    
     return connect_options, ip_addresses
+
+# Multi-clusters online version connect_clusters()
+def connect_clusters_withinMulti(ip_last_posi:str='170'):
+    """
+    This function is only for who doesn't use jupyter notebook to connect cluster.
+    args: \n
+    ip_last_posi: '170' for DR3 (default), '171' for DR2.\n
+    So far the ip for Qblox cluster is named with 192.168.1.170 and 192.168.1.171
+    """
+    permissions = {}
+    with PlugAndPlay() as p:            # Scan for available devices and display
+        device_list = p.list_devices()
+    for devi, info in device_list.items():
+        permissions[info["identity"]["ip"]] = info["identity"]["ser"]
+    if f"192.168.1.{ip_last_posi}" in permissions:
+        print(f"192.168.1.{ip_last_posi} is available to connect to!")
+        return f"192.168.1.{ip_last_posi}", permissions[f"192.168.1.{ip_last_posi}"]
+    else:
+        raise KeyError(f"192.168.1.{ip_last_posi} is NOT available now!")
  
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
