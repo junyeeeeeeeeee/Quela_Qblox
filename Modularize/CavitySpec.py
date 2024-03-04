@@ -9,15 +9,16 @@ from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAn
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
-from Modularize.support import QuantumDevice, get_time_now
+from Modularize.support import QuantumDevice, get_time_now, QDmanager
 from quantify_core.measurement.control import MeasurementControl
 import os
 
-def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
     """
         Do the cavity search by the given QuantumDevice with a given target qubit q. \n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay! 
     """
+    quantum_device = QD_agent.quantum_device
     sche_func = One_tone_sche
     qubit_info = quantum_device.get_element(q)
     analysis_result = {}
@@ -56,7 +57,8 @@ def Cavity_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_bar
         # save the xarrry into netCDF
         exp_timeLabel = get_time_now()
         raw_folder = build_folder_today(meas_raw_dir)
-        rs_ds.to_netcdf(os.path.join(raw_folder,f"{q}_CavitySpectro_{exp_timeLabel}.nc"))
+        dr_loc = QD_agent.Identity.split("#")[0]
+        rs_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_CavitySpectro_{exp_timeLabel}.nc"))
         print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
 
         print(f"{q} Cavity:")
@@ -84,14 +86,13 @@ if __name__ == "__main__":
 
     # Reload the QuantumDevice or build up a new one
     QD_path = ''
-    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='n')
-    Fctrl = get_FluxController(cluster)
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr2',cluster_ip='171',mode='n')
+    
+    Fctrl = get_FluxController(cluster,dr=QD_agent.Identity.split("#")[0])
     # default the offset in circuit
     reset_offset(Fctrl)
     # Set the system attenuations
-    ro_out_att = 20
-    xy_out_att = 10
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()), ro_out_att, xy_out_att)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -99,15 +100,16 @@ if __name__ == "__main__":
     # guess
     ro_bare=dict(
         q0 = 5.72e9,
-        q1 = 6e9,
-        q2 = 5.84e9,
+        q1 = 6.015e9,
+        q2 = 5.835e9,
         q3 = 6.1e9,
+        q4 = 5.905e9,
     )
-    # q4 = 5.9e9,
+    
     error_log = []
     for qb in ro_bare:
         print(qb)
-        qubit = QDmanager.quantum_device.get_element(qb)
+        qubit = QD_agent.quantum_device.get_element(qb)
         if QD_path == '':
             qubit.reset.duration(150e-6)
             qubit.measure.acq_delay(0)
@@ -117,17 +119,17 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results = Cavity_spec(QDmanager.quantum_device,meas_ctrl,ro_bare,q=qb)
+        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)
         if CS_results != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
-            QDmanager.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
+            QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:
             error_log.append(qb)
     if error_log != []:
         print(f"Cavity Spectroscopy error qubit: {error_log}")
 
-    QDmanager.refresh_log("After cavity search")
-    QDmanager.QD_keeper()
+    QD_agent.refresh_log("After cavity search")
+    QD_agent.QD_keeper()
     print('CavitySpectro done!')
     
     restore = False

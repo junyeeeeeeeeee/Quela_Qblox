@@ -10,7 +10,7 @@ from quantify_scheduler.backends.graph_compilation import SerialCompiler
 
 #%%
 # Hardware settings
-hardware_cfg = {
+Hcfg_170 = {
     "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
     "cluster0": {
         "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
@@ -154,16 +154,178 @@ hardware_cfg = {
     },
 }
 
-def get_FluxController(cluster):
-    Fctrl: callable = {
-        "q0":cluster.module2.out0_offset,
-        "q1":cluster.module2.out1_offset,
-        "q2":cluster.module2.out2_offset,
-        "q3":cluster.module2.out3_offset,
-        # "q4":cluster.module10.out0_offset
-    }
+
+Hcfg_171 = {
+    "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
+    "cluster0": {
+        "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
+        "ref": "internal",  # Use shared clock reference of the cluster
+        "instrument_type": "Cluster",
+        # ============ DRIVE ============#
+        "cluster0_module12": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q0:mw",
+                        "clock": "q0.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q1:mw",
+                        "clock": "q1.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
+        "cluster0_module14": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q2:mw",
+                        "clock": "q2.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q3:mw",
+                        "clock": "q3.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
+        "cluster0_module16": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q4:mw",
+                        "clock": "q4.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
+        # ============ FLUX ============#
+        "cluster0_module2": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
+            "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
+            "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
+        },
+        "cluster0_module4": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
+        },
+        # ============ READOUT ============#
+        "cluster0_module8": {
+            "instrument_type": "QRM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "input_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 5.95e9,       # *** Should be set as a parameter later on
+                "portclock_configs": [
+                    {
+                        "port": "q0:res",
+                        "clock": "q0.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q1:res",
+                        "clock": "q1.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q2:res",
+                        "clock": "q2.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q3:res",
+                        "clock": "q3.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q4:res",
+                        "clock": "q4.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                ],
+            },
+        },
+    },
+}
+
+def get_FluxController(cluster, dr:str):
+    if dr.lower() == 'dr3':
+        Fctrl: callable = {
+            "q0":cluster.module2.out0_offset,
+            "q1":cluster.module2.out1_offset,
+            "q2":cluster.module2.out2_offset,
+            "q3":cluster.module2.out3_offset,
+            # "q4":cluster.module10.out0_offset
+        }
+    else:
+        Fctrl: callable = {
+            "q0":cluster.module2.out0_offset,
+            "q1":cluster.module2.out1_offset,
+            "q2":cluster.module2.out2_offset,
+            "q3":cluster.module2.out3_offset,
+            "q4":cluster.module4.out0_offset
+        }
     return Fctrl
 
+# Cluster registerations
+clusters_online = {
+    "192.168.1.170":{"loc":'DR3',"ser":'00015_2247_002'},
+    "192.168.1.171":{"loc":'DR2',"ser":'00015_2406_014'}
+}
+
+# Hcfg map
+hcfg_map = {"170":Hcfg_170,"171":Hcfg_171}
 
 if __name__ == '__main__':
     meas_datadir = '.data'
