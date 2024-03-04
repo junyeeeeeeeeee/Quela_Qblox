@@ -4,6 +4,8 @@ from support import *
 
 from numpy import arange, linspace, logspace
 from quantify_scheduler.backends.graph_compilation import SerialCompiler
+### Note: The qubits are labeled with the physical position on the chip from the left, and starts from 0.
+
 #%%
 
 
@@ -116,7 +118,7 @@ Hcfg_170 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 5.95e9,       # *** Should be set as a parameter later on
+                "lo_freq": 5.48e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
@@ -261,7 +263,7 @@ Hcfg_171 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 5.95e9,       # *** Should be set as a parameter later on
+                "lo_freq": 5.48e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
@@ -299,8 +301,8 @@ Hcfg_171 = {
     },
 }
 
-def get_FluxController(cluster, dr:str):
-    if dr.lower() == 'dr3':
+def get_FluxController(cluster, ip_label:str):
+    if ip_label == '170':
         Fctrl: callable = {
             "q0":cluster.module2.out0_offset,
             "q1":cluster.module2.out1_offset,
@@ -308,7 +310,7 @@ def get_FluxController(cluster, dr:str):
             "q3":cluster.module2.out3_offset,
             # "q4":cluster.module10.out0_offset
         }
-    else:
+    elif ip_label == '171':
         Fctrl: callable = {
             "q0":cluster.module2.out0_offset,
             "q1":cluster.module2.out1_offset,
@@ -316,6 +318,8 @@ def get_FluxController(cluster, dr:str):
             "q3":cluster.module2.out3_offset,
             "q4":cluster.module4.out0_offset
         }
+    else:
+        raise KeyError ("please input ip label like '170' or '171'!")
     return Fctrl
 
 # Cluster registerations

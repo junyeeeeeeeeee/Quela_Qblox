@@ -685,7 +685,7 @@ def leave_LogMSG(MSG:str,sumInfo_path:str):
 
 
 # set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=40,xy_out_att:int=20):
     """
     Attenuation setting includes XY and RO. We don't change it once we set it.
     """

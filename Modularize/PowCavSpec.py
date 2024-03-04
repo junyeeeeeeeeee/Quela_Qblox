@@ -80,6 +80,8 @@ def PowerDep_spec(quantum_device:QuantumDevice,meas_ctrl:MeasurementControl,ro_s
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
+    
+    qubit_info.clock_freqs.readout(ro_f_center)
     return analysis_result
 
 if __name__ == "__main__":
@@ -87,9 +89,9 @@ if __name__ == "__main__":
     from Modularize.Experiment_setup import get_FluxController
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
-    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    Fctrl = get_FluxController(cluster)
+    QD_path = 'Modularize/QD_backup/2024_3_4/DR1#170_SumInfo.pkl'
+    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
+    Fctrl = get_FluxController(cluster,ip_label=QDmanager.Identity.split("#")[-1])
     # default the offset in circuit
     reset_offset(Fctrl)
     # Set system attenuation
