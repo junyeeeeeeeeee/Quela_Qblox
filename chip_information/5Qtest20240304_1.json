@@ -75,9 +75,9 @@
             "oper": {
                 "readout": {
                     "amp": 0,
-                    "dura_time": 0,
+                    "dura_time": 2e-06,
                     "acq_delay": 0,
-                    "integ_time": 0,
+                    "integ_time": 2e-06,
                     "flux": 0,
                     "freq": 0
                 },
@@ -101,7 +101,7 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
@@ -172,9 +172,9 @@
             "oper": {
                 "readout": {
                     "amp": 0,
-                    "dura_time": 0,
+                    "dura_time": 2e-06,
                     "acq_delay": 0,
-                    "integ_time": 0,
+                    "integ_time": 2e-06,
                     "flux": 0,
                     "freq": 0
                 },
@@ -198,7 +198,7 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
@@ -269,9 +269,9 @@
             "oper": {
                 "readout": {
                     "amp": 0,
-                    "dura_time": 0,
+                    "dura_time": 2e-06,
                     "acq_delay": 0,
-                    "integ_time": 0,
+                    "integ_time": 2e-06,
                     "flux": 0,
                     "freq": 0
                 },
@@ -295,7 +295,7 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
@@ -366,9 +366,9 @@
             "oper": {
                 "readout": {
                     "amp": 0,
-                    "dura_time": 0,
+                    "dura_time": 2e-06,
                     "acq_delay": 0,
-                    "integ_time": 0,
+                    "integ_time": 2e-06,
                     "flux": 0,
                     "freq": 0
                 },
@@ -392,7 +392,7 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
@@ -463,9 +463,9 @@
             "oper": {
                 "readout": {
                     "amp": 0,
-                    "dura_time": 0,
+                    "dura_time": 3e-07,
                     "acq_delay": 0,
-                    "integ_time": 0,
+                    "integ_time": 1e-06,
                     "flux": 0,
                     "freq": 0
                 },
@@ -489,7 +489,7 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.0002
                 }
             }
         }
