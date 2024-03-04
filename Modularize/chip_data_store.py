@@ -6,6 +6,7 @@ import time
 import Modularize.support as sup
 import tkinter as tk
 import numpy as np
+import UIwindow as UW
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
 
@@ -26,11 +27,11 @@ class Chip_file():
         '''
         # 設定 chip 名稱
         self.name = ""
-        setname = setfile = tk.Tk()
-        setname.title('Name window')
+        setfile = tk.Tk()
+        setfile.title('Name window')
         def create_name():
             self.name = chip_name_en.get()
-            setname.destroy()
+            setfile.destroy()
         chip_name_la = tk.Label(setfile, text = "chip name")
         chip_name_la.pack()
         chip_name_en = tk.Entry(setfile, width=20, justify='center')
@@ -39,7 +40,7 @@ class Chip_file():
         check_button.pack()
         setfile.mainloop()
         if self.name == "":
-            raise ValueError("Please set name")
+            raise KeyError("Please set name")
         else:
             pass
 
@@ -83,6 +84,8 @@ class Chip_file():
                 xy_out_att = int(xy_out_att_en.get())
                 if ro_out_att > 60 or xy_out_att > 60:
                     raise ValueError("Attenuation is too high!")
+                elif chip_type == '' or ro_out_att == '' or xy_out_att == '':
+                    raise KeyError('You have to insert the variables!')
                 else:
                     self.create_chip_file(chip_type, ro_out_att, xy_out_att)
                     setfile.destroy()
@@ -176,14 +179,11 @@ class Chip_file():
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qi"] = result[qb].quantities_of_interest["Qi"].nominal_value
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qc"] = result[qb].quantities_of_interest["Qc"].nominal_value
         
-        with open(self.file_name, 'w') as up:
-            json.dump(self.__chip_dict, up, indent=4)
-        with open(self.file_today, 'w') as up:
-            json.dump(self.__chip_dict, up, indent=4) 
-        print("updated!")     
+        self.update_to_json()
          
     def update_to_json(self):
         with open(self.file_name, 'w') as up:
             json.dump(self.__chip_dict, up, indent=4)
         with open(self.file_today, 'w') as up:
             json.dump(self.__chip_dict, up, indent=4) 
+        print("Chip information is updated!")     

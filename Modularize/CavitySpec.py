@@ -82,11 +82,17 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Experiment_setup import get_FluxController
     from numpy import NaN
+    import Modularize.chip_data_store as cds
+    from Modularize.UIwindow import init_meas_window
     
+    # Variables
+    chip_info_restore = True
 
+    # Create or Load chip information
+    chip_info = cds.Chip_file()
+    
     # Reload the QuantumDevice or build up a new one
-    QD_path = ''
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr2',cluster_ip='171',mode='n')
+    QD_agent, cluster, meas_ctrl, ic, QD_path = init_meas_window()
     
     Fctrl = get_FluxController(cluster,dr=QD_agent.Identity.split("#")[0])
     # default the offset in circuit
@@ -106,6 +112,7 @@ if __name__ == "__main__":
         q4 = 5.905e9,
     )
     
+    CS_results = {}
     error_log = []
     for qb in ro_bare:
         print(qb)
@@ -119,8 +126,8 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)
-        if CS_results != {}:
+        CS_results.update(Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6))
+        if CS_results[qb] != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:
@@ -132,12 +139,8 @@ if __name__ == "__main__":
     QD_agent.QD_keeper()
     print('CavitySpectro done!')
     
-    restore = False
-    chip_name = '5Qtest7'
-    chip_type = "5Q"
-    if restore == True:
-        import chip_data_store as cds
-        chip_info = cds.Chip_file(chip_name, chip_type, QD_path, ro_out_att, xy_out_att)
+    if chip_info_restore == True:
+        chip_info.update_Cavity_spec_bare(result=CS_results)
         
     
     shut_down(cluster,Fctrl)

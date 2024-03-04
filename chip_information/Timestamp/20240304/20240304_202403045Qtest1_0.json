@@ -1,0 +1,498 @@
+{
+    "basic_information": {
+        "chip_name": "202403045Qtest1_0",
+        "chip_type": "5Q",
+        "chip_file": "D:\\HW\\\u91cf\u5b50\u5143\u4ef6\u5be6\u9a57\u5ba4\\Qblox\\Quela codes\\Quela_Qblox\\chip_information\\202403045Qtest1_0.json",
+        "ro_att": 20,
+        "xy_att": 10,
+        "create_time": "20240304"
+    },
+    "1Q_information": {
+        "q0": {
+            "char": {
+                "bare": {
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0
+                },
+                "zeroflux": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "Max": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "min": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "idle1": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                }
+            },
+            "oper": {
+                "readout": {
+                    "amp": 0,
+                    "dura_time": 0,
+                    "acq_delay": 0,
+                    "integ_time": 0,
+                    "flux": 0,
+                    "freq": 0
+                },
+                "x_gate": {
+                    "waveform": {
+                        "gauss": {},
+                        "cos": {}
+                    },
+                    "amp": 0,
+                    "dura_time": 0,
+                    "AC_stark": 0,
+                    "freq": 0
+                },
+                "tune_away": {
+                    "q0_flux": 0,
+                    "q1_flux": 0,
+                    "q2_flux": 0,
+                    "q3_flux": 0,
+                    "q4_flux": 0
+                }
+            },
+            "init": {
+                "wait": {
+                    "time": 0
+                }
+            }
+        },
+        "q1": {
+            "char": {
+                "bare": {
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0
+                },
+                "zeroflux": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "Max": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "min": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "idle1": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                }
+            },
+            "oper": {
+                "readout": {
+                    "amp": 0,
+                    "dura_time": 0,
+                    "acq_delay": 0,
+                    "integ_time": 0,
+                    "flux": 0,
+                    "freq": 0
+                },
+                "x_gate": {
+                    "waveform": {
+                        "gauss": {},
+                        "cos": {}
+                    },
+                    "amp": 0,
+                    "dura_time": 0,
+                    "AC_stark": 0,
+                    "freq": 0
+                },
+                "tune_away": {
+                    "q0_flux": 0,
+                    "q1_flux": 0,
+                    "q2_flux": 0,
+                    "q3_flux": 0,
+                    "q4_flux": 0
+                }
+            },
+            "init": {
+                "wait": {
+                    "time": 0
+                }
+            }
+        },
+        "q2": {
+            "char": {
+                "bare": {
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0
+                },
+                "zeroflux": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "Max": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "min": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "idle1": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                }
+            },
+            "oper": {
+                "readout": {
+                    "amp": 0,
+                    "dura_time": 0,
+                    "acq_delay": 0,
+                    "integ_time": 0,
+                    "flux": 0,
+                    "freq": 0
+                },
+                "x_gate": {
+                    "waveform": {
+                        "gauss": {},
+                        "cos": {}
+                    },
+                    "amp": 0,
+                    "dura_time": 0,
+                    "AC_stark": 0,
+                    "freq": 0
+                },
+                "tune_away": {
+                    "q0_flux": 0,
+                    "q1_flux": 0,
+                    "q2_flux": 0,
+                    "q3_flux": 0,
+                    "q4_flux": 0
+                }
+            },
+            "init": {
+                "wait": {
+                    "time": 0
+                }
+            }
+        },
+        "q3": {
+            "char": {
+                "bare": {
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0
+                },
+                "zeroflux": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "Max": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "min": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "idle1": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                }
+            },
+            "oper": {
+                "readout": {
+                    "amp": 0,
+                    "dura_time": 0,
+                    "acq_delay": 0,
+                    "integ_time": 0,
+                    "flux": 0,
+                    "freq": 0
+                },
+                "x_gate": {
+                    "waveform": {
+                        "gauss": {},
+                        "cos": {}
+                    },
+                    "amp": 0,
+                    "dura_time": 0,
+                    "AC_stark": 0,
+                    "freq": 0
+                },
+                "tune_away": {
+                    "q0_flux": 0,
+                    "q1_flux": 0,
+                    "q2_flux": 0,
+                    "q3_flux": 0,
+                    "q4_flux": 0
+                }
+            },
+            "init": {
+                "wait": {
+                    "time": 0
+                }
+            }
+        },
+        "q4": {
+            "char": {
+                "bare": {
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0
+                },
+                "zeroflux": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "Max": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "min": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                },
+                "idle1": {
+                    "res": {
+                        "dress_freq": 0,
+                        "Qi": 0,
+                        "Qc": 0
+                    },
+                    "qubit": {
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
+                    },
+                    "flux": 0,
+                    "g": 0
+                }
+            },
+            "oper": {
+                "readout": {
+                    "amp": 0,
+                    "dura_time": 0,
+                    "acq_delay": 0,
+                    "integ_time": 0,
+                    "flux": 0,
+                    "freq": 0
+                },
+                "x_gate": {
+                    "waveform": {
+                        "gauss": {},
+                        "cos": {}
+                    },
+                    "amp": 0,
+                    "dura_time": 0,
+                    "AC_stark": 0,
+                    "freq": 0
+                },
+                "tune_away": {
+                    "q0_flux": 0,
+                    "q1_flux": 0,
+                    "q2_flux": 0,
+                    "q3_flux": 0,
+                    "q4_flux": 0
+                }
+            },
+            "init": {
+                "wait": {
+                    "time": 0
+                }
+            }
+        }
+    },
+    "2Q_information": {}
+}

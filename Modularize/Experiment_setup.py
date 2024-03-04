@@ -327,6 +327,8 @@ clusters_online = {
 # Hcfg map
 hcfg_map = {"170":Hcfg_170,"171":Hcfg_171}
 
+
+'''
 if __name__ == '__main__':
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
@@ -496,5 +498,5 @@ if __name__ == '__main__':
 
     shut_down(cluster,flux_settable_map)
 
-
+'''
 

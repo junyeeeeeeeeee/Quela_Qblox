@@ -1,0 +1,147 @@
+{
+    "fit_success": false,
+    "Qi": {
+        "__dtype__": "UFloat",
+        "nominal_value": 30066.02874670111,
+        "std_dev": NaN
+    },
+    "Qe": {
+        "__dtype__": "UFloat",
+        "nominal_value": 7687.85325885931,
+        "std_dev": NaN
+    },
+    "Ql": {
+        "__dtype__": "UFloat",
+        "nominal_value": 6348.375323207297,
+        "std_dev": NaN
+    },
+    "Qc": {
+        "__dtype__": "UFloat",
+        "nominal_value": 8047.61042563045,
+        "std_dev": NaN
+    },
+    "fr": {
+        "__dtype__": "UFloat",
+        "nominal_value": 5721021628.036293,
+        "std_dev": NaN
+    },
+    "fit_msg": "Warning: fit failed. lmfit was not\nable to fit the data.",
+    "fit_result": {
+        "hanger_func_complex_SI": {
+            "success": false,
+            "message": "Tolerance seems to be too small. Could not estimate error-bars.",
+            "params": {
+                "fr": {
+                    "name": "fr",
+                    "user_data": null,
+                    "init_value": 5721155778.894472,
+                    "min": 5710000000.0,
+                    "max": 5730000000.0,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 5721021628.036293
+                },
+                "Ql": {
+                    "name": "Ql",
+                    "user_data": null,
+                    "init_value": 1288.8479629553315,
+                    "min": 28.605778894472362,
+                    "max": 56925.50000003529,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 6348.375323207297
+                },
+                "Qe": {
+                    "name": "Qe",
+                    "user_data": null,
+                    "init_value": 1263.3262211146318,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 7687.85325885931
+                },
+                "A": {
+                    "name": "A",
+                    "user_data": null,
+                    "init_value": 0.15755596824766627,
+                    "min": 0,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 0.16333873976059388
+                },
+                "theta": {
+                    "name": "theta",
+                    "user_data": null,
+                    "init_value": 0,
+                    "min": -1.5707963267948966,
+                    "max": 1.5707963267948966,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 0.3001356303204217
+                },
+                "phi_v": {
+                    "name": "phi_v",
+                    "user_data": null,
+                    "init_value": -1.1422681135392228e-07,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": -9.932699069099989e-08
+                },
+                "phi_0": {
+                    "name": "phi_0",
+                    "user_data": null,
+                    "init_value": 652.1362269276171,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 567.0809356529552
+                },
+                "alpha": {
+                    "name": "alpha",
+                    "user_data": null,
+                    "init_value": 0,
+                    "min": -1,
+                    "max": 1,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 0.9998390937061825
+                },
+                "Qi": {
+                    "name": "Qi",
+                    "user_data": null,
+                    "init_value": -63797.97416628859,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 30066.02874670111
+                },
+                "Qc": {
+                    "name": "Qc",
+                    "user_data": null,
+                    "init_value": 1263.3262211146318,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": null,
+                    "correl": null,
+                    "value": 8047.61042563045
+                }
+            }
+        }
+    }
+}
