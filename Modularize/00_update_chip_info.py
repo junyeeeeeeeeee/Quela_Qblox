@@ -7,7 +7,7 @@ print(os.getcwd())
 import Modularize.chip_data_store as cds
 
 # ============= manually set Parameters =================
-QD_path = "D:\HW\量子元件實驗室\Qblox\Quela codes\Quela_Qblox\Modularize\QD_backup\\2024_2_27\SumInfo.pkl"
+QD_path = ''
 # ======================put in MeasFlow====================
 
 chip_file = cds.Chip_file()

@@ -73,7 +73,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         pulse_preview(quantum_device,sche_func,spec_sched_kwargs)
         
 
-        show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
+        show_args(exp_kwargs,title="One_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
     return analysis_result
@@ -94,10 +94,10 @@ if __name__ == "__main__":
     # Reload the QuantumDevice or build up a new one
     QD_path, dr, ip, mode, vpn = UW.init_meas_window()
     QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,
-                                                dr_loc=dr,
-                                                cluster_ip=ip,
-                                                mode=mode
-                                                vpn=vpn)
+                                                 dr_loc=dr,
+                                                 cluster_ip=ip,
+                                                 mode=mode,
+                                                 vpn=vpn)
     
     Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit

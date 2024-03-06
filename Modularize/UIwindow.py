@@ -5,11 +5,11 @@ import tkinter as tk
 from tkinter import ttk
 
 # Initialize measurement window
-def init_meas_window() -> tuple[str, str, str, str]:
+def init_meas_window() -> tuple[str, str, str, str, bool]:
     
     root = tk.Tk()
     root.title('Init meas window')
-    root.geometry('200x200')
+    root.geometry('200x300')
     def init():
         global QD_path, dr, ip, mode, vpn
         QD_path = QD_path_en.get()
@@ -66,6 +66,7 @@ def init_meas_window() -> tuple[str, str, str, str]:
 def chip_name_window() -> str:
     setfile = tk.Tk()
     setfile.title('Chip name window')
+    setfile.geometry('200x200')
     def create_name():
         global chip_name
         chip_name = chip_name_en.get()
@@ -84,6 +85,7 @@ def chip_name_window() -> str:
 def Basic_information_window() -> tuple[str, int, int]:
     setfile = tk.Tk()
     setfile.title('Basic information window')
+    setfile.geometry('200x200')
     def create_file():
         global chip_type, ro_out_att, xy_out_att
         chip_type = chip_type_en.get()
