@@ -79,8 +79,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Experiment_setup import get_FluxController
+    from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import NaN
     import Modularize.chip_data_store as cds
     import Modularize.UIwindow as UW
@@ -93,33 +92,31 @@ if __name__ == "__main__":
     
     # Reload the QuantumDevice or build up a new one
     QD_path, dr, ip, mode, vpn = UW.init_meas_window()
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,
-                                                 dr_loc=dr,
-                                                 cluster_ip=ip,
-                                                 mode=mode,
-                                                 vpn=vpn)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
+                                                        dr_loc=dr,
+                                                        cluster_ip=ip,
+                                                        mode=mode
+                                                        vpn=vpn)
     
-    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
-    # default the offset in circuit
-    reset_offset(Fctrl)
     # Set the system attenuations
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
     
-    # guess
+    # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
+    # guess [5.26014 5.35968263 5.44950299 5.52734731 5.63612974] @ DR1 Nb
     ro_bare=dict(
-        q0 = 5.258e9,
-        q1 = 5.35e9,
-        q2 = 5.449e9,
-        q3 = 5.527e9,
-        q4 = 5.636e9,
+        q0 = 5.26014e9,
+        q2 = 5.35968e9,
+        q4 = 5.4495e9,
+        q1 = 5.5273e9,
+        q3 = 5.6361e9,
     )
     
     CS_results = {}
     error_log = []
-    for qb in ro_bare:
+    for qb in Fctrl:
         print(qb)
         qubit = QD_agent.quantum_device.get_element(qb)
         if QD_path == '':
@@ -131,8 +128,8 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results.update(Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6))
-        if CS_results[qb] != {}:
+        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)
+        if CS_results != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
         else:

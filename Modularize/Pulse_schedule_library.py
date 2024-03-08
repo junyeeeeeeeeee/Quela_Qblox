@@ -259,9 +259,9 @@ def Digital_down_convert(IF_Idata:np.ndarray,IF_Qdata:np.ndarray,IF:float,time_a
     
 
 #%% pulse library
-def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu):
+def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu, ref_point:str="start"):
     delay_c= -Du-freeDu
-    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
 
 def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
     if Du!=0:
@@ -411,7 +411,8 @@ def Two_tone_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
-    repetitions:int=1,    
+    repetitions:int=1,   
+    ref_pt:str='end' 
 ) -> Schedule:
     sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -420,7 +421,7 @@ def Two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0, ref_point=ref_pt)
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched
@@ -882,13 +883,15 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
     fig.tight_layout()
     plt.show()
     
-def hist_plot(q:str,data:dict,title:str):
+def hist_plot(q:str,data:dict,title:str, save_path:str=''):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_xlabel(title)
     ax.set_ylabel('Counts')
     fig.tight_layout()
+    if save_path != '':
+        fig.savefig(save_path)
     
 def Z_bias_error_bar_plot(q:str,data:dict,title:str):
     times, Z_bias= data['plot_parameters'][0],data['plot_parameters'][1]
@@ -1147,7 +1150,37 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     plot_textbox(ax,text_msg)
     fig.tight_layout()
     plt.show()
-    
+
+from numpy import array, max, mean, min
+def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False):
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    text_msg = "Fit results\n"
+    title= 'Two tone spectroscopy'
+    x_label= 'Frequency'+' [GHz]'
+    y_label= 'Contrast'+' [mV]'
+
+    x= results.coords['f']*1e-9
+    x_fit= results.coords['para_fit']*1e-9
+
+    text_msg += r"$f_{01}= %.4f $"%(results.attrs['f01_fit']*1e-9) +' GHz\n'
+    text_msg += r"$BW= %.2f $"%(results.attrs['bandwidth']*1e-6) +' MHz\n'
+    ax.plot(x,results.data_vars['data']*1000,'-', color="red",label=r"$data$", alpha=0.75, ms=4)
+    cond_1 = max(array(results.data_vars['fitting'])) < max(results.data_vars['data'])+0.5*(max(results.data_vars['data']) - mean(array(results.data_vars['data'])))
+    cond_2 = min(array(results.data_vars['fitting'])) > min(results.data_vars['data'])-0.5*(mean(results.data_vars['data']) - min(array(results.data_vars['data'])))
+    if cond_1 and cond_2:
+        ax.plot(x_fit,results.data_vars['fitting']*1000,'-', color="brown",label=r"$fit$", alpha=1, lw=1)   
+    if array(substrate_backgroung).shape[0] != 0 :
+        ax.plot(x,substrate_backgroung*1000,'-', color="blue",label=r"$background$", alpha=0.5, ms=4)
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    plt.legend()
+    if turn_on:
+        plt.show()
+    else:
+        plt.close()
 
 #%%    
 def set_LO_frequency(quantum_device:QuantumDevice,q:str,module_type:str,LO_frequency:float):

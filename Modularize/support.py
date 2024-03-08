@@ -1,4 +1,5 @@
 from quantify_scheduler.json_utils import SchedulerJSONDecoder
+from Experiment_setup import get_FluxController
 from typing import Tuple
 import warnings
 from pathlib import Path
@@ -318,7 +319,7 @@ class QDmanager():
 
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -336,6 +337,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
+        cluster_ip = get_ip_specifier(QuantumDevice_path)
         cfg, pth = {}, QuantumDevice_path 
     else:
         raise KeyError("The given mode can not be recognized!")
@@ -345,10 +347,16 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         # connect, ip = connect_clusters() ## Single cluster online
         # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
         ip, ser = connect_clusters_withinMulti(cluster_ip)
-        cluster = Cluster(name = "cluster0", identifier = ip)
+        cluster = Cluster(name = f"cluster{cluster_ip}", identifier = ip)
     else:
-        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-        ip = "192.168.1.171"
+        if cluster_ip == '170':
+            cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+            ip = "192.168.1.171"
+        elif cluster_ip == '171':
+            cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
+            ip = "192.168.1.171"
+        else:
+            raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
     
     Qmanager = QDmanager(pth)
     if pth == '':
@@ -358,8 +366,13 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         Qmanager.QD_loader()
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
-    
-    return Qmanager, cluster, meas_ctrl, ic
+    bias_controller = get_FluxController(cluster,cluster_ip)
+    reset_offset(bias_controller)
+    return Qmanager, cluster, meas_ctrl, ic, bias_controller
+
+def get_ip_specifier(QD_path:str):
+    specifier = QD_path.split("#")[-1].split("_")[0]
+    return specifier 
 
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
@@ -685,7 +698,7 @@ def leave_LogMSG(MSG:str,sumInfo_path:str):
 
 
 # set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=40,xy_out_att:int=20):
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
     """
     Attenuation setting includes XY and RO. We don't change it once we set it.
     """
