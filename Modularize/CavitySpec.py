@@ -77,17 +77,13 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Experiment_setup import get_FluxController
+    from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import NaN
     
 
     # Reload the QuantumDevice or build up a new one
     QD_path = ''
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,dr_loc='dr1',cluster_ip='170',mode='n')
-    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
-    # default the offset in circuit
-    reset_offset(Fctrl)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,dr_loc='dr1',cluster_ip='171',mode='n')
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
     for i in range(6):

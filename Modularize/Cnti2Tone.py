@@ -92,14 +92,11 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Modularize.Pulse_schedule_library import Fit_analysis_plot
-    from Modularize.Experiment_setup import get_FluxController
     from numpy import arange
 
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
-    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
-    reset_offset(Fctrl)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=30)
     # for i in range(6):

@@ -61,9 +61,7 @@ if __name__ == "__main__":
 
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
-    Fctrl = get_FluxController(cluster,QD_agent.Identity.split("#")[-1])
-    reset_offset(Fctrl)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
     for i in range(6):

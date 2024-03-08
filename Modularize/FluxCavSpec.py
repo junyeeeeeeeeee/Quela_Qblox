@@ -81,15 +81,12 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     return analysis_result
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Modularize.Experiment_setup import get_FluxController
+    from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import pi
+    
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
-    Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
-    # default the offset in circuit
-    reset_offset(Fctrl)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
     for i in range(6):
