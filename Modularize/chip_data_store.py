@@ -4,8 +4,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import json
 import time
 import Modularize.support as sup
-import tkinter as tk
-import numpy as np
 import UIwindow as UW
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
@@ -136,4 +134,7 @@ class Chip_file():
             json.dump(self.__chip_dict, up, indent=4)
         with open(self.file_today, 'w') as up:
             json.dump(self.__chip_dict, up, indent=4) 
-        print("Chip information is updated!")     
+        print("Chip information is updated!")
+        print(f"Chip information location: '{self.file_path}'")
+        data_path = os.getcwd()+'\\'+time.strftime('%Y%m%d',time.localtime(time.time()))
+        print(f"Data location: '{data_path}'")
