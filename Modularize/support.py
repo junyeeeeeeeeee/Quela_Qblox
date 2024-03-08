@@ -1,5 +1,4 @@
 from quantify_scheduler.json_utils import SchedulerJSONDecoder
-from Experiment_setup import get_FluxController
 from typing import Tuple
 import warnings
 from pathlib import Path

@@ -95,7 +95,7 @@ if __name__ == "__main__":
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
-                                                        mode=mode
+                                                        mode=mode,
                                                         vpn=vpn)
     
     # Set the system attenuations
