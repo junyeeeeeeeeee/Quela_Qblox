@@ -4,8 +4,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import json
 import time
 import Modularize.support as sup
-import tkinter as tk
-import numpy as np
 import UIwindow as UW
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
