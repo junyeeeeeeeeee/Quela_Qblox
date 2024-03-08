@@ -1,3 +1,4 @@
+from xarray import Dataset
 from quantify_scheduler.json_utils import SchedulerJSONDecoder
 from Experiment_setup import get_FluxController
 from typing import Tuple
@@ -410,52 +411,53 @@ def configure_measurement_control_loop(
 
     return (meas_ctrl, ic)
 
+def save_raw_data(QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS'):
+    from Modularize.path_book import meas_raw_dir
+    import os
+    exp_timeLabel = get_time_now()
+    raw_folder = build_folder_today(meas_raw_dir)
+    dr_loc = QD_agent.Identity.split("#")[0]
+    if exp_type.lower() == 'cs':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'pd':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'fd':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'ss':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == '2tone':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'powerrabi':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'timerabi':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 'ramsey':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 't1':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc"))
+    elif exp_type.lower() == 't2':
+        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc"))
+    else:
+        raise KeyError("Wrong experience type!")
+    
+def save_histo_pic(QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1"):
+    from Modularize.path_book import meas_raw_dir
+    from Pulse_schedule_library import hist_plot
+    import os
+    exp_timeLabel = get_time_now()
+    raw_folder = build_folder_today(meas_raw_dir)
+    dr_loc = QD_agent.Identity.split("#")[0]
+    if mode.lower() =="t1" :
+        fig_path = os.path.join(raw_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
+        hist_plot(qb,hist_dict ,title=r"$T_{1}\  (\mu$s)",save_path=fig_path)
+    elif mode.lower() =="t2" :
+        fig_path = os.path.join(raw_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+        hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path)
+    else:
+        raise KeyError("mode should be 'T1' or 'T2'!")
+    
 
-def two_tone_spec_sched_nco(
-    qubit_name: str,
-    spec_pulse_amp: float,
-    spec_pulse_duration: float,
-    spec_pulse_port: str,
-    spec_pulse_clock: str,
-    spec_pulse_frequencies: np.ndarray,
-    repetitions: int = 1,
-) -> Schedule:
-    """
-    Generate a batched schedule for performing fast two-tone spectroscopy using the
-    `SetClockFrequency` operation for doing an NCO sweep.
 
-    Parameters
-    ----------
-    spec_pulse_amp
-        Amplitude of the spectroscopy pulse in Volt.
-    spec_pulse_duration
-        Duration of the spectroscopy pulse in seconds.
-    spec_pulse_port
-        Location on the device where the spectroscopy pulse should be applied.
-    spec_pulse_clock
-        Reference clock used to track the spectroscopy frequency.
-    spec_pulse_frequencies
-        Sample frequencies for the spectroscopy pulse in Hertz.
-    repetitions
-        The amount of times the Schedule will be repeated.
-    """
-    sched = Schedule("two-tone", repetitions)
-    sched.add_resource(ClockResource(name=spec_pulse_clock, freq=spec_pulse_frequencies.flat[0]))
-
-    for acq_idx, spec_pulse_freq in enumerate(spec_pulse_frequencies):
-        sched.add(Reset(qubit_name))
-        sched.add(SetClockFrequency(clock=spec_pulse_clock, clock_freq_new=spec_pulse_freq))
-        sched.add(
-            SquarePulse(
-                duration=spec_pulse_duration,
-                amp=spec_pulse_amp,
-                port=spec_pulse_port,
-                clock=spec_pulse_clock,
-            )
-        )
-        sched.add(Measure(qubit_name, acq_index=acq_idx))
-
-    return sched
 
 # close all instruments
 def shut_down(cluster:Cluster,flux_map:dict):
@@ -705,3 +707,53 @@ def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20
     # atte. setting
     set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
     set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
+
+
+#TOO_OLD
+'''
+def two_tone_spec_sched_nco(
+    qubit_name: str,
+    spec_pulse_amp: float,
+    spec_pulse_duration: float,
+    spec_pulse_port: str,
+    spec_pulse_clock: str,
+    spec_pulse_frequencies: np.ndarray,
+    repetitions: int = 1,
+) -> Schedule:
+    """
+    Generate a batched schedule for performing fast two-tone spectroscopy using the
+    `SetClockFrequency` operation for doing an NCO sweep.
+
+    Parameters
+    ----------
+    spec_pulse_amp
+        Amplitude of the spectroscopy pulse in Volt.
+    spec_pulse_duration
+        Duration of the spectroscopy pulse in seconds.
+    spec_pulse_port
+        Location on the device where the spectroscopy pulse should be applied.
+    spec_pulse_clock
+        Reference clock used to track the spectroscopy frequency.
+    spec_pulse_frequencies
+        Sample frequencies for the spectroscopy pulse in Hertz.
+    repetitions
+        The amount of times the Schedule will be repeated.
+    """
+    sched = Schedule("two-tone", repetitions)
+    sched.add_resource(ClockResource(name=spec_pulse_clock, freq=spec_pulse_frequencies.flat[0]))
+
+    for acq_idx, spec_pulse_freq in enumerate(spec_pulse_frequencies):
+        sched.add(Reset(qubit_name))
+        sched.add(SetClockFrequency(clock=spec_pulse_clock, clock_freq_new=spec_pulse_freq))
+        sched.add(
+            SquarePulse(
+                duration=spec_pulse_duration,
+                amp=spec_pulse_amp,
+                port=spec_pulse_port,
+                clock=spec_pulse_clock,
+            )
+        )
+        sched.add(Measure(qubit_name, acq_index=acq_idx))
+
+    return sched
+'''
