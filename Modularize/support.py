@@ -348,7 +348,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         cluster = Cluster(name = "cluster0", identifier = ip)
     else:
         cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-        ip = "192.168.1.171"
+        ip = f"192.168.1.{cluster_ip}"
     
     Qmanager = QDmanager(pth)
     if pth == '':

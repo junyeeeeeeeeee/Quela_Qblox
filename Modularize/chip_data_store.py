@@ -136,4 +136,7 @@ class Chip_file():
             json.dump(self.__chip_dict, up, indent=4)
         with open(self.file_today, 'w') as up:
             json.dump(self.__chip_dict, up, indent=4) 
-        print("Chip information is updated!")     
+        print("Chip information is updated!")
+        print(f"Chip information location: '{self.file_path}'")
+        data_path = os.getcwd()+'\\'+time.strftime('%Y%m%d',time.localtime(time.time()))
+        print(f"Data location: '{data_path}'")

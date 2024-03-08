@@ -44,7 +44,7 @@ def init_meas_window() -> tuple[str, str, str, str, bool]:
                           values=['new','load'])
     mode_box.pack()
     
-    vpn_la = tk.Label(root, text = 'mode')   
+    vpn_la = tk.Label(root, text = 'vpn')   
     vpn_la.pack()
     vpn_box = ttk.Combobox(root,
                           width=15,
