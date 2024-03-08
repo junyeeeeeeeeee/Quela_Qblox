@@ -26,11 +26,11 @@ Hcfg_170 = {
                 "output_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 4e9,
+                "lo_freq": 3e9,
                 "portclock_configs": [
                     {
-                        "port": "q0:mw",
-                        "clock": "q0.01",
+                        "port": "q4:mw",
+                        "clock": "q4.01",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     }
@@ -40,7 +40,7 @@ Hcfg_170 = {
                 "output_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 4e9,
+                "lo_freq": 3e9,
                 "portclock_configs": [
                     {
                         "port": "q1:mw",
@@ -57,7 +57,7 @@ Hcfg_170 = {
                 "output_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 4e9,
+                "lo_freq": 3e9,
                 "portclock_configs": [
                     {
                         "port": "q2:mw",
@@ -71,7 +71,7 @@ Hcfg_170 = {
                 "output_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 4e9,
+                "lo_freq": 3e9,
                 "portclock_configs": [
                     {
                         "port": "q3:mw",
@@ -102,7 +102,7 @@ Hcfg_170 = {
         # ============ FLUX ============#
         "cluster0_module2": {
             "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
             "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
             "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
             "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
@@ -264,7 +264,7 @@ Hcfg_171 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 5.48e9,       # *** Should be set as a parameter later on
+                "lo_freq": 5.86e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
@@ -305,7 +305,7 @@ Hcfg_171 = {
 def get_FluxController(cluster, ip_label:str):
     if ip_label == '170':
         Fctrl: callable = {
-            "q0":cluster.module2.out0_offset,
+            "q4":cluster.module2.out0_offset,
             "q1":cluster.module2.out1_offset,
             "q2":cluster.module2.out2_offset,
             "q3":cluster.module2.out3_offset,

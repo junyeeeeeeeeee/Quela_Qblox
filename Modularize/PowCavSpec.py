@@ -91,29 +91,29 @@ if __name__ == "__main__":
     from Modularize.Experiment_setup import get_FluxController
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_4/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
     Fctrl = get_FluxController(cluster,ip_label=QD_agent.Identity.split("#")[-1])
     # default the offset in circuit
     reset_offset(Fctrl)
+    # Set system attenuation
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
     
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     error_log = []
-    for qb in ['q0']:
-        for pow in [40 ,34, 30 , 24, 20, 14, 10]:
-            # Set system attenuation
-            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=pow)
-            print(qb)
-            PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb)
-            if PD_results == {}:
-                error_log.append(qb)
-            else:
-                # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
-                pass
-        
+    for qb in ["q4"]:
+        print(qb)
+        Fctrl[qb](QD_agent.Fluxmanager.get_sweetBiasFor(qb))
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=0.5e6)
+        if PD_results == {}:
+            error_log.append(qb)
+        else:
+            # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
+            pass
+        Fctrl[qb](0.0)
     if error_log != []:
         print(f"Power dependence error qubit: {error_log}")
     QD_agent.refresh_log('after PowerDep')

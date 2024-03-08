@@ -77,7 +77,7 @@ def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevic
     # store references
     quantum_device._device_elements = list()
 
-    for i in range(1,num_qubits + 1):
+    for i in range(num_qubits):
         qubit = BasicTransmonElement(f"q{i}")
         qubit.measure.acq_channel(i)
         quantum_device.add_element(qubit)

@@ -1,13 +1,14 @@
-from Modularize.support import QuantumDevice, get_time_now
+from Modularize.support import QDmanager
 from Modularize.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
 from quantify_scheduler.gettables import ScheduleGettable
 from utils.tutorial_utils import show_args
 
-def Single_shot_ref_spec(quantum_device:QuantumDevice,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
+def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
     
     sche_func = Qubit_SS_sche   
     analysis_result = {}
-    qubit_info = quantum_device.get_element(q)
+    qubit_info = QD_agent.quantum_device.get_element(q)
+    # qubit_info.clock_freqs.readout(5.7225e9)
     if want_state == 'g':
         XYL = 0
     else:
@@ -26,13 +27,13 @@ def Single_shot_ref_spec(quantum_device:QuantumDevice,shots:int=1000,run:bool=Tr
     
     if run:
         gettable = ScheduleGettable(
-            quantum_device,
+            QD_agent.quantum_device,
             schedule_function=sche_func, 
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
         )
-        quantum_device.cfg_sched_repetitions(shots)
+        QD_agent.quantum_device.cfg_sched_repetitions(shots)
         ss_ds= gettable.get()
         
         analysis_result[q] = Single_shot_ref_fit_analysis(ss_ds)
@@ -42,7 +43,7 @@ def Single_shot_ref_spec(quantum_device:QuantumDevice,shots:int=1000,run:bool=Tr
             show_args(Experi_info(q))
         
     else:
-        pulse_preview(quantum_device,sche_func,sched_kwargs)
+        pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
         
         show_args(exp_kwargs, title="Single_shot_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -59,30 +60,31 @@ if __name__ == "__main__":
     from Modularize.Experiment_setup import get_FluxController
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'
-    QDmanager, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,mode='l')
-    Fctrl = get_FluxController(cluster)
+    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
+    QD_agent, cluster, meas_ctrl, ic = init_meas(QuantumDevice_path=QD_path,cluster_ip='170',mode='l')
+    Fctrl = get_FluxController(cluster,QD_agent.Identity.split("#")[-1])
     reset_offset(Fctrl)
     # Set system attenuation
-    init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
+    # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    for qb in Fctrl:
-        Fctrl[qb](QDmanager.Fluxmanager.get_sweetBiasFor(target_q=qb))
-        analysis_result = Single_shot_ref_spec(QDmanager.quantum_device,q=qb,want_state='g')
+    for qb in ["q4"]:
+        print(QD_agent.quantum_device.get_element(qb).clock_freqs.readout())
+        Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)))
+        analysis_result = Single_shot_ref_spec(QD_agent,q=qb,want_state='g')
         try :
             I_ref, Q_ref= analysis_result[qb]['fit_pack'][0],analysis_result[qb]['fit_pack'][1]
-            QDmanager.memo_refIQ({str(qb):[I_ref,Q_ref]})
+            QD_agent.memo_refIQ({str(qb):[I_ref,Q_ref]})
             Single_shot_fit_plot(analysis_result[qb])
         except:
             shut_down(cluster,Fctrl)
             raise ValueError ("Analysis goes wrong!")
         Fctrl[qb](0.0)
         
-    QDmanager.refresh_log("After IQ ref checking!")
-    QDmanager.QD_keeper()
+    QD_agent.refresh_log("After IQ ref checking!")
+    QD_agent.QD_keeper()
     print('IQ ref checking done!')
     shut_down(cluster,Fctrl)
 

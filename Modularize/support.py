@@ -347,8 +347,14 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         ip, ser = connect_clusters_withinMulti(cluster_ip)
         cluster = Cluster(name = "cluster0", identifier = ip)
     else:
-        cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-        ip = "192.168.1.170"
+        if cluster_ip == '170':
+            cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+            ip = "192.168.1.170"
+        elif cluster_ip == '171':
+            cluster = Cluster(name = "cluster0",identifier = f"qum.phys.sinica.edu.tw", port=5171)
+            ip = "192.168.1.171"
+        else:
+            raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
     
     Qmanager = QDmanager(pth)
     if pth == '':
@@ -685,7 +691,7 @@ def leave_LogMSG(MSG:str,sumInfo_path:str):
 
 
 # set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=40,xy_out_att:int=20):
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
     """
     Attenuation setting includes XY and RO. We don't change it once we set it.
     """
