@@ -2,7 +2,7 @@
 from numpy import linspace, array
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, save_raw_data
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Pulse_schedule_library import T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis
@@ -46,7 +46,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         for i in range(times):
             T1_ds = meas_ctrl.run('T1')
             # Save the raw data into netCDF
-            save_raw_data(QD_agent,T1_ds,histo_label=i,qb=q,exp_type='T1')
+            Data_manager.save_raw_data(QD_agent,T1_ds,histo_label=i,qb=q,exp_type='T1')
             I,Q= dataset_to_array(dataset=T1_ds,dims=1)
             data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
             data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
@@ -74,7 +74,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, save_histo_pic, shut_down, reset_offset
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Pulse_schedule_library import Fit_analysis_plot
     from numpy import mean
     import os
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                 qubit = QD_agent.quantum_device.get_element(qb)
                 Fit_analysis_plot(T1_results[qb][linecut],P_rescale=False,Dis=None)
                 # set the histo save path
-                save_histo_pic(QD_agent,T1_hist,qb,mode="t1")
+                Data_manager.save_histo_pic(QD_agent,T1_hist,qb,mode="t1")
                 print(f'{qb} average_T1= {mean(array(T1_hist[qb]))} us')
     
     print('T1 done!')

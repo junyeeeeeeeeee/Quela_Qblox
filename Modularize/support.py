@@ -1,50 +1,22 @@
+
+import os, datetime, pickle
 from xarray import Dataset
-from quantify_scheduler.json_utils import SchedulerJSONDecoder
 from Experiment_setup import get_FluxController
 from typing import Tuple
-import warnings
-from pathlib import Path
-from typing import List, Union, Literal
-import matplotlib.pyplot as plt
 import ipywidgets as widgets
-import numpy as np
-from numpy.random import randint
-import quantify_core.data.handling as dh
+from numpy import ndarray, sin
 from IPython.display import display
-from qblox_instruments import Cluster, ClusterType, PlugAndPlay
+from qblox_instruments import Cluster, PlugAndPlay
 from qcodes import Instrument
-from qcodes.parameters import ManualParameter
-from quantify_core.analysis.single_qubit_timedomain import (
-    RabiAnalysis,
-    RamseyAnalysis,
-    T1Analysis,
-)
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.visualization.pyqt_plotmon import PlotMonitor_pyqt as PlotMonitor
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
-from quantify_scheduler.gettables import ScheduleGettable
 from quantify_scheduler.instrument_coordinator import InstrumentCoordinator
 from quantify_scheduler.instrument_coordinator.components.qblox import ClusterComponent
-from quantify_scheduler.operations.gate_library import Measure, Reset
-from quantify_scheduler.operations.pulse_library import SetClockFrequency, SquarePulse, DRAGPulse
-from quantify_scheduler.resources import ClockResource
-from quantify_scheduler.schedules import heterodyne_spec_sched_nco, rabi_sched, t1_sched
-from quantify_scheduler.schedules.timedomain_schedules import ramsey_sched
-from quantify_scheduler.schedules.schedule import Schedule
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis, QubitSpectroscopyAnalysis
-from quantify_core.analysis.base_analysis import Basic2DAnalysis
-from utils.tutorial_analysis_classes import (
-    QubitFluxSpectroscopyAnalysis,
-    ResonatorFluxSpectroscopyAnalysis,
-)
-from quantify_scheduler.operations.gate_library import X90, Measure, Reset, Rxy, X, Y
 from utils.tutorial_utils import (
     set_drive_attenuation,
     set_readout_attenuation,
-    show_args,
-    show_drive_args,
-    show_readout_args,
 )
 
 def quadratic(x,a,b,c):
@@ -56,7 +28,6 @@ class FluxBiasDict():
     """
     This class helps to memorize the flux bias. 
     """
-    from numpy import ndarray
     def __init__(self,qb_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
@@ -71,7 +42,7 @@ class FluxBiasDict():
         Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
         """
         def Sin(x,amp,w,phs,offset):
-            return float(amp)*np.sin(float(w)*x+float(phs))+float(offset)
+            return float(amp)*sin(float(w)*x+float(phs))+float(offset)
         return Sin(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
     
     def quadra_for_qub(self,target_q:str,bias_ary:ndarray):
@@ -252,7 +223,6 @@ class QDmanager():
         """
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
-        import pickle
         with open(self.path, 'rb') as inp:
             gift = pickle.load(inp)
         # string and int
@@ -278,10 +248,8 @@ class QDmanager():
         Save the merged dictionary to a json file with the given path. \n
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
-        import pickle, os, datetime
         if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
-            from Modularize.path_book import qdevice_backup_dir
-            qd_folder = build_folder_today(qdevice_backup_dir)
+            qd_folder = Data_manager.build_folder_today()
             self.path = os.path.join(qd_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is onlu for the hightlighs :)
@@ -317,6 +285,97 @@ class QDmanager():
 
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
+
+
+# Object to manage data and pictures store.
+class Data_manager:
+    
+    def __init__(self):
+        from Modularize.path_book import meas_raw_dir
+        from Modularize.path_book import qdevice_backup_dir
+        self.QD_back_dir = qdevice_backup_dir
+        self.raw_data_dir = meas_raw_dir
+
+    # generate time label for netCDF file name
+    def get_time_now(self)->str:
+        """
+        Since we save the Xarray into netCDF, we use the current time to encode the file name.\n
+        Ex: 19:23:34 return H19M23S34 
+        """
+        current_time = datetime.datetime.now()
+        return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
+
+    # build the folder for the data today
+    def build_folder_today(self,parent_path:str=''):
+        """
+        Build up and return the folder named by the current date in the parent path.\n
+        Ex. parent_path='D:/Examples/'
+        """ 
+        if parent_path == '':
+            parent_path = self.QD_back_dir
+
+        current_time = datetime.datetime.now()
+        folder = f"{current_time.year}_{current_time.month}_{current_time.day}"
+        new_folder = os.path.join(parent_path, folder) 
+        if not os.path.isdir(new_folder):
+            os.mkdir(new_folder) 
+            print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} had been created!")
+
+        pic_folder = os.path.join(new_folder, "pic")
+        if not os.path.isdir(pic_folder):
+            os.mkdir(pic_folder) 
+        
+        self.raw_folder = new_folder
+        self.pic_folder = pic_folder
+
+    
+    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS'):
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        dr_loc = QD_agent.Identity.split("#")[0]
+        if exp_type.lower() == 'cs':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'pd':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'fd':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'ss':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == '2tone':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'powerrabi':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'timerabi':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 'ramsey':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 't1':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc"))
+        elif exp_type.lower() == 't2':
+            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc"))
+        else:
+            raise KeyError("Wrong experience type!")
+    
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
+        from Pulse_schedule_library import hist_plot
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        dr_loc = QD_agent.Identity.split("#")[0]
+        if mode.lower() =="t1" :
+            if save_fig:
+                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=r"$T_{1}\  (\mu$s)",save_path=fig_path, show=show_fig)
+        elif mode.lower() =="t2" :
+            if save_fig:
+                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path, show=show_fig)
+        else:
+            raise KeyError("mode should be 'T1' or 'T2'!")
+    
 
 
 # initialize a measurement
@@ -411,53 +470,6 @@ def configure_measurement_control_loop(
 
     return (meas_ctrl, ic)
 
-def save_raw_data(QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS'):
-    from Modularize.path_book import meas_raw_dir
-    import os
-    exp_timeLabel = get_time_now()
-    raw_folder = build_folder_today(meas_raw_dir)
-    dr_loc = QD_agent.Identity.split("#")[0]
-    if exp_type.lower() == 'cs':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'pd':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'fd':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'ss':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == '2tone':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'powerrabi':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'timerabi':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 'ramsey':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 't1':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc"))
-    elif exp_type.lower() == 't2':
-        ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc"))
-    else:
-        raise KeyError("Wrong experience type!")
-    
-def save_histo_pic(QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1"):
-    from Modularize.path_book import meas_raw_dir
-    from Pulse_schedule_library import hist_plot
-    import os
-    exp_timeLabel = get_time_now()
-    raw_folder = build_folder_today(meas_raw_dir)
-    dr_loc = QD_agent.Identity.split("#")[0]
-    if mode.lower() =="t1" :
-        fig_path = os.path.join(raw_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
-        hist_plot(qb,hist_dict ,title=r"$T_{1}\  (\mu$s)",save_path=fig_path)
-    elif mode.lower() =="t2" :
-        fig_path = os.path.join(raw_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
-        hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path)
-    else:
-        raise KeyError("mode should be 'T1' or 'T2'!")
-    
-
-
 
 # close all instruments
 def shut_down(cluster:Cluster,flux_map:dict):
@@ -523,7 +535,38 @@ def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:l
             set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
     else:
         raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
-    
+
+
+def reset_offset(flux_callable_map:dict):
+    for i in flux_callable_map:
+        flux_callable_map[i](0.0)
+
+
+# def add log message into the sumInfo
+def leave_LogMSG(MSG:str,sumInfo_path:str):
+    """
+    Leave the log message in the sumInfo with the given path.
+    """
+    with open(sumInfo_path, 'rb') as inp:
+        gift = pickle.load(inp)
+    gift["Log"] = MSG
+    with open(sumInfo_path, 'wb') as file:
+        pickle.dump(gift, file)
+        print("Log message had been added!")
+
+
+# set attenuations
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
+    """
+    Attenuation setting includes XY and RO. We don't change it once we set it.
+    """
+    # atte. setting
+    set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
+    set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
+
+
+#TOO_OLD
+'''
 def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
     item_num = len(list(results.keys()))
     fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
@@ -571,146 +614,7 @@ def FD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:s
     fig.tight_layout()
     plt.show()
 
-def reset_offset(flux_callable_map:dict):
-    for i in flux_callable_map:
-        flux_callable_map[i](0.0)
 
-
-
-
-
-# TODO: ToTest ZZinteractions
-def ZZinteractions_sched(
-    times: Union[np.ndarray, float],
-    ctrl_qubit: str,
-    meas_qubit: str,
-    artificial_detuning: float = 0,
-    repetitions: int = 1,
-) -> Schedule:
-    r"""
-    Generate a schedule for performing a Ramsey experiment to measure the
-    dephasing time :math:`T_2^{\star}`.
-
-    Schedule sequence
-        .. centered:: Reset -- pi/2 -- Idle(tau) -- pi/2 -- Measure
-
-    See section III.B.2. of :cite:t:`krantz_quantum_2019` for an explanation of the Bloch-Redfield
-    model of decoherence and the Ramsey experiment.
-
-    Parameters
-    ----------
-    times
-        an array of wait times tau between the pi/2 pulses.
-    artificial_detuning
-        frequency in Hz of the software emulated, or ``artificial`` qubit detuning, which is
-        implemented by changing the phase of the second pi/2 (recovery) pulse. The
-        artificial detuning changes the observed frequency of the Ramsey oscillation,
-        which can be useful to distinguish a slow oscillation due to a small physical
-        detuning from the decay of the dephasing noise.
-    qubit
-        the name of the qubit e.g., :code:`"q0"` to perform the Ramsey experiment on.
-    repetitions
-        The amount of times the Schedule will be repeated.
-
-    Returns
-    -------
-    :
-        An experiment schedule.
-
-    """
-    # ensure times is an iterable when passing floats.
-    times = np.asarray(times)
-    times = times.reshape(times.shape or (1,))
-
-    schedule = Schedule("Ramsey", repetitions)
-
-    if isinstance(times, float):
-        times = [times]
-
-    for i, tau in enumerate(times):
-        schedule.add(Reset(meas_qubit,ctrl_qubit), label=f"Reset {i}")
-        schedule.add(X(ctrl_qubit))
-        schedule.add(X90(meas_qubit))
-
-        # the phase of the second pi/2 phase progresses to propagate
-        recovery_phase = np.rad2deg(2 * np.pi * artificial_detuning * tau)
-        schedule.add(
-            Rxy(theta=90, phi=recovery_phase, qubit=meas_qubit), ref_pt="start", rel_time=tau
-        )
-        schedule.add(Measure(meas_qubit, acq_index=i), label=f"Measurement {i}")
-    return schedule      
-
-# TODO: RB
-def SQRB_schedule(
-    qubit:str,
-    gate_num:int,
-    repetitions: int=1,
-) -> Schedule:
-
-    sched = Schedule('RB',repetitions)
-    sched.add(Reset(qubit))
-    for idx in range(gate_num):
-        pass
-    sched.add(Measure(qubit))
-    
-    return sched
-
-# generate time label for netCDF file name
-def get_time_now()->str:
-    """
-    Since we save the Xarray into netCDF, we use the current time to encode the file name.\n
-    Ex: 19:23:34 return H19M23S34 
-    """
-    import datetime
-    current_time = datetime.datetime.now()
-    return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
-
-# build the folder for the data today
-def build_folder_today(parent_path:str):
-    """
-    Build up and return the folder named by the current date in the parent path.\n
-    Ex. parent_path='D:/Examples/'
-    """
-    import os
-    import datetime
-    current_time = datetime.datetime.now()
-    folder = f"{current_time.year}_{current_time.month}_{current_time.day}"
-    new_folder = os.path.join(parent_path, folder) 
-    if not os.path.isdir(new_folder):
-        os.mkdir(new_folder) 
-        print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} had been created!")
-    else:
-        print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} exist!")
-    return new_folder
-
-
-
-# def add log message into the sumInfo
-def leave_LogMSG(MSG:str,sumInfo_path:str):
-    """
-    Leave the log message in the sumInfo with the given path.
-    """
-    import pickle
-    with open(sumInfo_path, 'rb') as inp:
-        gift = pickle.load(inp)
-    gift["Log"] = MSG
-    with open(sumInfo_path, 'wb') as file:
-        pickle.dump(gift, file)
-        print("Log message had been added!")
-
-
-# set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
-    """
-    Attenuation setting includes XY and RO. We don't change it once we set it.
-    """
-    # atte. setting
-    set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
-    set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
-
-
-#TOO_OLD
-'''
 def two_tone_spec_sched_nco(
     qubit_name: str,
     spec_pulse_amp: float,

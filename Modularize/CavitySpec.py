@@ -2,7 +2,7 @@
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import save_raw_data, QDmanager
+from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
@@ -50,7 +50,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         rs_ds = meas_ctrl.run("One-tone")
         analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         # save the xarrry into netCDF
-        save_raw_data(QD_agent,rs_ds,q='q0',exp_type='CS')
+        Data_manager.save_raw_data(QD_agent,rs_ds,q='q0',exp_type='CS')
 
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)

@@ -883,7 +883,7 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
     fig.tight_layout()
     plt.show()
     
-def hist_plot(q:str,data:dict,title:str, save_path:str=''):
+def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
@@ -892,6 +892,10 @@ def hist_plot(q:str,data:dict,title:str, save_path:str=''):
     fig.tight_layout()
     if save_path != '':
         fig.savefig(save_path)
+    if show:
+        plt.show()
+    else:
+        plt.close()
     
 def Z_bias_error_bar_plot(q:str,data:dict,title:str):
     times, Z_bias= data['plot_parameters'][0],data['plot_parameters'][1]

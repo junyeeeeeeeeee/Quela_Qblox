@@ -1,7 +1,7 @@
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import save_raw_data, QDmanager
+from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
@@ -56,7 +56,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
         rp_ds = meas_ctrl.run("One-tone-powerDep")
         # Save the raw data into netCDF
-        save_raw_data(QD_agent,rp_ds,qb=q,exp_type='PD')
+        Data_manager.save_raw_data(QD_agent,rp_ds,qb=q,exp_type='PD')
 
         analysis_result[q] = Basic2DAnalysis(tuid=rp_ds.attrs["tuid"], dataset=rp_ds).run()
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)

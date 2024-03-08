@@ -1,7 +1,7 @@
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, save_raw_data
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
@@ -52,7 +52,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
-        save_raw_data(QD_agent,rfs_ds,qb=q,exp_type='FD')
+        Data_manager.save_raw_data(QD_agent,rfs_ds,qb=q,exp_type='FD')
         analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run()
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:

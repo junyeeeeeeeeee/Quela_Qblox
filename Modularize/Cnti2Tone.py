@@ -2,7 +2,7 @@ from numpy import NaN
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, save_raw_data
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
@@ -57,7 +57,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
         
         qs_ds = meas_ctrl.run("Two-tone")
         # Save the raw data into netCDF
-        save_raw_data(QD_agent,qs_ds,qb=q,exp_type='2tone')
+        Data_manager.save_raw_data(QD_agent,qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) # data = dis for plotting
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)

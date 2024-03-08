@@ -2,7 +2,7 @@
 from numpy import linspace, array, average
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, save_raw_data
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis
@@ -55,7 +55,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
             ramsey_ds = meas_ctrl.run('Ramsey')
 
             # Save the raw data into netCDF
-            save_raw_data(QD_agent,ramsey_ds,histo_label=i,qb=q,exp_type='T2')
+            Data_manager.save_raw_data(QD_agent,ramsey_ds,histo_label=i,qb=q,exp_type='T2')
 
             I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
             data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
@@ -85,7 +85,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, save_histo_pic, shut_down, reset_offset
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Pulse_schedule_library import Fit_analysis_plot
     from numpy import mean
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         Ramsey_results,T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,freeduration=30e-6,n_avg=500,q=qb,times=10,ref_IQ=QD_agent.refIQ[qb])
         Fit_analysis_plot(Ramsey_results[qb][linecut],P_rescale=False,Dis=None)
         # set the histo save path
-        save_histo_pic(QD_agent,T2_hist,qb,mode="t2")
+        Data_manager.save_histo_pic(QD_agent,T2_hist,qb,mode="t2")
         print('average_actual_detune=', average_actual_detune*1e-6,'MHz')
         print('average_T2=', mean(array(T2_hist[qb])),'us')
 
