@@ -1,12 +1,10 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
 
-import os
 from numpy import linspace, array
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.path_book import meas_raw_dir
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
-from Modularize.support import get_time_now, QDmanager, build_folder_today
 from quantify_core.measurement.control import MeasurementControl
 from Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis
 
@@ -17,22 +15,24 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
     LO= qubit_info.clock_freqs.f01()+IF
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     
-    if Rabi_type=='TimeRabi':
+    if Rabi_type.lower() in ['timerabi', 'tr']:
+       osci_type = "TimeRabi"
        Para_XY_amp= XY_amp
        Sweep_para=Para_XY_Du = ManualParameter(name="XY_Duration", unit="s", label="Time")
        str_Rabi= 'XY_duration'
        Sweep_para.batched = True
        samples = linspace(0, XY_duration,points)
-       exp_kwargs= dict(sweep_duration=[Rabi_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
+       exp_kwargs= dict(sweep_duration=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                         Amp='%E' %XY_amp,
                         )
-    elif Rabi_type=='PowerRabi':
+    elif Rabi_type.lower() in ['powerabi', 'pr']:
+        osci_type = "PowerRabi"
         Sweep_para= Para_XY_amp= ManualParameter(name="XY_amp", unit="V", label="Voltage")
         str_Rabi= 'XY_amp'
         Para_XY_amp.batched = True
         Para_XY_Du = XY_duration
         samples = linspace(0,XY_amp,points) 
-        exp_kwargs= dict(sweep_amp=[Rabi_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
+        exp_kwargs= dict(sweep_amp=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                          Duration='%E' %XY_duration,
                          )
     else: raise KeyError ('Typing error: Rabi_type')
@@ -46,7 +46,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
         R_integration={str(q):qubit_info.measure.integration_time()},
         R_inte_delay=qubit_info.measure.acq_delay(),
         XY_theta=XY_theta,
-        Rabi_type=Rabi_type,
+        Rabi_type=osci_type,
         )
     
     
@@ -66,15 +66,12 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
         meas_ctrl.setpoints(samples)
     
        
-        rabi_ds = meas_ctrl.run(Rabi_type)
+        rabi_ds = meas_ctrl.run(osci_type)
         # Save the raw data into netCDF
-        exp_timeLabel = get_time_now()
-        raw_folder = build_folder_today(meas_raw_dir)
-        dr_loc = QD_agent.Identity.split("#")[0]
-        rabi_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_{Rabi_type}_{exp_timeLabel}.nc"))
+        Data_manager.save_raw_data(QD_agent,rabi_ds,qb=q,exp_type=osci_type)
         I,Q= dataset_to_array(dataset=rabi_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-        data_fit= Rabi_fit_analysis(data=data,samples=samples,Rabi_type=Rabi_type)
+        data_fit= Rabi_fit_analysis(data=data,samples=samples,Rabi_type=osci_type)
         analysis_result[q]= data_fit
         
         show_args(exp_kwargs, title="Rabi_kwargs: Meas.qubit="+q)

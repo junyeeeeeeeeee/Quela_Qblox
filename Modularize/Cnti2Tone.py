@@ -1,14 +1,11 @@
+from numpy import NaN
 from numpy import array, linspace
-from Modularize.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
-from Modularize.support import build_folder_today
-from Modularize.path_book import meas_raw_dir
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
-from Modularize.support import QDmanager, get_time_now
 from quantify_core.measurement.control import MeasurementControl
-from numpy import NaN
-import os
+from Modularize.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
 
 def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     
@@ -60,10 +57,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
         
         qs_ds = meas_ctrl.run("Two-tone")
         # Save the raw data into netCDF
-        exp_timeLabel = get_time_now()
-        raw_folder = build_folder_today(meas_raw_dir)
-        qs_ds.to_netcdf(os.path.join(raw_folder,f"{q}_TwTone_{exp_timeLabel}.nc"))
-        print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
+        Data_manager.save_raw_data(QD_agent,qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) # data = dis for plotting
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)

@@ -2,16 +2,13 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from numpy import array, linspace
-from Modularize.support import build_folder_today
-from Modularize.path_book import meas_raw_dir
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
-from Modularize.support import QuantumDevice, get_time_now, QDmanager
 from quantify_core.measurement.control import MeasurementControl
-import os
+from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
+from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 
 def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
     """
@@ -55,11 +52,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         rs_ds = meas_ctrl.run("One-tone")
         analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         # save the xarrry into netCDF
-        exp_timeLabel = get_time_now()
-        raw_folder = build_folder_today(meas_raw_dir)
-        dr_loc = QD_agent.Identity.split("#")[0]
-        rs_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_CavitySpectro_{exp_timeLabel}.nc"))
-        print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
+        Data_manager.save_raw_data(QD_agent,rs_ds,q='q0',exp_type='CS')
 
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
@@ -71,9 +64,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         sweep_para= array(ro_f_samples[:n_s])
         spec_sched_kwargs['frequencies']= sweep_para.reshape(sweep_para.shape or (1,))
         pulse_preview(quantum_device,sche_func,spec_sched_kwargs)
-        
-
-        show_args(exp_kwargs,title="One_tone_kwargs: Meas.qubit="+q)
+        show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
     return analysis_result

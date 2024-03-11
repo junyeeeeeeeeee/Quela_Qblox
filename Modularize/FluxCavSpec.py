@@ -1,13 +1,11 @@
 from numpy import array, linspace
-from Modularize.support import build_folder_today, QDmanager, get_time_now
-from Modularize.path_book import meas_raw_dir
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
-import os
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=500,f_points:int=30,flux_points:int=40,run:bool=True,q:str='q1',Experi_info:dict={}):
 
@@ -54,12 +52,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
-        exp_timeLabel = get_time_now()
-        raw_folder = build_folder_today(meas_raw_dir)
-        dr_loc = QD_agent.Identity.split("#")[0]
-        rfs_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_FluxCavSpec_{exp_timeLabel}.nc"))
-        print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
-
+        Data_manager.save_raw_data(QD_agent,rfs_ds,qb=q,exp_type='FD')
         analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run()
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -83,7 +76,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import pi
-    
+
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')

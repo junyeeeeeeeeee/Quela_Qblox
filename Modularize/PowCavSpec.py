@@ -1,15 +1,11 @@
 from numpy import array, linspace
-from Modularize.support import QDmanager
-from Modularize.support import build_folder_today
-from Modularize.path_book import meas_raw_dir
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
-from quantify_core.analysis.base_analysis import Basic2DAnalysis
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
-from Modularize.support import QuantumDevice, get_time_now, PDresults_alignPlot
 from quantify_core.measurement.control import MeasurementControl
-import os
+from quantify_core.analysis.base_analysis import Basic2DAnalysis
+from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
 
 def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.1,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 
@@ -60,11 +56,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
         rp_ds = meas_ctrl.run("One-tone-powerDep")
         # Save the raw data into netCDF
-        exp_timeLabel = get_time_now()
-        raw_folder = build_folder_today(meas_raw_dir)
-        dr_loc = QD_agent.Identity.split("#")[0]
-        rp_ds.to_netcdf(os.path.join(raw_folder,f"{dr_loc}{q}_PowCavSpec_{exp_timeLabel}.nc"))
-        print(f"Raw exp data had been saved into netCDF with the time label '{exp_timeLabel}'")
+        Data_manager.save_raw_data(QD_agent,rp_ds,qb=q,exp_type='PD')
 
         analysis_result[q] = Basic2DAnalysis(tuid=rp_ds.attrs["tuid"], dataset=rp_ds).run()
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)

@@ -1,7 +1,8 @@
-from Modularize.support import QDmanager
-from Modularize.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
-from quantify_scheduler.gettables import ScheduleGettable
+
 from utils.tutorial_utils import show_args
+from Modularize.support import QDmanager, Data_manager
+from quantify_scheduler.gettables import ScheduleGettable
+from Modularize.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
 
 def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
     
@@ -35,7 +36,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
         )
         QD_agent.quantum_device.cfg_sched_repetitions(shots)
         ss_ds= gettable.get()
-        
+        Data_manager.save_raw_data(QD_agent,ss_ds,qb=q,exp_type='SS')
         analysis_result[q] = Single_shot_ref_fit_analysis(ss_ds)
         
         show_args(exp_kwargs, title="Single_shot_kwargs: Meas.qubit="+q)
@@ -56,8 +57,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Modularize.Experiment_setup import get_FluxController
+    from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
