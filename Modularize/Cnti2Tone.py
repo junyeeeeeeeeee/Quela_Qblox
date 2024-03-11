@@ -57,7 +57,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
         
         qs_ds = meas_ctrl.run("Two-tone")
         # Save the raw data into netCDF
-        Data_manager.save_raw_data(QD_agent,qs_ds,qb=q,exp_type='2tone')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) # data = dis for plotting
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)
@@ -89,23 +89,23 @@ if __name__ == "__main__":
     from numpy import arange
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=30)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=10)
     # for i in range(6):
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    Fctrl["q4"](float(QD_agent.Fluxmanager.get_sweetBiasFor("q4")))
+    Fctrl["q0"](float(QD_agent.Fluxmanager.get_sweetBiasFor("q0")))
 
     XYf_guess=dict(
-        q4 = [3.1e9]
+        q0 = [3.8e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q4 = linspace(0,0.6,13)
+        q0 = linspace(0,0.3,11)
     )
     for qb in XYf_guess:
         print(f"{qb} is under the measurement!")

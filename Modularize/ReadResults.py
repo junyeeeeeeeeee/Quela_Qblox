@@ -1,28 +1,52 @@
-# import xarray as xr
-# from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
-# from numpy import pi
-# results_path = 'Modularize/Meas_raw/2024_2_26/q1_FluxCavSpec_H11M10S5.nc' 
-# ds = xr.open_dataset(results_path)
-
-# import quantify_core.data.handling as dh
-# meas_datadir = '.data'
-# dh.set_datadir(meas_datadir)
-# print(ds.attrs["tuid"])
-# ana = ResonatorFluxSpectroscopyAnalysis(tuid=ds.attrs["tuid"], dataset=ds).run()
-# print(2*pi/ana.quantities_of_interest["frequency"].nominal_value)
-
+import xarray as xr
+import quantify_core.data.handling as dh
 from Modularize.support import QDmanager
-QD_path = 'Modularize/QD_backup/2024_3_6/DR2#171_SumInfo.pkl'
-QD_agent = QDmanager(QD_path)
-QD_agent.QD_loader()
-for i in ["q0"]:
-    q = QD_agent.quantum_device.get_element(i)
-    bare = QD_agent.Notewriter.get_bareFreqFor(i)*1e-6
-    x = q.clock_freqs.readout()*1e-6-bare
-    print("dispersive shift MHz = ",x) 
-
-def aprx_fq(disper_MHz:float,bareF_MHz:float,g_MHz:float=45.0):
-    return bareF_MHz-(g_MHz**2)/disper_MHz
+from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
+from quantify_core.analysis.base_analysis import Basic2DAnalysis
+results_path = 'Modularize/Meas_raw/2024_3_4/DR1q0_PowCavSpec_H16M2S24.nc' 
+ds = xr.open_dataset(results_path)
+# ds = dh.to_gridded_dataset(ds)
+# magnitude_ndarray = ds.y0.data
+# phase_ndarray = ds.y1.data
+# freq_ndarray = ds.x0.data
+# power_ndarray = ds.x1.data
 
 
-print("aprx fq=",aprx_fq(x,bare))
+# from quantify_scheduler.helpers.collections import find_port_clock_path
+# QD_agent = QDmanager('Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl')
+# QD_agent.QD_loader()
+# qd = QD_agent.quantum_device
+# hcfg = QD_agent.Hcfg
+# qubit = qd.get_element('q4')
+# output_path = find_port_clock_path(
+#         hcfg, port=qubit.ports.readout(), clock=qubit.name + ".ro"
+#     )
+
+# cluster_key, module_key, output_key, _, _ = tuple(output_path)
+# readout_module = hcfg[cluster_key][module_key]
+# print(readout_module[output_key]["output_att"])
+
+
+meas_datadir = 'tempt'
+dh.set_datadir(meas_datadir)
+print(ds.attrs["tuid"])
+ana = Basic2DAnalysis(tuid=ds.attrs["tuid"], dataset=ds).run()
+# print(ana.quantities_of_interest)
+
+
+
+# from Modularize.support import QDmanager
+# QD_path = 'Modularize/QD_backup/2024_3_6/DR2#171_SumInfo.pkl'
+# QD_agent = QDmanager(QD_path)
+# QD_agent.QD_loader()
+# for i in ["q0"]:
+#     q = QD_agent.quantum_device.get_element(i)
+#     bare = QD_agent.Notewriter.get_bareFreqFor(i)*1e-6
+#     x = q.clock_freqs.readout()*1e-6-bare
+#     print("dispersive shift MHz = ",x) 
+
+# def aprx_fq(disper_MHz:float,bareF_MHz:float,g_MHz:float=45.0):
+#     return bareF_MHz-(g_MHz**2)/disper_MHz
+
+
+# print("aprx fq=",aprx_fq(x,bare))
