@@ -119,7 +119,7 @@ if __name__ == "__main__":
         else:
             # avoid freq conflicts
             qubit.clock_freqs.readout(NaN)
-        CS_results = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)
+        CS_results[qb] = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)[qb]
         if CS_results != {}:
             print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)

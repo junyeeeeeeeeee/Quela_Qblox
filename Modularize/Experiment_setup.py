@@ -1,6 +1,5 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from support import *
 
 from numpy import arange, linspace, logspace
 from quantify_scheduler.backends.graph_compilation import SerialCompiler
