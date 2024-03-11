@@ -411,7 +411,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     else:
         if cluster_ip == '170':
             cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-            ip = "192.168.1.171"
+            ip = "192.168.1.170"
         elif cluster_ip == '171':
             cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
             ip = "192.168.1.171"
