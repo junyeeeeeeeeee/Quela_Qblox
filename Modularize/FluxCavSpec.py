@@ -52,7 +52,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
-        Data_manager.save_raw_data(QD_agent,rfs_ds,qb=q,exp_type='FD')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD')
         analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run()
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     from numpy import pi
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     execute = True
     error_log = []
-    for qb in ["q4"]:
+    for qb in ["q0"]:
         print(f"{qb} are under the measurement ...")
         FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=0.8e6,q=qb,flux_span=0.4,run=execute)
         if FD_results == {}:

@@ -46,7 +46,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         for i in range(times):
             T1_ds = meas_ctrl.run('T1')
             # Save the raw data into netCDF
-            Data_manager.save_raw_data(QD_agent,T1_ds,histo_label=i,qb=q,exp_type='T1')
+            Data_manager.save_raw_data(QD_agent=QD_agent,ds=T1_ds,histo_label=i,qb=q,exp_type='T1')
             I,Q= dataset_to_array(dataset=T1_ds,dims=1)
             data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
             data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)

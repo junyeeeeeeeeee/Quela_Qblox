@@ -35,8 +35,8 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             batched=True,
         )
         QD_agent.quantum_device.cfg_sched_repetitions(shots)
-        ss_ds= gettable.get()
-        Data_manager.save_raw_data(QD_agent,ss_ds,qb=q,exp_type='SS')
+        ss_ds= gettable.get() # tuple?
+        # Data_manager().save_raw_data(QD_agent=QD_agent,ds=ss_ds,qb=q,exp_type='SS')
         analysis_result[q] = Single_shot_ref_fit_analysis(ss_ds)
         
         show_args(exp_kwargs, title="Single_shot_kwargs: Meas.qubit="+q)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    for qb in ["q4"]:
+    for qb in ["q0"]:
         print(QD_agent.quantum_device.get_element(qb).clock_freqs.readout())
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=qb,want_state='g')

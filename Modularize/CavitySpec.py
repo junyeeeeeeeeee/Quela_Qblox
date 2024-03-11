@@ -52,7 +52,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         rs_ds = meas_ctrl.run("One-tone")
         analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         # save the xarrry into netCDF
-        Data_manager.save_raw_data(QD_agent,rs_ds,q='q0',exp_type='CS')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS')
 
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
@@ -98,11 +98,11 @@ if __name__ == "__main__":
     # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
     # guess [5.26014 5.35968263 5.44950299 5.52734731 5.63612974] @ DR1 Nb
     ro_bare=dict(
-        q0 = 5.26014e9,
-        q2 = 5.35968e9,
-        q4 = 5.4495e9,
-        q1 = 5.5273e9,
-        q3 = 5.6361e9,
+        q0 = 5.721e9,
+        q2 = 5.83476e9,
+        q4 = 5.9059e9,
+        q1 = 6.01276e9,
+        q3 = 6.1015e9,
     )
     
     CS_results = {}

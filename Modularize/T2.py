@@ -55,7 +55,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
             ramsey_ds = meas_ctrl.run('Ramsey')
 
             # Save the raw data into netCDF
-            Data_manager.save_raw_data(QD_agent,ramsey_ds,histo_label=i,qb=q,exp_type='T2')
+            Data_manager.save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,histo_label=i,qb=q,exp_type='T2')
 
             I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
             data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])

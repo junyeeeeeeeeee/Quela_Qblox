@@ -56,7 +56,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
         rp_ds = meas_ctrl.run("One-tone-powerDep")
         # Save the raw data into netCDF
-        Data_manager.save_raw_data(QD_agent,rp_ds,qb=q,exp_type='PD')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rp_ds,qb=q,exp_type='PD')
 
         analysis_result[q] = Basic2DAnalysis(tuid=rp_ds.attrs["tuid"], dataset=rp_ds).run()
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)
@@ -82,20 +82,20 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_8/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
     
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     error_log = []
-    for qb in ["q4"]:
+    for qb in ["q0"]:
         print(qb)
-        Fctrl[qb](QD_agent.Fluxmanager.get_sweetBiasFor(qb))
-        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=0.5e6)
+        # Fctrl[qb](QD_agent.Fluxmanager.get_sweetBiasFor(qb))
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=2.5e6)
         if PD_results == {}:
             error_log.append(qb)
         else:

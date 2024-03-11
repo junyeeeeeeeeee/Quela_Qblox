@@ -249,8 +249,9 @@ class QDmanager():
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
         if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
-            qd_folder = Data_manager.build_folder_today()
-            self.path = os.path.join(qd_folder,f"{self.Identity}_SumInfo.pkl")
+            db = Data_manager()
+            db.build_folder_today()
+            self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is onlu for the hightlighs :)
         merged_file = {"ID":self.Identity,"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}

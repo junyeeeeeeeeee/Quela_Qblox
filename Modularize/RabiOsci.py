@@ -68,7 +68,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
        
         rabi_ds = meas_ctrl.run(osci_type)
         # Save the raw data into netCDF
-        Data_manager.save_raw_data(QD_agent,rabi_ds,qb=q,exp_type=osci_type)
+        Data_manager.save_raw_data(QD_agent=QD_agent,ds=rabi_ds,qb=q,exp_type=osci_type)
         I,Q= dataset_to_array(dataset=rabi_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         data_fit= Rabi_fit_analysis(data=data,samples=samples,Rabi_type=osci_type)
