@@ -14,9 +14,9 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
     qubit_info = QD_agent.quantum_device.get_element(q)
     # qubit_info.reset.duration(0)
     if f01_guess != 0:
-        f01_high = f01_guess+100e6
+        f01_high = f01_guess+50e6
     else:
-        f01_high = qubit_info.clock_freqs.f01()+100e6
+        f01_high = qubit_info.clock_freqs.f01()+50e6
     # if xyamp == 0:
     #     xyamp = qubit_info.rxy.amp180(XYL)
     # Avoid warning
@@ -79,7 +79,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
         
         analysis_result[q] = {}
 
-    return analysis_result, f01_high-100e6
+    return analysis_result, f01_high-50e6
 
 
 
@@ -100,44 +100,45 @@ if __name__ == "__main__":
     Fctrl["q0"](float(QD_agent.Fluxmanager.get_sweetBiasFor("q0")))
 
     XYf_guess=dict(
-        q0 = [3.8e9]
+        q0 = [3.791e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q0 = linspace(0,0.3,11)
+        q0 = linspace(0.1,0.15,11)
     )
-    for qb in XYf_guess:
-        print(f"{qb} is under the measurement!")
-        for XYF in XYf_guess[qb]:
-            ori_data = []
-            for XYL in xyamp_dict[qb]:
-                print(f"XYL now ={XYL}, XYF={XYF*1e-9-0.2}~{XYF*1e-9+0.1}GHz")
-                qubit = QD_agent.quantum_device.get_element(qb)
-                # for i in Fctrl:
-                #     if i != qb:
-                #         tuneaway = QD_agent.Fluxmanager.get_tuneawayBiasFor(i)
-                #         if abs(tuneaway) <= 0.3:
-                #             Fctrl[i](tuneaway)
-                #         else:
-                #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
+    # for qb in XYf_guess:
+    #     print(f"{qb} is under the measurement!")
+    #     for XYF in XYf_guess[qb]:
+    #         ori_data = []
+    #         for XYL in xyamp_dict[qb]:
+    #             print(f"XYL now ={XYL}, XYF={XYF*1e-9-0.2}~{XYF*1e-9+0.1}GHz")
+    #             qubit = QD_agent.quantum_device.get_element(qb)
+    #             # for i in Fctrl:
+    #             #     if i != qb:
+    #             #         tuneaway = QD_agent.Fluxmanager.get_tuneawayBiasFor(i)
+    #             #         if abs(tuneaway) <= 0.3:
+    #             #             Fctrl[i](tuneaway)
+    #             #         else:
+    #             #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
-                print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=200,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
-                # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
-                if XYL != 0:
-                    twotone_comp_plot(QS_results[qb], ori_data, True)
-                else:
-                    twotone_comp_plot(QS_results[qb], ori_data, False)
-                    ori_data = QS_results[qb].data_vars['data']
-                Revised_f01= QS_results[qb].attrs['f01_fit']
-                qubit = QD_agent.quantum_device.get_element(qb)
-                # qubit.clock_freqs.f01(Revised_f01)
-                # temporarily save the xy amp for a clear f01 fig
-                # qubit.rxy.amp180(XYL)
-
+    #             print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
+    #             QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=100e6,points=50,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
+    #             # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
+    #             if XYL != 0:
+    #                 twotone_comp_plot(QS_results[qb], ori_data, True)
+    #             else:
+    #                 twotone_comp_plot(QS_results[qb], ori_data, False)
+    #                 ori_data = QS_results[qb].data_vars['data']
+    #             Revised_f01= QS_results[qb].attrs['f01_fit']
+    #             qubit = QD_agent.quantum_device.get_element(qb)
+    #             # qubit.clock_freqs.f01(Revised_f01)
+    #             # temporarily save the xy amp for a clear f01 fig
+    #             # qubit.rxy.amp180(XYL)
+    QD_agent.quantum_device.get_element("q0").clock_freqs.f01(3.791e9)
+    QD_agent.quantum_device.get_element("q0").rxy.amp180(0.13)
     QD_agent.refresh_log("After continuous 2-tone!")
-    # QD_agent.QD_keeper()
+    QD_agent.QD_keeper()
     print('2-tone done!')
     shut_down(cluster,Fctrl)
 
