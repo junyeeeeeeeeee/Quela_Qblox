@@ -1,12 +1,14 @@
 
 import os, datetime, pickle
+from typing import Callable
 from xarray import Dataset
 from Experiment_setup import get_FluxController
 from typing import Tuple
 import ipywidgets as widgets
 from numpy import ndarray, sin
 from IPython.display import display
-from qblox_instruments import Cluster, PlugAndPlay
+from qblox_instruments import Cluster, PlugAndPlay, ClusterType
+from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
 from qcodes import Instrument
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.visualization.pyqt_plotmon import PlotMonitor_pyqt as PlotMonitor
@@ -418,7 +420,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
             ip = "192.168.1.171"
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
-    
+    enable_QCMRF_LO(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
         Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
@@ -564,6 +566,32 @@ def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20
     # atte. setting
     set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
     set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
+
+
+# LO debug
+def get_connected_modules(cluster: Cluster, filter_fn: Callable) -> dict[int, QcmQrm]:
+    def checked_filter_fn(mod: ClusterType) -> bool:
+        if filter_fn is not None:
+            return filter_fn(mod)
+        return True
+
+    return {
+        mod.slot_idx: mod for mod in cluster.modules if mod.present() and checked_filter_fn(mod)
+    }
+
+
+#lambda mod: mod.is_qrm_type and mod.is_rf_type
+def enable_QCMRF_LO(cluster):
+    QCM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qcm_type and mod.is_rf_type)
+    for slot_idx in QCM_RFs:
+        QCM_RFs[slot_idx].out0_lo_en(True)
+        QCM_RFs[slot_idx].out1_lo_en(True)
+
+    
+    print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
+        
+
+
 
 
 #TOO_OLD

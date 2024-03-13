@@ -78,7 +78,7 @@ if __name__ == "__main__":
     from numpy import pi
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_13/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)

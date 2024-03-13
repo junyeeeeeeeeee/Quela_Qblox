@@ -23,6 +23,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
     qubit_info.clock_freqs.f01(NaN)
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf_highest)
     f01_samples = linspace(xyf_highest-xyf_span_Hz,xyf_highest,f_points)
+    print(f01_samples[0],f01_samples[-1])
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
     
@@ -45,6 +46,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         pass 
 
     Z_samples = linspace(Z_amp_start,Z_amp_end,Z_points)
+    print(Z_samples[0], Z_samples[-1])
     
     spec_sched_kwargs = dict(   
         frequencies=freq,
@@ -103,7 +105,7 @@ if __name__ == "__main__":
     from numpy import absolute as abs
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_13/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     # Set system attenuation
@@ -113,7 +115,6 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     execute = True
-    QD_agent.quantum_device.get_element("q0").rxy.amp180(0.19)
     for qb in ["q0"]:
         # for i in Fctrl:
         #     if i != qb:
