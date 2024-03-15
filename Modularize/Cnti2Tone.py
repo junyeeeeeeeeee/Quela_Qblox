@@ -85,34 +85,37 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Modularize.Pulse_schedule_library import Fit_analysis_plot
-    from numpy import arange
+    from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_11/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=10)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=20)
     # for i in range(6):
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    Fctrl["q0"](float(QD_agent.Fluxmanager.get_sweetBiasFor("q0")))
+    
 
     XYf_guess=dict(
-        q0 = [3.8e9]
+        q1 = [4.25e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q0 = linspace(0,0.3,11)
+        q1 = [0, 0.1, 0.15]
     )
+
+    update = False
+
     for qb in XYf_guess:
         print(f"{qb} is under the measurement!")
+        Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
         for XYF in XYf_guess[qb]:
             ori_data = []
             for XYL in xyamp_dict[qb]:
-                print(f"XYL now ={XYL}, XYF={XYF*1e-9-0.2}~{XYF*1e-9+0.1}GHz")
                 qubit = QD_agent.quantum_device.get_element(qb)
                 # for i in Fctrl:
                 #     if i != qb:
@@ -123,7 +126,7 @@ if __name__ == "__main__":
                 #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
                 print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=200,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
+                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=250,n_avg=500,run=True,ref_IQ=[0,0]) # 
                 # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
                 if XYL != 0:
                     twotone_comp_plot(QS_results[qb], ori_data, True)
@@ -131,13 +134,27 @@ if __name__ == "__main__":
                     twotone_comp_plot(QS_results[qb], ori_data, False)
                     ori_data = QS_results[qb].data_vars['data']
                 Revised_f01= QS_results[qb].attrs['f01_fit']
-                qubit = QD_agent.quantum_device.get_element(qb)
-                # qubit.clock_freqs.f01(Revised_f01)
-                # temporarily save the xy amp for a clear f01 fig
-                # qubit.rxy.amp180(XYL)
 
-    QD_agent.refresh_log("After continuous 2-tone!")
-    # QD_agent.QD_keeper()
+                # calculate g
+                fb = float(QD_agent.Notewriter.get_bareFreqFor(target_q=qb))*1e-6
+                fd = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()*1e-6
+                A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
+                pred_fq = calc_fq_g_excluded(A,fd,fb)
+                sweet_g = calc_g(fb,Revised_f01*1e-6,A)
+                print(f"A={A}")
+                print(f"g_Mhz={sweet_g}")
+                print(f"predicted fq={pred_fq}")
+
+                if update:
+                    qubit = QD_agent.quantum_device.get_element(qb)
+                    qubit.clock_freqs.f01(Revised_f01)
+                    # temporarily save the xy amp for a clear f01 fig
+                    qubit.rxy.amp180(XYL)
+                    QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
+                    QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
+    if update:
+        QD_agent.refresh_log("After continuous 2-tone!")
+        QD_agent.QD_keeper()
     print('2-tone done!')
     shut_down(cluster,Fctrl)
 

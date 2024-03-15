@@ -1,12 +1,14 @@
 
 import os, datetime, pickle
+from typing import Callable
 from xarray import Dataset
 from Experiment_setup import get_FluxController
 from typing import Tuple
 import ipywidgets as widgets
 from numpy import ndarray, sin
 from IPython.display import display
-from qblox_instruments import Cluster, PlugAndPlay
+from qblox_instruments import Cluster, PlugAndPlay, ClusterType
+from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
 from qcodes import Instrument
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.visualization.pyqt_plotmon import PlotMonitor_pyqt as PlotMonitor
@@ -150,7 +152,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__dict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2"] # all in float
+        self.cata = ["bareF","T1","T2","CoefInG","sweetG"] # all in float
 
         self.init_dict()
 
@@ -181,12 +183,31 @@ class Notebook():
         self.__dict[target_q]["T2"] = T2
     def get_T2For(self,target_q:str="q1"):
         return self.__dict[target_q]["T2"]
-    
+    # For coef A in g formula: g(MHz) = coefA*sqrt(fb*fq)/1000, fb and fq in GHz
+    def save_CoefInG_for(self,A:float,target_q:str='q0'):
+        """
+        A is right the coef in the g formula: g = A*sqrt(fb*fq)/1000, \nwhich g will be in MHz, fb and fq are in GHz.      
+        """
+        self.__dict[target_q]["CoefInG"] = A
+    def get_CoefInGFor(self,target_q:str):
+        return self.__dict[target_q]["CoefInG"]
+    # note the g at sweet spot in Hz
+    def save_sweetG_for(self,g_Hz:float,target_q:str='q0'):
+        self.__dict[target_q]["sweetG"] = g_Hz
+    def get_sweetGFor(self,target_q:str):
+        return self.__dict[target_q]["sweetG"]
     # Activate notebook
     def activate_from_dict(self,old_notebook:dict):
         for qu in old_notebook:
             for cata in self.cata:
-                self.__dict[qu][cata] = old_notebook[qu][cata]
+                try:
+                    self.__dict[qu][cata] = old_notebook[qu][cata]
+                except:
+                    if cata in self.cata:
+                        print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
+                        self.__dict[qu][cata] = 0.0
+                    else:
+                        raise KeyError(f"Given cata='{cata}' can not be recognized!")
 
 
 
@@ -330,32 +351,49 @@ class Data_manager:
         self.pic_folder = pic_folder
 
     
-    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS'):
+    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS', get_data_loc:bool=False):
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
         dr_loc = QD_agent.Identity.split("#")[0]
         if exp_type.lower() == 'cs':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'pd':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'fd':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'ss':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == '2tone':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        elif exp_type.lower() == 'f2tone':
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'powerrabi':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'timerabi':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 'ramsey':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 't1':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         elif exp_type.lower() == 't2':
-            ds.to_netcdf(os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc"))
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         else:
+            path = ''
             raise KeyError("Wrong experience type!")
+        
+        if get_data_loc:
+            return path
     
     def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
         from Pulse_schedule_library import hist_plot
@@ -418,7 +456,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
             ip = "192.168.1.171"
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
-    
+    enable_QCMRF_LO(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
         Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
@@ -564,6 +602,31 @@ def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20
     # atte. setting
     set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
     set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
+
+
+# LO debug
+def get_connected_modules(cluster: Cluster, filter_fn: Callable) -> dict[int, QcmQrm]:
+    def checked_filter_fn(mod: ClusterType) -> bool:
+        if filter_fn is not None:
+            return filter_fn(mod)
+        return True
+
+    return {
+        mod.slot_idx: mod for mod in cluster.modules if mod.present() and checked_filter_fn(mod)
+    }
+
+
+def enable_QCMRF_LO(cluster):
+    QCM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qcm_type and mod.is_rf_type)
+    for slot_idx in QCM_RFs:
+        QCM_RFs[slot_idx].out0_lo_en(True)
+        QCM_RFs[slot_idx].out1_lo_en(True)
+
+    
+    print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
+        
+
+
 
 
 #TOO_OLD

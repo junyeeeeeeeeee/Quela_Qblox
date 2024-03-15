@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from numpy import flip, arange, argmin, argmax, diff, array, all, sqrt, std, mean, sort, cos, sin
 from Modularize.support import QDmanager
-from numpy import ndarray
+from Modularize.Pulse_schedule_library import IQ_data_dis
+from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose
 
 def Z_sperate_del(datapoint:ndarray,flux_range:float):
     """
@@ -17,6 +18,26 @@ def Z_sperate_del(datapoint:ndarray,flux_range:float):
         if i != z_ary.shape[0]-1:
             z_difference = z_ary[i+1] - z_ary[i]
             if z_difference >= flux_range:
+                break_idx = i
+                break
+
+    if break_idx != 0:
+        return array(datapoint[:break_idx])
+    else:
+        return datapoint
+    
+def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
+    """
+    Considering a given z_array after F_advan_del processed, if a neighboring frequency is seperated by the given freq_range (threshold), then remove the elements behind it.\n
+    Return the remove starting index. If it's 0, there is unnecessary to remove.\n
+    The default threshold is 100 MHz.
+    """
+    f_ary = datapoint[:,1]
+    break_idx = 0
+    for i in range(f_ary.shape[0]):
+        if i != f_ary.shape[0]-1:
+            f_difference = f_ary[i+1] - f_ary[i]
+            if f_difference >= freq_range:
                 break_idx = i
                 break
 
@@ -73,11 +94,12 @@ def filter_2D(raw_mag:ndarray,threshold:float=3.0):
     return filtered_f_idx, filtered_z_idx
 
 
-def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=2.5):
+def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=1):
     def takeLast(elem):
         return elem[-1]
 
     a, b = filter_2D(raw_mag,threshold)
+
     extracted = []
     for i in range(len(a)):
         extracted.append([raw_z[b[i]],raw_XYF[a[i]]])
@@ -98,17 +120,27 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
             filtered.append(same_bias[-1])
 
     sort(array(filtered),axis=0)
+    if len(filtered) == 0:
+        raise ValueError("The given filter threshold is too heavy, it should be decreased!")
+
     filtered = Z_sperate_del(array(filtered),0.04)
+    filtered = F_seperate_del(filtered)
 
     return filtered
 
-def get_arrays_from_netCDF(netCDF_path:str):
-    ds = dh.to_gridded_dataset(xr.open_dataset(netCDF_path))
-    XYF = flip(ds["x0"].to_numpy())
-    z = ds["x1"].to_numpy()
-    mag = flip(ds["y0"].to_numpy(),axis=0)
-    pha = ds["y1"].to_numpy()
-    return XYF, z, mag, pha
+def get_arrays_from_netCDF(netCDF_path:str,ref_IQ:list=[0,0]):
+    dataset_processed = dh.to_gridded_dataset(xr.open_dataset(netCDF_path))
+    XYF = flip(dataset_processed["x0"].to_numpy())
+    z = dataset_processed["x1"].to_numpy()
+    S21 = transpose(dataset_processed.y0.data * cos(
+            deg2rad(dataset_processed.y1.data)
+        ) + 1j * dataset_processed.y0.data * sin(
+            deg2rad(dataset_processed.y1.data)
+        )
+    )
+    I, Q = real(S21), imag(S21)
+    displaced_magnitude = flip(transpose(IQ_data_dis(I_data=I,Q_data=Q,ref_I=0,ref_Q=0)),axis=0)
+    return XYF, z, displaced_magnitude
 
 
 def quadra(x,a,b,c):
@@ -162,10 +194,15 @@ def rof_setter(loaded_QDagent:QDmanager,target_q:str='q0',bias_position:str='swe
 
 if __name__ == "__main__":
     worse = ''
-    better = 'Modularize/Meas_raw/2024_2_27/q2_FluxQ_H16M49S35.nc'
+    better = 'Modularize/Meas_raw/2024_3_14/DR2q1_Flux2tone_H15M43S4.nc'
+    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
+    QD_agent = QDmanager(QD_path)
+    QD_agent.QD_loader()
+
+
 
     # Raw data extract
-    XYF, z, mag, pha = get_arrays_from_netCDF(netCDF_path=better)
+    XYF, z, mag = get_arrays_from_netCDF(netCDF_path=better,ref_IQ=QD_agent.refIQ['q1'])#
     
 
     # Try using quadratic fit the symmetry axis
