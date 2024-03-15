@@ -76,8 +76,9 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         meas_ctrl.settables([freq,Z_bias])
         meas_ctrl.setpoints_grid((f01_samples,Z_samples))
         qs_ds = meas_ctrl.run("Zgate-two-tone")
+        print(qs_ds)
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='2tone')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone')
         
         analysis_result[q] = QubitFluxSpectroscopyAnalysis(tuid=qs_ds.attrs["tuid"], dataset=qs_ds).run()
         
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     from numpy import absolute as abs
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_13/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     # Set system attenuation
@@ -115,7 +116,7 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     execute = True
-    for qb in ["q0"]:
+    for qb in ["q1"]:
         # for i in Fctrl:
         #     if i != qb:
         #         tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)

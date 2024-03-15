@@ -3,8 +3,9 @@ import quantify_core.data.handling as dh
 from Modularize.support import QDmanager
 from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
-results_path = 'Modularize/Meas_raw/2024_3_4/DR1q0_PowCavSpec_H16M2S24.nc' 
+results_path = 'Modularize/Meas_raw/2024_3_14/DR2q1_2tone_H15M35S59.nc' 
 ds = xr.open_dataset(results_path)
+print(ds)
 # ds = dh.to_gridded_dataset(ds)
 # magnitude_ndarray = ds.y0.data
 # phase_ndarray = ds.y1.data
@@ -27,10 +28,10 @@ ds = xr.open_dataset(results_path)
 # print(readout_module[output_key]["output_att"])
 
 
-meas_datadir = 'tempt'
-dh.set_datadir(meas_datadir)
-print(ds.attrs["tuid"])
-ana = Basic2DAnalysis(tuid=ds.attrs["tuid"], dataset=ds).run()
+# meas_datadir = 'tempt'
+# dh.set_datadir(meas_datadir)
+# print(ds.attrs["tuid"])
+# ana = Basic2DAnalysis(tuid=ds.attrs["tuid"], dataset=ds).run()
 # print(ana.quantities_of_interest)
 
 
