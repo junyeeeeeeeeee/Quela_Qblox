@@ -1,7 +1,9 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from numpy import array, linspace
+import numpy as np
+import matplotlib as plt
+import scipy.signal
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import Data_manager, QDmanager
@@ -10,68 +12,77 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
 from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 
-def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
-    """
-        Do the cavity search by the given QuantumDevice with a given target qubit q. \n
-        Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay! 
-    """
-    quantum_device = QD_agent.quantum_device
-    sche_func = One_tone_sche
-    qubit_info = quantum_device.get_element(q)
-    analysis_result = {}
-    ro_f_center = ro_bare_guess[q]
-    ro_f_samples = linspace(ro_f_center-ro_span_Hz,ro_f_center+ro_span_Hz,points)
-    freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
-    freq.batched = True
-    
-    spec_sched_kwargs = dict(   
-        frequencies=freq,
-        q=q,
-        R_amp={str(q):qubit_info.measure.pulse_amp()},
-        R_duration={str(q):qubit_info.measure.pulse_duration()},
-        R_integration={str(q):qubit_info.measure.integration_time()},
-        R_inte_delay=qubit_info.measure.acq_delay(),
-        powerDep=False,
-    )
-    exp_kwargs= dict(sweep_F=['start '+'%E' %ro_f_samples[0],'end '+'%E' %ro_f_samples[-1]],
-                     )
-    
-    if run:
-        gettable = ScheduleGettable(
-            quantum_device,
-            schedule_function=sche_func, 
-            schedule_kwargs=spec_sched_kwargs,
-            real_imag=False,
-            batched=True,
-        )
-        quantum_device.cfg_sched_repetitions(n_avg)
-        meas_ctrl.gettables(gettable)
-        meas_ctrl.settables(freq)
-        meas_ctrl.setpoints(ro_f_samples)
-        
-        rs_ds = meas_ctrl.run("One-tone")
-        analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
-        # save the xarrry into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS')
+def plot_spectrum(start_freq, stop_freq, num_data, freq_sweep_range, I_data, Q_data):
+    amplitude = np.sqrt(I_data**2 + Q_data**2)
+    phase = np.arctan2(Q_data, I_data) * 180 / np.pi
 
-        print(f"{q} Cavity:")
-        show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
-        if Experi_info != {}:
-            show_args(Experi_info(q))
-        
-    else:
-        n_s=2 
-        sweep_para= array(ro_f_samples[:n_s])
-        spec_sched_kwargs['frequencies']= sweep_para.reshape(sweep_para.shape or (1,))
-        pulse_preview(quantum_device,sche_func,spec_sched_kwargs)
-        show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
-        if Experi_info != {}:
-            show_args(Experi_info(q))
-    return analysis_result
+    mean_amp = np.mean(amplitude)
+    print(mean_amp)
+
+    plt.rcParams["axes.labelsize"] = 18
+    plt.rcParams["xtick.labelsize"] = 16
+    plt.rcParams["ytick.labelsize"] = 16
+
+    fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
+
+    cav_freq = scipy.signal.argrelmin(amplitude, order = round(num_data/8))
+    cav_freq = cav_freq[0]
+    for i in cav_freq:
+        if amplitude[i] > mean_amp*2/3:        # Discard the local minimum which is caused by noise
+            cav_freq = np.delete(cav_freq, np.where(cav_freq == i))
+
+    ax1.plot(freq_sweep_range / 1e9, amplitude, color="#00839F", linewidth=2)
+    ax1.plot(((cav_freq / num_data)*(stop_freq - start_freq) + start_freq) /1e9, amplitude[cav_freq], "x")
+    print(((cav_freq / num_data)*(stop_freq - start_freq) + start_freq) /1e9)
+    ax1.set_ylabel("Amplitude (V)")
+
+    ax2.plot(freq_sweep_range / 1e9, phase, color="#00839F", linewidth=2)
+    ax2.set_ylabel("Phase ($\circ$)")
+    ax2.set_xlabel("Frequency (GHz)")
+    fig.tight_layout()
+    plt.show()
+
+# Should be simplfied!!!
+
+def select_module_widget(
+    device, select_all=False, select_qrm_type: bool = True, select_rf_type: bool = False
+):
+    '''
+    Create a widget to select modules of a certain type
+
+    default is to show only QRM baseband
+
+    Args:
+        devices : Cluster we are currently using
+        select_all (bool): ignore filters and show all modules
+        select_qrm_type (bool): filter QRM/QCM
+        select_rf_type (bool): filter RF/baseband
+    '''
+    options = [[None, None]]
+
+    for module in device.modules:
+        if module.present():
+            if select_all or (
+                module.is_qrm_type == select_qrm_type and module.is_rf_type == select_rf_type
+            ):
+                options.append(
+                    [
+                        f"{device.name} "
+                        f"{module.short_name} "
+                        f"({module.module_type}{'_RF' if module.is_rf_type else ''})",
+                        module,
+                    ]
+                )
+    widget = widgets.Dropdown(options=options)
+    display(widget)
+
+    return widget
+
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import NaN
+    import json
     import Modularize.chip_data_store as cds
     import Modularize.UIwindow as UW
     
@@ -88,53 +99,121 @@ if __name__ == "__main__":
                                                         cluster_ip=ip,
                                                         mode=mode,
                                                         vpn=vpn)
-    
+
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
-    
-    # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
-    # guess [5.26014 5.35968263 5.44950299 5.52734731 5.63612974] @ DR1 Nb
-    ro_bare=dict(
-        q0 = 5.721e9,
-        q2 = 5.83476e9,
-        q4 = 5.9059e9,
-        q1 = 6.01276e9,
-        q3 = 6.1015e9,
-    )
-    
-    CS_results = {}
-    error_log = []
-    for qb in Fctrl:
-        print(qb)
-        qubit = QD_agent.quantum_device.get_element(qb)
-        if QD_path == '':
-            qubit.reset.duration(150e-6)
-            qubit.measure.acq_delay(0)
-            qubit.measure.pulse_amp(0.1)
-            qubit.measure.pulse_duration(2e-6)
-            qubit.measure.integration_time(2e-6)
-        else:
-            # avoid freq conflicts
-            qubit.clock_freqs.readout(NaN)
-        CS_results[qb] = Cavity_spec(QD_agent,meas_ctrl,ro_bare,q=qb,ro_span_Hz=10e6)[qb]
-        if CS_results != {}:
-            print(f'Cavity {qb} @ {CS_results[qb].quantities_of_interest["fr"].nominal_value} Hz')
-            QD_agent.quantum_device.get_element(qb).clock_freqs.readout(CS_results[qb].quantities_of_interest["fr"].nominal_value)
-        else:
-            error_log.append(qb)
-    if error_log != []:
-        print(f"Cavity Spectroscopy error qubit: {error_log}")
 
-    QD_agent.refresh_log("After cavity search")
-    QD_agent.QD_keeper()
-    print('CavitySpectro done!')
-    
-    # Chip info!
-    if chip_info_restore == True:
-        chip_info.update_Cavity_spec_bare(result=CS_results)
-        
+    # Initial value
+    num_averages = 10
+    integration_length = 1024
+    holdoff_length = 200
+    waveform_length = integration_length + holdoff_length
+
+    lo_start_freq = 5.2e9
+    lo_stop_freq = 5.7e9
+    num_data = 501
+    nco_freq = 1e6
+
+    # Acquisitions
+    acquisitions = {"acq": {"num_bins": 1, "index": 0}}
+
+    # Readout select
+    select_readout_module = select_module_widget(cluster, select_qrm_type=True, select_rf_type=True)
+    readout_module = select_readout_module.value
+
+    # Sequence program
+    seq_prog = f"""
+        move    {num_averages},R0           # Average iterator.
+        nop
+        reset_ph
+        set_awg_offs 10000, 10000          # set amplitude of signal
+        nop
+    loop: 
+        wait     {holdoff_length}          # Wait time of flight
+        acquire  0,0,{integration_length}  # Acquire data and store them in bin_n0 of acq_index.
+        loop     R0,@loop                  # Run until number of average iterations is done.
+        stop                               # Stop the sequencer
+        """
+
+    # Add sequence to single dictionary and write to JSON file.
+    sequence = {
+        "waveforms": {},
+        "weights": {},
+        "acquisitions": acquisitions,
+        "program": seq_prog,
+    }
+    with open("sequence.json", "w", encoding="utf-8") as file:
+        json.dump(sequence, file, indent=4)
+        file.close()
+
+    # Upload sequence
+    readout_module.sequencer0.sequence("sequence.json")
+    readout_module.disconnect_outputs()
+    readout_module.disconnect_inputs()
+
+    # Configure channel map
+    readout_module.sequencer0.connect_sequencer("io0")
+
+    readout_module.sequencer0.marker_ovr_en(True)
+    readout_module.sequencer0.marker_ovr_value(3)  # Enables output on QRM-RF
+
+    # Set offset in mV
+    readout_module.out0_offset_path0(5.5)
+    readout_module.out0_offset_path1(5.5)
+
+    # Configure scope mode
+    readout_module.scope_acq_sequencer_select(0)
+    readout_module.scope_acq_trigger_mode_path0("sequencer")
+    readout_module.scope_acq_trigger_mode_path1("sequencer")
+
+    # Configure the sequencer
+    readout_module.sequencer0.mod_en_awg(True)
+    readout_module.sequencer0.demod_en_acq(True)
+    readout_module.sequencer0.nco_freq(nco_freq)
+    readout_module.sequencer0.integration_length_acq(integration_length)
+    readout_module.sequencer0.sync_en(True)
+
+    # NCO delay compensation
+    readout_module.sequencer0.nco_prop_delay_comp_en(True)
+
+    lo_sweep_range = np.linspace(lo_start_freq, lo_stop_freq, num_data)
+
+    lo_data_0 = []
+    lo_data_1 = []
+
+    for lo_val in lo_sweep_range:
+        # Update the LO frequency.
+        readout_module.out0_in0_lo_freq(lo_val)
+
+        # Clear acquisitions
+        readout_module.sequencer0.delete_acquisition_data("acq")
+
+        readout_module.arm_sequencer(0)
+        readout_module.start_sequencer()
+
+        # Wait for the sequencer to stop with a timeout period of one minute.
+        readout_module.get_acquisition_state(0, timeout=1)
+
+        # Move acquisition data from temporary memory to acquisition list.
+        readout_module.store_scope_acquisition(0, "acq")
+
+        # Get acquisition list from instrument.
+        data = readout_module.get_acquisitions(0)["acq"]
+
+        # Store the acquisition data.
+        # The result still needs to be divided by the integration length to make sure
+        # the units are correct.
+        lo_data_0.append(data["acquisition"]["bins"]["integration"]["path0"][0] / integration_length)
+        lo_data_1.append(data["acquisition"]["bins"]["integration"]["path1"][0] / integration_length)
+
+    # Change data type
+    lo_data_0 = np.asarray(lo_data_0)
+    lo_data_1 = np.asarray(lo_data_1)
+
+    plot_spectrum(lo_start_freq + nco_freq, lo_stop_freq + nco_freq, num_data, lo_sweep_range + nco_freq, lo_data_0, lo_data_1)
+
     shut_down(cluster,Fctrl)
     
