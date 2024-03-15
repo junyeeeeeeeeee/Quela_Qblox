@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
     for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)      # cluster.module8 needs to be set as param
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
     
     # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
