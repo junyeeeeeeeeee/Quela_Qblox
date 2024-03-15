@@ -1,6 +1,6 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
 
-from numpy import linspace, array
+from numpy import linspace, array, arange
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
@@ -8,7 +8,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis
 
-def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_duration:float=20e-9, IF:int=150e6,n_avg:int=300,points:int=200,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_duration:float=20e-9, IF:int=-150e6,n_avg:int=300,points:int=200,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     analysis_result = {}
     sche_func= Rabi_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
@@ -17,15 +17,15 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
     
     if Rabi_type.lower() in ['timerabi', 'tr']:
        osci_type = "TimeRabi"
-       Para_XY_amp= XY_amp
+       Para_XY_amp= qubit_info.rxy.amp180()
        Sweep_para=Para_XY_Du = ManualParameter(name="XY_Duration", unit="s", label="Time")
        str_Rabi= 'XY_duration'
        Sweep_para.batched = True
-       samples = linspace(0, XY_duration,points)
+       samples = arange(4e-9, XY_duration,8e-9)
        exp_kwargs= dict(sweep_duration=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                         Amp='%E' %XY_amp,
                         )
-    elif Rabi_type.lower() in ['powerabi', 'pr']:
+    elif Rabi_type.lower() in ['powerrabi', 'pr']:
         osci_type = "PowerRabi"
         Sweep_para= Para_XY_amp= ManualParameter(name="XY_amp", unit="V", label="Voltage")
         str_Rabi= 'XY_amp'
@@ -68,7 +68,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float, XY_durati
        
         rabi_ds = meas_ctrl.run(osci_type)
         # Save the raw data into netCDF
-        Data_manager.save_raw_data(QD_agent=QD_agent,ds=rabi_ds,qb=q,exp_type=osci_type)
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rabi_ds,qb=q,exp_type=osci_type)
         I,Q= dataset_to_array(dataset=rabi_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         data_fit= Rabi_fit_analysis(data=data,samples=samples,Rabi_type=osci_type)
@@ -95,31 +95,32 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Pulse_schedule_library import Fit_analysis_plot
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_5/DR1#170_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=20)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
 
     execute = True
     error_log = []
-    for qb in Fctrl:
+    for qb in ["q2"]:
         print(f"{qb} are under the measurement ...")
-        Rabi_results = Rabi(QD_agent,meas_ctrl,XY_amp=0.5,q=qb,ref_IQ=QD_agent.refIQ[qb])
+        Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
+        Rabi_results = Rabi(QD_agent,meas_ctrl,XY_duration=32e-9,Rabi_type='powerRabi',q=qb,ref_IQ=QD_agent.refIQ[qb],run=True)
         if Rabi_results == {}:
             error_log.append(qb)
         else:
             if execute:
                 qubit = QD_agent.quantum_device.get_element(qb)
                 Fit_analysis_plot(Rabi_results[qb],P_rescale=False,Dis=None)
-                qubit.rxy.amp180(Rabi_results[qb].attrs['pi_2'])
-    
+                # qubit.rxy.amp180(Rabi_results[qb].attrs['pi_2'])
+        Fctrl[qb](0.0)
     if error_log != []:
         print(f"Rabi Osci error qubit: {error_log}")
     if execute:
         QD_agent.refresh_log("after Rabi")
-        QD_agent.QD_keeper()
+        # QD_agent.QD_keeper()
     print('Rabi osci done!')
     shut_down(cluster,Fctrl)

@@ -186,7 +186,7 @@ class Notebook():
     # For coef A in g formula: g(MHz) = coefA*sqrt(fb*fq)/1000, fb and fq in GHz
     def save_CoefInG_for(self,A:float,target_q:str='q0'):
         """
-        A is right the coef in the g formula: g = A*sqrt(fb*fq)/1000, \nwhich g will be in MHz, fb and fq are in GHz.      
+        A is right the coef in the g formula: g = A*sqrt(fb*fq)/1000, \nwhich g will be in MHz, fb and fq are in MHz.      
         """
         self.__dict[target_q]["CoefInG"] = A
     def get_CoefInGFor(self,target_q:str):

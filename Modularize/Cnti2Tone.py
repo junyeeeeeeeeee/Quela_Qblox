@@ -88,11 +88,11 @@ if __name__ == "__main__":
     from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=20)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14)
     # for i in range(6):
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
     #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -100,15 +100,15 @@ if __name__ == "__main__":
     
 
     XYf_guess=dict(
-        q1 = [4.25e9]
+        q2 = [3.26e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q1 = [0, 0.1, 0.15]
+        q2 = [0, 0.25]
     )
 
-    update = False
+    update = True
 
     for qb in XYf_guess:
         print(f"{qb} is under the measurement!")
@@ -126,7 +126,7 @@ if __name__ == "__main__":
                 #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
                 print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=250,n_avg=500,run=True,ref_IQ=[0,0]) # 
+                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=200e6,points=100,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
                 # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
                 if XYL != 0:
                     twotone_comp_plot(QS_results[qb], ori_data, True)

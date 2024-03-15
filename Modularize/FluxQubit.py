@@ -10,7 +10,7 @@ from numpy import NaN
 import os
 
 
-def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=500,Z_points:int=26,f_points:int=26,run:bool=True,q:str='q1',Experi_info={}):
+def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=500,Z_points:int=26,f_points:int=26,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False):
     
     sche_func = Z_gate_two_tone_sche
         
@@ -78,9 +78,17 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         qs_ds = meas_ctrl.run("Zgate-two-tone")
         print(qs_ds)
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone')
-        
-        analysis_result[q] = QubitFluxSpectroscopyAnalysis(tuid=qs_ds.attrs["tuid"], dataset=qs_ds).run()
+        if get_data_path:
+            path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone',get_data_loc=get_data_path)
+        else:
+            path = ''
+            Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone',get_data_loc=get_data_path)
+
+        try:
+            analysis_result[q] = QubitFluxSpectroscopyAnalysis(tuid=qs_ds.attrs["tuid"], dataset=qs_ds).run()
+        except:
+            analysis_result[q] = {}
+            print("Qb vs Flux fitting failed! Raw data had been saved.")
         
         
         show_args(exp_kwargs, title="Zgate_two_tone_kwargs: Meas.qubit="+q)
@@ -99,14 +107,16 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         show_args(exp_kwargs, title="Zgate_two_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
-    return analysis_result, xyf_highest-100e6
+        path = ''
+
+    return analysis_result, xyf_highest-100e6, path
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from numpy import absolute as abs
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     # Set system attenuation
@@ -116,7 +126,7 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     execute = True
-    for qb in ["q1"]:
+    for qb in ["q2"]:
         # for i in Fctrl:
         #     if i != qb:
         #         tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
@@ -128,7 +138,7 @@ if __name__ == "__main__":
         center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)
         half_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=qb)/8
         window_shifter = 0
-        results, origin_f01 = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-half_period+window_shifter,Z_amp_end=center+half_period+window_shifter,q=qb,run=execute)
+        results, origin_f01, _= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-half_period+window_shifter,Z_amp_end=center+half_period+window_shifter,q=qb,run=execute)
         reset_offset(Fctrl)
         if execute:
             qubit = QD_agent.quantum_device.get_element(qb)
