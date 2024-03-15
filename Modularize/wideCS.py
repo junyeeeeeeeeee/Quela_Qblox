@@ -2,15 +2,8 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import scipy.signal
-from utils.tutorial_utils import show_args
-from qcodes.parameters import ManualParameter
-from Modularize.support import Data_manager, QDmanager
-from quantify_scheduler.gettables import ScheduleGettable
-from quantify_core.measurement.control import MeasurementControl
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 
 def plot_spectrum(start_freq, stop_freq, num_data, freq_sweep_range, I_data, Q_data):
     amplitude = np.sqrt(I_data**2 + Q_data**2)
@@ -44,41 +37,6 @@ def plot_spectrum(start_freq, stop_freq, num_data, freq_sweep_range, I_data, Q_d
 
 # Should be simplfied!!!
 
-def select_module_widget(
-    device, select_all=False, select_qrm_type: bool = True, select_rf_type: bool = False
-):
-    '''
-    Create a widget to select modules of a certain type
-
-    default is to show only QRM baseband
-
-    Args:
-        devices : Cluster we are currently using
-        select_all (bool): ignore filters and show all modules
-        select_qrm_type (bool): filter QRM/QCM
-        select_rf_type (bool): filter RF/baseband
-    '''
-    options = [[None, None]]
-
-    for module in device.modules:
-        if module.present():
-            if select_all or (
-                module.is_qrm_type == select_qrm_type and module.is_rf_type == select_rf_type
-            ):
-                options.append(
-                    [
-                        f"{device.name} "
-                        f"{module.short_name} "
-                        f"({module.module_type}{'_RF' if module.is_rf_type else ''})",
-                        module,
-                    ]
-                )
-    widget = widgets.Dropdown(options=options)
-    display(widget)
-
-    return widget
-
-
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
     from numpy import NaN
@@ -86,11 +44,10 @@ if __name__ == "__main__":
     import Modularize.chip_data_store as cds
     import Modularize.UIwindow as UW
     
-    # Variables
-    chip_info_restore = True
+    #chip_info_restore = True
 
     # Create or Load chip information
-    chip_info = cds.Chip_file()
+    #chip_info = cds.Chip_file()
     
     # Reload the QuantumDevice or build up a new one
     QD_path, dr, ip, mode, vpn = UW.init_meas_window()
@@ -99,6 +56,7 @@ if __name__ == "__main__":
                                                         cluster_ip=ip,
                                                         mode=mode,
                                                         vpn=vpn)
+    print(f"{cluster.modules[7]}\n")
 
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
@@ -112,17 +70,18 @@ if __name__ == "__main__":
     holdoff_length = 200
     waveform_length = integration_length + holdoff_length
 
-    lo_start_freq = 5.2e9
-    lo_stop_freq = 5.7e9
+    lo_start_freq = 5.7e9
+    lo_stop_freq = 6.5e9
     num_data = 501
     nco_freq = 1e6
 
+    # Readout select
+    readout_module = cluster.modules[7]
+
+
+    # Non-changable
     # Acquisitions
     acquisitions = {"acq": {"num_bins": 1, "index": 0}}
-
-    # Readout select
-    select_readout_module = select_module_widget(cluster, select_qrm_type=True, select_rf_type=True)
-    readout_module = select_readout_module.value
 
     # Sequence program
     seq_prog = f"""
