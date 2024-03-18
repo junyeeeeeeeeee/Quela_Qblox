@@ -91,8 +91,8 @@ if __name__ == "__main__":
     QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
-    # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36,xy_out_att=14)
+    
+    
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
@@ -111,6 +111,8 @@ if __name__ == "__main__":
     update = True
 
     for qb in XYf_guess:
+        # Set system attenuation
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'xy'))
         print(f"{qb} is under the measurement!")
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
         for XYF in XYf_guess[qb]:

@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__dict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","CoefInG","sweetG"] # all in float
+        self.cata = ["bareF","T1","T2","CoefInG","sweetG","digitalAtte","realAtte"] # all in float
 
         self.init_dict()
 
@@ -10,7 +10,14 @@ class Notebook():
         for i in range(self.q_num):
             self.__dict[f"q{i}"] = {}
             for float_cata in self.cata:
-                self.__dict[f"q{i}"][float_cata] = 0.0
+                if float_cata not in ["digitalAtte","realAtte"]:
+                    self.__dict[f"q{i}"][float_cata] = 0.0
+                else:
+                    self.__dict[f"q{i}"][float_cata] = {}
+                    self.__dict[f"q{i}"][float_cata]['xy'] = 0
+                    self.__dict[f"q{i}"][float_cata]['ro'] = 0
+
+
     ## About get
     def get_notebook(self,target_q:str=''):
         if target_q != '':
@@ -23,6 +30,7 @@ class Notebook():
         self.__dict[target_q]["bareF"] = bare_freq
     def get_bareFreqFor(self,target_q:str="q1"):
         return self.__dict[target_q]["bareF"]
+    
     # For T1
     def save_T1_for(self,T1:float,target_q:str="q1"):
         self.__dict[target_q]["T1"] = T1
@@ -33,6 +41,7 @@ class Notebook():
         self.__dict[target_q]["T2"] = T2
     def get_T2For(self,target_q:str="q1"):
         return self.__dict[target_q]["T2"]
+    
     # For coef A in g formula: g(MHz) = coefA*sqrt(fb*fq)/1000, fb and fq in GHz
     def save_CoefInG_for(self,A:float,target_q:str='q0'):
         """
@@ -41,11 +50,49 @@ class Notebook():
         self.__dict[target_q]["CoefInG"] = A
     def get_CoefInGFor(self,target_q:str):
         return self.__dict[target_q]["CoefInG"]
+    
     # note the g at sweet spot in Hz
     def save_sweetG_for(self,g_Hz:float,target_q:str='q0'):
         self.__dict[target_q]["sweetG"] = g_Hz
     def get_sweetGFor(self,target_q:str):
         return self.__dict[target_q]["sweetG"]
+    
+    # for attenuation
+    def save_DigiAtte_For(self,atte_dB:int,target_q:str='q0',mode:str='xy'):
+        """
+        Save digital attenuation for target q according to the mode = 'xy' or 'ro'. 
+        """
+        if mode.lower() in ['xy', 'ro']:
+            self.__dict[target_q]["digitalAtte"][mode] = atte_dB
+        else:
+            raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+    def save_RealAtte_For(self,atte_dB:int,target_q:str='q0',mode:str='xy'):
+        """
+        Save real attenuation for target q according to the mode = 'xy' or 'ro'. 
+        """
+        if mode.lower() in ['xy', 'ro']:
+            self.__dict[target_q]["realAtte"][mode] = atte_dB
+        else:
+            raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+    def get_DigiAtteFor(self,target_q:str,mode:str):
+        """
+        Return digital attenuation for target q according to the mode = 'xy' or 'ro'. 
+        """
+        if mode.lower() in ['xy', 'ro']:
+            return self.__dict[target_q]["digitalAtte"][mode]
+        else:
+            raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+    def get_RealAtteFor(self,target_q:str,mode:str):
+        """
+        Return digital attenuation for target q according to the mode = 'xy' or 'ro'. 
+        """
+        if mode.lower() in ['xy', 'ro']:
+            return self.__dict[target_q]["realAtte"][mode]
+        else:
+            raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+
+
+
     # Activate notebook
     def activate_from_dict(self,old_notebook:dict):
         for qu in old_notebook:
@@ -55,7 +102,12 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        self.__dict[qu][cata] = 0.0
+                        if cata not in ["digitalAtte","realAtte"]:
+                            self.__dict[qu][cata] = 0.0
+                        else:
+                            self.__dict[qu][cata] = {}
+                            self.__dict[qu][cata]['xy'] = 0
+                            self.__dict[qu][cata]['ro'] = 0
                     else:
                         raise KeyError(f"Given cata='{cata}' can not be recognized!")
 

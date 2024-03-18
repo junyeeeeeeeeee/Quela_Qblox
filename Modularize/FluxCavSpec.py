@@ -83,6 +83,8 @@ if __name__ == "__main__":
     
     # Set system attenuation
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
+    QD_agent.Notewriter.save_RealAtte_For(target_q='q2',atte_dB=10,mode='ro')
+    QD_agent.Notewriter.save_DigiAtte_For(target_q='q2',atte_dB=36,mode='ro')
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 

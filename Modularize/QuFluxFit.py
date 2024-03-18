@@ -223,7 +223,7 @@ def plot_raw_data(path:str):
 
 if __name__ == "__main__":
     worse = ''
-    better = 'Modularize/Meas_raw/2024_3_18/DR2q2_Flux2tone_H14M22S59.nc'
+    better = 'Modularize/Meas_raw/2024_3_18/DR2q2_Flux2tone_H17M16S14.nc'
     QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
@@ -239,10 +239,10 @@ if __name__ == "__main__":
 
     extracted = sortAndDecora(z,XYF,mag,threshold=1)
     x_wanted, y_wanted = extracted[:,0], extracted[:,1]
-    coef = polyfit(x_wanted, y_wanted,deg=2)
-    fit_ary = quadra(x_wanted,*coef)
+    # coef = polyfit(x_wanted, y_wanted,deg=2)
+    # fit_ary = quadra(x_wanted,*coef)
 
-    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted,fit_scat_ary=fit_ary)
+    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted)
 
     # get bare and readout freq
     # QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'

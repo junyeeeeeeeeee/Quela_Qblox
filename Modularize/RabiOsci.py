@@ -21,7 +21,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
        Sweep_para=Para_XY_Du = ManualParameter(name="XY_Duration", unit="s", label="Time")
        str_Rabi= 'XY_duration'
        Sweep_para.batched = True
-       samples = arange(4e-9, XY_duration,8e-9)
+       samples = arange(4e-9, XY_duration,4e-9)
        exp_kwargs= dict(sweep_duration=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                         Amp='%E' %XY_amp,
                         )
@@ -97,8 +97,7 @@ if __name__ == "__main__":
     # Reload the QuantumDevice or build up a new one
     QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14,ro_out_att=36)
+
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
@@ -106,9 +105,10 @@ if __name__ == "__main__":
     execute = True
     error_log = []
     for qb in ["q2"]:
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'xy'))
         print(f"{qb} are under the measurement ...")
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
-        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type='powerRabi',q=qb,ref_IQ=QD_agent.refIQ[qb],run=True)
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type='timeRabi',XY_duration=200e-9,q=qb,ref_IQ=QD_agent.refIQ[qb],run=True)
         if Rabi_results == {}:
             error_log.append(qb)
         else:
