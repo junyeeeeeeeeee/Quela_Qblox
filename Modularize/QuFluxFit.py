@@ -67,7 +67,7 @@ def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
 # Plotting
 def plot_HeatScat(mag,x_heat_ary,y_heat_ary,x_scat_ary,y_scat_ary,fit_scat_ary:ndarray=[]):
     import plotly.graph_objects as go
-    if fit_scat_ary != []:
+    if fit_scat_ary.shape[0] != 0:
         data = [
             go.Heatmap(
                 z=mag,
@@ -151,10 +151,9 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
 
     filtered = F_seperate_del(array(filtered))
     filtered = Z_sperate_del(array(filtered),0.04)
+    # filtered = F_seperate_del(array(filtered))
     
-    
-    return filtered
-
+    return array(filtered)
 def get_arrays_from_netCDF(netCDF_path:str,ref_IQ:list=[0,0]):
     dataset_processed = dh.to_gridded_dataset(xr.open_dataset(netCDF_path))
     XYF = flip(dataset_processed["x0"].to_numpy())
@@ -219,10 +218,13 @@ def rof_setter(loaded_QDagent:QDmanager,target_q:str='q0',bias_position:str='swe
     return rof
 
 
+def plot_raw_data(path:str):
+    pass
+
 if __name__ == "__main__":
     worse = ''
-    better = 'Modularize/Meas_raw/2024_3_15/DR2q2_Flux2tone_H18M22S36.nc'
-    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
+    better = 'Modularize/Meas_raw/2024_3_18/DR2q2_Flux2tone_H14M22S59.nc'
+    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
@@ -233,14 +235,14 @@ if __name__ == "__main__":
     
 
     # Try using quadratic fit the symmetry axis
-    # from numpy import polyfit
+    from numpy import polyfit
 
-    extracted = sortAndDecora(z,XYF,mag,threshold=1.5)
+    extracted = sortAndDecora(z,XYF,mag,threshold=1)
     x_wanted, y_wanted = extracted[:,0], extracted[:,1]
-    # coef = polyfit(x_wanted, y_wanted,deg=2)
-    # fit_ary = quadra(x_wanted,*coef)
+    coef = polyfit(x_wanted, y_wanted,deg=2)
+    fit_ary = quadra(x_wanted,*coef)
 
-    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted)
+    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted,fit_scat_ary=fit_ary)
 
     # get bare and readout freq
     # QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'

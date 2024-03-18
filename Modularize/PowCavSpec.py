@@ -82,7 +82,7 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=34)

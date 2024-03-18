@@ -95,10 +95,10 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Pulse_schedule_library import Fit_analysis_plot
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_15/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14,ro_out_att=36)
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     for qb in ["q2"]:
         print(f"{qb} are under the measurement ...")
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
-        Rabi_results = Rabi(QD_agent,meas_ctrl,XY_duration=32e-9,Rabi_type='powerRabi',q=qb,ref_IQ=QD_agent.refIQ[qb],run=True)
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type='powerRabi',q=qb,ref_IQ=QD_agent.refIQ[qb],run=True)
         if Rabi_results == {}:
             error_log.append(qb)
         else:
