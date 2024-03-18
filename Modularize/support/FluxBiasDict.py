@@ -5,7 +5,7 @@ from numpy import ndarray, sin
 def quadratic(x,a,b,c):
     return a*(x**2)+b*x+c
 
-class Flux_Bias_Dict():
+class FluxBiasDict():
     """
     This class helps to memorize the flux bias. 
     """

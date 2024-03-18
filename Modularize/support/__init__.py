@@ -1,6 +1,6 @@
 import pickle
 from typing import Callable
-from Experiment_setup import get_FluxController
+from Modularize.support.Experiment_setup import get_FluxController
 from typing import Tuple
 import ipywidgets as widgets
 from IPython.display import display
@@ -17,12 +17,12 @@ from utils.tutorial_utils import (
     set_readout_attenuation,
 )
 
-from support.QD_Manager import QD_Manager, Data_Manager
+from support.QDmanager import QDmanager, Data_manager
 import support.UI_Window as uw
 import support.Chip_Data_Store as cds
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QD_Manager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -35,7 +35,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
     if mode.lower() in ['new', 'n']:
-        from Experiment_setup import hcfg_map
+        from Modularize.support.Experiment_setup import hcfg_map
         cfg, pth = hcfg_map[cluster_ip], ''
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
@@ -61,7 +61,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
     enable_QCMRF_LO(cluster)
-    Qmanager = QD_Manager(pth)
+    Qmanager = QDmanager(pth)
     if pth == '':
         Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
         Qmanager.refresh_log("new-born!")

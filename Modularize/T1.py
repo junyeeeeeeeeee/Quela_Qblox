@@ -5,7 +5,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Pulse_schedule_library import T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis
+from Modularize.support.Pulse_schedule_library import T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis
 
 def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,IF:int=150e6,n_avg:int=300,points:int=200,run:bool=True,q='q1',times:int=1, Experi_info:dict={},ref_IQ:list=[0,0]):
     analysis_result= {}
@@ -75,7 +75,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Pulse_schedule_library import Fit_analysis_plot
+    from Modularize.support.Pulse_schedule_library import Fit_analysis_plot
     from numpy import mean
     import os
     # Reload the QuantumDevice or build up a new one

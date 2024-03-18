@@ -5,7 +5,7 @@ from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
+from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
 def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.1,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 

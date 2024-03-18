@@ -1,5 +1,5 @@
 from numpy import array, linspace
-from Modularize.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
+from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable

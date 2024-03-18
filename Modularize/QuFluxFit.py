@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from numpy import flip, arange, argmin, argmax, diff, array, all, sqrt, std, mean, sort, cos, sin
 from Modularize.support import QDmanager
-from Modularize.Pulse_schedule_library import IQ_data_dis
+from Modularize.support.Pulse_schedule_library import IQ_data_dis
 from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose
 
 def Z_sperate_del(datapoint:ndarray,flux_range:float):

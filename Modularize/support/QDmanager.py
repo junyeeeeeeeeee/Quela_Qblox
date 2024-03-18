@@ -1,11 +1,11 @@
 import os, datetime, pickle
 from xarray import Dataset
-from support.Flux_Bias_Dict import Flux_Bias_Dict
+from Modularize.support.FluxBiasDict import FluxBiasDict
 from support.Notebook import Notebook
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
 
-class QD_Manager():
+class QDmanager():
     def __init__(self,QD_path:str=''):
         self.path = QD_path
         self.refIQ = {}
@@ -45,7 +45,7 @@ class QD_Manager():
         self.Log = gift["Log"]
         self.q_num = len(list(gift["Flux"].keys()))
         # class    
-        self.Fluxmanager :Flux_Bias_Dict = Flux_Bias_Dict(qb_number=self.q_num)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
         self.Fluxmanager.activate_from_dict(gift["Flux"])
         self.Notewriter: Notebook = Notebook(q_number=self.q_num)
         self.Notewriter.activate_from_dict(gift["Note"])
@@ -64,7 +64,7 @@ class QD_Manager():
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
         if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
-            db = Data_Manager()
+            db = Data_manager()
             db.build_folder_today()
             self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
@@ -99,11 +99,11 @@ class QD_Manager():
             self.quantum_device.add_element(qubit)
             self.quantum_device._device_elements.append(qubit)
 
-        self.Fluxmanager :Flux_Bias_Dict = Flux_Bias_Dict(self.q_num)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
 # Object to manage data and pictures store.
 
-class Data_Manager:
+class Data_manager:
     
     def __init__(self):
         from support.Path_Book import meas_raw_dir
@@ -144,7 +144,7 @@ class Data_Manager:
         self.pic_folder = pic_folder
 
     
-    def save_raw_data(self,QD_agent:QD_Manager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS', get_data_loc:bool=False):
+    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS', get_data_loc:bool=False):
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
         dr_loc = QD_agent.Identity.split("#")[0]
@@ -188,8 +188,8 @@ class Data_Manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QD_Manager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
-        from Pulse_schedule_library import hist_plot
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
+        from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
         dr_loc = QD_agent.Identity.split("#")[0]

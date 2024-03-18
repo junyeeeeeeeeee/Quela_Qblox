@@ -4,7 +4,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.Pulse_schedule_library import One_tone_sche, pulse_preview
+from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=500,f_points:int=30,flux_points:int=40,run:bool=True,q:str='q1',Experi_info:dict={}):

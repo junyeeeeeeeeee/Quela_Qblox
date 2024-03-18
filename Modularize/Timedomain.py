@@ -1,4 +1,4 @@
-from Pulse_schedule_library import *
+from Modularize.support.Pulse_schedule_library import *
 
 n_s=2 # number of schedule in pulse_preview
 

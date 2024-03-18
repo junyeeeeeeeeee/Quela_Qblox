@@ -5,7 +5,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis
+from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis
 
 
 def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=130e6,n_avg:int=300,points:int=201,run:bool=True,q='q1',times=1, ref_IQ:list=[0,0],Experi_info:dict={}):
@@ -86,7 +86,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
 if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Pulse_schedule_library import Fit_analysis_plot
+    from Modularize.support.Pulse_schedule_library import Fit_analysis_plot
     from numpy import mean
 
     # Reload the QuantumDevice or build up a new one
