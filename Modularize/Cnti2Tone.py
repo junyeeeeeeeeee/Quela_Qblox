@@ -7,16 +7,16 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
 
-def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     
     sche_func = Two_tone_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     # qubit_info.reset.duration(0)
     if f01_guess != 0:
-        f01_high = f01_guess+100e6
+        f01_high = f01_guess+IF
     else:
-        f01_high = qubit_info.clock_freqs.f01()+100e6
+        f01_high = qubit_info.clock_freqs.f01()+IF
     # if xyamp == 0:
     #     xyamp = qubit_info.rxy.amp180(XYL)
     # Avoid warning
@@ -79,7 +79,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,f01_guess:int=
         
         analysis_result[q] = {}
 
-    return analysis_result, f01_high-100e6
+    return analysis_result, f01_high-IF
 
 
 
@@ -88,34 +88,35 @@ if __name__ == "__main__":
     from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=20)
-    # for i in range(6):
-    #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-    #     getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36,xy_out_att=14)
+    for i in range(6):
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     
 
     XYf_guess=dict(
-        q1 = [4.25e9]
+        q2 = [3.26e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q1 = [0, 0.1, 0.15]
+        q2 = [0, 0.3]
     )
 
-    update = False
+    update = True
 
     for qb in XYf_guess:
         print(f"{qb} is under the measurement!")
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
         for XYF in XYf_guess[qb]:
             ori_data = []
-            for XYL in xyamp_dict[qb]:
+            for i in range(len(xyamp_dict[qb])):
+                XYL = xyamp_dict[qb][i]
                 qubit = QD_agent.quantum_device.get_element(qb)
                 # for i in Fctrl:
                 #     if i != qb:
@@ -126,10 +127,10 @@ if __name__ == "__main__":
                 #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
                 print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=250,n_avg=500,run=True,ref_IQ=[0,0]) # 
+                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=50e6,f01_guess=XYF,q=qb,xyf_span_Hz=100e6,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
                 # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
                 if XYL != 0:
-                    twotone_comp_plot(QS_results[qb], ori_data, True)
+                    twotone_comp_plot(QS_results[qb], ori_data, True, save_path=f"Modularize/Meas_raw/2024_3_18/pic/2tone_{i}.png")
                 else:
                     twotone_comp_plot(QS_results[qb], ori_data, False)
                     ori_data = QS_results[qb].data_vars['data']

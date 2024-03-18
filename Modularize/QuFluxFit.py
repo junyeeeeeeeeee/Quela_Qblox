@@ -5,7 +5,7 @@ from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from numpy import flip, arange, argmin, argmax, diff, array, all, sqrt, std, mean, sort, cos, sin
 from Modularize.support import QDmanager
 from Modularize.support.Pulse_schedule_library import IQ_data_dis
-from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose
+from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, delete, diff, where
 
 def Z_sperate_del(datapoint:ndarray,flux_range:float):
     """
@@ -13,18 +13,27 @@ def Z_sperate_del(datapoint:ndarray,flux_range:float):
     Return the remove starting index. If it's 0, there is unnecessary to remove.
     """
     z_ary = datapoint[:,0]
-    break_idx = 0
+    suspicios_idx = []
     for i in range(z_ary.shape[0]):
         if i != z_ary.shape[0]-1:
-            z_difference = z_ary[i+1] - z_ary[i]
+            z_difference = abs(z_ary[i+1] - z_ary[i])
             if z_difference >= flux_range:
-                break_idx = i
-                break
-
-    if break_idx != 0:
-        return array(datapoint[:break_idx])
+                suspicios_idx.append(i)
+    
+    if len(suspicios_idx) >= 2:
+        max_gap_idx, = where(diff(suspicios_idx) == max(diff(suspicios_idx)))
+        if max_gap_idx > datapoint.shape[0]/2:
+            return array(datapoint[:max_gap_idx])
+        else:
+            return array(datapoint[max_gap_idx+1:])     
+    elif len(suspicios_idx) == 1:
+        if suspicios_idx[0] > datapoint.shape[0]/2:
+            return array(datapoint[:suspicios_idx[0]])
+        else:
+            return array(datapoint[suspicios_idx[0]+1:])
     else:
         return datapoint
+
     
 def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
     """
@@ -33,16 +42,24 @@ def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
     The default threshold is 100 MHz.
     """
     f_ary = datapoint[:,1]
-    break_idx = 0
+    del_idx = []
+    mark = False
     for i in range(f_ary.shape[0]):
         if i != f_ary.shape[0]-1:
-            f_difference = f_ary[i+1] - f_ary[i]
-            if f_difference >= freq_range:
-                break_idx = i
-                break
+            if not mark :
+                f_difference = abs(f_ary[i+1] - f_ary[i])
+                if f_difference >= freq_range:
+                    del_idx.append(i+1)
+                    mark = True
+            else:
+                f_difference = abs(f_ary[i+1] - f_ary[i-1])
+                mark = False
+                if f_difference >= freq_range:
+                    del_idx.append(i+1)
+                    mark = True
 
-    if break_idx != 0:
-        return array(datapoint[:break_idx])
+    if len(del_idx) != 0:
+        return delete(datapoint,del_idx,axis=0)
     else:
         return datapoint
 
@@ -50,7 +67,7 @@ def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
 # Plotting
 def plot_HeatScat(mag,x_heat_ary,y_heat_ary,x_scat_ary,y_scat_ary,fit_scat_ary:ndarray=[]):
     import plotly.graph_objects as go
-    if fit_scat_ary != []:
+    if fit_scat_ary.shape[0] != 0:
         data = [
             go.Heatmap(
                 z=mag,
@@ -87,14 +104,23 @@ def filter_2D(raw_mag:ndarray,threshold:float=3.0):
     mu = mean(raw_mag.reshape(-1))
     sigma = std(raw_mag.reshape(-1))
     for i_z in range(raw_mag.shape[0]):
+        sofar_max = min(raw_mag.reshape(-1))# the maximum signal in the same bias
+        z_idx_champion = 0
+        f_idx_champion = 0
         for i_f in range(raw_mag.shape[1]):
             if raw_mag[i_f][i_z] > mu + threshold*sigma:
-                filtered_f_idx.append(i_f)
-                filtered_z_idx.append(i_z)
+                if raw_mag[i_f][i_z] > sofar_max:
+                    f_idx_champion = i_f
+                    z_idx_champion = i_z 
+                    sofar_max = raw_mag[i_f][i_z]
+        if z_idx_champion != 0 or f_idx_champion != 0:
+            filtered_z_idx.append(z_idx_champion)
+            filtered_f_idx.append(f_idx_champion)
+    
     return filtered_f_idx, filtered_z_idx
 
 
-def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=1):
+def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=3):
     def takeLast(elem):
         return elem[-1]
 
@@ -123,11 +149,11 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
     if len(filtered) == 0:
         raise ValueError("The given filter threshold is too heavy, it should be decreased!")
 
+    filtered = F_seperate_del(array(filtered))
     filtered = Z_sperate_del(array(filtered),0.04)
-    filtered = F_seperate_del(filtered)
-
-    return filtered
-
+    # filtered = F_seperate_del(array(filtered))
+    
+    return array(filtered)
 def get_arrays_from_netCDF(netCDF_path:str,ref_IQ:list=[0,0]):
     dataset_processed = dh.to_gridded_dataset(xr.open_dataset(netCDF_path))
     XYF = flip(dataset_processed["x0"].to_numpy())
@@ -139,7 +165,7 @@ def get_arrays_from_netCDF(netCDF_path:str,ref_IQ:list=[0,0]):
         )
     )
     I, Q = real(S21), imag(S21)
-    displaced_magnitude = flip(transpose(IQ_data_dis(I_data=I,Q_data=Q,ref_I=0,ref_Q=0)),axis=0)
+    displaced_magnitude = flip(transpose(IQ_data_dis(I_data=I,Q_data=Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])),axis=0)
     return XYF, z, displaced_magnitude
 
 
@@ -192,28 +218,31 @@ def rof_setter(loaded_QDagent:QDmanager,target_q:str='q0',bias_position:str='swe
     return rof
 
 
+def plot_raw_data(path:str):
+    pass
+
 if __name__ == "__main__":
     worse = ''
-    better = 'Modularize/Meas_raw/2024_3_14/DR2q1_Flux2tone_H15M43S4.nc'
-    QD_path = 'Modularize/QD_backup/2024_3_14/DR2#171_SumInfo.pkl'
+    better = 'Modularize/Meas_raw/2024_3_18/DR2q2_Flux2tone_H14M22S59.nc'
+    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
 
 
     # Raw data extract
-    XYF, z, mag = get_arrays_from_netCDF(netCDF_path=better,ref_IQ=QD_agent.refIQ['q1'])#
+    XYF, z, mag = get_arrays_from_netCDF(netCDF_path=better,ref_IQ=QD_agent.refIQ['q2'])#
     
 
     # Try using quadratic fit the symmetry axis
-    # from numpy import polyfit
+    from numpy import polyfit
 
-    extracted = sortAndDecora(z,XYF,mag)
+    extracted = sortAndDecora(z,XYF,mag,threshold=1)
     x_wanted, y_wanted = extracted[:,0], extracted[:,1]
-    # coef = polyfit(x_wanted, y_wanted,deg=2)
-    # fit_ary = quadra(x_wanted,*coef)
+    coef = polyfit(x_wanted, y_wanted,deg=2)
+    fit_ary = quadra(x_wanted,*coef)
 
-    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted)
+    plot_HeatScat(mag=mag,x_heat_ary=z,x_scat_ary=x_wanted,y_heat_ary=XYF,y_scat_ary=y_wanted,fit_scat_ary=fit_ary)
 
     # get bare and readout freq
     # QD_path = 'Modularize/QD_backup/2024_2_27/SumInfo.pkl'

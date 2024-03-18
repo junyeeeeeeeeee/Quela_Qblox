@@ -1010,6 +1010,7 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
     ax1.set_title('Single shot rotated data')
     ax1.set_xlim(-4*sig,ce_I+4*sig)
     fig1.tight_layout()
+    plt.show()
 
 
 def Single_shot_fit_plot(results:dict):
@@ -1092,6 +1093,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     ax[1].set_xlabel(r"$t\ (\mu$s)",size ='15')
     ax[1].set_ylabel(r"$Q\ $(mV)",size ='15')
     fig.tight_layout()
+    plt.show()
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
@@ -1156,7 +1158,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     plt.show()
 
 from numpy import array, max, mean, min
-def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False):
+def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
     text_msg = "Fit results\n"
     title= 'Two tone spectroscopy'
@@ -1181,6 +1183,8 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
     plot_textbox(ax,text_msg)
     fig.tight_layout()
     plt.legend()
+    if save_path != '':
+        plt.savefig(save_path)
     if turn_on:
         plt.show()
     else:
