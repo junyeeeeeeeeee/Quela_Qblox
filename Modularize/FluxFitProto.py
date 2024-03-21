@@ -117,7 +117,7 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
         reset_offset(Fctrl)
         xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
         # below can be switch into QM system with the arg `qblox=False`
-        x, y, mag = data2plot(xyf,z,ii,qq,filter2D_threshold=1,specified_refIQ=ref,qblox=True,q=target_q)
+        x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q)
         x2static += x.tolist()
         y2static += y.tolist()
         mag2static+=mag.tolist()

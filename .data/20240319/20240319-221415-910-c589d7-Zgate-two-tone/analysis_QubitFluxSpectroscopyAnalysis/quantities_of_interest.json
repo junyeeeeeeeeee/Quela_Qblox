@@ -1,0 +1,79 @@
+{
+    "a": {
+        "__dtype__": "UFloat",
+        "nominal_value": -50681036781.29115,
+        "std_dev": 1907103800.4604921
+    },
+    "b": {
+        "__dtype__": "UFloat",
+        "nominal_value": -2494567588.8142743,
+        "std_dev": 202850724.91191012
+    },
+    "c": {
+        "__dtype__": "UFloat",
+        "nominal_value": 3203646949.880344,
+        "std_dev": 4692743.107766398
+    },
+    "fit_success": true,
+    "offset_0": {
+        "__dtype__": "UFloat",
+        "nominal_value": -0.024610463274255086,
+        "std_dev": 0.0022051352099193007
+    },
+    "freq_0": {
+        "__dtype__": "UFloat",
+        "nominal_value": 3234343181.8951745,
+        "std_dev": 6948281.962833922
+    },
+    "fit_msg": "Summary:\noffset_0: -24.6$\\pm$2.2 mV\nfreq_0: 3.2343$\\pm$0.0069 GHz\n",
+    "fit_result": {
+        "poly2": {
+            "success": true,
+            "message": "Fit succeeded.",
+            "params": {
+                "a": {
+                    "name": "a",
+                    "user_data": null,
+                    "init_value": -50681036782.72698,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 1907103800.4604921,
+                    "correl": {
+                        "b": 0.9683340800676573,
+                        "c": 0.7690543156861802
+                    },
+                    "value": -50681036781.29115
+                },
+                "b": {
+                    "name": "b",
+                    "user_data": null,
+                    "init_value": -2494567588.96877,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 202850724.91191012,
+                    "correl": {
+                        "a": 0.9683340800676573,
+                        "c": 0.8859678063277661
+                    },
+                    "value": -2494567588.8142743
+                },
+                "c": {
+                    "name": "c",
+                    "user_data": null,
+                    "init_value": 3203646949.877282,
+                    "min": -Infinity,
+                    "max": Infinity,
+                    "brute_step": null,
+                    "stderr": 4692743.107766398,
+                    "correl": {
+                        "a": 0.7690543156861802,
+                        "b": 0.8859678063277661
+                    },
+                    "value": 3203646949.880344
+                }
+            }
+        }
+    }
+}
