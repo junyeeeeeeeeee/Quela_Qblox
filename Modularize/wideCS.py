@@ -4,82 +4,17 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
+from qblox_instruments import Cluster
 
-def plot_spectrum(start_freq, stop_freq, num_data, freq_sweep_range, I_data, Q_data):
-    amplitude = np.sqrt(I_data**2 + Q_data**2)
-    phase = np.arctan2(Q_data, I_data) * 180 / np.pi
+def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data:int):
 
-    mean_amp = np.mean(amplitude)
-    print(mean_amp)
+    nco_freq = 1e6
 
-    plt.rcParams["axes.labelsize"] = 18
-    plt.rcParams["xtick.labelsize"] = 16
-    plt.rcParams["ytick.labelsize"] = 16
-
-    fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
-
-    cav_freq = scipy.signal.argrelmin(amplitude, order = round(num_data/8))
-    cav_freq = cav_freq[0]
-    for i in cav_freq:
-        if amplitude[i] > mean_amp*2/3:        # Discard the local minimum which is caused by noise
-            cav_freq = np.delete(cav_freq, np.where(cav_freq == i))
-
-    ax1.plot(freq_sweep_range / 1e9, amplitude, color="#00839F", linewidth=2)
-    ax1.plot(((cav_freq / num_data)*(stop_freq - start_freq) + start_freq) /1e9, amplitude[cav_freq], "x")
-    print(((cav_freq / num_data)*(stop_freq - start_freq) + start_freq) /1e9)
-    ax1.set_ylabel("Amplitude (V)")
-
-    ax2.plot(freq_sweep_range / 1e9, phase, color="#00839F", linewidth=2)
-    ax2.set_ylabel("Phase ($\circ$)")
-    ax2.set_xlabel("Frequency (GHz)")
-    fig.tight_layout()
-    plt.show()
-
-# Should be simplfied!!!
-
-if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
-    from numpy import NaN
-    import json
-    import Modularize.chip_data_store as cds
-    import Modularize.UIwindow as UW
-    
-    #chip_info_restore = True
-
-    # Create or Load chip information
-    #chip_info = cds.Chip_file()
-    
-    # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = UW.init_meas_window()
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
-                                                        dr_loc=dr,
-                                                        cluster_ip=ip,
-                                                        mode=mode,
-                                                        vpn=vpn)
-    print(f"{cluster.modules[7]}\n")
-
-    # Set the system attenuations
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
-
-    # Initial value
     num_averages = 10
     integration_length = 1024
     holdoff_length = 200
     waveform_length = integration_length + holdoff_length
 
-    lo_start_freq = 5.7e9
-    lo_stop_freq = 6.5e9
-    num_data = 501
-    nco_freq = 1e6
-
-    # Readout select
-    readout_module = cluster.modules[7]
-
-
-    # Non-changable
     # Acquisitions
     acquisitions = {"acq": {"num_bins": 1, "index": 0}}
 
@@ -140,8 +75,8 @@ if __name__ == "__main__":
 
     lo_sweep_range = np.linspace(lo_start_freq, lo_stop_freq, num_data)
 
-    lo_data_0 = []
-    lo_data_1 = []
+    I_data = []
+    Q_data = []
 
     for lo_val in lo_sweep_range:
         # Update the LO frequency.
@@ -165,14 +100,77 @@ if __name__ == "__main__":
         # Store the acquisition data.
         # The result still needs to be divided by the integration length to make sure
         # the units are correct.
-        lo_data_0.append(data["acquisition"]["bins"]["integration"]["path0"][0] / integration_length)
-        lo_data_1.append(data["acquisition"]["bins"]["integration"]["path1"][0] / integration_length)
+        I_data.append(data["acquisition"]["bins"]["integration"]["path0"][0] / integration_length)
+        Q_data.append(data["acquisition"]["bins"]["integration"]["path1"][0] / integration_length)
 
     # Change data type
-    lo_data_0 = np.asarray(lo_data_0)
-    lo_data_1 = np.asarray(lo_data_1)
+    I_data = np.asarray(I_data)
+    Q_data = np.asarray(Q_data)
 
-    plot_spectrum(lo_start_freq + nco_freq, lo_stop_freq + nco_freq, num_data, lo_sweep_range + nco_freq, lo_data_0, lo_data_1)
+    amplitude = np.sqrt(I_data**2 + Q_data**2)
+    phase = np.arctan2(Q_data, I_data) * 180 / np.pi
+
+    mean_amp = np.mean(amplitude)
+    print(mean_amp)
+
+    plt.rcParams["axes.labelsize"] = 18
+    plt.rcParams["xtick.labelsize"] = 16
+    plt.rcParams["ytick.labelsize"] = 16
+
+    fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
+
+    cav_freq = scipy.signal.argrelmin(amplitude, order = round(num_data/8))
+    cav_freq = cav_freq[0]
+    for i in cav_freq:
+        if amplitude[i] > mean_amp*2/3:        # Discard the local minimum which is caused by noise
+            cav_freq = np.delete(cav_freq, np.where(cav_freq == i))
+
+    ax1.plot((lo_sweep_range + nco_freq) / 1e9, amplitude, color="#00839F", linewidth=2)
+    ax1.plot(((cav_freq / num_data)*(lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9, amplitude[cav_freq], "x")
+    print((cav_freq / num_data)*((lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9)
+    ax1.set_ylabel("Amplitude (V)")
+
+    ax2.plot((lo_sweep_range + nco_freq) / 1e9, phase, color="#00839F", linewidth=2)
+    ax2.set_ylabel("Phase ($\circ$)")
+    ax2.set_xlabel("Frequency (GHz)")
+    fig.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    from Modularize.support import init_meas, init_system_atte, shut_down
+    from numpy import NaN
+    import json
+    from Modularize.support.UI_Window import init_meas_window
+    
+    #chip_info_restore = True
+
+    # Create or Load chip information
+    #chip_info = cds.Chip_file()
+    
+    # Reload the QuantumDevice or build up a new one
+    QD_path, dr, ip, mode, vpn = init_meas_window()
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
+                                                        dr_loc=dr,
+                                                        cluster_ip=ip,
+                                                        mode=mode,
+                                                        vpn=vpn)
+    print(f"{cluster.modules[7]}\n")
+
+    # Set the system attenuations
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
+    for i in range(6):
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
+        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+
+    # Initial value
+    lo_start_freq = 5.7e9
+    lo_stop_freq = 6.5e9
+    num_data = 501
+    
+    # Readout select
+    readout_module = cluster.modules[7]
+
+    wideCS(readout_module=readout_module, lo_start_freq=lo_start_freq, lo_stop_freq=lo_stop_freq, num_data=num_data)
 
     shut_down(cluster,Fctrl)
     

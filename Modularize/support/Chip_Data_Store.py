@@ -1,5 +1,5 @@
 import os, json, time
-from support.QD_Manager import QD_Manager
+from support.QDmanager import QDmanager
 import support.UI_Window as uw
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
