@@ -275,10 +275,10 @@ def Y_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
         return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
     else: pass
 
-def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu):
+def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
         delay_z= -Du-freeDu
-        return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt="start",)
+        return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
     else: pass
 
 def X_pi_2_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
@@ -426,7 +426,7 @@ def Two_tone_sche(
      
     return sched
 
-
+# try to put a bias on RO part 03/20
 def Z_gate_two_tone_sche(
     frequencies: np.ndarray,
     q:str,
@@ -437,7 +437,8 @@ def Z_gate_two_tone_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
-    repetitions:int=1,    
+    repetitions:int=1,   
+    Z_ro_amp:float =0 
 ) -> Schedule:
     sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -448,7 +449,9 @@ def Z_gate_two_tone_sche(
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
-        
+        if Z_ro_amp != 0:
+            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
+
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched

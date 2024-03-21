@@ -78,22 +78,20 @@ if __name__ == "__main__":
     from numpy import pi
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
-    # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=36)
-    QD_agent.Notewriter.save_RealAtte_For(target_q='q2',atte_dB=10,mode='ro')
-    QD_agent.Notewriter.save_DigiAtte_For(target_q='q2',atte_dB=36,mode='ro')
+
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
 
     execute = True
     error_log = []
-    for qb in ["q2"]:
+    for qb in ["q0"]:
         print(f"{qb} are under the measurement ...")
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=0.8e6,q=qb,flux_span=0.4,run=execute)
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=3e6,q=qb,flux_span=0.4,run=execute)
         if FD_results == {}:
             error_log.append(qb)
         else:

@@ -1,7 +1,7 @@
 import os, datetime, pickle
 from xarray import Dataset
 from Modularize.support.FluxBiasDict import FluxBiasDict
-from support.Notebook import Notebook
+from Modularize.support.Notebook import Notebook
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
 
@@ -101,6 +101,8 @@ class QDmanager():
 
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
+
+    ### Convenient short cuts
 # Object to manage data and pictures store.
 
 class Data_manager:
@@ -119,6 +121,10 @@ class Data_manager:
         """
         current_time = datetime.datetime.now()
         return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
+    
+    def get_date_today(self)->str:
+        current_time = datetime.datetime.now()
+        return f"{current_time.year}_{current_time.month}_{current_time.day}"
 
     # build the folder for the data today
     def build_folder_today(self,parent_path:str=''):
@@ -129,12 +135,11 @@ class Data_manager:
         if parent_path == '':
             parent_path = self.QD_back_dir
 
-        current_time = datetime.datetime.now()
-        folder = f"{current_time.year}_{current_time.month}_{current_time.day}"
+        folder = self.get_date_today()
         new_folder = os.path.join(parent_path, folder) 
         if not os.path.isdir(new_folder):
             os.mkdir(new_folder) 
-            print(f"Folder {current_time.year}_{current_time.month}_{current_time.day} had been created!")
+            print(f"Folder {folder} had been created!")
 
         pic_folder = os.path.join(new_folder, "pic")
         if not os.path.isdir(pic_folder):
@@ -207,3 +212,27 @@ class Data_manager:
             hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
+        
+    def save_dict2json(self,QD_agent:QDmanager,data_dict:dict,qb:str='q0',get_json:bool=False):
+        """
+        Save a dict into json file. Currently ONLY support z-gate 2tone fitting data.
+        """
+        import json
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        dr_loc = QD_agent.Identity.split("#")[0]
+        path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxFqFIT_{exp_timeLabel}.json")
+        with open(path, "w") as json_file:
+            json.dump(data_dict, json_file)
+        print("Flux vs fq to-fit data had been saved!")
+        if get_json:
+            return path
+    
+    def get_today_picFolder(self)->str:
+        """
+        Get the picture folder today. Return its path.
+        """
+        self.build_folder_today(self.raw_data_dir)
+        return self.pic_folder
+
+

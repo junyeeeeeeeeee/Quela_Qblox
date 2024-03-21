@@ -5,7 +5,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
 
 def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='e'):
-    
+    print("Single shot start")
     sche_func = Qubit_SS_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
@@ -60,17 +60,17 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor('q2','ro'))
+    
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
-    for qb in ["q2"]:
-        print(QD_agent.quantum_device.get_element(qb).reset.duration())
-        print(QD_agent.quantum_device.get_element(qb).clock_freqs.readout())
+    for qb in ["q0"]:
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
+        
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=qb,want_state='g',shots=10000)
         try :

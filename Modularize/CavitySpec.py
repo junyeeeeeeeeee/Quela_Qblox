@@ -108,7 +108,7 @@ if __name__ == "__main__":
     
     CS_results = {}
     error_log = []
-    for qb in Fctrl:
+    for qb in ['q0','q1','q2']:
         print(qb)
         qubit = QD_agent.quantum_device.get_element(qb)
         if QD_path == '':

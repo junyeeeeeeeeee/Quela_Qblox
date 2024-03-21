@@ -4,7 +4,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.Pulse_schedule_library import Qubit_SS_sche, set_LO_frequency, pulse_preview, Qubit_state_single_shot_fit_analysis
+from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, set_LO_frequency, pulse_preview, Qubit_state_single_shot_fit_analysis
 
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},T1:float=15e-6):
@@ -65,14 +65,14 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
 if __name__ == '__main__':
     from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
     from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
-    from Modularize.Pulse_schedule_library import Qubit_state_single_shot_plot
+    from Modularize.support.Pulse_schedule_library import Qubit_state_single_shot_plot
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_19/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=14,ro_out_att=36)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor('q2','xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor('q2','ro'))
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)

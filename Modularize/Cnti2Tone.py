@@ -84,14 +84,17 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset, advise_where_fq
     from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    fq_guess = advise_where_fq(QD_agent,'q1',41e6)
 
-    
+
+
+    QD_agent.Notewriter.save_DigiAtte_For(12,'q0','xy')
     
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
@@ -100,12 +103,12 @@ if __name__ == "__main__":
     
 
     XYf_guess=dict(
-        q2 = [3.26e9]
+        q0 = [3.8e9]
     )
     # q4 = 2.5738611635902258 * 1e9,
     
     xyamp_dict = dict(
-        q2 = [0, 0.3]
+        q0 = [0, 0.1]
     )
 
     update = True
@@ -117,8 +120,7 @@ if __name__ == "__main__":
         Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
         for XYF in XYf_guess[qb]:
             ori_data = []
-            for i in range(len(xyamp_dict[qb])):
-                XYL = xyamp_dict[qb][i]
+            for XYL in xyamp_dict[qb]:
                 qubit = QD_agent.quantum_device.get_element(qb)
                 # for i in Fctrl:
                 #     if i != qb:
@@ -129,10 +131,10 @@ if __name__ == "__main__":
                 #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
 
                 print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=50e6,f01_guess=XYF,q=qb,xyf_span_Hz=100e6,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
+                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=100e6,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
                 # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
                 if XYL != 0:
-                    twotone_comp_plot(QS_results[qb], ori_data, True, save_path=f"Modularize/Meas_raw/2024_3_18/pic/2tone_{i}.png")
+                    twotone_comp_plot(QS_results[qb], ori_data, True, save_path=f"Modularize/Meas_raw/2024_3_18/pic/{qb}_2tone_{XYL}.png")
                 else:
                     twotone_comp_plot(QS_results[qb], ori_data, False)
                     ori_data = QS_results[qb].data_vars['data']

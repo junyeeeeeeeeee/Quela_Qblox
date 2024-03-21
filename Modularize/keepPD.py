@@ -19,7 +19,7 @@ def fillin_PDans(QD_path:str,ans:dict):
 
 
 if __name__ == "__main__":
-    qd_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
-    PDans = {"q2":{"dressF_Hz":5.8358e9,"dressP":0.2,"bareF_Hz":5.8352e9}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
+    qd_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+    PDans = {"q0":{"dressF_Hz":5.7226e9,"dressP":0.3,"bareF_Hz":5.7211e9}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
     fillin_PDans(qd_path, PDans)
     

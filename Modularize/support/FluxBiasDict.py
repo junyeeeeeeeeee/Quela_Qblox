@@ -1,4 +1,4 @@
-from numpy import ndarray, sin
+from numpy import ndarray, sin, sqrt, cos
 
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
@@ -26,11 +26,16 @@ class FluxBiasDict():
             return float(amp)*sin(float(w)*x+float(phs))+float(offset)
         return Sin(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
     
-    def quadra_for_qub(self,target_q:str,bias_ary:ndarray):
+    def fqEqn_for_qub(self,target_q:str,bias_ary:ndarray):
         """
         Return the XYF curve data fit by quadratic about target_q with the bias array.
         """
-        return quadratic(bias_ary,*self.__bias_dict[target_q]["qubFitParas"])
+        def FqEqn(x,a,b,Ec,coefA,d):
+            """
+            a ~ period, b ~ offset, 
+            """
+            return sqrt(8*coefA*Ec*sqrt(cos(a*(x-b))**2+d**2*sin(a*(x-b))**2))-Ec
+        return FqEqn(bias_ary,*self.__bias_dict[target_q]["qubFitParas"])
 
 
     def get_bias_dict(self)->dict:
@@ -91,15 +96,13 @@ class FluxBiasDict():
         Save the fitting fuction parameters for flux dep cavity, includes amplitude, frequency, phase and offset for a sin in the form:\n
         `A*sin(fx+phi)+offset`
         """
-        self.__bias_dict[target_q]["cavFitParas"] = [f,amp,phi,offset]
+        self.__bias_dict[target_q]["cavFitParas"] = [amp,f,phi,offset]
 
-    def save_qubFittingParas_for(self,target_q:str,a:float,b:float,c:float):
+    def save_qubFittingParas_for(self,target_q:str,a:float,b:float,Ec:float,Ej_sum:float,d:float):
         """
-        Save the fitting function parameters for flux dep qubit, includes a, b, c for the quadratic form:\n
-        `ax**2+bx+c`
+        Save the fitting function parameters for z-gate 2tone qubit which are a, b, Ec, Ej_sum, d
         """
-        #TODO:
-        self.__bias_dict[target_q]["qubFitParas"] = [a,b,c]
+        self.__bias_dict[target_q]["qubFitParas"] = [a, b, Ec, Ej_sum, d]
     
     def activate_from_dict(self,old_bias_dict:dict):
         """

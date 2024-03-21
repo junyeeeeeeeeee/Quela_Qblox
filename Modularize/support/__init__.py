@@ -17,9 +17,9 @@ from utils.tutorial_utils import (
     set_readout_attenuation,
 )
 
-from support.QDmanager import QDmanager, Data_manager
-import support.UI_Window as uw
-import support.Chip_Data_Store as cds
+from Modularize.support.QDmanager import QDmanager, Data_manager
+import Modularize.support.UI_Window as uw
+import Modularize.support.Chip_Data_Store as cds
 
 # initialize a measurement
 def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
@@ -230,7 +230,13 @@ def enable_QCMRF_LO(cluster):
     print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
         
 
-
+def advise_where_fq(QD:QDmanager,target_q:str,guess_g_Hz:float=48e6):
+    fb = QD.Notewriter.get_bareFreqFor(target_q)
+    fd = QD.quantum_device.get_element(target_q).clock_freqs.readout()
+    g = guess_g_Hz
+    x = fd-fb
+    fq_Hz = fb - (g**2)/x
+    return fq_Hz
 
 
 #TOO_OLD

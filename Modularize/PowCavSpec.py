@@ -82,20 +82,22 @@ if __name__ == "__main__":
     from Modularize.support import init_meas, init_system_atte, shut_down
 
     # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_18/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent.Notewriter.save_DigiAtte_For(36,'q0','ro') #36
     # Set system attenuation
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=34)
+    
     
     for i in range(6):
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     error_log = []
-    for qb in ["q2"]:
+    for qb in ["q0"]:
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
         print(qb)
         # Fctrl[qb](QD_agent.Fluxmanager.get_sweetBiasFor(qb))
-        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=2.5e6)
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=3.5e6)
         if PD_results == {}:
             error_log.append(qb)
         else:
