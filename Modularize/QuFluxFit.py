@@ -10,64 +10,6 @@ from Modularize.support.Pulse_schedule_library import IQ_data_dis
 from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, delete, diff, where
 from scipy.optimize import curve_fit
 
-def Z_sperate_del(datapoint:ndarray,flux_range:float):
-    """
-    Considering a given z_array after F_advan_del processed, if a neighboring z is seperated by the given flux_range (threshold), then remove the elements behind it.\n
-    Return the remove starting index. If it's 0, there is unnecessary to remove.
-    """
-    z_ary = datapoint[:,0]
-    suspicios_idx = []
-    for i in range(z_ary.shape[0]):
-        if i != z_ary.shape[0]-1:
-            z_difference = abs(z_ary[i+1] - z_ary[i])
-            if z_difference >= flux_range:
-                suspicios_idx.append(i)
-    
-    if len(suspicios_idx) >= 2:
-        max_gap_idx, = where(diff(suspicios_idx) == max(diff(suspicios_idx)))[0]
-        if max_gap_idx > datapoint.shape[0]/2:
-            return array(datapoint[:max_gap_idx])
-        else:
-            print(max_gap_idx+1)
-            return array(datapoint[max_gap_idx+1:])     
-    elif len(suspicios_idx) == 1:
-        if suspicios_idx[0] > datapoint.shape[0]/2:
-            return array(datapoint[:suspicios_idx[0]])
-        else:
-            return array(datapoint[suspicios_idx[0]+1:])
-    else:
-        return datapoint
-
-    
-def F_seperate_del(datapoint:ndarray,freq_range:float=100e6):
-    """
-    Considering a given z_array after F_advan_del processed, if a neighboring frequency is seperated by the given freq_range (threshold), then remove the elements behind it.\n
-    Return the remove starting index. If it's 0, there is unnecessary to remove.\n
-    The default threshold is 100 MHz.
-    """
-    f_ary = datapoint[:,1]
-    del_idx = []
-    mark = False
-    for i in range(f_ary.shape[0]):
-        if i != f_ary.shape[0]-1:
-            if not mark :
-                f_difference = abs(f_ary[i+1] - f_ary[i])
-                if f_difference >= freq_range:
-                    del_idx.append(i+1)
-                    mark = True
-            else:
-                f_difference = abs(f_ary[i+1] - f_ary[i-1])
-                mark = False
-                if f_difference >= freq_range:
-                    del_idx.append(i+1)
-                    mark = True
-
-    if len(del_idx) != 0:
-        return delete(datapoint,del_idx,axis=0)
-    else:
-        return datapoint
-
-
 # Plotting
 def plot_HeatScat(mag,x_heat_ary,y_heat_ary,x_scat_ary,y_scat_ary,fit_scat_ary:ndarray=array([]),q:str=''):
     import plotly.graph_objects as go
@@ -217,31 +159,7 @@ def calc_fq_g_excluded(coef_inG:float,fdress:float,fbare:float):
     """
     return fbare*((fdress-fbare)/((fbare*(coef_inG/1000)**2)+(fdress-fbare)))
 
-# def z_aranger(loaded_QDagent:QDmanager,target_q:str,artif_shift_inZ:float=0.0,period_devider:int=8):
-#     sweet = loaded_QDagent.Fluxmanager.get_sweetBiasFor(target_q)
-#     bottom = loaded_QDagent.Fluxmanager.get_tuneawayBiasFor(target_q)
-#     waist = (sweet+bottom)/2
-#     z_span = loaded_QDagent.Fluxmanager.get_PeriodFor(target_q)/period_devider
-    
-#     return {"sweet":[sweet-z_span+artif_shift_inZ, sweet+z_span+artif_shift_inZ],
-#             "waist":[waist-z_span+artif_shift_inZ, waist+z_span+artif_shift_inZ],
-#             "bottom":[bottom-z_span+artif_shift_inZ, bottom+z_span+artif_shift_inZ]}
 
-# def rof_setter(loaded_QDagent:QDmanager,target_q:str='q0',bias_position:str='sweet'):
-#     """
-#     Return the readout freq according to the given z bias.\n
-#     args:\n
-#     bias_position: (1) 'sweet' for sweet spot. (2) 'waist' for the middle between sweet spot and bottom. (3) 'bottom' for the bottom position.
-#     """
-#     if bias_position == 'sweet':
-#         z = loaded_QDagent.Fluxmanager.get_sweetBiasFor(target_q)
-#     elif bias_position == 'bottom':
-#         z = loaded_QDagent.Fluxmanager.get_tuneawayBiasFor(target_q)
-#     else:
-#         z = (loaded_QDagent.Fluxmanager.get_sweetBiasFor(target_q)+loaded_QDagent.Fluxmanager.get_tuneawayBiasFor(target_q))/2
-    
-#     rof = loaded_QDagent.Fluxmanager.sin_for_cav(target_q, bias_ary=array([z]))
-#     return rof
 
 def data2plot(XYF_array:ndarray,z_array:ndarray,I_array:ndarray,Q_array:ndarray,specified_refIQ:list,filter2D_threshold:float=1.0,qblox:bool=False,q:str=''):
     
@@ -334,7 +252,6 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
     popt, pcov = curve_fit(FqEqn, flux, f01,p0=guess,bounds=(bottom_bound,upper_bound))
 
     # try filter and fit again
-    previous_throwCounts = 1e16 # For initialize, larger is better
     while True:
         advan_flux, advan_f01, thrownCounts = FitErrorFilter(FqEqn, popt, flux, f01, FitFilter_threshold)
         advan_popt, advan_pcov = curve_fit(FqEqn, advan_flux, advan_f01,p0=guess,bounds=(bottom_bound,upper_bound))
@@ -342,23 +259,6 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
         if thrownCounts == 0:
             break    
         else:
-            # if previous_throwCounts >= thrownCounts:
-            #     """ previous time throw more data and this is normal. use this results to continue """
-            #     previous_throwCounts = thrownCounts
-            #     if FitFilter_threshold  >= 0.5:
-            #         FitFilter_threshold -= 0.5
-            #         flux = advan_flux
-            #         f01 = advan_f01
-            #         popt = advan_popt
-            #     else:
-            #         print("No data had been thrown away !")
-            #         break 
-            # else:
-            #     """ this time throw morw data, we take previous fitting results """
-            #     advan_flux = flux
-            #     advan_f01 = f01
-            #     advan_popt = popt
-            #     break
             if mean(sqrt(diag(advan_pcov))) <= mean(sqrt(diag(pcov))):
                 if FitFilter_threshold  >= 0.5:
                     FitFilter_threshold += 0.5

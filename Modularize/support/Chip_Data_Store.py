@@ -1,6 +1,6 @@
 import os, json, time
-from support.QDmanager import QDmanager
-import support.UI_Window as uw
+from Modularize.support.QDmanager import QDmanager
+import Modularize.support.UI_Window as uw
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
 
