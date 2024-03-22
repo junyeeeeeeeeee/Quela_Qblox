@@ -361,7 +361,7 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
             #     break
             if mean(sqrt(diag(advan_pcov))) <= mean(sqrt(diag(pcov))):
                 if FitFilter_threshold  >= 0.5:
-                    FitFilter_threshold -= 0.5
+                    FitFilter_threshold += 0.5
                     flux = advan_flux
                     f01 = advan_f01
                     popt = advan_popt
@@ -391,7 +391,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from numpy import array, pi, linspace
     qd_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    json_path = 'Modularize/Meas_raw/2024_3_21/DR2q4_FluxFqFIT_H17M57S49.json'
+    json_path = 'Modularize/Meas_raw/2024_3_21/DR2q0_FluxFqFIT_H20M43S51.json'
     
     q = json_path.split("/")[-1].split("_")[0][-2:]
     QD_agent = QDmanager(qd_path)
