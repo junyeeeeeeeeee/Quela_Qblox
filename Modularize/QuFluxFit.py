@@ -4,7 +4,7 @@ import quantify_core.data.handling as dh
 import matplotlib.pyplot as plt
 from typing import Callable
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
-from numpy import flip, pi, linspace, array, sqrt, std, mean, sort
+from numpy import flip, pi, linspace, array, sqrt, std, mean, sort, diag
 from Modularize.support import QDmanager, Data_manager
 from Modularize.support.Pulse_schedule_library import IQ_data_dis
 from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, delete, diff, where
@@ -337,28 +337,44 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
     previous_throwCounts = 1e16 # For initialize, larger is better
     while True:
         advan_flux, advan_f01, thrownCounts = FitErrorFilter(FqEqn, popt, flux, f01, FitFilter_threshold)
-        advan_popt, pcov = curve_fit(FqEqn, advan_flux, advan_f01,p0=guess,bounds=(bottom_bound,upper_bound))
+        advan_popt, advan_pcov = curve_fit(FqEqn, advan_flux, advan_f01,p0=guess,bounds=(bottom_bound,upper_bound))
         print(thrownCounts)
         if thrownCounts == 0:
             break    
         else:
-            if previous_throwCounts >= thrownCounts:
-                """ previous time throw more data and this is normal. use this results to continue """
-                previous_throwCounts = thrownCounts
+            # if previous_throwCounts >= thrownCounts:
+            #     """ previous time throw more data and this is normal. use this results to continue """
+            #     previous_throwCounts = thrownCounts
+            #     if FitFilter_threshold  >= 0.5:
+            #         FitFilter_threshold -= 0.5
+            #         flux = advan_flux
+            #         f01 = advan_f01
+            #         popt = advan_popt
+            #     else:
+            #         print("No data had been thrown away !")
+            #         break 
+            # else:
+            #     """ this time throw morw data, we take previous fitting results """
+            #     advan_flux = flux
+            #     advan_f01 = f01
+            #     advan_popt = popt
+            #     break
+            if mean(sqrt(diag(advan_pcov))) <= mean(sqrt(diag(pcov))):
                 if FitFilter_threshold  >= 0.5:
                     FitFilter_threshold -= 0.5
                     flux = advan_flux
                     f01 = advan_f01
                     popt = advan_popt
+                    pcov = advan_pcov
                 else:
-                    print("No data had been thrown away !")
+                    print("FitFilter threshold zeroed !")
                     break 
             else:
-                """ this time throw morw data, we take previous fitting results """
                 advan_flux = flux
                 advan_f01 = f01
                 advan_popt = popt
-                break
+                advan_pcov = pcov
+
 
     if savefig_path != '':
         savefig_path = os.path.join(savefig_path,f"{QD.Identity.split('#')[0]}{target_q}_FluxFqFit.png")
