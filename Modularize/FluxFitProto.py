@@ -2,9 +2,9 @@ import datetime, os, json
 from numpy import array, ndarray, mean, std
 from Modularize.RefIQ import Single_shot_ref_spec
 from Modularize.FluxQubit import Zgate_two_tone_spec
-from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset
+from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit
+from Modularize.support.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit
 
 def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
     """
@@ -134,24 +134,32 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
     
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, shut_down, reset_offset
-    from numpy import pi, absolute
-    import matplotlib.pyplot as plt
+
    
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+    """ Fill in """
+    execution = True
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    ro_elements = ["q1"]
+
+
+
+    """ Preparations"""
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
-    # Set system attenuation
-    # init_system_atte(QDmanager.quantum_device,list(Fctrl.keys()))
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+   
     
-    execution = True
-    for qb in ["q0"]:
-        FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, target_q=qb, execute=execution)
+    """ Running """
+    for qubit in ro_elements:
+        FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, target_q=qubit, execute=execution)
+        cluster.reset()
 
+
+    
+    """ Storing (Future) """
+
+
+
+    """ Close """
     print('done!')
     shut_down(cluster,Fctrl)
     

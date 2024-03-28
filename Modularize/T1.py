@@ -86,7 +86,7 @@ def T1_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,speci
         Fctrl[specific_qubits](0.0)
         Fit_analysis_plot(T1_results[linecut],P_rescale=False,Dis=None)
         Data_manager().save_histo_pic(QD_agent,T1_hist,specific_qubits,mode="t1")
-        mean_T1_us = mean(array(T1_hist[specific_qubits]))*1e6
+        mean_T1_us = mean(array(T1_hist[specific_qubits]))
     else:
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,times=histo_counts,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
         mean_T1_us = 0 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     execution = True
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     ro_elements = {
-        "q4":{"evoT":50e-6,"histo_counts":1}
+        "q1":{"evoT":50e-6,"histo_counts":1}
     }
 
 
@@ -119,11 +119,15 @@ if __name__ == "__main__":
         T1_results[qubit], mean_T1_us = T1_executor(QD_agent,meas_ctrl,Fctrl,qubit,freeDura=evoT,histo_counts=histo_total,run=execution)
         cluster.reset()
         print(f"{qubit}: mean T1 = {mean_T1_us} µs")
+
+        if histo_total >= 10:
+            QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
     
 
 
     """ Storing (Future) """
-
+    if execution:
+        QD_agent.QD_keeper()
 
 
     """ Close """

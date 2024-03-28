@@ -29,9 +29,9 @@ if __name__ == "__main__":
     execution = True
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     target_q_amp = {
-        "q4":0.7
+        "q1":0.7
     }
-    freq_shift = -3e6
+    freq_shift = -1e6
 
 
     """ Preparations """ 

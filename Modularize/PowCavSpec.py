@@ -104,7 +104,7 @@ if __name__ == "__main__":
     sweetSpot_dispersive = False
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     target_q_atte = {    # measurement target q from this dict 
-        "q4": 32
+        "q1": 28
     }
 
     """ preparations """

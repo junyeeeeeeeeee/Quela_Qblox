@@ -112,14 +112,14 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
 
         if xyAmp_guess == 0:
-            xyAmp_guess = [0, 0.1, 0.2, 0.3]
+            xyAmp_guess = [0, 0.1, 0.2]
         else:
             xyAmp_guess = [xyAmp_guess]
         
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits))
+                Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)) 
                 QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
                 Fctrl[specific_qubits](0.0)
                 cluster.reset() # *** important
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q4":{"xyf_guess":4.8e9,"xyl_guess":0.1,"xy_atte":10,"g_guess":62e6}
+        "q1":{"xyf_guess":3.8e9,"xyl_guess":0.1,"xy_atte":20,"g_guess":0}
     }
 
 
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     """ Storing """
     if execution:
         QD_agent.refresh_log("After continuous 2-tone!")
-        QD_agent.QD_keeper()
+        # QD_agent.QD_keeper()
 
 
     """ Close """

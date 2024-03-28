@@ -115,7 +115,7 @@ if __name__ == "__main__":
     modify_xyf= True
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     ro_elements = {
-        "q4":{"detune":0,"evoT":40e-6,"histo_counts":1}
+        "q1":{"detune":0,"evoT":40e-6,"histo_counts":1}
     }
 
 
@@ -136,11 +136,13 @@ if __name__ == "__main__":
         if modify_xyf:
             original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
             QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf-average_actual_detune)
+        
+        if histo_total >= 10:
+            QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
 
     
-
     """ Storing """
-    if modify_xyf:
+    if execution:
         QD_agent.QD_keeper()
 
 

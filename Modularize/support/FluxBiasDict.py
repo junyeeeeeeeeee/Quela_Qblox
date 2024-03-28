@@ -1,4 +1,5 @@
-from numpy import ndarray, sin, sqrt, cos
+from numpy import array, ndarray, sin, sqrt, cos
+
 
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
@@ -129,3 +130,24 @@ class FluxBiasDict():
         Return the period for the target_q.
         """
         return self.__bias_dict[target_q]["Period"]
+    
+
+    def get_biasWithFq_from(self,target_q:str,target_fq_Hz:float):
+        """
+        
+        """
+        import sympy as sp
+        from Modularize.support import find_nearest
+        z = sp.Symbol('z')
+        a,b,Ec,coefA,d = self.__bias_dict[target_q]["qubFitParas"][0], self.__bias_dict[target_q]["qubFitParas"][1], self.__bias_dict[target_q]["qubFitParas"][2], self.__bias_dict[target_q]["qubFitParas"][3], self.__bias_dict[target_q]["qubFitParas"][4]
+        to_solve = sp.sqrt(8*coefA*Ec*sp.sqrt(sp.cos(a*(z-b))**2+d**2*sp.sin(a*(z-b))**2))-Ec - target_fq_Hz*1e-9
+
+        candidators = array(sp.solvers.solve(to_solve, z))
+        answer = find_nearest(candidators, 0)
+
+        return answer
+
+    
+    def get_fqFit_paraFor(self,target_q:str):
+        """ Return the Fq fitting paras for target_q"""
+        return self.__bias_dict[target_q]["qubFitParas"]

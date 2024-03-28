@@ -21,8 +21,13 @@ from Modularize.support.QDmanager import QDmanager, Data_manager
 import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
 
+from numpy import asarray, ndarray
 
-
+def find_nearest(ary:ndarray, value:float):
+    """ find the element  which is closest to the given target_value in the given array"""
+    ary = asarray(ary)
+    idx = (abs(ary - value)).argmin()
+    return ary[idx]
 
 # initialize a measurement
 def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:

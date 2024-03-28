@@ -129,7 +129,7 @@ if __name__ == "__main__":
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     execution = True
     try_xy_atte = {
-        "q4":0
+        "q1":0
     }
 
 

@@ -3,12 +3,15 @@ import xarray as xr
 import quantify_core.data.handling as dh
 import matplotlib.pyplot as plt
 from typing import Callable
-from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from numpy import flip, pi, linspace, array, sqrt, std, mean, sort, diag
 from Modularize.support import QDmanager, Data_manager
 from Modularize.support.Pulse_schedule_library import IQ_data_dis
-from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, delete, diff, where
+from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, abs
 from scipy.optimize import curve_fit
+
+
+
+
 
 # Plotting
 def plot_HeatScat(mag,x_heat_ary,y_heat_ary,x_scat_ary,y_scat_ary,fit_scat_ary:ndarray=array([]),q:str=''):
@@ -290,13 +293,14 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from numpy import array, pi, linspace
-    qd_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+    qd_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     json_path = 'Modularize/Meas_raw/2024_3_21/DR2q4_FluxFqFIT_H17M57S49.json'
     
     q = json_path.split("/")[-1].split("_")[0][-2:]
     QD_agent = QDmanager(qd_path)
     QD_agent.QD_loader()
+    print(QD_agent.Fluxmanager.get_bias_dict()["q1"])
     pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
     fq_fit(QD=QD_agent,data2fit_path=json_path,target_q=q,plot=True,savefig_path='',saveParas=False)
 
-    
+
