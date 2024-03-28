@@ -114,6 +114,7 @@ if __name__ == "__main__":
     for qubit in target_q_atte:
         QD_agent.Notewriter.save_DigiAtte_For(target_q_atte[qubit],qubit,'ro')
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
+        cluster.reset()
         if not execution:
             break
     

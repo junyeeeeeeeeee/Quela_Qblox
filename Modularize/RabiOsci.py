@@ -142,6 +142,7 @@ if __name__ == "__main__":
     for qubit in try_xy_atte:
         QD_agent.Notewriter.save_DigiAtte_For(try_xy_atte[qubit],qubit,'xy')
         rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution)
+        cluster.reset()
     
         """ Storing """
         if trustable:   

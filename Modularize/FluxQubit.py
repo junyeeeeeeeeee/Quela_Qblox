@@ -154,6 +154,7 @@ if __name__ == "__main__":
     FQ_results = {}
     for qubit in ro_element:
         FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
+        cluster.reset()
         
         
     """ Storing """

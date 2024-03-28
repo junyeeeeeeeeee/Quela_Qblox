@@ -42,6 +42,7 @@ if __name__ == "__main__":
     CS_results = {}
     for qubit in target_q_amp:
         CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=target_q_amp[qubit],run = execution, f_shifter=freq_shift)
+        cluster.reset()
         print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
         _ = show_quality_for(CS_results,qubit)
 

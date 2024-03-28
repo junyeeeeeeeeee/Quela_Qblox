@@ -119,6 +119,7 @@ if __name__ == "__main__":
     FD_results = {}
     for qubit in ro_elements:
         FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution)
+        cluster.reset()
         if execution:
             if update:
                 update_flux_info_in_results_for(QD_agent,qubit,FD_results)

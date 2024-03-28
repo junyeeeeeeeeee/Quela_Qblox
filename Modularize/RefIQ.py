@@ -89,6 +89,7 @@ if __name__ == "__main__":
     """ Running """
     for qubit in ro_elements:
         refIQ_executor(QD_agent,Fctrl,specific_qubits=qubit,run=execution)
+        cluster.reset()
 
 
     """ Storing """
