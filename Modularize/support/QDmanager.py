@@ -12,13 +12,15 @@ class QDmanager():
         self.Hcfg = {}
         self.Log = "" 
         self.Identity=""
+        self.chip_name = ""
 
-    def register(self,cluster_ip_adress:str,which_dr:str):
+    def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str=''):
         """
-        Register this QDmanager according to the cluster ip and in which dr.
+        Register this QDmanager according to the cluster ip and in which dr and the chip name.
         """
         specifier = cluster_ip_adress.split(".")[-1] # 192.168.1.specifier
         self.Identity = which_dr.upper()+"#"+specifier # Ex. DR2#171
+        self.chip_name = chip_name
 
     def memo_refIQ(self,ref_dict:dict):
         """
@@ -39,8 +41,9 @@ class QDmanager():
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
         with open(self.path, 'rb') as inp:
-            gift = pickle.load(inp)
+            gift = pickle.load(inp) # refer to `merged_file` in QD_keeper()
         # string and int
+        self.chip_name = gift["chip_name"]
         self.Identity = gift["ID"]
         self.Log = gift["Log"]
         self.q_num = len(list(gift["Flux"].keys()))
@@ -69,7 +72,7 @@ class QDmanager():
             self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is onlu for the hightlighs :)
-        merged_file = {"ID":self.Identity,"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"chip_name":self.chip_name,"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)

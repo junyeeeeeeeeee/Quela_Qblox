@@ -5,9 +5,10 @@ from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
+from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
-def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.1,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.01,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 
     sche_func = One_tone_sche
         
@@ -78,35 +79,52 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
     qubit_info.clock_freqs.readout(ro_f_center)
     return analysis_result
 
-if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
 
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    QD_agent.Notewriter.save_DigiAtte_For(36,'q0','ro') #36
-    # Set system attenuation
-    
-    
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False):
 
-    error_log = []
-    for qb in ["q0"]:
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
-        print(qb)
-        # Fctrl[qb](QD_agent.Fluxmanager.get_sweetBiasFor(qb))
-        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=qb, ro_span_Hz=3.5e6)
+    if run:
+        init_system_atte(QD_agent.quantum_device,[specific_qubits],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
+        if sweet_spot:
+            Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits))
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power)
+        Fctrl[specific_qubits](0.0)
         if PD_results == {}:
-            error_log.append(qb)
-        else:
-            # TODO: Once the analysis for power dependence completed, fill in the answer to the quantum device here.
-            pass
-        Fctrl[qb](0.0)
-    if error_log != []:
-        print(f"Power dependence error qubit: {error_log}")
+            print(f"Power dependence error qubit: {specific_qubits}")
+     
+    else:
+        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,run=False,ro_p_max=max_power)
+
+    
+
+if __name__ == "__main__":
+    
+    """ fill in """
+    execution = True
+    sweetSpot_dispersive = False
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    target_q_atte = {    # measurement target q from this dict 
+        "q4": 32
+    }
+
+    """ preparations """
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
+    """ Running """
+    for qubit in target_q_atte:
+        QD_agent.Notewriter.save_DigiAtte_For(target_q_atte[qubit],qubit,'ro')
+        powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
+        if not execution:
+            break
+    
     QD_agent.refresh_log('after PowerDep')
-    QD_agent.QD_keeper()
+    
+    """ Storing """
+    if execution: 
+        QD_agent.QD_keeper()
+    
+    """ Close """
     print('Power dependence done!')
     shut_down(cluster,Fctrl)
+
+    

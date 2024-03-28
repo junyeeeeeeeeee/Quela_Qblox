@@ -6,9 +6,10 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.support.Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis
+from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support.Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
 
-def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_duration:float=20e-9, IF:int=-150e6,n_avg:int=300,points:int=200,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_duration:float=20e-9, IF:int=150e6,n_avg:int=300,points:int=100,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     analysis_result = {}
     sche_func= Rabi_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
@@ -21,6 +22,8 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
        Sweep_para=Para_XY_Du = ManualParameter(name="XY_Duration", unit="s", label="Time")
        str_Rabi= 'XY_duration'
        Sweep_para.batched = True
+       if XY_duration < 160e-9:
+           XY_duration = 160e-9
        samples = arange(4e-9, XY_duration,4e-9)
        exp_kwargs= dict(sweep_duration=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                         Amp='%E' %XY_amp,
@@ -91,36 +94,61 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     return analysis_result
     
 
-if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from Modularize.support.Pulse_schedule_library import Fit_analysis_plot
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
-
-    execute = True
-    error_log = []
-    for qb in ["q4"]:
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'xy'))
-        print(f"{qb} are under the measurement ...")
-        Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
-        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type='timeRabi',XY_duration=200e-9,q=qb,ref_IQ=QD_agent.refIQ[qb],run=execute)
+def rabi_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True):
+    init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+    if which_rabi.lower() in ['p','power']:
+        exp_type = 'powerRabi'
+    elif which_rabi.lower() in ['t','time']:
+        exp_type = 'timeRabi'
+    else:
+        raise ValueError (f"Can't recognized rabi type with the given = {which_rabi}")
+    
+    print(f"{specific_qubits} are under the measurement ...")
+    trustable = False
+    if run:
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max)
+        Fctrl[specific_qubits](0.0)
         if Rabi_results == {}:
-            error_log.append(qb)
+            print(f"Rabi Osci error qubit: {specific_qubits}")
         else:
-            if execute:
-                qubit = QD_agent.quantum_device.get_element(qb)
-                Fit_analysis_plot(Rabi_results[qb],P_rescale=False,Dis=None)
-                # qubit.rxy.amp180(Rabi_results[qb].attrs['pi_2'])
-        Fctrl[qb](0.0)
-    if error_log != []:
-        print(f"Rabi Osci error qubit: {error_log}")
-    if execute:
-        QD_agent.refresh_log("after Rabi")
-        # QD_agent.QD_keeper()
+            if abs(Rabi_results[specific_qubits].attrs['pi_2']) <= 0.5:
+                qubit = QD_agent.quantum_device.get_element(specific_qubits)
+                Fit_analysis_plot(Rabi_results[specific_qubits],P_rescale=False,Dis=None)
+                qubit.rxy.amp180(Rabi_results[specific_qubits].attrs['pi_2'])
+                trustable = True
+        return Rabi_results[specific_qubits], trustable
+    else:
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=False,XY_amp=XYamp_max,XY_duration=XYdura_max)
+        return 0, 0
+  
+
+if __name__ == "__main__":
+    
+    """ Fill in """
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    execution = True
+    try_xy_atte = {
+        "q4":0
+    }
+
+
+    """ Preparations """
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    
+
+    """Running """
+    rabi_results = {}
+    for qubit in try_xy_atte:
+        QD_agent.Notewriter.save_DigiAtte_For(try_xy_atte[qubit],qubit,'xy')
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution)
+    
+        """ Storing """
+        if trustable:   
+            QD_agent.refresh_log("after Rabi")
+            QD_agent.QD_keeper()
+
+
+    """ Close """
     print('Rabi osci done!')
     shut_down(cluster,Fctrl)

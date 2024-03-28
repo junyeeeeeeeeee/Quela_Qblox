@@ -10,16 +10,17 @@ def fillin_PDans(QD_path:str,ans:dict):
     QDagent.QD_loader()
     for q in ans:
         qubit = QDagent.quantum_device.get_element(q)
-        qubit.measure.pulse_amp(ans[q]["dressP"])
-        qubit.clock_freqs.readout(ans[q]["dressF_Hz"])
-        QDagent.Notewriter.save_bareFreq_for(target_q=q,bare_freq=ans[q]["bareF_Hz"])
+        if ans[q]["dressP"] != "": qubit.measure.pulse_amp(ans[q]["dressP"]) 
+        if ans[q]["dressF_Hz"] != "": qubit.clock_freqs.readout(ans[q]["dressF_Hz"])
+        if ans[q]["bareF_Hz"] != "": QDagent.Notewriter.save_bareFreq_for(target_q=q,bare_freq=ans[q]["bareF_Hz"])
+        if ans[q]["ro_atte"] != "": QDagent.Notewriter.save_DigiAtte_For(atte_dB=ans[q]["ro_atte"],target_q=q,mode='ro')
 
     QDagent.refresh_log("PD answer stored!")
     QDagent.QD_keeper()
 
 
 if __name__ == "__main__":
-    qd_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    PDans = {"q0":{"dressF_Hz":5.7226e9,"dressP":0.3,"bareF_Hz":5.7211e9}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
+    qd_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    PDans = {"q4":{"dressF_Hz":5.90891e9,"dressP":0.07,"bareF_Hz":5.90554e9,"ro_atte":32}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
     fillin_PDans(qd_path, PDans)
     

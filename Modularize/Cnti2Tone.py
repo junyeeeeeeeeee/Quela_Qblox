@@ -1,10 +1,13 @@
 from numpy import NaN
 from numpy import array, linspace
+from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
+from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte
 from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
 
 def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
@@ -31,7 +34,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
         frequencies=freq,
         q=q,
         spec_amp=xyamp,
-        spec_Du=100e-6,
+        spec_Du=10e-6,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
         R_duration={str(q):qubit_info.measure.pulse_duration()},
         R_integration={str(q):qubit_info.measure.integration_time()},
@@ -59,7 +62,8 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
-        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) # data = dis for plotting
+        
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) 
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)
         
         show_args(exp_kwargs, title="Two_tone_kwargs: Meas.qubit="+q)
@@ -79,87 +83,100 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
         
         analysis_result[q] = {}
 
-    return analysis_result, f01_high-IF
+    return analysis_result
+
+
+def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float):
+    qubit = QD_agent.quantum_device.get_element(qb)
+    Revised_f01= QS_results[qb].attrs['f01_fit']
+    fb = float(QD_agent.Notewriter.get_bareFreqFor(target_q=qb))*1e-6
+    fd = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()*1e-6
+    A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
+    sweet_g = calc_g(fb,Revised_f01*1e-6,A)
+    qubit.clock_freqs.f01(Revised_f01)
+    qubit.rxy.amp180(XYL)
+    QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
+    QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
+
+
+
+def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,xyf_guess:float=0,guess_g:float=48e6,xyAmp_guess:float=0,xyf_span:float=500e6,xy_if:float=100e6,run:bool=True):
+    
+    if run:
+        advised_fq = advise_where_fq(QD_agent,specific_qubits,guess_g)
+        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+        print(f"fq advice for {specific_qubits} @ {round(advised_fq*1e-9,4)} GHz")
+        if xyf_guess != 0:
+            guess_fq = [xyf_guess]
+        else:
+            guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
+
+        if xyAmp_guess == 0:
+            xyAmp_guess = [0, 0.1, 0.2, 0.3]
+        else:
+            xyAmp_guess = [xyAmp_guess]
+        
+        for XYF in guess_fq:
+            ori_data = []
+            for XYL in xyAmp_guess:
+                Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits))
+                QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
+                Fctrl[specific_qubits](0.0)
+                cluster.reset() # *** important
+                if XYL != 0:
+                    twotone_comp_plot(QS_results[specific_qubits], ori_data, True)
+                else:
+                    twotone_comp_plot(QS_results[specific_qubits], ori_data, False)
+                    ori_data = QS_results[specific_qubits].data_vars['data']
+            
+        return QS_results[specific_qubits]
+                
+    else:
+        qu = specific_qubits
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=0.1,IF=xy_if,f01_guess=4e9,q=qu,xyf_span_Hz=xyf_span,points=50,n_avg=500,run=False,ref_IQ=QD_agent.refIQ[qu])
+
+        return 0
+   
+    
 
 
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset, advise_where_fq
-    from Modularize.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g, calc_fq_g_excluded
 
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+    """ Fill in """
+    execution = True
+    #
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    #
+    ro_elements = {
+        "q4":{"xyf_guess":4.8e9,"xyl_guess":0.1,"xy_atte":10,"g_guess":62e6}
+    }
+
+
+
+    """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    fq_guess = advise_where_fq(QD_agent,'q1',41e6)
 
+    """ Running """
+    tt_results = {}
+    for qubit in ro_elements:
+        QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["xy_atte"],qubit,'xy')
+        xyf = ro_elements[qubit]["xyf_guess"]
+        xyl = ro_elements[qubit]["xyl_guess"]
+        g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
+        tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g)
 
+        if execution and xyl != 0:
+            update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
+            
 
-    QD_agent.Notewriter.save_DigiAtte_For(12,'q0','xy')
-    
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
-
-    
-
-    XYf_guess=dict(
-        q0 = [3.8e9]
-    )
-    # q4 = 2.5738611635902258 * 1e9,
-    
-    xyamp_dict = dict(
-        q0 = [0, 0.1]
-    )
-
-    update = True
-
-    for qb in XYf_guess:
-        # Set system attenuation
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'xy'))
-        print(f"{qb} is under the measurement!")
-        Fctrl[qb](float(QD_agent.Fluxmanager.get_sweetBiasFor(qb)))
-        for XYF in XYf_guess[qb]:
-            ori_data = []
-            for XYL in xyamp_dict[qb]:
-                qubit = QD_agent.quantum_device.get_element(qb)
-                # for i in Fctrl:
-                #     if i != qb:
-                #         tuneaway = QD_agent.Fluxmanager.get_tuneawayBiasFor(i)
-                #         if abs(tuneaway) <= 0.3:
-                #             Fctrl[i](tuneaway)
-                #         else:
-                #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
-
-                print(f"bias = {QD_agent.Fluxmanager.get_sweetBiasFor(qb)}")
-                QS_results, origin_f01 = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=100e6,f01_guess=XYF,q=qb,xyf_span_Hz=500e6,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[qb]) # 
-                # Fit_analysis_plot(QS_results[qb],P_rescale=False,Dis=0)
-                if XYL != 0:
-                    twotone_comp_plot(QS_results[qb], ori_data, True, save_path=f"Modularize/Meas_raw/2024_3_18/pic/{qb}_2tone_{XYL}.png")
-                else:
-                    twotone_comp_plot(QS_results[qb], ori_data, False)
-                    ori_data = QS_results[qb].data_vars['data']
-                Revised_f01= QS_results[qb].attrs['f01_fit']
-
-                # calculate g
-                fb = float(QD_agent.Notewriter.get_bareFreqFor(target_q=qb))*1e-6
-                fd = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()*1e-6
-                A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
-                pred_fq = calc_fq_g_excluded(A,fd,fb)
-                sweet_g = calc_g(fb,Revised_f01*1e-6,A)
-                print(f"A={A}")
-                print(f"g_Mhz={sweet_g}")
-                print(f"predicted fq={pred_fq}")
-
-                if update:
-                    qubit = QD_agent.quantum_device.get_element(qb)
-                    qubit.clock_freqs.f01(Revised_f01)
-                    # temporarily save the xy amp for a clear f01 fig
-                    qubit.rxy.amp180(XYL)
-                    QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
-                    QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
-    if update:
+    """ Storing """
+    if execution:
         QD_agent.refresh_log("After continuous 2-tone!")
         QD_agent.QD_keeper()
+
+
+    """ Close """
     print('2-tone done!')
     shut_down(cluster,Fctrl)
-
+    

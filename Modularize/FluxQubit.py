@@ -1,13 +1,16 @@
+import os
+from numpy import NaN
 from numpy import array, linspace
-from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support import QDmanager, Data_manager
+from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
-from numpy import NaN
-import os
+from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
+
+
 
 
 def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,IF:int=100e6,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=1000,RO_z_amp:float=0,Z_points:int=20,f_points:int=30,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False):
@@ -114,38 +117,51 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
 
     return analysis_result, path, trustable
 
-if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
-    from numpy import absolute as abs
 
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
+def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0):
+    init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+    center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)
+    partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/8
 
-    execute = True
-    for qb in ["q0"]:
-        # for i in Fctrl:
-        #     if i != qb:
-        #         tuneaway = QDmanager.Fluxmanager.get_tuneawayBiasFor(i)
-        #         if abs(tuneaway) <= 0.3:
-        #             Fctrl[i](tuneaway)
-        #         else:
-        #             raise ValueError(f"tuneaway bias wrong! = {tuneaway}")
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'xy'))
-        center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)
-        half_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=qb)/6
-        window_shifter = 0
-        results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-half_period+window_shifter,Z_points=10,Z_amp_end=center+half_period+window_shifter,q=qb,run=execute)
+    if run:
+        results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=True)
         reset_offset(Fctrl)
         if trustable:
-            qubit = QD_agent.quantum_device.get_element(qb)
-            qubit.clock_freqs.f01(results[qb].quantities_of_interest["freq_0"].nominal_value)
-            QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=results[qb].quantities_of_interest["offset_0"].nominal_value)
-            QD_agent.QD_keeper()
+            qubit = QD_agent.quantum_device.get_element(specific_qubits)
+            qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
+            QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+        return results[specific_qubits], trustable
+    else:
+        results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=False)
+        return 0, 0
+
+
+if __name__ == "__main__":
     
+
+    """ Fill in """
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    ro_element = ["q4"]
+    execution = True
+    z_shifter = 0 # V
+
+    """ Preparations """
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    
+
+    
+    """ Running """
+    FQ_results = {}
+    for qubit in ro_element:
+        FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
+        
+        
+    """ Storing """
+    if trustable and execution:
+        QD_agent.QD_keeper()
+    
+
+    """ Close """
     print('Flux qubit done!')
     shut_down(cluster,Fctrl)
     

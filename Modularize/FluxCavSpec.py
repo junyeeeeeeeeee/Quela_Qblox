@@ -1,9 +1,10 @@
-from numpy import array, linspace
+from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 
@@ -73,45 +74,64 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             show_args(Experi_info(q))
     return analysis_result
 
-if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
-    from numpy import pi
+def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
+    qubit = QD_agent.quantum_device.get_element(qb)
+    qubit.clock_freqs.readout(FD_results[qb].quantities_of_interest["freq_0"])
+    QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
+    QD_agent.Fluxmanager.save_period_for(target_q=qb, period=2*pi/FD_results[qb].quantities_of_interest["frequency"].nominal_value)
+    QD_agent.Fluxmanager.save_tuneawayBias_for(target_q=qb,mode='auto')
+    QD_agent.Fluxmanager.save_cavFittingParas_for(target_q=qb,
+        f=FD_results[qb].quantities_of_interest["frequency"].nominal_value,
+        amp=FD_results[qb].quantities_of_interest["amplitude"].nominal_value,
+        phi=FD_results[qb].quantities_of_interest["shift"].nominal_value,
+        offset=FD_results[qb].quantities_of_interest["offset"].nominal_value
+    )
 
-    # Reload the QuantumDevice or build up a new one
-    QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
+def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6):
     
-
-    for i in range(6):
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50) 
-
-    execute = True
-    error_log = []
-    for qb in ["q0"]:
-        print(f"{qb} are under the measurement ...")
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=3e6,q=qb,flux_span=0.4,run=execute)
+    if run:
+        print(f"{specific_qubits} are under the measurement ...")
+        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span)[specific_qubits]
         if FD_results == {}:
-            error_log.append(qb)
+            print(f"Flux dependence error qubit: {specific_qubits}")
+        
+    else:
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,run=False)
+
+    return FD_results
+
+if __name__ == "__main__":
+    
+    """ Fill in """
+    execution = True
+    update = True
+    ro_elements = ['q4']
+    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+
+    """ Preparations """
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
+
+    """ Running """
+    FD_results = {}
+    for qubit in ro_elements:
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution)
+        if execution:
+            if update:
+                update_flux_info_in_results_for(QD_agent,qubit,FD_results)
         else:
-            if execute:
-                qubit = QD_agent.quantum_device.get_element(qb)
-                qubit.clock_freqs.readout(FD_results[qb].quantities_of_interest["freq_0"])
-                QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
-                QD_agent.Fluxmanager.save_period_for(target_q=qb, period=2*pi/FD_results[qb].quantities_of_interest["frequency"].nominal_value)
-                QD_agent.Fluxmanager.save_tuneawayBias_for(target_q=qb,mode='auto')
-                QD_agent.Fluxmanager.save_cavFittingParas_for(target_q=qb,
-                    f=FD_results[qb].quantities_of_interest["frequency"].nominal_value,
-                    amp=FD_results[qb].quantities_of_interest["amplitude"].nominal_value,
-                    phi=FD_results[qb].quantities_of_interest["shift"].nominal_value,
-                    offset=FD_results[qb].quantities_of_interest["offset"].nominal_value
-                )
-    if error_log != []:
-        print(f"Flux dependence error qubit: {error_log}")
-    if execute:
+            break
+
+    
+    """ Storing """
+    if update and execution:
         QD_agent.refresh_log("after FluxDep")
         QD_agent.QD_keeper()
+
+
+    """ Close """
     print('Flux dependence done!')
     shut_down(cluster,Fctrl)
-    

@@ -199,8 +199,8 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
     wide_period = 5*period/4
     narrow_period = period/4
-    upper_bound = [2*pi/narrow_period,max(flux_array),0.25,100,1] #[a, b, Ec, Ej_sum, d]
-    bottom_bound = [2*pi/wide_period,min(flux_array),0.15,1,0]
+    upper_bound = [2*pi/narrow_period,max(flux_array)/f,0.25,100,1] #[a, b, Ec, Ej_sum, d]
+    bottom_bound = [2*pi/wide_period,min(flux_array)/f,0.15,1,0]
 
     return guess, upper_bound, bottom_bound
 
@@ -291,12 +291,12 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from numpy import array, pi, linspace
     qd_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
-    json_path = 'Modularize/Meas_raw/2024_3_21/DR2q0_FluxFqFIT_H20M43S51.json'
+    json_path = 'Modularize/Meas_raw/2024_3_21/DR2q4_FluxFqFIT_H17M57S49.json'
     
     q = json_path.split("/")[-1].split("_")[0][-2:]
     QD_agent = QDmanager(qd_path)
     QD_agent.QD_loader()
     pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
-    fq_fit(QD=QD_agent,data2fit_path=json_path,target_q=q,plot=False,savefig_path=pic_parentpath,saveParas=False)
+    fq_fit(QD=QD_agent,data2fit_path=json_path,target_q=q,plot=True,savefig_path='',saveParas=False)
 
     
