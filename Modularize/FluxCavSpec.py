@@ -107,7 +107,6 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    update = 1
     ro_elements = ['q1']
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
 
@@ -116,13 +115,16 @@ if __name__ == "__main__":
 
 
     """ Running """
+    update = False
     FD_results = {}
     for qubit in ro_elements:
         FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution)
         cluster.reset()
         if execution:
-            if update:
+            permission = input("Update the QD with this result ? [y/n]") 
+            if permission.lower() in ['y','yes']:
                 update_flux_info_in_results_for(QD_agent,qubit,FD_results)
+                update = True
         else:
             break
 

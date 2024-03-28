@@ -127,9 +127,12 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
         results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=True)
         reset_offset(Fctrl)
         if trustable:
-            qubit = QD_agent.quantum_device.get_element(specific_qubits)
-            qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
-            QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+            permission = input("Update the QD with this result ? [y/n]") 
+            if permission.lower() in ['y','yes']:
+                qubit = QD_agent.quantum_device.get_element(specific_qubits)
+                qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
+                QD_agent.Fluxmanager.check_offset_and_correctFor(target_q=specific_qubits,new_offset=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+                QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
         return results[specific_qubits], trustable
     else:
         results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=False)
