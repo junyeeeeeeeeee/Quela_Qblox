@@ -164,12 +164,13 @@ def calc_fq_g_excluded(coef_inG:float,fdress:float,fbare:float):
 
 
 
-def data2plot(XYF_array:ndarray,z_array:ndarray,I_array:ndarray,Q_array:ndarray,specified_refIQ:list,filter2D_threshold:float=1.0,qblox:bool=False,q:str=''):
+def data2plot(XYF_array:ndarray,z_array:ndarray,I_array:ndarray,Q_array:ndarray,specified_refIQ:list,filter2D_threshold:float=1.0,qblox:bool=False,q:str='',plot_scatter:bool=False):
     
     mag = mag_repalce_origin(I_array,Q_array,ref_IQ=specified_refIQ,qblox_rotation=qblox)
     extracted = sortAndDecora(z_array,XYF_array,mag,threshold=filter2D_threshold)
     x_wanted, y_wanted, mag_wanted = extracted[:,0], extracted[:,1], extracted[:,-1]
-    plot_HeatScat(mag=mag,x_heat_ary=z_array,x_scat_ary=x_wanted,y_heat_ary=XYF_array,y_scat_ary=y_wanted,q=q)
+    if plot_scatter:
+        plot_HeatScat(mag=mag,x_heat_ary=z_array,x_scat_ary=x_wanted,y_heat_ary=XYF_array,y_scat_ary=y_wanted,q=q)
     return x_wanted, y_wanted, mag_wanted
 
 
@@ -208,6 +209,7 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     return guess, upper_bound, bottom_bound
 
 def plot_fq_fit(flux_array:ndarray,f01_array:ndarray,target_q:str,popt:dict,plot:bool=False,fig_path:str=''):
+    plt.close()
     flux_extend = linspace(flux_array[0],flux_array[-1],1000)
     plt.scatter(flux_array,f01_array,label='exp data')
     plt.plot(flux_extend, FqEqn(flux_extend,*popt),'r-',label=' Ec=%5.3f, Ej_sum=%5.3f, d=%5.3f' % tuple(popt[2:])) #, 'r-',label='Ej_sum=%5.3f, d=%5.3f, Ec=%5.3f' % tuple(popt)
@@ -251,6 +253,7 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
     offset = QD.Fluxmanager.get_sweetBiasFor(target_q)
 
     flux, f01 = read_fq_data(data2fit_path)
+    original_datapoints = flux.shape[0]
     guess, upper_bound, bottom_bound = set_fitting_paras(period,offset,flux)
     popt, pcov = curve_fit(FqEqn, flux, f01,p0=guess,bounds=(bottom_bound,upper_bound))
 
@@ -258,25 +261,32 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
     while True:
         advan_flux, advan_f01, thrownCounts = FitErrorFilter(FqEqn, popt, flux, f01, FitFilter_threshold)
         advan_popt, advan_pcov = curve_fit(FqEqn, advan_flux, advan_f01,p0=guess,bounds=(bottom_bound,upper_bound))
-        print(thrownCounts)
         if thrownCounts == 0:
+            print("No data points can be thrown, break!")
             break    
         else:
-            if mean(sqrt(diag(advan_pcov))) <= mean(sqrt(diag(pcov))):
-                if FitFilter_threshold  >= 0.5:
-                    FitFilter_threshold += 0.5
+            previous_err = mean(sqrt(diag(pcov)))
+            new_err = mean(sqrt(diag(advan_pcov)))
+            if new_err <= previous_err:
+                if new_err > previous_err * 0.2:
+                    now_datapoints = advan_flux.shape[0]
                     flux = advan_flux
                     f01 = advan_f01
                     popt = advan_popt
                     pcov = advan_pcov
+                    if now_datapoints < int(original_datapoints/3):
+                        print("Data points are not enough, break!")
+                        break
                 else:
-                    print("FitFilter threshold zeroed !")
+                    print("New fitting error is GOOD enough, break!")
                     break 
             else:
                 advan_flux = flux
                 advan_f01 = f01
                 advan_popt = popt
                 advan_pcov = pcov
+                print("New fitting error had increased, break!")
+                break
 
 
     if savefig_path != '':

@@ -1,8 +1,8 @@
 {
     "basic_information": {
-        "chip_name": "t",
+        "chip_name": "test",
         "chip_type": "5Q",
-        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/t.json",
+        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/test.json",
         "ro_att": 0,
         "xy_att": 0,
         "create_time": "20240326"
@@ -11,9 +11,9 @@
         "q0": {
             "char": {
                 "bare": {
-                    "bare_freq": 5722182936.499761,
-                    "Qi": 16418.738466567644,
-                    "Qc": 8998.053697420233
+                    "bare_freq": 5722202004.306715,
+                    "Qi": 18417.03116137819,
+                    "Qc": 8934.354169876247
                 },
                 "zeroflux": {
                     "res": {
@@ -108,9 +108,9 @@
         "q1": {
             "char": {
                 "bare": {
-                    "bare_freq": 6014301541.96855,
-                    "Qi": 26735.07888061122,
-                    "Qc": 3343.9989363564555
+                    "bare_freq": 6014259070.161592,
+                    "Qi": 26515.447391526995,
+                    "Qc": 3356.522437765635
                 },
                 "zeroflux": {
                     "res": {
@@ -205,9 +205,9 @@
         "q2": {
             "char": {
                 "bare": {
-                    "bare_freq": 5835102700.768955,
-                    "Qi": 18220.38398090399,
-                    "Qc": 3795.797001819853
+                    "bare_freq": 5835092298.815782,
+                    "Qi": 17127.5062635484,
+                    "Qc": 3744.497976545454
                 },
                 "zeroflux": {
                     "res": {
@@ -302,9 +302,9 @@
         "q3": {
             "char": {
                 "bare": {
-                    "bare_freq": 6102019724.21431,
-                    "Qi": 18299.426349176978,
-                    "Qc": 4215.243363180255
+                    "bare_freq": 6102045420.94826,
+                    "Qi": 24202.339052632025,
+                    "Qc": 4352.64102357567
                 },
                 "zeroflux": {
                     "res": {
@@ -399,9 +399,9 @@
         "q4": {
             "char": {
                 "bare": {
-                    "bare_freq": 5908430252.012872,
-                    "Qi": 9303.829073701767,
-                    "Qc": 5749.6780292271815
+                    "bare_freq": 5908431003.430676,
+                    "Qi": 9390.087217442258,
+                    "Qc": 5697.231715920992
                 },
                 "zeroflux": {
                     "res": {

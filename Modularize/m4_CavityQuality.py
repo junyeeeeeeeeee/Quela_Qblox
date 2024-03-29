@@ -27,11 +27,11 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
     ro_elements = {
-        "q1":{"ro_amp":0.7}
+        "q4":{"ro_amp":0.7}
     }
-    freq_shift = -1e6
+    freq_shift = -3e6
 
 
     """ Preparations """ 

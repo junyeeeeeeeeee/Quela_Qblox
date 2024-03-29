@@ -1,5 +1,5 @@
 import datetime, os, json
-from numpy import array, ndarray, mean, std
+from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
@@ -24,6 +24,25 @@ def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
                 windows.append([window_from,sweet_mark,window_end])
             
     return windows
+
+def window_picker(meas_var:list,maxi_window_num:int=5)->list:
+    """
+    pick the `maxi_window_num` highest fq windows
+    """
+    tran_freq = []
+    for item in meas_var:
+        tran_freq.append(item["fq_predict"])
+    
+    max_idx = where(array(tran_freq)>sort(array(tran_freq))[-(maxi_window_num+1)])[0]
+
+    picked_item = []
+    
+    for i in max_idx:
+        picked_item.append(meas_var[i])
+
+    return picked_item
+
+
 
 def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float=0.4):
     windows = sweepZ_arranger(QD_agent,qb,Z_guard)
@@ -71,6 +90,10 @@ def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float
         z_pts = 20
     else:
         z_pts = 10
+        if len(meas_var) > 5:
+            meas_var = window_picker(meas_var)
+
+    
     print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
     return meas_var, z_pts
 
@@ -95,41 +118,50 @@ def mag_static_filter(x_array:ndarray,y_array:ndarray,mag_array:ndarray,threshol
     return x_choosen, y_choosen
 
 # main execute program
-def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, target_q:str, execute:bool=True, f_pts:int=30, re_n:int=500):
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'))
-    original_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
-    # ROF is at zero bias
-    rof = QD_agent.Fluxmanager.sin_for_cav(target_q,array([0]))[0]
-    QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(rof)
-    # get the ref IQ according to the ROF (zero bias)
-    analysis_result = Single_shot_ref_spec(QD_agent,q=target_q,want_state='g',shots=10000)
-    I_ref, Q_ref= analysis_result[target_q]['fit_pack'][0],analysis_result[target_q]['fit_pack'][1]
-    ref = [I_ref,Q_ref]
+def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, target_q:str, run:bool=True, f_pts:int=30, re_n:int=500, peak_threshold:float=1.0):
     f_span = 500e6
     xy_if = 100e6
-    meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
-    x2static = []
-    y2static = []
-    mag2static=[]
-    for window in meas_vars:
-        # main execution
-        results, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=execute,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if)
-        reset_offset(Fctrl)
-        xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
-        # below can be switch into QM system with the arg `qblox=False`
-        x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q)
-        x2static += x.tolist()
-        y2static += y.tolist()
-        mag2static+=mag.tolist()
     
-    x2fit, y2fit = mag_static_filter(array(x2static),array(y2static),array(mag2static))
-    data2fit = {"x":x2fit,"y":y2fit}
-    json_path = Data_manager().save_dict2json(QD_agent,data2fit,target_q,True)
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'))
+    original_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
+    if run:
+        # ROF is at zero bias
+        rof = QD_agent.Fluxmanager.sin_for_cav(target_q,array([0]))[0]
+        QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(rof)
+        # get the ref IQ according to the ROF (zero bias)
+        analysis_result = Single_shot_ref_spec(QD_agent,q=target_q,want_state='g',shots=10000)
+        I_ref, Q_ref= analysis_result[target_q]['fit_pack'][0],analysis_result[target_q]['fit_pack'][1]
+        ref = [I_ref,Q_ref]
+        
+        meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
+        x2static = []
+        y2static = []
+        mag2static=[]
+        for window in meas_vars:
+            # main execution
+            _, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=True,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if,analysis=False)
+            reset_offset(Fctrl)
+            xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
+            # below can be switch into QM system with the arg `qblox=False`
+            x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q,filter2D_threshold=peak_threshold)
+            x2static += x.tolist()
+            y2static += y.tolist()
+            mag2static+=mag.tolist()
+        
+        x2fit, y2fit = mag_static_filter(array(x2static),array(y2static),array(mag2static))
+        data2fit = {"x":x2fit,"y":y2fit}
+        json_path = Data_manager().save_dict2json(QD_agent,data2fit,target_q,True)
 
-    pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
-    fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True) 
-    QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(original_rof)
-    QD_agent.QD_keeper()
+        pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
+        fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False) 
+        QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(original_rof)
+    else:
+        meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
+        window = meas_vars[0]
+        # main execution
+        _, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=False,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if)
+        reset_offset(Fctrl)
+    
 
     
 
@@ -138,8 +170,8 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
-    ro_elements = ["q1"]
+    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
+    ro_elements = ["q0","q2"]
 
 
 
@@ -150,13 +182,14 @@ if __name__ == "__main__":
     
     """ Running """
     for qubit in ro_elements:
-        FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, target_q=qubit, execute=execution)
+        FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, target_q=qubit, run=execution,peak_threshold=2)
         cluster.reset()
 
 
     
     """ Storing (Future) """
-
+    if execution:
+        QD_agent.QD_keeper()
 
 
     """ Close """

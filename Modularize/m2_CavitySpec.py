@@ -135,7 +135,7 @@ if __name__ == "__main__":
     CS_results = {}
     for qubit in ro_bare:
         if QD_path == '': QD_RO_init(QD_agent,qubit)
-        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,ro_bare_guess=ro_bare,qb=qubit,real_atte_dB=real_atte_ro,run = execution)
+        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,real_atte_dB=real_atte_ro,run = execution)
         if not execution:
             break
     

@@ -112,7 +112,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
 
         if xyAmp_guess == 0:
-            xyAmp_guess = [0, 0.1, 0.2]
+            xyAmp_guess = [0, 0.03, 0.07]
         else:
             xyAmp_guess = [xyAmp_guess]
         
@@ -145,11 +145,12 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
+    update = True
     #
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q1":{"xyf_guess":0,"xyl_guess":0,"xy_atte":20,"g_guess":0}
+        "q3":{"xyf_guess":3.6e9,"xyl_guess":0.01,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 
@@ -171,9 +172,9 @@ if __name__ == "__main__":
             
 
     """ Storing """
-    if execution:
+    if update :
         QD_agent.refresh_log("After continuous 2-tone!")
-        # QD_agent.QD_keeper()
+        QD_agent.QD_keeper()
 
 
     """ Close """

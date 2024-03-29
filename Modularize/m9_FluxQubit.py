@@ -13,15 +13,16 @@ from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_
 
 
 
-def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,IF:int=100e6,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=1000,RO_z_amp:float=0,Z_points:int=20,f_points:int=30,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False):
+def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,IF:int=100e6,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=1000,RO_z_amp:float=0,Z_points:int=20,f_points:int=30,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False,analysis:bool=True):
     print("Zgate 2tone start")
     trustable = True
     sche_func = Z_gate_two_tone_sche
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    original_f01 = qubit_info.clock_freqs.f01()
     if xyf == 0:
-        xyf_highest = qubit_info.clock_freqs.f01()+IF
+        xyf_highest = original_f01+IF
     else:
         xyf_highest = xyf + IF
     qubit_info.clock_freqs.f01(NaN)
@@ -81,7 +82,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         meas_ctrl.settables([freq,Z_bias])
         meas_ctrl.setpoints_grid((f01_samples,Z_samples))
         qs_ds = meas_ctrl.run("Zgate-two-tone")
-        print(qs_ds)
+        
         # Save the raw data into netCDF
         if get_data_path:
             path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone',get_data_loc=get_data_path)
@@ -89,12 +90,13 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
             path = ''
             Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='F2tone',get_data_loc=get_data_path)
 
-        try:
-            analysis_result[q] = QubitFluxSpectroscopyAnalysis(tuid=qs_ds.attrs["tuid"], dataset=qs_ds).run()
-        except:
-            analysis_result[q] = {}
-            print("Qb vs Flux fitting failed! Raw data had been saved.")
-            trustable = False
+        if analysis:
+            try:
+                analysis_result[q] = QubitFluxSpectroscopyAnalysis(tuid=qs_ds.attrs["tuid"], dataset=qs_ds).run()
+            except:
+                analysis_result[q] = {}
+                print("Qb vs Flux fitting failed! Raw data had been saved.")
+                trustable = False
         
         
         show_args(exp_kwargs, title="Zgate_two_tone_kwargs: Meas.qubit="+q)
@@ -115,6 +117,8 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
             show_args(Experi_info(q))
         path = ''
 
+    qubit_info.clock_freqs.f01(original_f01)
+
     return analysis_result, path, trustable
 
 
@@ -133,6 +137,8 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
                 qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
                 QD_agent.Fluxmanager.check_offset_and_correctFor(target_q=specific_qubits,new_offset=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
                 QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+        else:
+            trustable = False
         return results[specific_qubits], trustable
     else:
         results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=False)
@@ -143,7 +149,7 @@ if __name__ == "__main__":
     
 
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
     ro_elements = ["q1"]
     execution = True
     z_shifter = 0 # V
@@ -155,18 +161,24 @@ if __name__ == "__main__":
     
     """ Running """
     FQ_results = {}
+    check_again =[]
     for qubit in ro_elements:
         FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
         cluster.reset()
+
+        if not trustable:
+            check_again.append(qubit)
         
         
     """ Storing """
-    if trustable and execution:
+    if  execution:
         QD_agent.QD_keeper()
+
     
 
     """ Close """
     print('Flux qubit done!')
+    print(f"qubits to check again: {check_again}")
     shut_down(cluster,Fctrl)
     
 

@@ -8,7 +8,7 @@ from quantify_core.analysis.base_analysis import Basic2DAnalysis
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
-def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.01,ro_p_max:float=0.7,n_avg:int=100,f_points:int=60,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.01,ro_p_max:float=0.7,n_avg:int=100,f_points:int=20,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 
     sche_func = One_tone_sche
         
@@ -102,9 +102,9 @@ if __name__ == "__main__":
     """ fill in """
     execution = True
     sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
     ro_elements = {    # measurement target q from this dict 
-        "q1": {"ro_atte":28}
+        "q4": {"ro_atte":28}
     }
 
     """ preparations """
