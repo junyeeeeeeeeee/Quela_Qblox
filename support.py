@@ -65,7 +65,7 @@ def connect_clusters():
     )
     display(connect_options)
     return connect_options, ip_addresses
- 
+
 # Create quantum device with given q number
 def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevice:
     """
@@ -77,7 +77,7 @@ def create_quantum_device(HARDWARE_CONFIG:dict,num_qubits : int) -> QuantumDevic
     # store references
     quantum_device._device_elements = list()
 
-    for i in range(1,num_qubits + 1):
+    for i in range(num_qubits):
         qubit = BasicTransmonElement(f"q{i}")
         qubit.measure.acq_channel(i)
         quantum_device.add_element(qubit)
