@@ -103,16 +103,16 @@ if __name__ == "__main__":
     execution = True
     sweetSpot_dispersive = False
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
-    target_q_atte = {    # measurement target q from this dict 
-        "q1": 28
+    ro_elements = {    # measurement target q from this dict 
+        "q1": {"ro_atte":28}
     }
 
     """ preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     """ Running """
-    for qubit in target_q_atte:
-        QD_agent.Notewriter.save_DigiAtte_For(target_q_atte[qubit],qubit,'ro')
+    for qubit in ro_elements:
+        QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
         cluster.reset()
         if not execution:

@@ -149,7 +149,7 @@ if __name__ == "__main__":
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q1":{"xyf_guess":3.8e9,"xyl_guess":0.1,"xy_atte":20,"g_guess":0}
+        "q1":{"xyf_guess":0,"xyl_guess":0,"xy_atte":20,"g_guess":0}
     }
 
 

@@ -1,4 +1,4 @@
-from Modularize.CavitySpec import Cavity_spec
+from Modularize.m2_CavitySpec import Cavity_spec
 from Modularize.support import Data_manager, QDmanager
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support import init_meas, init_system_atte, shut_down
@@ -28,8 +28,8 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
-    target_q_amp = {
-        "q1":0.7
+    ro_elements = {
+        "q1":{"ro_amp":0.7}
     }
     freq_shift = -1e6
 
@@ -40,8 +40,8 @@ if __name__ == "__main__":
 
     """ Running """
     CS_results = {}
-    for qubit in target_q_amp:
-        CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=target_q_amp[qubit],run = execution, f_shifter=freq_shift)
+    for qubit in ro_elements:
+        CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift)
         cluster.reset()
         print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
         _ = show_quality_for(CS_results,qubit)

@@ -144,7 +144,7 @@ if __name__ == "__main__":
 
     """ Fill in """
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
-    ro_element = ["q1"]
+    ro_elements = ["q1"]
     execution = True
     z_shifter = 0 # V
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     
     """ Running """
     FQ_results = {}
-    for qubit in ro_element:
+    for qubit in ro_elements:
         FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
         cluster.reset()
         

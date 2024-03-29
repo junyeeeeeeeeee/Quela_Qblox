@@ -1,7 +1,7 @@
 import datetime, os, json
 from numpy import array, ndarray, mean, std
-from Modularize.RefIQ import Single_shot_ref_spec
-from Modularize.FluxQubit import Zgate_two_tone_spec
+from Modularize.m7_RefIQ import Single_shot_ref_spec
+from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit

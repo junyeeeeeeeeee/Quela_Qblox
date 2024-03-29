@@ -128,8 +128,8 @@ if __name__ == "__main__":
     """ Fill in """
     QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
     execution = True
-    try_xy_atte = {
-        "q1":0
+    ro_elements = {
+        "q1":{"xy_atte":0}
     }
 
 
@@ -139,8 +139,8 @@ if __name__ == "__main__":
 
     """Running """
     rabi_results = {}
-    for qubit in try_xy_atte:
-        QD_agent.Notewriter.save_DigiAtte_For(try_xy_atte[qubit],qubit,'xy')
+    for qubit in ro_elements:
+        QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["xy_atte"],qubit,'xy')
         rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution)
         cluster.reset()
     
