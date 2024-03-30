@@ -201,7 +201,7 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     f = 2*pi/period
     b = offset/f
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
-    wide_period = 5*period/4
+    wide_period = 4*period/3
     narrow_period = period/4
     upper_bound = [2*pi/narrow_period,max(flux_array)/f,0.25,100,1] #[a, b, Ec, Ej_sum, d]
     bottom_bound = [2*pi/wide_period,min(flux_array)/f,0.15,1,0]
@@ -268,17 +268,14 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
             previous_err = mean(sqrt(diag(pcov)))
             new_err = mean(sqrt(diag(advan_pcov)))
             if new_err <= previous_err:
-                if new_err > previous_err * 0.2:
-                    now_datapoints = advan_flux.shape[0]
+                if FitFilter_threshold >= 0.5 :
+                    FitFilter_threshold -= 0.5
                     flux = advan_flux
                     f01 = advan_f01
                     popt = advan_popt
                     pcov = advan_pcov
-                    if now_datapoints < int(original_datapoints/3):
-                        print("Data points are not enough, break!")
-                        break
                 else:
-                    print("New fitting error is GOOD enough, break!")
+                    print("FitFilter_threshold touchecd bottom !")
                     break 
             else:
                 advan_flux = flux

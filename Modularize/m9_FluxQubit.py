@@ -149,14 +149,15 @@ if __name__ == "__main__":
     
 
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
-    ro_elements = ["q1"]
+    QD_path = 'Modularize/QD_backup/2024_3_30/DR2#171_SumInfo.pkl'
+    ro_elements = ['q4']
     execution = True
     z_shifter = 0 # V
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
+    if ro_elements == 'all':
+        ro_elements = list(Fctrl.keys())
 
     
     """ Running """

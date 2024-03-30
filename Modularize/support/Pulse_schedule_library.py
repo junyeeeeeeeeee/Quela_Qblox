@@ -1163,6 +1163,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
 from numpy import array, max, mean, min
 def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    ax.axvline(x=results.attrs['f01_fit']*1e-9, ymin=0, ymax= max(results.data_vars['data'].to_numpy())*1000,color='green',linestyle='dashed', alpha=0.8,lw=1)
     text_msg = "Fit results\n"
     title= 'Two tone spectroscopy'
     x_label= 'Frequency'+' [GHz]'
@@ -1177,9 +1178,12 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
     cond_1 = max(array(results.data_vars['fitting'])) < max(results.data_vars['data'])+0.5*(max(results.data_vars['data']) - mean(array(results.data_vars['data'])))
     cond_2 = min(array(results.data_vars['fitting'])) > min(results.data_vars['data'])-0.5*(mean(results.data_vars['data']) - min(array(results.data_vars['data'])))
     if cond_1 and cond_2:
-        ax.plot(x_fit,results.data_vars['fitting']*1000,'-', color="brown",label=r"$fit$", alpha=1, lw=1)   
+        ax.plot(x_fit,results.data_vars['fitting']*1000,'-', color="brown",label=r"$fit$", alpha=1, lw=1)  
+         
     if array(substrate_backgroung).shape[0] != 0 :
         ax.plot(x,substrate_backgroung*1000,'-', color="blue",label=r"$background$", alpha=0.5, ms=4)
+    
+    
     ax.set_xlabel(x_label)
     ax.set_title(title)
     ax.set_ylabel(y_label)

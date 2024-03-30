@@ -8,7 +8,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 
-def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=500,f_points:int=30,flux_points:int=40,run:bool=True,q:str='q1',Experi_info:dict={}):
+def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
 
     sche_func = One_tone_sche
         
@@ -107,12 +107,13 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    ro_elements = ['q4']
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
+    ro_elements = 'all'
+    QD_path = 'Modularize/QD_backup/2024_3_30/DR2#171_SumInfo.pkl'
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-
+    if ro_elements == 'all':
+        ro_elements = list(Fctrl.keys())
 
     """ Running """
     update = False
