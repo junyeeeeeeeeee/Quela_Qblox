@@ -147,10 +147,10 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-    QD_path = 'Modularize/QD_backup/2024_3_30/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q4":{"xyf_guess":4.8e9,"xyl_guess":0.015,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q3":{"xyf_guess":3.6e9,"xyl_guess":0.025,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 

@@ -1,4 +1,4 @@
-from numpy import array, ndarray, sin, sqrt, cos, pi
+from numpy import array, ndarray, sin, sqrt, cos, pi, real
 
 
 # TODO: Test this class to store the bias info
@@ -23,8 +23,10 @@ class FluxBiasDict():
         """
         Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
         """
+        
         def Sin(x,amp,w,phs,offset):
-            return float(amp)*sin(float(w)*x+float(phs))+float(offset)
+            return sin(float(w)*x+float(phs))*float(amp)+float(offset)
+        
         return Sin(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
     
     def fqEqn_for_qub(self,target_q:str,bias_ary:ndarray):
@@ -144,7 +146,7 @@ class FluxBiasDict():
             print("You don't have to fit the transition freq again! Correct it by the offset differences!")
 
 
-    def get_biasWithFq_from(self,target_q:str,target_fq_Hz:float):
+    def get_biasWithFq_from(self,target_q:str,target_fq_Hz:float, flux_guard:float=0.4):
         """
         After we fit the tarnsition freq vs bias, we can get the bias according to the given `target_fq_Hz` for the `target_q`.\n
         ### The given `target_fq_Hz` should unit in Hz.\n
@@ -152,7 +154,7 @@ class FluxBiasDict():
         """
         import sympy as sp
         from Modularize.support import find_nearest
-        z = sp.Symbol('z')
+        z = sp.Symbol('z',real=True)
         if self.__bias_dict[target_q]["qubFitParas"] == []:
             raise ValueError("You have NOT fit the transition frequency with bias!")
 
@@ -160,11 +162,14 @@ class FluxBiasDict():
         to_solve = sp.sqrt(8*coefA*Ec*sp.sqrt(sp.cos(a*(z-b))**2+d**2*sp.sin(a*(z-b))**2))-Ec - target_fq_Hz*1e-9
 
         candidators = array(sp.solvers.solve(to_solve, z))
+        
         if candidators.shape[0] == 0:
-            answer = 0
+            answer = 'n'
+            fq_max = self.fqEqn_for_qub(target_q,array([self.get_sweetBiasFor(target_q)]))[0]
             print(f"Can NOT find a bias makes the fq @ {target_fq_Hz*1e-9} GHz !")
+            print(f"The max fq about this qubit = {fq_max} GHz")
         else:
-            answer = find_nearest(candidators, 0) if find_nearest(candidators, 0) < 0.4 else 0.4
+            answer = find_nearest(candidators, 0) if find_nearest(candidators, 0) < flux_guard else flux_guard
 
         return answer
 

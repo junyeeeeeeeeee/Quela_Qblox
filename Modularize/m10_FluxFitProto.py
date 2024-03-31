@@ -183,8 +183,8 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_30/DR2#171_SumInfo.pkl'
-    ro_elements = 'all'
+    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
+    ro_elements = ['q2','q3']
 
 
 
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     """ Running """
     fit_error = []
     for qubit in ro_elements:
-        error = FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, cluster, target_q=qubit, run=execution)
+        error = FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, cluster, target_q=qubit, run=execution,peak_threshold=2)
         if error:
             fit_error.append(qubit)
 

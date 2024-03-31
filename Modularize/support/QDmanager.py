@@ -111,8 +111,8 @@ class QDmanager():
 class Data_manager:
     
     def __init__(self):
-        from support.Path_Book import meas_raw_dir
-        from support.Path_Book import qdevice_backup_dir
+        from Modularize.support.Path_Book import meas_raw_dir
+        from Modularize.support.Path_Book import qdevice_backup_dir
         self.QD_back_dir = qdevice_backup_dir
         self.raw_data_dir = meas_raw_dir
 
