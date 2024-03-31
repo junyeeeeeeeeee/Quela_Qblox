@@ -1,25 +1,24 @@
 {
     "basic_information": {
-        "chip_name": "test",
-        "chip_type": "5Q",
-        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/test.json",
-        "ro_att": 0,
-        "xy_att": 0,
-        "create_time": "20240326"
+        "chip_name": "",
+        "chip_type": "",
+        "create_time": ""
     },
     "1Q_information": {
         "q0": {
             "char": {
                 "bare": {
-                    "bare_freq": 5722202004.306715,
-                    "Qi": 18417.03116137819,
-                    "Qc": 8934.354169876247
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -33,7 +32,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -47,7 +47,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -61,7 +62,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -73,6 +75,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -108,15 +112,17 @@
         "q1": {
             "char": {
                 "bare": {
-                    "bare_freq": 6014259070.161592,
-                    "Qi": 26515.447391526995,
-                    "Qc": 3356.522437765635
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -130,7 +136,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -144,7 +151,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -158,7 +166,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -170,6 +179,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -205,15 +216,17 @@
         "q2": {
             "char": {
                 "bare": {
-                    "bare_freq": 5835092298.815782,
-                    "Qi": 17127.5062635484,
-                    "Qc": 3744.497976545454
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -227,7 +240,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -241,7 +255,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -255,7 +270,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -267,6 +283,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -302,15 +320,17 @@
         "q3": {
             "char": {
                 "bare": {
-                    "bare_freq": 6102045420.94826,
-                    "Qi": 24202.339052632025,
-                    "Qc": 4352.64102357567
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -324,7 +344,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -338,7 +359,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -352,7 +374,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -364,6 +387,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -399,15 +424,17 @@
         "q4": {
             "char": {
                 "bare": {
-                    "bare_freq": 5908431003.430676,
-                    "Qi": 9390.087217442258,
-                    "Qc": 5697.231715920992
+                    "bare_freq": 0,
+                    "Qi": 0,
+                    "Qc": 0,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -421,7 +448,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -435,7 +463,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -449,7 +478,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -461,6 +491,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
