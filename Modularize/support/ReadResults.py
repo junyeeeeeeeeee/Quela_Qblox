@@ -40,15 +40,15 @@ from Modularize.support.QDmanager import QDmanager
 
 # from Modularize.support import QDmanager
 from numpy import array
-QD_path = 'Modularize/QD_backup/2024_3_19/DR2#171_SumInfo.pkl'
+QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
 QD_agent = QDmanager(QD_path)
 QD_agent.QD_loader()
-for i in ["q2"]:
+for i in ["q3"]:
     rof = QD_agent.quantum_device.get_element(i).clock_freqs.readout()
-    rof_z = QD_agent.Fluxmanager.sin_for_cav(target_q=i,bias_ary=array([QD_agent.Fluxmanager.get_sweetBiasFor(i)]))[0]
+    xyf = QD_agent.quantum_device.get_element(i).clock_freqs.f01()
     
 print(rof)
-print(rof_z)
+print(xyf)
 # def aprx_fq(disper_MHz:float,bareF_MHz:float,g_MHz:float=45.0):
 #     return bareF_MHz-(g_MHz**2)/disper_MHz
 

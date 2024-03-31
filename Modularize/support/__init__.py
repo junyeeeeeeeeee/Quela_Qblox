@@ -21,6 +21,14 @@ from Modularize.support.QDmanager import QDmanager, Data_manager
 import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
 
+from numpy import asarray, ndarray
+
+def find_nearest(ary:ndarray, value:float):
+    """ find the element  which is closest to the given target_value in the given array"""
+    ary = asarray(ary)
+    idx = (abs(ary - value)).argmin()
+    return ary[idx]
+
 # initialize a measurement
 def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
@@ -60,7 +68,9 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
             ip = "192.168.1.171"
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
+    
     enable_QCMRF_LO(cluster)
+    QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
         Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
@@ -71,6 +81,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     bias_controller = get_FluxController(cluster,cluster_ip)
     reset_offset(bias_controller)
+    cluster.reset()
     return Qmanager, cluster, meas_ctrl, ic, bias_controller
 
 def get_ip_specifier(QD_path:str):
@@ -228,7 +239,17 @@ def enable_QCMRF_LO(cluster):
 
     
     print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
-        
+
+
+def QRM_nco_init(cluster):
+    QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type and mod.is_rf_type)
+    for slot_idx in QRM_RFs:
+        for i in range(6):
+            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp_en(True)      
+            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp(50)
+    
+    print(f" NCO in QRM_RF: {list(QRM_RFs.keys())} had initialized NCO successfully!")
+
 
 def advise_where_fq(QD:QDmanager,target_q:str,guess_g_Hz:float=48e6):
     fb = QD.Notewriter.get_bareFreqFor(target_q)
@@ -237,6 +258,13 @@ def advise_where_fq(QD:QDmanager,target_q:str,guess_g_Hz:float=48e6):
     x = fd-fb
     fq_Hz = fb - (g**2)/x
     return fq_Hz
+
+
+def check_QD_info(QD_agent:QDmanager,target_q:str):
+    from utils.tutorial_utils import show_readout_args, show_drive_args
+    qubit = QD_agent.quantum_device.get_element(target_q)
+    show_readout_args(qubit)
+    show_drive_args(qubit)
 
 
 #TOO_OLD

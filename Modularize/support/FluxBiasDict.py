@@ -1,4 +1,5 @@
-from numpy import ndarray, sin, sqrt, cos
+from numpy import array, ndarray, sin, sqrt, cos, pi
+
 
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
@@ -129,3 +130,45 @@ class FluxBiasDict():
         Return the period for the target_q.
         """
         return self.__bias_dict[target_q]["Period"]
+    
+    def check_offset_and_correctFor(self,target_q:str,new_offset:float):
+        """
+        If we had once fit the fq vs bias even the offset changed, we can use the offset differences to correct the fitting para 'b'. 
+        ## *** This function should be executed before `save_sweetspotBias_for()`
+        """
+        f = 2*pi/self.get_PeriodFor(target_q)
+        old_offset = self.get_sweetBiasFor(target_q)
+        offset_diff = new_offset - old_offset
+        if len(self.__bias_dict[target_q]["qubFitParas"]) != 0:
+            self.__bias_dict[target_q]["qubFitParas"][1] += offset_diff/f  # correct the offset in fitting paras with the offset difference
+            print("You don't have to fit the transition freq again! Correct it by the offset differences!")
+
+
+    def get_biasWithFq_from(self,target_q:str,target_fq_Hz:float):
+        """
+        After we fit the tarnsition freq vs bias, we can get the bias according to the given `target_fq_Hz` for the `target_q`.\n
+        ### The given `target_fq_Hz` should unit in Hz.\n
+        Return the bias unit in V.
+        """
+        import sympy as sp
+        from Modularize.support import find_nearest
+        z = sp.Symbol('z')
+        if self.__bias_dict[target_q]["qubFitParas"] == []:
+            raise ValueError("You have NOT fit the transition frequency with bias!")
+
+        a,b,Ec,coefA,d = self.__bias_dict[target_q]["qubFitParas"][0], self.__bias_dict[target_q]["qubFitParas"][1], self.__bias_dict[target_q]["qubFitParas"][2], self.__bias_dict[target_q]["qubFitParas"][3], self.__bias_dict[target_q]["qubFitParas"][4]
+        to_solve = sp.sqrt(8*coefA*Ec*sp.sqrt(sp.cos(a*(z-b))**2+d**2*sp.sin(a*(z-b))**2))-Ec - target_fq_Hz*1e-9
+
+        candidators = array(sp.solvers.solve(to_solve, z))
+        if candidators.shape[0] == 0:
+            answer = 0
+            print(f"Can NOT find a bias makes the fq @ {target_fq_Hz*1e-9} GHz !")
+        else:
+            answer = find_nearest(candidators, 0) if find_nearest(candidators, 0) < 0.4 else 0.4
+
+        return answer
+
+
+
+if __name__ == "__main__":
+    pass

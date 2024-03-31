@@ -1151,7 +1151,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
         text_msg += r"$\pi= %.3f $"%(pi_2) +x_unit        
         ax.axvline(x=pi_2, ymin=0, ymax= np.array(results.data_vars['data']/Nor_f).max(),color='r',linestyle='dashed', alpha=0.8,lw=1)
         
-    ax.plot(x,results.data_vars['data']/Nor_f,'o', color="blue",label=r"$data$", alpha=0.5, ms=4)
+    ax.plot(x,results.data_vars['data']/Nor_f,'-', color="blue",label=r"$data$", alpha=0.5, ms=4)
     ax.plot(x_fit,results.data_vars['fitting']/Nor_f,'-', color="red",label=r"$fit$", alpha=0.8, lw=1)       
     ax.set_xlabel(x_label)
     ax.set_title(title)
