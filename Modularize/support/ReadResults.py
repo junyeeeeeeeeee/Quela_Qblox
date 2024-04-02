@@ -40,7 +40,7 @@ from Modularize.support.QDmanager import QDmanager
 
 # from Modularize.support import QDmanager
 from numpy import array
-QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+QD_path = 'Modularize/QD_backup/2024_4_2/DR4#171_SumInfo.pkl'
 QD_agent = QDmanager(QD_path)
 QD_agent.QD_loader()
 for i in ["q3"]:

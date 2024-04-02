@@ -153,7 +153,7 @@ def FqEqn(x,a,b,Ec,coefA,d):
     return sqrt(8*coefA*Ec*sqrt(cos(a*(x-b))**2+d**2*sin(a*(x-b))**2))-Ec
      
 def calc_Gcoef_inFbFqFd(bareF:float,Fq:float,dressF:float):
-    return sqrt((1000**2)*(dressF-bareF)*(bareF-Fq)/(sqrt(bareF*Fq)**2))
+    return sqrt((1000**2)*abs(dressF-bareF)*abs(bareF-Fq)/(sqrt(bareF*Fq)**2))
 
 # predict fq
 def calc_fq_g_excluded(coef_inG:float,fdress:float,fbare:float):

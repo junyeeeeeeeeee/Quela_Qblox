@@ -281,51 +281,43 @@ def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
         return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
     else: pass
 
-def X_pi_2_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_2_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_2_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_2_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
@@ -588,6 +580,7 @@ def Zgate_Rabi_sche(
 def T1_sche(
     q:str,
     pi_amp: dict,
+    pi_dura:float,
     freeduration:any,
     R_amp: dict,
     R_duration: dict,
@@ -606,11 +599,39 @@ def T1_sche(
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_p(sched,pi_amp,q,spec_pulse,freeDu)
-
+        X_pi_p(sched,pi_amp,q,pi_dura,spec_pulse,freeDu)
+        
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
+
+def mix_T1_sche(
+    q:str,
+    pi_amp: dict,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("T1", repetitions=repetitions)
+    
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+    
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        
+        Spec_pulse(sched,pi_amp[q],10e-6,q,spec_pulse,freeDu) # drive to mix state
+        
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 
 def XY_Z_timing_sche(
     q:str,
@@ -685,12 +706,13 @@ def Ramsey_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
+    pi_dura:float=20e-9,
     repetitions:int=1,
 ) -> Schedule:
 
     sched = Schedule("Ramsey", repetitions=repetitions)
     
-    pi_Du= 20*1e-9
+    pi_Du= pi_dura
 
     
    
@@ -705,9 +727,9 @@ def Ramsey_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=freeDu+pi_Du)
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=0)
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         

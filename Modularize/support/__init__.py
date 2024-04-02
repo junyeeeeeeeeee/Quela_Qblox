@@ -50,6 +50,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     elif mode.lower() in ['load', 'l']:
         cluster_ip = get_ip_specifier(QuantumDevice_path)
         cfg, pth = {}, QuantumDevice_path 
+        dr_loc = get_dr_loca(QuantumDevice_path)
     else:
         raise KeyError("The given mode can not be recognized!")
     
@@ -57,15 +58,21 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     if not vpn:
         # connect, ip = connect_clusters() ## Single cluster online
         # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-        ip, ser = connect_clusters_withinMulti(cluster_ip)
+        ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
         cluster = Cluster(name = f"cluster{cluster_ip}", identifier = ip)
     else:
         if cluster_ip == '170':
             cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-            ip = "192.168.1.170"
+            if dr_loc.lower() != 'dr4': 
+                ip = "192.168.1.170"
+            else:
+                ip = "192.168.50.170"
         elif cluster_ip == '171':
             cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
-            ip = "192.168.1.171"
+            if dr_loc.lower() != 'dr4': 
+                ip = "192.168.50.171"
+            else:
+                ip = "192.168.50.171"
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
     
@@ -87,6 +94,10 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
 def get_ip_specifier(QD_path:str):
     specifier = QD_path.split("#")[-1].split("_")[0]
     return specifier 
+
+def get_dr_loca(QD_path:str):
+    loc = QD_path.split("#")[0].split("/")[-1]
+    return loc
 
 # Configure_measurement_control_loop
 def configure_measurement_control_loop(
@@ -151,23 +162,26 @@ def connect_clusters():
     return connect_options, ip_addresses
 
 # Multi-clusters online version connect_clusters()
-def connect_clusters_withinMulti(ip_last_posi:str='170'):
+def connect_clusters_withinMulti(dr_loc:str,ip_last_posi:str='170'):
     """
     This function is only for who doesn't use jupyter notebook to connect cluster.
     args: \n
     ip_last_posi: '170' for DR3 (default), '171' for DR2.\n
     So far the ip for Qblox cluster is named with 192.168.1.170 and 192.168.1.171
     """
+    
+    ip = f"192.168.1.{ip_last_posi}" if dr_loc.lower() != "dr4" else f"192.168.50.{ip_last_posi}"
+
     permissions = {}
     with PlugAndPlay() as p:            # Scan for available devices and display
         device_list = p.list_devices()
     for devi, info in device_list.items():
         permissions[info["identity"]["ip"]] = info["identity"]["ser"]
-    if f"192.168.1.{ip_last_posi}" in permissions:
-        print(f"192.168.1.{ip_last_posi} is available to connect to!")
-        return f"192.168.1.{ip_last_posi}", permissions[f"192.168.1.{ip_last_posi}"]
+    if ip in permissions:
+        print(f"{ip} is available to connect to!")
+        return ip, permissions[ip]
     else:
-        raise KeyError(f"192.168.1.{ip_last_posi} is NOT available now!")
+        raise KeyError(f"{ip} is NOT available now!")
  
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):

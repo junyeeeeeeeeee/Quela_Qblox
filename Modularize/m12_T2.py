@@ -1,7 +1,7 @@
 
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import arange, array, average, mean
+from numpy import std, arange, array, average, mean
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -31,6 +31,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         pi_amp={str(q):qubit.rxy.amp180()},
         New_fxy=New_fxy,
         freeduration=Para_free_Du,
+        pi_dura=qubit.rxy.duration(),
         R_amp={str(q):qubit.measure.pulse_amp()},
         R_duration={str(q):qubit.measure.pulse_duration()},
         R_integration={str(q):qubit.measure.integration_time()},
@@ -96,8 +97,10 @@ def ramsey_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,s
 
         Fit_analysis_plot(Ramsey_results[linecut],P_rescale=False,Dis=None)
         # set the histo save path
-        Data_manager().save_histo_pic(QD_agent,T2_hist,specific_qubits,mode="t2")
-        mean_T2_us = mean(array(T2_hist[specific_qubits]))
+        mean_T2_us = round(mean(array(T2_hist[specific_qubits])),1)
+        sd_T2_us = round(std(array(T2_hist[specific_qubits])),1)
+        Data_manager().save_histo_pic(QD_agent,T2_hist,specific_qubits,mode="t2",T1orT2=f"{mean_T2_us}+/-{sd_T2_us}")
+        
     
     else:
         Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,times=1,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
@@ -113,9 +116,9 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     modify_xyf= True
-    QD_path = 'Modularize/QD_backup/2024_3_28/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_2/DR4#171_SumInfo.pkl'
     ro_elements = {
-        "q1":{"detune":0,"evoT":40e-6,"histo_counts":1}
+        "q3":{"detune":0,"evoT":40e-6,"histo_counts":1}
     }
 
 
@@ -144,6 +147,7 @@ if __name__ == "__main__":
     """ Storing """
     if execution:
         QD_agent.QD_keeper()
+        
 
 
 

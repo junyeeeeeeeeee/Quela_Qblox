@@ -241,6 +241,20 @@ Hcfg_171 = {
                     }
                 ],
             },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q5:mw",
+                        "clock": "q5.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
         },
         # ============ FLUX ============#
         "cluster171_module2": {
@@ -253,6 +267,7 @@ Hcfg_171 = {
         "cluster171_module4": {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
         },
         # ============ READOUT ============#
         "cluster171_module8": {
@@ -262,7 +277,7 @@ Hcfg_171 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 5.86e9,       # *** Should be set as a parameter later on
+                "lo_freq": 6.17e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
@@ -291,6 +306,12 @@ Hcfg_171 = {
                     {
                         "port": "q4:res",
                         "clock": "q4.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q5:res",
+                        "clock": "q5.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },

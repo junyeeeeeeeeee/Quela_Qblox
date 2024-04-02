@@ -106,28 +106,28 @@ if __name__ == "__main__":
     
     """ fill in part """
     execution = True
-    chip_info_restore = True
+    chip_info_restore = 0
     init_RO_DigiAtte = 26
-    real_atte_ro = 5
+    real_atte_ro = 0
     # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
     ro_bare=dict(
-        q0 = 5.721e9,
-        q2 = 5.83476e9,
-        q4 = 5.9059e9,
-        q1 = 6.01276e9,
-        q3 = 6.1015e9,
+        q1 = 6.207e9,
+        
     )
-
+    #q1 or q3 = 5.8175e9,
+    # q? = 6.207e9,
+    # q? = 6.407e9,
     """ Preparations """
     # Create or Load chip information
-    chip_info = cds.Chip_file()
+    # chip_info = cds.Chip_file()
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = uw.init_meas_window()
+    QD_path, dr, ip, mode, vpn = 'Modularize/QD_backup/2024_4_2/DR4#171_SumInfo.pkl','dr4','171','l',False #uw.init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
                                                         mode=mode,
-                                                        vpn=vpn)
+                                                        vpn=vpn,
+                                                        qubit_number=6)
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=init_RO_DigiAtte)
     

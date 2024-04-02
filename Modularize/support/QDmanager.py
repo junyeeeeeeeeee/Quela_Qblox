@@ -184,7 +184,7 @@ class Data_manager:
             path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't1':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't2':
             path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc")
@@ -196,7 +196,7 @@ class Data_manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
@@ -206,13 +206,13 @@ class Data_manager:
                 fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=r"$T_{1}\  (\mu$s)",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T1= {T1orT2} us",save_path=fig_path, show=show_fig)
         elif mode.lower() =="t2" :
             if save_fig:
                 fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

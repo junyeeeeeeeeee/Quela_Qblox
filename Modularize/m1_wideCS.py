@@ -127,7 +127,7 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
 
     ax1.plot((lo_sweep_range + nco_freq) / 1e9, amplitude, color="#00839F", linewidth=2)
     ax1.plot(((cav_freq / num_data)*(lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9, amplitude[cav_freq], "x")
-    print((cav_freq / num_data)*((lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9)
+    print(((cav_freq / num_data)*(lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9)
     ax1.set_ylabel("Amplitude (V)")
 
     ax2.plot((lo_sweep_range + nco_freq) / 1e9, phase, color="#00839F", linewidth=2)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     #chip_info = cds.Chip_file()
     
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = init_meas_window()
+    QD_path, dr, ip, mode, vpn = '', 'dr4', '171', 'n', False #init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
@@ -163,9 +163,9 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     # Initial value
-    lo_start_freq = 5.7e9
-    lo_stop_freq = 6.5e9
-    num_data = 501
+    lo_start_freq = 4e9
+    lo_stop_freq = 4.5e9
+    num_data = 1500
     
     # Readout select
     readout_module = cluster.modules[7]

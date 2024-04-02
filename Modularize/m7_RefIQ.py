@@ -80,8 +80,8 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
-    ro_elements = 'all'
+    QD_path = 'Modularize/QD_backup/2024_4_1/DR4#171_SumInfo.pkl'
+    ro_elements = ['q3']
 
 
     """ Preparations """

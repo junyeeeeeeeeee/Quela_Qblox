@@ -109,10 +109,10 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         if xyf_guess != 0:
             guess_fq = [xyf_guess]
         else:
-            guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
+            guess_fq = [6.1e9] #[advised_fq-500e6, advised_fq, advised_fq+500e6]
 
         if xyAmp_guess == 0:
-            xyAmp_guess = [0, 0.03, 0.07]
+            xyAmp_guess = [0.4, 0.5, 0.6, 0.7, 0.8]
         else:
             xyAmp_guess = [xyAmp_guess]
         
@@ -147,10 +147,10 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_1/DR4#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q3":{"xyf_guess":3.6e9,"xyl_guess":0.025,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q3":{"xyf_guess":6.1e9,"xyl_guess":0.4,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 
@@ -165,7 +165,7 @@ if __name__ == "__main__":
         xyf = ro_elements[qubit]["xyf_guess"]
         xyl = ro_elements[qubit]["xyl_guess"]
         g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
-        tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g)
+        tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g,xy_if=150e6)
 
         if execution and xyl != 0:
             update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
