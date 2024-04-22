@@ -8,7 +8,8 @@ from quantify_scheduler.backends.graph_compilation import SerialCompiler
 #%%
 # Please register the dr and its corresponding cluster ip here first!
 ip_register = {
-    "dr2":"10"
+    "dr1":"192.168.1.11",
+    "dr2":"192.168.1.10"
 }
 
 #%%
@@ -16,12 +17,12 @@ ip_register = {
 
 Hcfg_dr2 = {
     "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
-    f"cluster{ip_register['dr2']}": {
+    f"clusterdr2": {
         "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
         "ref": "internal",  # Use shared clock reference of the cluster
         "instrument_type": "Cluster",
         # ============ DRIVE ============#
-        f"cluster{ip_register['dr2']}_module12": {
+        f"clusterdr2_module12": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -52,7 +53,7 @@ Hcfg_dr2 = {
                 ],
             },
         },
-        f"cluster{ip_register['dr2']}_module14": {
+        f"clusterdr2_module14": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -83,7 +84,7 @@ Hcfg_dr2 = {
                 ],
             },
         },
-        f"cluster{ip_register['dr2']}_module16": {
+        f"clusterdr2_module16": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -115,20 +116,19 @@ Hcfg_dr2 = {
             },
         },
         # ============ FLUX ============#
-        f"cluster{ip_register['dr2']}_module2": {
+        f"clusterdr2_module2": {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
             "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
             "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
             "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
         },
-        f"cluster{ip_register['dr2']}_module4": {
+        f"clusterdr2_module4": {
             "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
-            "real_output_1": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
+            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]}
         },
         # ============ READOUT ============#
-        f"cluster{ip_register['dr2']}_module8": {
+        f"clusterdr2_module8": {
             "instrument_type": "QRM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -167,25 +167,19 @@ Hcfg_dr2 = {
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
-                    {
-                        "port": "q5:res",
-                        "clock": "q5.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
                 ],
             },
         },
     },
 }
 
-def get_FluxController(cluster, ip_label:str):
+def get_FluxController(cluster, ip:str):
     which_dr = ''
-    for i in ip_register:
-        if ip_register[i] == ip_label:
-            which_dr = i
-        else:
-            raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
+    for dr in ip_register:
+        if ip_register[dr] == ip:
+            which_dr = dr
+    if which_dr == '':
+        raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
     
     
     if which_dr.lower() == 'dr2':
@@ -207,6 +201,6 @@ def get_FluxController(cluster, ip_label:str):
 # }
 
 # Hcfg map
-hcfg_map = {"10":Hcfg_dr2}
+hcfg_map = {"dr2":Hcfg_dr2}
 
 

@@ -90,6 +90,9 @@ class QDmanager():
         self.q_num = qubit_number
         self.Hcfg = Hcfg
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
+        self.Notewriter: Notebook = Notebook(self.q_num)
+        """ #for firmware v0.6.2
         self.quantum_device = QuantumDevice("academia_sinica_device")
         self.quantum_device.hardware_config(self.Hcfg)
         
@@ -101,9 +104,16 @@ class QDmanager():
             qubit.measure.acq_channel(i)
             self.quantum_device.add_element(qubit)
             self.quantum_device._device_elements.append(qubit)
-
-        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
-        self.Notewriter: Notebook = Notebook(self.q_num)
+        """
+        # for firmware v0.7.0
+        from qcodes.instrument import find_or_create_instrument
+        self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
+        self.quantum_device.hardware_config(self.Hcfg)
+        for qb_idx in range(self.q_num):
+            qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
+            qubit.measure.acq_channel(qb_idx)
+            self.quantum_device.add_element(qubit)
+        
 
     ### Convenient short cuts
 # Object to manage data and pictures store.

@@ -148,7 +148,7 @@ if __name__ == "__main__":
     #chip_info = cds.Chip_file()
     
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = init_meas_window()
+    QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',False #init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
@@ -163,8 +163,8 @@ if __name__ == "__main__":
         getattr(cluster.module8, f"sequencer{i}").nco_prop_delay_comp(50)
 
     # Initial value
-    lo_start_freq = 4e9
-    lo_stop_freq = 4.5e9
+    lo_start_freq = 5.6e9
+    lo_stop_freq = 6.2e9
     num_data = 1500
     
     # Readout select
