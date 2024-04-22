@@ -5,7 +5,7 @@ from typing import Tuple
 import ipywidgets as widgets
 from IPython.display import display
 from qblox_instruments import Cluster, PlugAndPlay, ClusterType
-from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
+# from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
 from qcodes import Instrument
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.visualization.pyqt_plotmon import PlotMonitor_pyqt as PlotMonitor
@@ -30,7 +30,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -76,7 +76,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
     
-    enable_QCMRF_LO(cluster)
+    # enable_QCMRF_LO(cluster) # for v0.6 firmware
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
@@ -234,7 +234,7 @@ def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20
 
 
 # LO debug
-def get_connected_modules(cluster: Cluster, filter_fn: Callable) -> dict[int, QcmQrm]:
+def get_connected_modules(cluster: Cluster, filter_fn: Callable):
     def checked_filter_fn(mod: ClusterType) -> bool:
         if filter_fn is not None:
             return filter_fn(mod)

@@ -4,6 +4,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import tkinter as tk
 from tkinter import ttk
 
+from Modularize.support.Experiment_setup import ip_register
+ip_values = list(ip_register.values())
+
 # Initialize measurement window
 def init_meas_window() -> tuple[str, str, str, str, bool]:
     
@@ -34,7 +37,7 @@ def init_meas_window() -> tuple[str, str, str, str, bool]:
     ip_la.pack()
     ip_box = ttk.Combobox(root,
                           width=15,
-                          values=[170, 171])
+                          values=ip_values)
     ip_box.pack()
     
     mode_la = tk.Label(root, text = 'mode')   
