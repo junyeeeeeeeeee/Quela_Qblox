@@ -329,7 +329,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",),)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",t0=4e-9),)
 
 def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
     if single_shot== False:
@@ -384,9 +384,9 @@ def One_tone_sche(
     
     for acq_idx, freq in enumerate(frequencies):
         
-        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
+        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq),label=f'set freq {acq_idx} ({freq:e} Hz)')
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # ssched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)

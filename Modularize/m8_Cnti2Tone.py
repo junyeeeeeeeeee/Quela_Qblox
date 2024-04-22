@@ -150,7 +150,7 @@ if __name__ == "__main__":
     QD_path = 'Modularize/QD_backup/2024_4_1/DR4#171_SumInfo.pkl'
     #
     ro_elements = {
-        "q3":{"xyf_guess":6.1e9,"xyl_guess":0.4,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q3":{"xyf_guess":0,"xyl_guess":0.4,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 

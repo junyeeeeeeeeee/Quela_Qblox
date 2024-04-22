@@ -102,9 +102,9 @@ if __name__ == "__main__":
     """ fill in """
     execution = True
     sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_4_1/DR4#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_22/DR2#10_SumInfo.pkl'
     ro_elements = {    # measurement target q from this dict 
-        "q3": {"ro_atte":30}
+        "q0": {"ro_atte":30}
     }
 
     """ preparations """
