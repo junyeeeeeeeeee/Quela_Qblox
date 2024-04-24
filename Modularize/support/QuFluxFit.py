@@ -198,13 +198,13 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     There are 5 paras in Fq eqn, give the initial guess and the fitting constrains for curve fit.\n
     Return guess, upper_bound, bottom_bound.
     """
-    f = 2*pi/period
+    f = pi/period
     b = offset/f
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
     wide_period = 4*period/3
     narrow_period = period/4
-    upper_bound = [2*pi/narrow_period,max(flux_array)/f,0.23,100,1] #[a, b, Ec, Ej_sum, d]
-    bottom_bound = [2*pi/wide_period,min(flux_array)/f,0.19,1,0]
+    upper_bound = [pi/narrow_period,max(flux_array)/f,0.23,100,1] #[a, b, Ec, Ej_sum, d]
+    bottom_bound = [pi/wide_period,min(flux_array)/f,0.19,1,0]
 
     return guess, upper_bound, bottom_bound
 

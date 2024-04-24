@@ -14,6 +14,56 @@ ip_register = {
 
 #%%
 # Hardware settings
+Hcfg_dr1 = {
+    "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
+    f"clusterdr1": {
+        "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
+        "ref": "internal",  # Use shared clock reference of the cluster
+        "instrument_type": "Cluster",
+        # ============ DRIVE ============#
+        f"clusterdr1_module4": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q0:mw",
+                        "clock": "q0.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            }
+        },
+        # ============ FLUX ============#
+        f"clusterdr1_module2": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+        },
+        # ============ READOUT ============#
+        f"clusterdr1_module6": {
+            "instrument_type": "QRM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "input_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 6.17e9,       # *** Should be set as a parameter later on
+                "portclock_configs": [
+                    {
+                        "port": "q0:res",
+                        "clock": "q0.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
+    },
+}
 
 Hcfg_dr2 = {
     "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
@@ -190,6 +240,10 @@ def get_FluxController(cluster, ip:str):
             "q3":cluster.module2.out3_offset,
             "q4":cluster.module4.out0_offset
         }
+    elif which_dr.lower() == 'dr1':
+        Fctrl: callable = {
+            "q0":cluster.module2.out0_offset,
+        }
     else:
         raise KeyError ("please input ip label like '170' or '171'!")
     return Fctrl
@@ -201,6 +255,6 @@ def get_FluxController(cluster, ip:str):
 # }
 
 # Hcfg map
-hcfg_map = {"dr2":Hcfg_dr2}
+hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1}
 
 

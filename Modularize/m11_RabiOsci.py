@@ -132,11 +132,9 @@ def rabi_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,spe
 if __name__ == "__main__":
     
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_4_2/DR4#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
     execution = True
-    ro_elements = {
-        "q3":{"xy_atte":0}
-    }
+    ro_elements = ['q0']
 
 
     """ Preparations """
@@ -146,14 +144,15 @@ if __name__ == "__main__":
     """Running """
     rabi_results = {}
     for qubit in ro_elements:
-        QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["xy_atte"],qubit,'xy')
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=52e-9,XYamp_max=0.7)
+        Fctrl['q1'](-0.043)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=52e-9,XYamp_max=0.4)
+        Fctrl['q1'](0)
         cluster.reset()
     
         """ Storing """
         if trustable:   
             QD_agent.refresh_log("after Rabi")
-            # QD_agent.QD_keeper()
+            QD_agent.QD_keeper()
 
 
     """ Close """

@@ -80,7 +80,7 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_22/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
     ro_elements = {'q0':{"ro_amp_factor":1}}
 
 

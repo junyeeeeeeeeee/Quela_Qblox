@@ -107,8 +107,8 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    ro_elements = ['q0']
-    QD_path = 'Modularize/QD_backup/2024_4_22/DR2#10_SumInfo.pkl'
+    ro_elements = ['q1']
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')

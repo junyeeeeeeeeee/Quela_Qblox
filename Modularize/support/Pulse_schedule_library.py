@@ -329,7 +329,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",t0=4e-9),)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",),)
 
 def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
     if single_shot== False:
@@ -384,9 +384,9 @@ def One_tone_sche(
     
     for acq_idx, freq in enumerate(frequencies):
         
-        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq),label=f'set freq {acq_idx} ({freq:e} Hz)')
+        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
         sched.add(Reset(q))
-        # ssched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
@@ -780,6 +780,7 @@ def Qubit_SS_sche(
     q:str,
     ini_state:str,
     pi_amp: dict,
+    pi_dura:dict,
     R_amp: dict,
     R_duration: dict,
     R_integration:dict,
@@ -796,7 +797,7 @@ def Qubit_SS_sche(
     spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
     
     if ini_state=='e': 
-        X_pi_p(sched,pi_amp,q,spec_pulse,freeDu=0)
+        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
         
     else: None
     Integration(sched,q,R_inte_delay,R_integration,spec_pulse,0,single_shot=True,get_trace=False,trace_recordlength=0)
@@ -1001,8 +1002,8 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
         ax1.plot(I_fit, Mge,'--r',alpha=0.8,lw=2)
         ax1.plot(I_fit, Mge+Mee,'--k',alpha=1,lw=1)
     elif Plot_type== 'both': 
-        ax.scatter(1000*Ig, 1000*Qg, color="blue", alpha=0.5, s=5)
-        ax.scatter(1000*Ie, 1000*Qe, color="red", alpha=0.5, s=5)
+        ax.scatter(1000*Ig, 1000*Qg, color="blue", alpha=0.5, s=0.3)
+        ax.scatter(1000*Ie, 1000*Qe, color="red", alpha=0.5, s=0.3)
         ax1.plot(I_ro, Inte_g_data,'bo',alpha=0.5,ms=8)
         ax1.plot(I_fit, Mgg,'b',alpha=0.8,lw=2)
         ax1.plot(I_fit, Meg,'--b',alpha=0.8,lw=2)

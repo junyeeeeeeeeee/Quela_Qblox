@@ -8,11 +8,11 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import mix_T1_sche, T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis, Fit_analysis_plot
 
-def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,IF:int=150e6,n_avg:int=300,points:int=200,run:bool=True,q='q1',times:int=1, Experi_info:dict={},ref_IQ:list=[0,0]):
+def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,IF:int=150e6,n_avg:int=300,points:int=200,run:bool=True,q='q1',exp_idx:int=0, Experi_info:dict={},ref_IQ:list=[0,0]):
 
     T1_us = {}
-    analysis_result = []
-    T1_us[q] = []
+    analysis_result = {}
+  
     sche_func= T1_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
     LO= qubit_info.clock_freqs.f01()+IF
@@ -46,15 +46,15 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables(Para_free_Du)
         meas_ctrl.setpoints(samples)
-        for i in range(times):
-            T1_ds = meas_ctrl.run('T1')
-            # Save the raw data into netCDF
-            Data_manager().save_raw_data(QD_agent=QD_agent,ds=T1_ds,histo_label=i,qb=q,exp_type='T1')
-            I,Q= dataset_to_array(dataset=T1_ds,dims=1)
-            data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
-            analysis_result.append(data_fit)
-            T1_us[q].append(data_fit.attrs['T1_fit']*1e6)
+        
+        T1_ds = meas_ctrl.run('T1')
+        # Save the raw data into netCDF
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=T1_ds,histo_label=exp_idx,qb=q,exp_type='T1')
+        I,Q= dataset_to_array(dataset=T1_ds,dims=1)
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
+        data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
+        analysis_result[q] = data_fit
+        T1_us[q] = data_fit.attrs['T1_fit']*1e6
              
         show_args(exp_kwargs, title="T1_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -79,19 +79,23 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 
 def T1_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,histo_counts:int=1,run:bool=True):
     init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
-    linecut = 0
 
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
-        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,times=histo_counts,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True)
-        Fctrl[specific_qubits](0.0)
-        Fit_analysis_plot(T1_results[linecut],P_rescale=False,Dis=None)
-        mean_T1_us = round(mean(array(T1_hist[specific_qubits])),1)
-        sd_T1_us = round(std(array(T1_hist[specific_qubits])),1)
-        Data_manager().save_histo_pic(QD_agent,T1_hist,specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}")
+        T1_us = []
+        for ith in range(histo_counts):
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+            T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith)
+            Fctrl[specific_qubits](0.0)
+            T1_us.append(T1_hist[specific_qubits])
+        mean_T1_us = round(mean(array(T1_us)),1)
+        sd_T1_us = round(std(array(T1_us)),1)
+        if histo_counts == 1:
+            Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
+        else:
+            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}")
         
     else:
-        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,times=histo_counts,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
+        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,exp_idx=0,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
         mean_T1_us = 0 
         sd_T1_us = 0
     
@@ -102,9 +106,9 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_2/DR4#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q3":{"evoT":50e-6,"histo_counts":100}
+        "q0":{"evoT":50e-6,"histo_counts":1}
     }
 
 

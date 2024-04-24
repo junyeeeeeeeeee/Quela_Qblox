@@ -162,42 +162,43 @@ class Data_manager:
         self.pic_folder = pic_folder
 
     
-    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS', get_data_loc:bool=False):
+    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
+        parent_dir = self.raw_data_dir if specific_dataFolder =='' else specific_dataFolder
         dr_loc = QD_agent.Identity.split("#")[0]
         if exp_type.lower() == 'cs':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'pd':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'fd':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'ss':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_SingleShot{label}_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == '2tone':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'f2tone':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'powerrabi':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'timerabi':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'ramsey':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't1':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T1({histo_label})_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_T1({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't2':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_T2({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         else:
             path = ''
