@@ -1,5 +1,5 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
-
+from qblox_instruments import Cluster
 from numpy import linspace, array, arange
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -99,7 +99,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     return analysis_result
     
 
-def rabi_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True):
+def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True):
     init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
     if which_rabi.lower() in ['p','power']:
         exp_type = 'powerRabi'
@@ -114,6 +114,7 @@ def rabi_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,spe
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
         Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max)
         Fctrl[specific_qubits](0.0)
+        cluster.reset()
         if Rabi_results == {}:
             print(f"Rabi Osci error qubit: {specific_qubits}")
         else:
@@ -132,7 +133,7 @@ def rabi_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,spe
 if __name__ == "__main__":
     
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
     execution = True
     ro_elements = ['q0']
 
@@ -144,9 +145,9 @@ if __name__ == "__main__":
     """Running """
     rabi_results = {}
     for qubit in ro_elements:
-        Fctrl['q1'](-0.043)
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=52e-9,XYamp_max=0.4)
-        Fctrl['q1'](0)
+        # Fctrl['q1'](-0.043)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=52e-9,XYamp_max=0.4)
+        # Fctrl['q1'](0)
         cluster.reset()
     
         """ Storing """

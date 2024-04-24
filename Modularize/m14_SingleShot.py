@@ -1,15 +1,18 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+from xarray import Dataset
 from numpy import array, linspace
+from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager,init_system_atte
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Pulse_schedule_library import Qubit_state_single_shot_plot
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, set_LO_frequency, pulse_preview, Qubit_state_single_shot_fit_analysis
 
 
-def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,parent_datafolder:str=''):
+def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str=''):
     qubit_info = QD_agent.quantum_device.get_element(q)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
@@ -44,8 +47,6 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
             ss_ds= gettable.get()
             
             data[ini_state] = ss_ds
-            print(type(ss_ds), ss_ds)
-            # Data_manager().save_raw_data(QD_agent=QD_agent,ds=ss_ds,qb=q,label=ini_state.upper(),exp_type='ss',specific_dataFolder=parent_datafolder)
             show_args(exp_kwargs, title="Single_shot_kwargs: Meas.qubit="+q)
             if Experi_info != {}:
                 show_args(Experi_info(q))
@@ -60,22 +61,31 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     tau= qubit_info.measure.integration_time()        
     state_dep_sched('g')
     state_dep_sched('e')
-        
-    analysis_result[q]= Qubit_state_single_shot_fit_analysis(data,T1=T1,tau=tau)
-        
+    SS_dict = {
+        "e":{"dims":("I","Q"),"data":array(data['e'])},
+        "g":{"dims":("I","Q"),"data":array(data['g'])},
+    }
+    SS_ds = Dataset.from_dict(SS_dict)
+    Data_manager().save_raw_data(QD_agent=QD_agent,ds=SS_ds,qb=q,exp_type='ss',label=exp_idx,specific_dataFolder=parent_datafolder)
+    if parent_datafolder =='':
+        analysis_result[q] = Qubit_state_single_shot_fit_analysis(data,T1=T1,tau=tau) 
+    else:
+        analysis_result[q] = []
     return analysis_result
 
 
-def SS_executor(QD_agent:QDmanager,Fctrl:dict,target_q:str,shots:int=1e5,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1):
+def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0):
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'))
     Fctrl[target_q](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q)))
     SS_result= Qubit_state_single_shot(QD_agent,
-                shots=5000,
+                shots=shots,
                 run=execution,
                 q=target_q,
                 parent_datafolder=data_folder,
-                ro_amp_factor=roAmp_modifier)
+                ro_amp_factor=roAmp_modifier,
+                exp_idx=exp_label)
     Fctrl[target_q](0.0)
+    cluster.reset()
     if plot:
         Qubit_state_single_shot_plot(SS_result[target_q],Plot_type='both',y_scale='log')
 
@@ -83,13 +93,13 @@ def SS_executor(QD_agent:QDmanager,Fctrl:dict,target_q:str,shots:int=1e5,executi
 
 if __name__ == '__main__':
     from Modularize.support import init_meas, shut_down
-    from Modularize.support.Pulse_schedule_library import Qubit_state_single_shot_plot
+    
 
     # Reload the QuantumDevice or build up a new one
     """ Fill in """
     execute = True
     QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
-    ro_elements = {'q0':{"roAmp_factor":1.5}}
+    ro_elements = {'q0':{"roAmp_factor":1}}
 
 
     """ Preparation """
@@ -100,10 +110,17 @@ if __name__ == '__main__':
     """ Running """
     for qubit in ro_elements:
         ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
-        SS_executor(QD_agent,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling)
+        
+        SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling)
+        if ro_amp_scaling !=1:
+            keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+        else:
+            keep = 'y'
 
     """ Storing """ 
-    QD_agent.QD_keeper() 
+    if execute:
+        if keep.lower() == 'y':
+            QD_agent.QD_keeper() 
 
     """ Close """    
     shut_down(cluster,Fctrl)

@@ -104,79 +104,55 @@ def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_ba
 
 if __name__ == "__main__":
     
-    # """ fill in part """
-    # execution = 1
-    # chip_info_restore = 0
-    # init_RO_DigiAtte = 26
-    # real_atte_ro = 0
-    # # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
-    # ro_bare=dict(
-    #     q0=5.72231e9,
-    #     q1=6.014085e9,
-    #     q2=5.835977e9,
-    #     q3=6.102536e9,
-    #     q4=5.9086e9        
-    # )
-    # #q1 or q3 = 5.8175e9,
-    # # q? = 6.207e9,
-    # # q? = 6.407e9,
-    # """ Preparations """
-    # # Create or Load chip information
-    # # chip_info = cds.Chip_file()
-    # # Reload the QuantumDevice or build up a new one
-    # QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',False #uw.init_meas_window()
-    # QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
-    #                                                     dr_loc=dr,
-    #                                                     cluster_ip=ip,
-    #                                                     mode=mode,
-    #                                                     vpn=vpn,
-    #                                                     qubit_number=5)
-    # # Set the system attenuations
-    # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=init_RO_DigiAtte)
+    """ fill in part """
+    execution = 1
+    chip_info_restore = 0
+    init_RO_DigiAtte = 26
+    real_atte_ro = 0
+    # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
+    ro_bare=dict(
+        q0=5.72231e9,
+        q1=6.014085e9,
+        q2=5.835977e9,
+        q3=6.102536e9,
+        q4=5.9086e9        
+    )
+    #q1 or q3 = 5.8175e9,
+    # q? = 6.207e9,
+    # q? = 6.407e9,
+    """ Preparations """
+    # Create or Load chip information
+    # chip_info = cds.Chip_file()
+    # Reload the QuantumDevice or build up a new one
+    QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',False #uw.init_meas_window()
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
+                                                        dr_loc=dr,
+                                                        cluster_ip=ip,
+                                                        mode=mode,
+                                                        vpn=vpn,
+                                                        qubit_number=5)
+    # Set the system attenuations
+    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=init_RO_DigiAtte)
     
-    # """ Measurements """
-    # CS_results = {}
-    # for qubit in ro_bare:
-    #     if QD_path == '': QD_RO_init(QD_agent,qubit)
-    #     CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,real_atte_dB=real_atte_ro,run = execution)
-    #     if not execution:
-    #         break
+    """ Measurements """
+    CS_results = {}
+    for qubit in ro_bare:
+        if QD_path == '': QD_RO_init(QD_agent,qubit)
+        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,real_atte_dB=real_atte_ro,run = execution)
+        if not execution:
+            break
     
-    # """ Storing """
-    # if execution:
-    #     QD_agent.refresh_log("After cavity search")
-    #     QD_agent.QD_keeper()
-    #     print('CavitySpectro done!')
+    """ Storing """
+    if execution:
+        QD_agent.refresh_log("After cavity search")
+        QD_agent.QD_keeper()
+        print('CavitySpectro done!')
         
-    #     # Chip info!
-    #     if chip_info_restore:
-    #         chip_info.update_Cavity_spec_bare(result=CS_results)
+        # Chip info!
+        if chip_info_restore:
+            chip_info.update_Cavity_spec_bare(result=CS_results)
 
-    # """ Close """
-    # shut_down(cluster,Fctrl)
+    """ Close """
+    shut_down(cluster,Fctrl)
     
 
-
-
-    import os 
-    
-    # Directory 
-    for idx in range(3):
-
-        def create_folder(idx:int):
-            directory = f"test_{idx}"
-            
-            # Parent Directory path 
-            parent_dir = "/Users/ratiswu/Documents/GitHub/Quela_Qblox/Modularize/Meas_raw/"
-            
-            # Path 
-            path = os.path.join(parent_dir, directory) 
-            
-            os.mkdir(path)
-            return path
-
-        set = T1()
-        set = T2()
-        set = OS()
-        data_folder = create_folder(idx)
-        

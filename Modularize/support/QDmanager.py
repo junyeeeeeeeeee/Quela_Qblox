@@ -177,7 +177,7 @@ class Data_manager:
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'ss':
-            path = os.path.join(parent_dir,f"{dr_loc}{qb}_SingleShot{label}_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_SingleShot({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == '2tone':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
@@ -207,20 +207,24 @@ class Data_manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str=''):
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str='',pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
-        self.build_folder_today(self.raw_data_dir)
+        if pic_folder == '':
+            self.build_folder_today(self.raw_data_dir)
+            pic_dir = self.pic_folder
+        else:
+            pic_dir = pic_folder
         dr_loc = QD_agent.Identity.split("#")[0]
         if mode.lower() =="t1" :
             if save_fig:
-                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T1= {T1orT2} us",save_path=fig_path, show=show_fig)
         elif mode.lower() =="t2" :
             if save_fig:
-                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)

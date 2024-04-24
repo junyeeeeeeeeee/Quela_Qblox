@@ -138,7 +138,7 @@ def configure_measurement_control_loop(
     ) ->Tuple[MeasurementControl,InstrumentCoordinator]:
     meas_ctrl = find_or_create_instrument(MeasurementControl, recreate=True, name="meas_ctrl")
     ic = find_or_create_instrument(InstrumentCoordinator, recreate=True, name="ic")
-
+    ic.timeout(60*60*120) # 120 hr maximum
     # Add cluster to instrument coordinator
     ic_cluster = ClusterComponent(cluster)
     ic.add_component(ic_cluster)
