@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.support import QDmanager
 
 def fillin_PDans(QD_path:str,ans:dict):

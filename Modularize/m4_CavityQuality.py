@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.m2_CavitySpec import Cavity_spec
 from Modularize.support import Data_manager, QDmanager
 from quantify_core.measurement.control import MeasurementControl
