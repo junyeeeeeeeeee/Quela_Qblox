@@ -1,4 +1,5 @@
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from numpy import mean, array, arange, std
 from utils.tutorial_utils import show_args
@@ -51,17 +52,20 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         T1_ds = meas_ctrl.run('T1')
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=T1_ds,label=exp_idx,qb=q,exp_type='T1',specific_dataFolder=data_folder)
-        if data_folder !='':
-            I,Q= dataset_to_array(dataset=T1_ds,dims=1)
-            data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
+        
+        I,Q= dataset_to_array(dataset=T1_ds,dims=1)
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
+        try:
             data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
-            analysis_result[q] = data_fit
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
-                
-            show_args(exp_kwargs, title="T1_kwargs: Meas.qubit="+q)
-        else:
-           analysis_result[q] = []
-           T1_us[q] = 0
+        except:
+            data_fit=[]
+            T1_us[q] = 0
+        analysis_result[q] = data_fit
+        
+            
+        show_args(exp_kwargs, title="T1_kwargs: Meas.qubit="+q)
+  
 
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -88,13 +92,15 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
     if run:
         T1_us = []
         for ith in range(histo_counts):
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+            print(f"The {ith}-th T1:")
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
             cluster.reset
             T1_us.append(T1_hist[specific_qubits])
-        mean_T1_us = round(mean(array(T1_us)),1)
-        sd_T1_us = round(std(array(T1_us)),1)
+        T1_us = array(T1_us)
+        mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
+        sd_T1_us = round(std(T1_us[T1_us != 0]),1)
         if histo_counts == 1:
             Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
         else:
@@ -112,9 +118,9 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"evoT":60e-6,"histo_counts":1}
+        "q0":{"evoT":60e-6,"histo_counts":100}
     }
 
 

@@ -329,7 +329,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",),)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",t0=4e-9),)
 
 def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
     if single_shot== False:
@@ -386,7 +386,7 @@ def One_tone_sche(
         
         sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
@@ -800,7 +800,36 @@ def Qubit_SS_sche(
         X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
         
     else: None
+    
     Integration(sched,q,R_inte_delay,R_integration,spec_pulse,0,single_shot=True,get_trace=False,trace_recordlength=0)
+
+    return sched
+
+# TODO:
+def ROF_Cali_sche(
+    q:str,
+    ro_freq:np.ndarray,
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Single shot", repetitions=repetitions)
+    sched.add_resource(ClockResource(name=q+ ".ro", freq=ro_freq.flat[0]))
+    for acq_idx, rof in enumerate(ro_freq):
+        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=rof))
+        sched.add(Reset(q))
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        if ini_state=='e': 
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
+            
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
     return sched
 

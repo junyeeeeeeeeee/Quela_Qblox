@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -9,7 +11,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot
 
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=130e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
+def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
     
     T2_us = {}
     analysis_result = {}
@@ -61,17 +63,19 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb=q,exp_type='T2',specific_dataFolder=data_folder)
-        if data_folder !='':
-            I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
-            data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
+        
+        I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
+        try:
             data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=8e-6)
-            analysis_result[q] = data_fit
             T2_us[q] = data_fit.attrs['T2_fit']*1e6
             Real_detune[q] = data_fit.attrs['f']-arti_detune
-        else:
-            analysis_result[q] = []
+        except:
+            data_fit=[]
             T2_us[q] = 0
             Real_detune[q] = 0
+
+        analysis_result[q] = data_fit
 
         show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -97,21 +101,22 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         detune_rec = []
 
         for ith in range(histo_counts):
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
-            
+            print(f"The {ith}-th T2:")
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
             Ramsey_results, T2_us, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
             T2_us_rec.append(T2_us[specific_qubits])
             detune_rec.append(average_actual_detune[specific_qubits])
-        mean_T2_us = round(mean(array(T2_us_rec)),1)
-        sd_T2_us = round(std(array(T2_us_rec)),1)
+        T2_us = array(T2_us)
+        mean_T2_us = round(mean(T2_us_rec[T2_us_rec != 0]),1)
+        sd_T2_us = round(std(T2_us_rec[T2_us_rec != 0]),1)
         if histo_counts == 1:
             if plot:
                 Fit_analysis_plot(Ramsey_results[specific_qubits],P_rescale=False,Dis=None)
         # set the histo save path
         else:
-            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T2_us_rec},specific_qubits,mode="t2",T1orT2=f"{mean_T2_us}+/-{sd_T2_us}",pic_folder=specific_folder)
+            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T2_us_rec},specific_qubits,mode="t2",T1orT2=f"{mean_T2_us}+/-{sd_T2_us}_4.4G",pic_folder=specific_folder)
     else:
         Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
         mean_T2_us = 0
@@ -126,9 +131,9 @@ if __name__ == "__main__":
     """ Fill in """
     execution = 1
     xyf_cali = 0
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":20e-6,"histo_counts":1}
+        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1}
     }
 
 

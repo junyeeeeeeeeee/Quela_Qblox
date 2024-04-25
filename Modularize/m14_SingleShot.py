@@ -5,7 +5,7 @@ from numpy import array, linspace
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, Data_manager,init_system_atte
+from Modularize.support import QDmanager, Data_manager,init_system_atte, init_meas, shut_down
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Pulse_schedule_library import Qubit_state_single_shot_plot
@@ -16,6 +16,8 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     qubit_info = QD_agent.quantum_device.get_element(q)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
+    rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()-0.2e6
+    QD_agent.quantum_device.get_element(q).clock_freqs.readout(rof)
     qubit_info.measure.pulse_amp(ro_amp_factor*qubit_info.measure.pulse_amp())
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     data = {}
@@ -76,7 +78,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
 
 def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0):
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'))
-    Fctrl[target_q](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q)))
+    Fctrl[target_q](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q)))
     SS_result= Qubit_state_single_shot(QD_agent,
                 shots=shots,
                 run=execution,
@@ -92,20 +94,18 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
 
 
 if __name__ == '__main__':
-    from Modularize.support import init_meas, shut_down
     
 
-    # Reload the QuantumDevice or build up a new one
     """ Fill in """
     execute = True
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
     ro_elements = {'q0':{"roAmp_factor":1}}
-
+    
 
     """ Preparation """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
-
+    # QD_agent.Notewriter.save_DigiAtte_For(QD_agent.Notewriter.get_DigiAtteFor('q0','ro')-2,'q0','ro')
 
     """ Running """
     for qubit in ro_elements:
@@ -121,6 +121,6 @@ if __name__ == '__main__':
     if execute:
         if keep.lower() == 'y':
             QD_agent.QD_keeper() 
-
+            
     """ Close """    
     shut_down(cluster,Fctrl)
