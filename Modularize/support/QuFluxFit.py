@@ -153,7 +153,7 @@ def FqEqn(x,a,b,Ec,coefA,d):
     return sqrt(8*coefA*Ec*sqrt(cos(a*(x-b))**2+d**2*sin(a*(x-b))**2))-Ec
      
 def calc_Gcoef_inFbFqFd(bareF:float,Fq:float,dressF:float):
-    return sqrt((1000**2)*(dressF-bareF)*(bareF-Fq)/(sqrt(bareF*Fq)**2))
+    return sqrt((1000**2)*abs(dressF-bareF)*abs(bareF-Fq)/(sqrt(bareF*Fq)**2))
 
 # predict fq
 def calc_fq_g_excluded(coef_inG:float,fdress:float,fbare:float):
@@ -198,13 +198,13 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     There are 5 paras in Fq eqn, give the initial guess and the fitting constrains for curve fit.\n
     Return guess, upper_bound, bottom_bound.
     """
-    f = 2*pi/period
+    f = pi/period
     b = offset/f
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
-    wide_period = 5*period/4
+    wide_period = 4*period/3
     narrow_period = period/4
-    upper_bound = [2*pi/narrow_period,max(flux_array)/f,0.25,100,1] #[a, b, Ec, Ej_sum, d]
-    bottom_bound = [2*pi/wide_period,min(flux_array)/f,0.15,1,0]
+    upper_bound = [pi/narrow_period,max(flux_array)/f,0.23,100,1] #[a, b, Ec, Ej_sum, d]
+    bottom_bound = [pi/wide_period,min(flux_array)/f,0.19,1,0]
 
     return guess, upper_bound, bottom_bound
 
@@ -265,20 +265,18 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
             print("No data points can be thrown, break!")
             break    
         else:
-            previous_err = mean(sqrt(diag(pcov)))
-            new_err = mean(sqrt(diag(advan_pcov)))
+            previous_err = mean(sqrt(diag(pcov))[:4])
+            new_err = mean(sqrt(diag(advan_pcov))[:4])
             if new_err <= previous_err:
-                if new_err > previous_err * 0.2:
-                    now_datapoints = advan_flux.shape[0]
+                if new_err > previous_err/4 :
                     flux = advan_flux
                     f01 = advan_f01
                     popt = advan_popt
                     pcov = advan_pcov
-                    if now_datapoints < int(original_datapoints/3):
-                        print("Data points are not enough, break!")
+                    if flux.shape[0] < original_datapoints/4:
                         break
                 else:
-                    print("New fitting error is GOOD enough, break!")
+                    print("FitFilter_threshold touchecd bottom !")
                     break 
             else:
                 advan_flux = flux

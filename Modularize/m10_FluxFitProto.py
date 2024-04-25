@@ -2,6 +2,7 @@ import datetime, os, json
 from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
+from qblox_instruments import Cluster
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit
@@ -58,47 +59,50 @@ def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float
         else:
             fq_start = calc_fq_g_excluded(A,start_rof*1e-6,fb)*1e6
         fq_end = calc_fq_g_excluded(A,end_rof*1e-6,fb)*1e6
-        fq_range = abs(fq_start-fq_end)
         center_fq = (fq_start+fq_end)/2
+        
         # check fq range > span or not
-        if fq_range > span:
-            pices = round(fq_range / span)
-            if fq_start > fq_end:
-                for step in range(pices):
-                    fq_pred = fq_start - step*span - IF
-                    if center_fq > 2.5e9 and center_fq < 5.5e9:
-                        meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
-                    else:
-                        print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
-            else:
-                for step in range(pices):
-                    fq_pred = fq_end - step*span - IF
-                    if center_fq > 2.5e9 and center_fq < 5.5e9:
-                        meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
-                    else:
-                        print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
+        # fq_range = abs(fq_start-fq_end)
+        # if fq_range > span:
+        #     pices = round(fq_range / span)
+        #     if fq_start > fq_end:
+        #         for step in range(pices):
+        #             fq_pred = fq_start - step*span - IF
+        #             if center_fq > 2.5e9 and center_fq < 5.5e9:
+        #                 meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
+        #             else:
+        #                 print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
+        #     else:
+        #         for step in range(pices):
+        #             fq_pred = fq_end - step*span - IF
+        #             if center_fq > 2.5e9 and center_fq < 5.5e9:
+        #                 meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
+        #             else:
+        #                 print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
 
-        else:
-            # check center of this span higher than 2.5 GHz or not
-            if center_fq > 2.5e9 and center_fq < 5.5e9:
-                fq_pred = fq_start-IF if fq_start > fq_end else fq_end-IF
-                meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
-            else:
-                print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
+        # else:
+        #     # check center of this span higher than 2.5 GHz or not
+        #     if center_fq > 2.5e9 and center_fq < 5.5e9:
+        #         fq_pred = fq_start-IF if fq_start > fq_end else fq_end-IF
+        #         meas_var.append({"z_start":window[0],"fq_predict":fq_pred,"z_end":window[-1]})
+        #     else:
+        #         print("Center of the fq range is not in the normal interval [2.5 , 5.5] GHz.")
 
-    if len(meas_var) <= 3:
-        z_pts = 20
-    else:
-        z_pts = 10
-        if len(meas_var) > 5:
-            meas_var = window_picker(meas_var)
-
+        if center_fq > 2.5e9 and center_fq < 5.5e9:
+            meas_var.append({"z_start":window[0],"fq_predict":center_fq,"z_end":window[-1]})
     
+    # if len(meas_var) <= 3:
+    #     z_pts = 20
+    # else:
+    #     z_pts = 10
+    z_pts = 10
+        
+
     print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
     return meas_var, z_pts
 
     
-def mag_static_filter(x_array:ndarray,y_array:ndarray,mag_array:ndarray,threshold:float=2.0):
+def mag_static_filter(x_array:ndarray,y_array:ndarray,mag_array:ndarray,threshold:float=3.0):
     x_choosen = []
     y_choosen = []
     while True:
@@ -118,11 +122,11 @@ def mag_static_filter(x_array:ndarray,y_array:ndarray,mag_array:ndarray,threshol
     return x_choosen, y_choosen
 
 # main execute program
-def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, target_q:str, run:bool=True, f_pts:int=30, re_n:int=500, peak_threshold:float=1.0):
+def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, cluster:Cluster,target_q:str, run:bool=True, f_pts:int=30, re_n:int=500, peak_threshold:float=1.0):
     f_span = 500e6
     xy_if = 100e6
-    
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'))
+    failed = False
+    init_system_atte(QD_agent.quantum_device,list([target_q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'))
     original_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
     if run:
         # ROF is at zero bias
@@ -130,6 +134,7 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
         QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(rof)
         # get the ref IQ according to the ROF (zero bias)
         analysis_result = Single_shot_ref_spec(QD_agent,q=target_q,want_state='g',shots=10000)
+        
         I_ref, Q_ref= analysis_result[target_q]['fit_pack'][0],analysis_result[target_q]['fit_pack'][1]
         ref = [I_ref,Q_ref]
         
@@ -137,23 +142,30 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
         x2static = []
         y2static = []
         mag2static=[]
+        n = 0
         for window in meas_vars:
             # main execution
+            cluster.reset()
             _, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=True,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if,analysis=False)
             reset_offset(Fctrl)
+            
             xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
             # below can be switch into QM system with the arg `qblox=False`
-            x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q,filter2D_threshold=peak_threshold)
+            x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q,filter2D_threshold=peak_threshold,plot_scatter=0)
             x2static += x.tolist()
             y2static += y.tolist()
             mag2static+=mag.tolist()
+            
         
         x2fit, y2fit = mag_static_filter(array(x2static),array(y2static),array(mag2static))
         data2fit = {"x":x2fit,"y":y2fit}
         json_path = Data_manager().save_dict2json(QD_agent,data2fit,target_q,True)
 
         pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
-        fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False) 
+        try:
+            fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False) 
+        except:
+            failed = True
         QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(original_rof)
     else:
         meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
@@ -161,7 +173,8 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
         # main execution
         _, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=False,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if)
         reset_offset(Fctrl)
-    
+        
+    return failed
 
     
 
@@ -170,20 +183,23 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
-    ro_elements = ["q0","q2"]
+    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
+    ro_elements = ['q2','q3']
 
 
 
     """ Preparations"""
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
+    if ro_elements == 'all':
+        ro_elements = list(Fctrl.keys())
    
     
     """ Running """
+    fit_error = []
     for qubit in ro_elements:
-        FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, target_q=qubit, run=execution,peak_threshold=2)
-        cluster.reset()
+        error = FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, cluster, target_q=qubit, run=execution,peak_threshold=2)
+        if error:
+            fit_error.append(qubit)
 
 
     
@@ -194,6 +210,7 @@ if __name__ == "__main__":
 
     """ Close """
     print('done!')
+    print(f"fitting error occured at {fit_error}")
     shut_down(cluster,Fctrl)
     
         

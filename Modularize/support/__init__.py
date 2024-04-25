@@ -1,11 +1,13 @@
 import pickle
 from typing import Callable
 from Modularize.support.Experiment_setup import get_FluxController
+from Modularize.support.Experiment_setup import ip_register
+from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
 import ipywidgets as widgets
 from IPython.display import display
 from qblox_instruments import Cluster, PlugAndPlay, ClusterType
-from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
+# from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
 from qcodes import Instrument
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.visualization.pyqt_plotmon import PlotMonitor_pyqt as PlotMonitor
@@ -21,22 +23,22 @@ from Modularize.support.QDmanager import QDmanager, Data_manager
 import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
 
-from numpy import asarray, ndarray
+from numpy import asarray, ndarray, real
 
 def find_nearest(ary:ndarray, value:float):
     """ find the element  which is closest to the given target_value in the given array"""
     ary = asarray(ary)
     idx = (abs(ary - value)).argmin()
-    return ary[idx]
+    return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
     ### Case 2: QD_path is given, load the QD with that given path.\n
     args:\n
-    cluster_ip: '170' for DR3 (default), '171' for DR2.
+    cluster_ip: '192.168.1.10'
     mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
     import quantify_core.data.handling as dh
@@ -44,12 +46,14 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     dh.set_datadir(meas_datadir)
     if mode.lower() in ['new', 'n']:
         from Modularize.support.Experiment_setup import hcfg_map
-        cfg, pth = hcfg_map[cluster_ip], ''
+        cfg, pth = hcfg_map[dr_loc.lower()], ''
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
-        cluster_ip = get_ip_specifier(QuantumDevice_path)
+        cluster_ip 
         cfg, pth = {}, QuantumDevice_path 
+        dr_loc = get_dr_loca(QuantumDevice_path)
+        cluster_ip = ip_register[dr_loc.lower()]
     else:
         raise KeyError("The given mode can not be recognized!")
     
@@ -57,19 +61,18 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
     if not vpn:
         # connect, ip = connect_clusters() ## Single cluster online
         # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-        ip, ser = connect_clusters_withinMulti(cluster_ip)
-        cluster = Cluster(name = f"cluster{cluster_ip}", identifier = ip)
-    else:
-        if cluster_ip == '170':
-            cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-            ip = "192.168.1.170"
-        elif cluster_ip == '171':
-            cluster = Cluster(name = f"cluster{cluster_ip}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
-            ip = "192.168.1.171"
+        ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
+    else: # haven't done
+        if cluster_ip == '11':
+            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
+        elif cluster_ip == '10':
+            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
+        ip = ip_register[dr_loc.lower()]
     
-    enable_QCMRF_LO(cluster)
+    # enable_QCMRF_LO(cluster) # for v0.6 firmware
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
@@ -79,7 +82,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='170',qubit
         Qmanager.QD_loader()
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
-    bias_controller = get_FluxController(cluster,cluster_ip)
+    bias_controller = get_FluxController(cluster,ip)
     reset_offset(bias_controller)
     cluster.reset()
     return Qmanager, cluster, meas_ctrl, ic, bias_controller
@@ -88,7 +91,12 @@ def get_ip_specifier(QD_path:str):
     specifier = QD_path.split("#")[-1].split("_")[0]
     return specifier 
 
+def get_dr_loca(QD_path:str):
+    loc = QD_path.split("#")[0].split("/")[-1]
+    return loc
+
 # Configure_measurement_control_loop
+""""# for firmware v0.6.2
 def configure_measurement_control_loop(
     device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
     ) ->Tuple[MeasurementControl,InstrumentCoordinator]:
@@ -123,6 +131,29 @@ def configure_measurement_control_loop(
     device.instr_instrument_coordinator(ic.name)
 
     return (meas_ctrl, ic)
+"""
+# for firmware v0.7.0
+def configure_measurement_control_loop(
+    device: QuantumDevice, cluster: Cluster, live_plotting: bool = False
+    ) ->Tuple[MeasurementControl,InstrumentCoordinator]:
+    meas_ctrl = find_or_create_instrument(MeasurementControl, recreate=True, name="meas_ctrl")
+    ic = find_or_create_instrument(InstrumentCoordinator, recreate=True, name="ic")
+    ic.timeout(60*60*120) # 120 hr maximum
+    # Add cluster to instrument coordinator
+    ic_cluster = ClusterComponent(cluster)
+    ic.add_component(ic_cluster)
+
+    if live_plotting:
+        # Associate plot monitor with measurement controller
+        plotmon = find_or_create_instrument(PlotMonitor, recreate=False, name="PlotMonitor")
+        meas_ctrl.instr_plotmon(plotmon.name)
+
+    # Associate measurement controller and instrument coordinator with the quantum device
+    device.instr_measurement_control(meas_ctrl.name)
+    device.instr_instrument_coordinator(ic.name)
+
+    return (meas_ctrl, ic)
+
 
 
 # close all instruments
@@ -151,23 +182,24 @@ def connect_clusters():
     return connect_options, ip_addresses
 
 # Multi-clusters online version connect_clusters()
-def connect_clusters_withinMulti(ip_last_posi:str='170'):
+def connect_clusters_withinMulti(dr_loc:str,ip:str='192.168.1.10'):
     """
     This function is only for who doesn't use jupyter notebook to connect cluster.
     args: \n
-    ip_last_posi: '170' for DR3 (default), '171' for DR2.\n
+    ip: 192.168.1.10\n
     So far the ip for Qblox cluster is named with 192.168.1.170 and 192.168.1.171
     """
+
     permissions = {}
     with PlugAndPlay() as p:            # Scan for available devices and display
         device_list = p.list_devices()
     for devi, info in device_list.items():
         permissions[info["identity"]["ip"]] = info["identity"]["ser"]
-    if f"192.168.1.{ip_last_posi}" in permissions:
-        print(f"192.168.1.{ip_last_posi} is available to connect to!")
-        return f"192.168.1.{ip_last_posi}", permissions[f"192.168.1.{ip_last_posi}"]
+    if ip in permissions:
+        print(f"{ip} is available to connect to!")
+        return ip, permissions[ip]
     else:
-        raise KeyError(f"192.168.1.{ip_last_posi} is NOT available now!")
+        raise KeyError(f"{ip} is NOT available now!")
  
 # def set attenuation for all qubit
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
@@ -220,7 +252,7 @@ def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20
 
 
 # LO debug
-def get_connected_modules(cluster: Cluster, filter_fn: Callable) -> dict[int, QcmQrm]:
+def get_connected_modules(cluster: Cluster, filter_fn: Callable):
     def checked_filter_fn(mod: ClusterType) -> bool:
         if filter_fn is not None:
             return filter_fn(mod)

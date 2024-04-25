@@ -5,11 +5,13 @@ from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
 
-def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='g'):
+def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='g',ro_amp_scaling:float=1):
     print("Single shot start")
     sche_func = Qubit_SS_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    qubit_info.measure.pulse_amp(ro_amp_scaling*float(qubit_info.measure.pulse_amp()))
+
     # qubit_info.clock_freqs.readout(5.7225e9)
     if want_state == 'g':
         XYL = 0
@@ -19,6 +21,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
         q=q,
         ini_state=want_state,
         pi_amp={str(q):XYL},
+        pi_dura={str(q):4e-9},
         R_amp={str(q):qubit_info.measure.pulse_amp()}, #
         R_duration={str(q):qubit_info.measure.pulse_duration()},
         R_integration={str(q):qubit_info.measure.integration_time()},
@@ -52,13 +55,13 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             show_args(Experi_info(q))
     return analysis_result
 
-def refIQ_executor(QD_agent:QDmanager,Fctrl:dict,specific_qubits:str,run:bool=True):
+def refIQ_executor(QD_agent:QDmanager,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1):
 
     if run:
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)))
-        analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=10000)
+        analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=10000,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
         try :
             I_ref, Q_ref= analysis_result[specific_qubits]['fit_pack'][0],analysis_result[specific_qubits]['fit_pack'][1]
@@ -78,24 +81,30 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
-    ro_elements = ["q4"]
+    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    ro_elements = {'q0':{"ro_amp_factor":1}}
 
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-
+    if ro_elements == 'all':
+        ro_elements = list(Fctrl.keys())
 
     """ Running """
     for qubit in ro_elements:
-        refIQ_executor(QD_agent,Fctrl,specific_qubits=qubit,run=execution)
+        refIQ_executor(QD_agent,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         cluster.reset()
+        if ro_elements[qubit]["ro_amp_factor"] !=1:
+            keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+        else:
+            keep = 'y'
 
 
     """ Storing """
     if execution:
-        QD_agent.refresh_log("After IQ ref checking!")
-        QD_agent.QD_keeper()
+        if keep:
+            QD_agent.refresh_log("After IQ ref checking!")
+            QD_agent.QD_keeper()
 
 
     """ Close """

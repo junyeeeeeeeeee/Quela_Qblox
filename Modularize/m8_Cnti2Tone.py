@@ -34,7 +34,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
         frequencies=freq,
         q=q,
         spec_amp=xyamp,
-        spec_Du=10e-6,
+        spec_Du=48e-6,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
         R_duration={str(q):qubit_info.measure.pulse_duration()},
         R_integration={str(q):qubit_info.measure.integration_time()},
@@ -112,7 +112,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
 
         if xyAmp_guess == 0:
-            xyAmp_guess = [0, 0.03, 0.07]
+            xyAmp_guess = [0, 0.03, 0.07, 0.1]
         else:
             xyAmp_guess = [xyAmp_guess]
         
@@ -145,12 +145,12 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    update = True
+    update = 1
     #
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
     #
     ro_elements = {
-        "q3":{"xyf_guess":3.6e9,"xyl_guess":0.01,"xy_atte":0,"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q1":{"xyf_guess":[4.2e9],"xyl_guess":[0.01],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 
@@ -161,16 +161,16 @@ if __name__ == "__main__":
     """ Running """
     tt_results = {}
     for qubit in ro_elements:
-        QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["xy_atte"],qubit,'xy')
-        xyf = ro_elements[qubit]["xyf_guess"]
-        xyl = ro_elements[qubit]["xyl_guess"]
-        g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
-        tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g)
+        QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
+        for xyf in ro_elements[qubit]["xyf_guess"]:
+            for xyl in ro_elements[qubit]["xyl_guess"]:
+                g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
 
-        if execution and xyl != 0:
-            update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
+                tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g,xy_if=100e6,xyf_span=200e6)
+
+                if execution and xyl != 0:
+                    update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
             
-
     """ Storing """
     if update :
         QD_agent.refresh_log("After continuous 2-tone!")

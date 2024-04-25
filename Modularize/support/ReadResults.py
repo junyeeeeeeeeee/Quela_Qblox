@@ -40,15 +40,23 @@ from Modularize.support.QDmanager import QDmanager
 
 # from Modularize.support import QDmanager
 from numpy import array
-QD_path = 'Modularize/QD_backup/2024_3_21/DR2#171_SumInfo.pkl'
+QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
 QD_agent = QDmanager(QD_path)
 QD_agent.QD_loader()
-for i in ["q3"]:
-    rof = QD_agent.quantum_device.get_element(i).clock_freqs.readout()
-    xyf = QD_agent.quantum_device.get_element(i).clock_freqs.f01()
-    
-print(rof)
-print(xyf)
+for i in ["q0","q1","q2","q3","q4"]:
+    qu = QD_agent.quantum_device.get_element(i)
+    rof = qu.clock_freqs.readout()
+    xyf = qu.clock_freqs.f01()
+    xyl = qu.rxy.amp180()
+    T1 = QD_agent.Notewriter.get_T1For(target_q=i)
+    T2 = QD_agent.Notewriter.get_T2For(target_q=i)
+    print(f"***{i}:")
+    print(f"rof : {rof}")
+    print(f"xyf : {xyf}")
+    print(f"xyl : {xyl}")
+    print(f"T1 : {T1}")
+    print(f"T2 : {T2}")
+    print("===========================\n")
 # def aprx_fq(disper_MHz:float,bareF_MHz:float,g_MHz:float=45.0):
 #     return bareF_MHz-(g_MHz**2)/disper_MHz
 

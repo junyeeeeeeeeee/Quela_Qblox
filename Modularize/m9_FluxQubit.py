@@ -137,6 +137,8 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
                 qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
                 QD_agent.Fluxmanager.check_offset_and_correctFor(target_q=specific_qubits,new_offset=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
                 QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+            else:
+                trustable = False
         else:
             trustable = False
         return results[specific_qubits], trustable
@@ -149,21 +151,24 @@ if __name__ == "__main__":
     
 
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
-    ro_elements = ["q1"]
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    ro_elements = ['q0']
     execution = True
     z_shifter = 0 # V
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
+    if ro_elements == 'all':
+        ro_elements = list(Fctrl.keys())
 
     
     """ Running """
     FQ_results = {}
     check_again =[]
     for qubit in ro_elements:
+        Fctrl['q1'](-0.043)
         FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
+        Fctrl['q1'](0)
         cluster.reset()
 
         if not trustable:

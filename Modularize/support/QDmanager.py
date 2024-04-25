@@ -90,6 +90,9 @@ class QDmanager():
         self.q_num = qubit_number
         self.Hcfg = Hcfg
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
+        self.Notewriter: Notebook = Notebook(self.q_num)
+        """ #for firmware v0.6.2
         self.quantum_device = QuantumDevice("academia_sinica_device")
         self.quantum_device.hardware_config(self.Hcfg)
         
@@ -101,9 +104,16 @@ class QDmanager():
             qubit.measure.acq_channel(i)
             self.quantum_device.add_element(qubit)
             self.quantum_device._device_elements.append(qubit)
-
-        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
-        self.Notewriter: Notebook = Notebook(self.q_num)
+        """
+        # for firmware v0.7.0
+        from qcodes.instrument import find_or_create_instrument
+        self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
+        self.quantum_device.hardware_config(self.Hcfg)
+        for qb_idx in range(self.q_num):
+            qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
+            qubit.measure.acq_channel(qb_idx)
+            self.quantum_device.add_element(qubit)
+        
 
     ### Convenient short cuts
 # Object to manage data and pictures store.
@@ -111,8 +121,8 @@ class QDmanager():
 class Data_manager:
     
     def __init__(self):
-        from support.Path_Book import meas_raw_dir
-        from support.Path_Book import qdevice_backup_dir
+        from Modularize.support.Path_Book import meas_raw_dir
+        from Modularize.support.Path_Book import qdevice_backup_dir
         self.QD_back_dir = qdevice_backup_dir
         self.raw_data_dir = meas_raw_dir
 
@@ -152,42 +162,43 @@ class Data_manager:
         self.pic_folder = pic_folder
 
     
-    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',histo_label:str=0,exp_type:str='CS', get_data_loc:bool=False):
+    def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
+        parent_dir = self.raw_data_dir if specific_dataFolder =='' else specific_dataFolder
         dr_loc = QD_agent.Identity.split("#")[0]
         if exp_type.lower() == 'cs':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'pd':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'fd':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'ss':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_SingleShot_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_SingleShot({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == '2tone':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'f2tone':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'powerrabi':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'timerabi':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'ramsey':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't1':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_T1({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 't2':
-            path = os.path.join(self.raw_folder,f"{dr_loc}{qb}_T2({histo_label})_{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_T2({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         else:
             path = ''
@@ -196,23 +207,27 @@ class Data_manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True):
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str='',pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
-        self.build_folder_today(self.raw_data_dir)
+        if pic_folder == '':
+            self.build_folder_today(self.raw_data_dir)
+            pic_dir = self.pic_folder
+        else:
+            pic_dir = pic_folder
         dr_loc = QD_agent.Identity.split("#")[0]
         if mode.lower() =="t1" :
             if save_fig:
-                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=r"$T_{1}\  (\mu$s)",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T1= {T1orT2} us",save_path=fig_path, show=show_fig)
         elif mode.lower() =="t2" :
             if save_fig:
-                fig_path = os.path.join(self.pic_folder,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=r"$T_{2}\  (\mu$s)",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

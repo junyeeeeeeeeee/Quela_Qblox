@@ -86,7 +86,7 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
         init_system_atte(QD_agent.quantum_device,[specific_qubits],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         if sweet_spot:
             Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits))
-        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power)
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power,f_points=60,p_points=45)
         Fctrl[specific_qubits](0.0)
         if PD_results == {}:
             print(f"Power dependence error qubit: {specific_qubits}")
@@ -102,9 +102,9 @@ if __name__ == "__main__":
     """ fill in """
     execution = True
     sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_3_29/DR2#171_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
     ro_elements = {    # measurement target q from this dict 
-        "q4": {"ro_atte":28}
+        "q1": {"ro_atte":34}
     }
 
     """ preparations """
@@ -121,8 +121,8 @@ if __name__ == "__main__":
     QD_agent.refresh_log('after PowerDep')
     
     """ Storing """
-    if execution: 
-        QD_agent.QD_keeper()
+    # if execution: 
+        # QD_agent.QD_keeper()
     
     """ Close """
     print('Power dependence done!')
