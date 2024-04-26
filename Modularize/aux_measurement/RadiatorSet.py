@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, json, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from Modularize.support.Path_Book import meas_raw_dir
@@ -28,15 +28,14 @@ def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
 
 if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
-    import time
     """ fill in """
     Temp = '10K'
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_26/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"T2detune":0e6,"freeTime":{"T1":60e-6,"T2":20e-6},"histo_counts":10}
+        "q0":{"T2detune":0e6,"freeTime":{"T1":60e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
     }
     data_parent_dir = os.path.join(meas_raw_dir,Temp)
-    set_number = 10
+    set_number = 5
 
     """ Preparations """
     os.mkdir(data_parent_dir)
@@ -46,7 +45,9 @@ if __name__ == "__main__":
 
 
     """ Running """
+    other_info= {}
     for qubit in ro_elements:
+        other_info[qubit]={"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
         for set_idx in range(set_number):
             set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
 
@@ -55,11 +56,15 @@ if __name__ == "__main__":
             histo_count = ro_elements[qubit]["histo_counts"]
 
             radiation_test(QD_agent, cluster, meas_ctrl, Fctrl, qubit, freeDura=evoT, T2_detu=ramsey_detune, histo_counts=histo_count, new_folder=set_folder)
-    
+            cut_time = time.time()
+            other_info[qubit]["time_past"].append(cut_time-start)
+
+
 
 
     """ Storing """
-
+    with open(f"{data_parent_dir}/otherInfo.json","w") as record_file:
+        json.dump(other_info,record_file)
 
 
     """ Close """

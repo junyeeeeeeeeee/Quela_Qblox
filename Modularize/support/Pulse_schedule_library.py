@@ -939,12 +939,14 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
     plt.show()
     
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
+    print(data[q])
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_xlabel(title)
     ax.set_ylabel('Counts')
     fig.tight_layout()
+    print("OOO")
     if save_path != '':
         fig.savefig(save_path)
     if show:

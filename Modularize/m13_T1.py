@@ -55,10 +55,10 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         
         I,Q= dataset_to_array(dataset=T1_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-        try:
+        if data_folder == '':
             data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
-        except:
+        else:
             data_fit=[]
             T1_us[q] = 0
         analysis_result[q] = data_fit
@@ -99,12 +99,13 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
             cluster.reset
             T1_us.append(T1_hist[specific_qubits])
         T1_us = array(T1_us)
-        mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
-        sd_T1_us = round(std(T1_us[T1_us != 0]),1)
+        mean_T1_us = round(mean(T1_us),1)
+        sd_T1_us = round(std(T1_us),1)
         if histo_counts == 1:
             Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
         else:
-            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}",pic_folder=specific_folder)
+            if specific_folder == '': # when a folder given, the case should be only radiator test so far (2024/04/26) and i don't want it analyze 
+                Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}",pic_folder=specific_folder)
         
     else:
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,exp_idx=0,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
@@ -118,7 +119,7 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_26/DR1#11_SumInfo.pkl'
     ro_elements = {
         "q0":{"evoT":60e-6,"histo_counts":100}
     }
