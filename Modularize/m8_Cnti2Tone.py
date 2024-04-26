@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from numpy import NaN
 from numpy import array, linspace
 from qblox_instruments import Cluster
@@ -147,10 +150,10 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
     #
     ro_elements = {
-        "q1":{"xyf_guess":[4.2e9],"xyl_guess":[0.01],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q1":{"xyf_guess":[4.21e9],"xyl_guess":[0.02],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 

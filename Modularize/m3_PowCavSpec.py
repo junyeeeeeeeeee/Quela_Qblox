@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -102,9 +105,9 @@ if __name__ == "__main__":
     """ fill in """
     execution = True
     sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
     ro_elements = {    # measurement target q from this dict 
-        "q1": {"ro_atte":34}
+        "q2": {"ro_atte":34}
     }
 
     """ preparations """

@@ -1,3 +1,5 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from utils.tutorial_utils import show_args
 from Modularize.support import QDmanager, Data_manager
@@ -81,8 +83,8 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
-    ro_elements = {'q0':{"ro_amp_factor":1}}
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
+    ro_elements = {'q1':{"ro_amp_factor":1}}
 
 
     """ Preparations """

@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -108,7 +111,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     ro_elements = ['q1']
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')

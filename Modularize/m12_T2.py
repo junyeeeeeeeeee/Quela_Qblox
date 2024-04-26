@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -61,18 +64,12 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb=q,exp_type='T2',specific_dataFolder=data_folder)
-        if data_folder !='':
-            I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
-            data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
-            data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=8e-6)
-            analysis_result[q] = data_fit
-            T2_us[q] = data_fit.attrs['T2_fit']*1e6
-            Real_detune[q] = data_fit.attrs['f']-arti_detune
-        else:
-            analysis_result[q] = []
-            T2_us[q] = 0
-            Real_detune[q] = 0
-
+        I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
+        data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=8e-6)
+        analysis_result[q] = data_fit
+        T2_us[q] = data_fit.attrs['T2_fit']*1e6
+        Real_detune[q] = data_fit.attrs['f']-arti_detune
         show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -126,9 +123,9 @@ if __name__ == "__main__":
     """ Fill in """
     execution = 1
     xyf_cali = 0
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":20e-6,"histo_counts":1}
+        "q1":{"detune":-0.2e6,"evoT":50e-6,"histo_counts":1}
     }
 
 

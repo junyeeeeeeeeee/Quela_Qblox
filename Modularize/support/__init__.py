@@ -64,9 +64,9 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
         cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
     else: # haven't done
-        if cluster_ip == '11':
+        if cluster_ip == '192.168.1.11':
             cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5025)
-        elif cluster_ip == '10':
+        elif cluster_ip == '192.168.1.10':
             cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5171)
         else:
             raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")

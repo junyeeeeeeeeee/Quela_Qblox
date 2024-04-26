@@ -1,4 +1,6 @@
 import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from numpy import NaN
 from Modularize.support import uw
 from numpy import array, linspace
@@ -12,7 +14,7 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support import init_meas, init_system_atte, shut_down, QRM_nco_init
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 
 def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ro_amp:float=0)->dict:
     """
