@@ -1,6 +1,10 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+<<<<<<< HEAD
 
+=======
+from qblox_instruments import Cluster
+>>>>>>> origin/RatisWu
 from utils.tutorial_utils import show_args
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
@@ -57,14 +61,15 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             show_args(Experi_info(q))
     return analysis_result
 
-def refIQ_executor(QD_agent:QDmanager,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1):
+def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1):
 
     if run:
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q=specific_qubits)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=10000,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
+        cluster.reset()
         try :
             I_ref, Q_ref= analysis_result[specific_qubits]['fit_pack'][0],analysis_result[specific_qubits]['fit_pack'][1]
             QD_agent.memo_refIQ({str(specific_qubits):[I_ref,Q_ref]})
@@ -83,8 +88,13 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
+<<<<<<< HEAD
     QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
     ro_elements = {'q1':{"ro_amp_factor":1}}
+=======
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    ro_elements = {'q0':{"ro_amp_factor":1}}
+>>>>>>> origin/RatisWu
 
 
     """ Preparations """
@@ -94,8 +104,8 @@ if __name__ == "__main__":
 
     """ Running """
     for qubit in ro_elements:
-        refIQ_executor(QD_agent,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
-        cluster.reset()
+        refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
+        
         if ro_elements[qubit]["ro_amp_factor"] !=1:
             keep = input(f"Keep this RO amp for {qubit}?[y/n]")
         else:

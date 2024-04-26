@@ -1,5 +1,7 @@
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
+from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.m13_T1  import T1_executor
 from Modularize.m12_T2  import ramsey_executor
 from Modularize.m14_SingleShot import SS_executor
@@ -28,16 +30,16 @@ if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
     import time
     """ fill in """
-    QD_path = 'Modularize/QD_backup/2024_4_24/DR1#11_SumInfo.pkl'
+    Temp = '10K'
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"T2detune":0e6,"freeTime":{"T1":100e-6,"T2":20e-6},"histo_counts":2}
+        "q0":{"T2detune":0e6,"freeTime":{"T1":60e-6,"T2":20e-6},"histo_counts":10}
     }
-    data_parent_dir = '/Users/ratiswu/Documents/GitHub/Quela_Qblox/Modularize/Meas_raw'
-    set_number = 2
-
-
+    data_parent_dir = os.path.join(meas_raw_dir,Temp)
+    set_number = 10
 
     """ Preparations """
+    os.mkdir(data_parent_dir)
     start = time.time()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
@@ -63,6 +65,6 @@ if __name__ == "__main__":
     """ Close """
     shut_down(cluster,Fctrl)
     end = time.time()
-    print(f"Cost time: {round((end-start)/60,1)} mins")
+    print(f"{set_number}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
 
     

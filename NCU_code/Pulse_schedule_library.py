@@ -259,9 +259,9 @@ def Digital_down_convert(IF_Idata:np.ndarray,IF_Qdata:np.ndarray,IF:float,time_a
     
 
 #%% pulse library
-def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu):
+def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu, ref_point:str="start"):
     delay_c= -Du-freeDu
-    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
 
 def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
     if Du!=0:
@@ -275,57 +275,49 @@ def Y_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
         return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
     else: pass
 
-def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu):
+def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
         delay_z= -Du-freeDu
-        return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt="start",)
+        return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
     else: pass
 
-def X_pi_2_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_2_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_p(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_2_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_2_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def Y_pi_m(sche,pi_amp,q,ref_pulse_sche,freeDu):
+def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
-    pi_Du= 20*1e-9
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
@@ -411,7 +403,8 @@ def Two_tone_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
-    repetitions:int=1,    
+    repetitions:int=1,   
+    ref_pt:str='end' 
 ) -> Schedule:
     sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -420,12 +413,12 @@ def Two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0, ref_point=ref_pt)
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched
 
-
+# try to put a bias on RO part 03/20
 def Z_gate_two_tone_sche(
     frequencies: np.ndarray,
     q:str,
@@ -436,7 +429,8 @@ def Z_gate_two_tone_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
-    repetitions:int=1,    
+    repetitions:int=1,   
+    Z_ro_amp:float =0 
 ) -> Schedule:
     sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -447,7 +441,9 @@ def Z_gate_two_tone_sche(
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
-        
+        if Z_ro_amp != 0:
+            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
+
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched
@@ -584,6 +580,7 @@ def Zgate_Rabi_sche(
 def T1_sche(
     q:str,
     pi_amp: dict,
+    pi_dura:float,
     freeduration:any,
     R_amp: dict,
     R_duration: dict,
@@ -602,11 +599,39 @@ def T1_sche(
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_p(sched,pi_amp,q,spec_pulse,freeDu)
-
+        X_pi_p(sched,pi_amp,q,pi_dura,spec_pulse,freeDu)
+        
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
+
+def mix_T1_sche(
+    q:str,
+    pi_amp: dict,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("T1", repetitions=repetitions)
+    
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+    
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        
+        Spec_pulse(sched,pi_amp[q],10e-6,q,spec_pulse,freeDu) # drive to mix state
+        
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 
 def XY_Z_timing_sche(
     q:str,
@@ -681,12 +706,13 @@ def Ramsey_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
+    pi_dura:float=20e-9,
     repetitions:int=1,
 ) -> Schedule:
 
     sched = Schedule("Ramsey", repetitions=repetitions)
     
-    pi_Du= 20*1e-9
+    pi_Du= pi_dura
 
     
    
@@ -701,9 +727,9 @@ def Ramsey_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=freeDu+pi_Du)
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=0)
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
@@ -754,6 +780,7 @@ def Qubit_SS_sche(
     q:str,
     ini_state:str,
     pi_amp: dict,
+    pi_dura:dict,
     R_amp: dict,
     R_duration: dict,
     R_integration:dict,
@@ -770,7 +797,7 @@ def Qubit_SS_sche(
     spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
     
     if ini_state=='e': 
-        X_pi_p(sched,pi_amp,q,spec_pulse,freeDu=0)
+        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
         
     else: None
     Integration(sched,q,R_inte_delay,R_integration,spec_pulse,0,single_shot=True,get_trace=False,trace_recordlength=0)
@@ -882,13 +909,19 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
     fig.tight_layout()
     plt.show()
     
-def hist_plot(q:str,data:dict,title:str):
+def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_xlabel(title)
     ax.set_ylabel('Counts')
     fig.tight_layout()
+    if save_path != '':
+        fig.savefig(save_path)
+    if show:
+        plt.show()
+    else:
+        plt.close()
     
 def Z_bias_error_bar_plot(q:str,data:dict,title:str):
     times, Z_bias= data['plot_parameters'][0],data['plot_parameters'][1]
@@ -969,8 +1002,8 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
         ax1.plot(I_fit, Mge,'--r',alpha=0.8,lw=2)
         ax1.plot(I_fit, Mge+Mee,'--k',alpha=1,lw=1)
     elif Plot_type== 'both': 
-        ax.scatter(1000*Ig, 1000*Qg, color="blue", alpha=0.5, s=5)
-        ax.scatter(1000*Ie, 1000*Qe, color="red", alpha=0.5, s=5)
+        ax.scatter(1000*Ig, 1000*Qg, color="blue", alpha=0.5, s=0.3)
+        ax.scatter(1000*Ie, 1000*Qe, color="red", alpha=0.5, s=0.3)
         ax1.plot(I_ro, Inte_g_data,'bo',alpha=0.5,ms=8)
         ax1.plot(I_fit, Mgg,'b',alpha=0.8,lw=2)
         ax1.plot(I_fit, Meg,'--b',alpha=0.8,lw=2)
@@ -1003,6 +1036,7 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
     ax1.set_title('Single shot rotated data')
     ax1.set_xlim(-4*sig,ce_I+4*sig)
     fig1.tight_layout()
+    plt.show()
 
 
 def Single_shot_fit_plot(results:dict):
@@ -1051,6 +1085,7 @@ def Single_shot_fit_plot(results:dict):
     ax.scatter(c_I,c_Q,c='k',s=15)
     ax.add_patch(Ellipse(xy=[c_I,c_Q],width=sig*4,height=sig*4,fill=False, alpha=0.8, facecolor= None, edgecolor="w", linewidth=0.8, linestyle='--',angle=0))
     fig.tight_layout()
+    plt.show()
     
 def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool,IF:float):
     fc=fc
@@ -1084,6 +1119,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     ax[1].set_xlabel(r"$t\ (\mu$s)",size ='15')
     ax[1].set_ylabel(r"$Q\ $(mV)",size ='15')
     fig.tight_layout()
+    plt.show()
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
@@ -1138,7 +1174,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
         text_msg += r"$\pi= %.3f $"%(pi_2) +x_unit        
         ax.axvline(x=pi_2, ymin=0, ymax= np.array(results.data_vars['data']/Nor_f).max(),color='r',linestyle='dashed', alpha=0.8,lw=1)
         
-    ax.plot(x,results.data_vars['data']/Nor_f,'o', color="blue",label=r"$data$", alpha=0.5, ms=4)
+    ax.plot(x,results.data_vars['data']/Nor_f,'-', color="blue",label=r"$data$", alpha=0.5, ms=4)
     ax.plot(x_fit,results.data_vars['fitting']/Nor_f,'-', color="red",label=r"$fit$", alpha=0.8, lw=1)       
     ax.set_xlabel(x_label)
     ax.set_title(title)
@@ -1146,7 +1182,43 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     plot_textbox(ax,text_msg)
     fig.tight_layout()
     plt.show()
+
+from numpy import array, max, mean, min
+def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    ax.axvline(x=results.attrs['f01_fit']*1e-9, ymin=0, ymax= max(results.data_vars['data'].to_numpy())*1000,color='green',linestyle='dashed', alpha=0.8,lw=1)
+    text_msg = "Fit results\n"
+    title= 'Two tone spectroscopy'
+    x_label= 'Frequency'+' [GHz]'
+    y_label= 'Contrast'+' [mV]'
+
+    x= results.coords['f']*1e-9
+    x_fit= results.coords['para_fit']*1e-9
+
+    text_msg += r"$f_{01}= %.4f $"%(results.attrs['f01_fit']*1e-9) +' GHz\n'
+    text_msg += r"$BW= %.2f $"%(results.attrs['bandwidth']*1e-6) +' MHz\n'
+    ax.plot(x,results.data_vars['data']*1000,'-', color="red",label=r"$data$", alpha=0.75, ms=4)
+    cond_1 = max(array(results.data_vars['fitting'])) < max(results.data_vars['data'])+0.5*(max(results.data_vars['data']) - mean(array(results.data_vars['data'])))
+    cond_2 = min(array(results.data_vars['fitting'])) > min(results.data_vars['data'])-0.5*(mean(results.data_vars['data']) - min(array(results.data_vars['data'])))
+    if cond_1 and cond_2:
+        ax.plot(x_fit,results.data_vars['fitting']*1000,'-', color="brown",label=r"$fit$", alpha=1, lw=1)  
+         
+    if array(substrate_backgroung).shape[0] != 0 :
+        ax.plot(x,substrate_backgroung*1000,'-', color="blue",label=r"$background$", alpha=0.5, ms=4)
     
+    
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    plt.legend()
+    if save_path != '':
+        plt.savefig(save_path)
+    if turn_on:
+        plt.show()
+    else:
+        plt.close()
 
 #%%    
 def set_LO_frequency(quantum_device:QuantumDevice,q:str,module_type:str,LO_frequency:float):

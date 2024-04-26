@@ -165,7 +165,7 @@ class Data_manager:
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
-        parent_dir = self.raw_data_dir if specific_dataFolder =='' else specific_dataFolder
+        parent_dir = self.raw_folder if specific_dataFolder =='' else specific_dataFolder
         dr_loc = QD_agent.Identity.split("#")[0]
         if exp_type.lower() == 'cs':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
@@ -199,6 +199,9 @@ class Data_manager:
             ds.to_netcdf(path)
         elif exp_type.lower() == 't2':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_T2({label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        elif exp_type.lower() == 'rofcali':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_RofCali({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         else:
             path = ''

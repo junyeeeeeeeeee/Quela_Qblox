@@ -1,7 +1,10 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/RatisWu
 from qblox_instruments import Cluster
 from numpy import linspace, array, arange
 from utils.tutorial_utils import show_args
@@ -114,7 +117,7 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
         Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -136,7 +139,11 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
 if __name__ == "__main__":
     
     """ Fill in """
+<<<<<<< HEAD
     QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
+=======
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+>>>>>>> origin/RatisWu
     execution = True
     ro_elements = ['q1']
 
@@ -149,7 +156,7 @@ if __name__ == "__main__":
     rabi_results = {}
     for qubit in ro_elements:
         # Fctrl['q1'](-0.043)
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=52e-9,XYamp_max=0.4)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=100e-9,XYamp_max=0.4)
         # Fctrl['q1'](0)
         cluster.reset()
     

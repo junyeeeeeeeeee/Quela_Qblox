@@ -1,6 +1,9 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/RatisWu
 from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -110,8 +113,13 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
+<<<<<<< HEAD
     ro_elements = ['q1']
     QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
+=======
+    ro_elements = ['q0']
+    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+>>>>>>> origin/RatisWu
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -122,7 +130,7 @@ if __name__ == "__main__":
     update = False
     FD_results = {}
     for qubit in ro_elements:
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.15)
         cluster.reset()
         if execution:
             permission = input("Update the QD with this result ? [y/n]") 
