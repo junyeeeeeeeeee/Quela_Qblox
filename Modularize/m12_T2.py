@@ -69,7 +69,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         try:
             data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=8e-6)
             T2_us[q] = data_fit.attrs['T2_fit']*1e6
-            Real_detune[q] = data_fit.attrs['f']-arti_detune
+            Real_detune[q] = data_fit.attrs['f']
         except:
             data_fit=[]
             T2_us[q] = 0
@@ -132,10 +132,10 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    xyf_cali = 1
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
+    xyf_cali = 0
+    QD_path = 'Modularize/QD_backup/2024_4_30/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q1":{"detune":0.1e6,"evoT":40e-6,"histo_counts":1}
+        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1}
     }
 
 
@@ -165,13 +165,18 @@ if __name__ == "__main__":
             actual_detune.append(average_actual_detune[qubit])
             all_ramsey_results.append(ramsey_results[qubit][qubit])
         if xyf_cali:
-            Fit_T2_cali_analysis_plot(all_ramsey_results,P_rescale=False,Dis=None)
-            if average(array(actual_detune))<=abs(manual_detune[0]):
+            if average(array(actual_detune)) - abs(manual_detune[0]) > 1e4:
                 Trustable = True
-                original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
-                QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf+sign(manual_detune[0])*average(array(actual_detune)))
+                if actual_detune[0] <= actual_detune[1]: # qb freq > clock.f01
+                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
+                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf+sign(manual_detune[0])*average(array(actual_detune)))
+                else:  # qb freq < clock.f01
+                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
+                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf-sign(manual_detune[0])*average(array(actual_detune)))
+                print("Calibrated!!")
             else:
-                print("Warning: Please set a larger detuning !")
+                print("Warning: Please set a smaller detuning !")
+            Fit_T2_cali_analysis_plot(all_ramsey_results,P_rescale=False,Dis=None)
         
         if histo_total >= 10:
             Trustable = True
