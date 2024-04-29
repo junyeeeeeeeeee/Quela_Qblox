@@ -90,18 +90,18 @@ def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
     )
 
 
-def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6):
+def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
     
     if run:
         print(f"{specific_qubits} are under the measurement ...")
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span)[specific_qubits]
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts)[specific_qubits]
         if FD_results == {}:
             print(f"Flux dependence error qubit: {specific_qubits}")
         
     else:
         init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,run=False)
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,run=False,flux_points=zpts,f_points=fpts)
 
     return FD_results
 
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     ro_elements = ['q0']
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     update = False
     FD_results = {}
     for qubit in ro_elements:
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.15)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.15,ro_span_Hz=6e6, zpts=30)
         cluster.reset()
         if execution:
             permission = input("Update the QD with this result ? [y/n]") 

@@ -29,9 +29,9 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q1":{"ro_amp":0.6,"ro_atte":34}
+        "q0":{"ro_amp":0.2,"ro_atte":50}
     }
     freq_shift = 0
 
@@ -45,7 +45,9 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         if ro_elements[qubit]["ro_atte"] != '':
             QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
+        Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
         CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=10e6)
+        Fctrl[qubit](0)
         cluster.reset()
         print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
         _ = show_quality_for(CS_results,qubit)

@@ -77,6 +77,7 @@ class QDmanager():
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
             print(f'Summarized info had successfully saved to the given path!')
+
     
     def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str):
         """
@@ -114,7 +115,22 @@ class QDmanager():
             qubit.measure.acq_channel(qb_idx)
             self.quantum_device.add_element(qubit)
         
-
+    def keep_meas_option(self,target_q:str,z_bias:float):
+        """ keep the following info into Notebook\n
+        1) XY freq.\n
+        2) RO freq.\n
+        3) pi-pulse amp.\n
+        4) pi-pulse duration.\n
+        5) ref-IQ point.\n
+        6) bias of this point."""
+        self. Notewriter.create_meas_options(target_q)
+        qubit = self.quantum_device.get_element(target_q)
+        ROF = qubit.clock_freqs.readout()
+        XYF = qubit.clock_freqs.f01()
+        pi_amp = qubit.rxy.amp180()
+        pi_dura = qubit.rxy.duration()
+        ref_iq = self.refIQ[target_q]
+        option_dict = {"f01":XYF,"rof":ROF,"pi_amp":pi_amp,"pi_dura":pi_dura,"refIQ":ref_iq,"bias":z_bias}
     ### Convenient short cuts
 # Object to manage data and pictures store.
 

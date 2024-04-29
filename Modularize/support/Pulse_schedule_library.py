@@ -442,7 +442,7 @@ def Z_gate_two_tone_sche(
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
         if Z_ro_amp != 0:
-            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
+            Z(sched,Z_ro_amp,R_duration[q],q,spec_pulse,0,'end')
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
@@ -1154,7 +1154,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_folder:str=''):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1212,7 +1212,11 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
     fig.tight_layout()
-    plt.show()
+    if save_folder == '':
+        plt.show()
+    else:
+        plt.savefig(save_folder)
+        plt.close()
 
 from numpy import array, max, mean, min
 def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):

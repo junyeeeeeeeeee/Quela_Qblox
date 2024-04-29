@@ -85,7 +85,6 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
 def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False):
 
     if run:
-        init_system_atte(QD_agent.quantum_device,[specific_qubits],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         if sweet_spot:
             Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits))
         PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power,f_points=60,p_points=45)
@@ -94,7 +93,6 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
             print(f"Power dependence error qubit: {specific_qubits}")
      
     else:
-        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,run=False,ro_p_max=max_power)
 
     
@@ -103,10 +101,10 @@ if __name__ == "__main__":
     
     """ fill in """
     execution = True
-    sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_4_23/DR2#10_SumInfo.pkl'
+    sweetSpot_dispersive = True
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
     ro_elements = {    # measurement target q from this dict 
-        "q1": {"ro_atte":34}
+        "q0": {"ro_atte":50}
     }
 
     """ preparations """
@@ -115,6 +113,7 @@ if __name__ == "__main__":
     """ Running """
     for qubit in ro_elements:
         QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
         cluster.reset()
         if not execution:
@@ -123,8 +122,8 @@ if __name__ == "__main__":
     QD_agent.refresh_log('after PowerDep')
     
     """ Storing """
-    # if execution: 
-        # QD_agent.QD_keeper()
+    if execution: 
+        QD_agent.QD_keeper()
     
     """ Close """
     print('Power dependence done!')

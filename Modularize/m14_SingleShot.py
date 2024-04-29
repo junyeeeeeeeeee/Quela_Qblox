@@ -16,8 +16,6 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     qubit_info = QD_agent.quantum_device.get_element(q)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
-    rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()-0.2e6
-    QD_agent.quantum_device.get_element(q).clock_freqs.readout(rof)
     qubit_info.measure.pulse_amp(ro_amp_factor*qubit_info.measure.pulse_amp())
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     data = {}

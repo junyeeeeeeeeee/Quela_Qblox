@@ -1,12 +1,15 @@
 import os, sys, time, json
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox
+from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox, Fit_analysis_plot
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
-from numpy import array, ndarray, mean, std, round, arange
+from numpy import array, ndarray, mean, std, round, arange, moveaxis, transpose
 # from Modularize.support.Pulse_schedule_library import hist_plot
 import matplotlib.pyplot as plt
 from Modularize.support.Path_Book import meas_raw_dir
 import re
+
+from qcat.state_discrimination.discriminator import train_model # type: ignore
+from qcat.visualization.readout_fidelity import plot_readout_fidelity
 
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
@@ -34,6 +37,15 @@ def create_results_dict():
     
     return info_dict
 
+def create_T1T2_folder(results_folder:str, mode:str):
+    if mode.lower() == 't1':
+        folder = os.path.join(results_folder,"T1")
+    else:
+        folder = os.path.join(results_folder,"T2")
+    if not os.path.isdir(folder):
+        os.mkdir(folder)
+    return folder
+
 def creat_weired_pic_folder(temperature_folder):
     weired_pic_path = os.path.join(temperature_folder,"weired_data")
     if not os.path.isdir(weired_pic_path):
@@ -42,6 +54,12 @@ def creat_weired_pic_folder(temperature_folder):
 
 def create_result_folder(temperature_folder):
     results_path = os.path.join(temperature_folder,"results")
+    if not os.path.isdir(results_path):
+        os.mkdir(results_path)
+    return results_path
+
+def creat_oneshot_folder(result_folder):
+    results_path = os.path.join(result_folder,"SingleShot")
     if not os.path.isdir(results_path):
         os.mkdir(results_path)
     return results_path
@@ -117,8 +135,89 @@ def sort_files(file_name_list:list):
     return T1_file+T2_file+SS_file
 
 
+def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
+    """
+    total_array shape: (2,2,M,N) which is (IQ, state, histos, shots)\n
+    return traning, predict, label arrays:\n 1) (want_IQset_num, IQ, state, shots)\n 2) (histos, IQ, state, shots)\n
+    3) (g, IQ, shot)
+    """
+    from numpy.random import randint
+    total_sets = []
+    train_set  = []
+    for_label = []
+    for histo in range(total_array.shape[2]):
+        IQ_folder = []
+        for iq in range(total_array.shape[0]):
+            state_folder = []
+            for state in range(total_array.shape[1]):
+                state_folder.append(total_array[iq][state][histo])
+            IQ_folder.append(state_folder)
+        total_sets.append(IQ_folder)
+    print(array(total_sets).shape) # shape = (histo, IQ, State, shots)
+
+    for pick_number in range(want_IQset_num):
+        rand_pick_set_idx = randint(0 ,len(total_sets))
+        train_set.append(total_sets[rand_pick_set_idx])
+    
+    return array(train_set), array(total_sets)
+
+def plot_temp_compa(mode:str="all"):
+    """
+    mode: 'all', 'part1' or 'part2'. Default is 'all'.
+    """
+    temp_compa_path = os.path.join(meas_raw_dir,"Temperature Compa")
+    if not os.path.isdir(temp_compa_path):
+        os.mkdir(temp_compa_path)
+
+    temp_folders = [name for name in os.listdir(meas_raw_dir) if (os.path.isdir(os.path.join(meas_raw_dir,name)) and (len(name.split("K"))==2 and name.split("K")[-1][0]=='-'))]
+    
+    include_mode = []
+    for temp in temp_folders:
+        if mode.lower() == 'part1':
+            if temp.split("-")[-1] == '1':
+                include_mode.append(temp)
+                sub_title = "after radiator ON"
+        elif mode.lower() == 'part2':
+            if temp.split("-")[-1] == '2':
+                include_mode.append(temp)
+                sub_title = "during stable env"
+        else:
+            include_mode.append(temp)
+            sub_title = ""
+
+    info_recorder = {} # Ex. 20K-2: {"T1":{"avg","std"},"T2":{"avg","std"},"eff_T":{"avg","std"}}
+    for temperature in include_mode:
+        temperature_folder = os.path.join(meas_raw_dir,temperature)
+        json_folder = os.path.join(temperature_folder,"results/jsons")
+        with open(os.path.join(json_folder,"temperatureInfo.json")) as J:
+            info_recorder[str(temperature)] = json.load(J)
+
+    plot_item = ["T1","eff_T"]#list(info_recorder[list(info_recorder.keys())[0]].keys())
+    fig,ax = plt.subplots(len(plot_item),1,figsize=(15,12))
+    for exp_idx in range(len(plot_item)):
+        exp_type = plot_item[exp_idx]
+        if exp_type != "eff_T":
+            y_label = "Time (µs)"
+        else:
+            y_label = "Effective temperature (mK)"
+        if exp_type != "Time":
+            for temperature in info_recorder:
+                ax[exp_idx].errorbar(info_recorder[temperature]['Time'],info_recorder[temperature][exp_type]["avg"],yerr=info_recorder[temperature][exp_type]["std"],fmt='o-',label=f"{temperature}")
+                ax[exp_idx].set_xlabel(f"Time {sub_title} (min)")
+                ax[exp_idx].set_ylabel(y_label)
+                ax[exp_idx].set_title(f"Temperature comparisom on {exp_type} by Qblox")
+            ax[exp_idx].legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(temp_compa_path,f"{mode}_temp_compa.png"))
+    plt.close()
+
+        
+
+
+
+
 def plot_time_behavior(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
-    radiator_temp = temperature_folder.split("/")[-1] if temperature_folder.split("/")[-1][-1].lower() == "k" else temperature_folder.split("/")[-2]
+    radiator_temp = temperature_folder.split("/")[-1]
     a_set_time = 7 # min
     avg_t1, std_t1 = [], []
     avg_t2, std_t2 = [], []
@@ -134,158 +233,209 @@ def plot_time_behavior(json_files:list, temperature_folder:str, time_axis:ndarra
             avg_eff_T.append(float(info_dict["eff_T"]["avg"]))
             std_eff_T.append(float(info_dict["eff_T"]["std"]))
         set_n += 1
-    print(avg_t1)
     time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)
     fig, ax = plt.subplots()
-    ax.errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
+    upper_lim_t = 20 #1.5*max(array([mean(array(avg_t1)), mean(array(avg_t1))]))
+    lower_lim_t = 0 #0.5*min(array([mean(array(avg_t1)), mean(array(avg_t1))]))
+    upper_lim_T = 1.5*max(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
+    lower_lim_T = 0.5*min(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
     ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
+    ax.errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
+    
     ax.set_ylabel("Time (µs)")
     ax.set_xlabel("Time after radiator ON (min)")
-    ax.set_ylim(0,100)
+    ax.set_ylim(lower_lim_t,upper_lim_t)
     ax.legend(loc='upper left')
     axT = ax.twinx()
     axT.errorbar(time_axis_min,avg_eff_T,yerr=std_eff_T,fmt="o-",color='orange',label='eff_T')
     axT.spines['right'].set_color("orange")
     axT.yaxis.label.set_color('orange')
     axT.set_ylabel("Effective Temp. (mK)")
-    axT.set_ylim(0,10)
+    axT.set_ylim(lower_lim_T,upper_lim_T)
     axT.legend(loc='upper right')
     plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox")
     behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior.png")
     plt.savefig(behavior_path)
     plt.close()
+
+    json_folder = os.path.join(temperature_folder,"results/jsons")
+    to_keep = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T},"Time":list(time_axis_min)}
+    with open(f"{json_folder}/temperatureInfo.json", "w") as record_file:
+        json.dump(to_keep,record_file)
+
+
     
 
-# SS_ds = open_dataset("Modularize/Meas_raw/10K/Radiator(0)/DR1q0_SingleShot(1)_H16M56S29.nc")
-# ss_dict = Dataset.to_dict(SS_ds)
-# print(ss_dict['data_vars']['e']['data'][0])
+def main_analysis(target_q:str, temperature:str, mode:str='quick'):
+    """
+    target_q: 'q0'\n
+    temperature: '10K'\n
+    mode: 'quick' or 'detail', represented save all the results pic or just histogram.\n
+    """
+    other_info_dict = {}
+    parent_path = os.path.join(meas_raw_dir,temperature)
 
-other_info_dict = {}
-target_q = 'q0'
-temperature = '10K'
-parent_path = os.path.join(meas_raw_dir,temperature)
+    sub_folders = [name for name in os.listdir(parent_path) if (os.path.isdir(os.path.join(parent_path,name)) and name[:8]=='Radiator')] # Radiator(idx)
+    other_info_ = [name for name in os.listdir(parent_path) if (os.path.isfile(os.path.join(parent_path,name)) and name.split(".")[-1]=='json')]
+    with open(os.path.join(parent_path,other_info_[0])) as JJ:
+        other_info_dict = json.load(JJ)
 
-sub_folders = [name for name in os.listdir(parent_path) if (os.path.isdir(os.path.join(parent_path,name)) and name[:8]=='Radiator')] # Radiator(idx)
-other_info_ = [name for name in os.listdir(parent_path) if (os.path.isfile(os.path.join(parent_path,name)) and name.split(".")[-1]=='json')]
-print(other_info_)
-with open(os.path.join(parent_path,other_info_[0])) as JJ:
-    other_info_dict = json.load(JJ)
-
-sort_set(sub_folders,0) # sort sets start from 0 
-ref_iq = other_info_dict[target_q]["refIQ"]
-transi_freq = other_info_dict[target_q]["f01"] # Hz
-time_past_sec_array = array(other_info_dict[target_q]["time_past"]) # shold be the same length with sets, units in second
-
-start = time.time()
-for folder_name in sub_folders:
-    info_dict = create_results_dict()
-    set_idx = folder_name.split("(")[-1].split(")")[0]
-    folder_path = os.path.join(parent_path,folder_name)
-    print(f"==================================================== Set-{set_idx} start")
-    files = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path,name))] # DR1q0_{T1/T2/SingleShot}(exp_idx)_H17M23S19.nc
-    files = sort_files(files) # sort files start from 0 
-    T1_us = []
-    T2_us = []
-    effT_mK = []
-
-    pgI_collection = []
-    pgQ_collection = []
-    peI_collection = []
-    peQ_collection = []
-    for file_name in files: # in a single set
-        exp_idx = file_name.split("(")[-1].split(")")[0]  # histo_counts
-        exp_type = file_name.split("(")[0].split("_")[-1] # T1/ T2/ SingleShot
-        file_path = os.path.join(folder_path,file_name)
-        print(f"{exp_type}-{exp_idx}")
-        if exp_type == "T1":
-            T1_ds = open_dataset(file_path)
-            
-            times = array(Dataset.to_dict(T1_ds)["coords"]['x0']['data']) # s
-            I,Q= dataset_to_array(dataset=T1_ds,dims=1)
-            data= array(IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[-1]))
-            try:
-                data_fit= T1_fit_analysis(data=data,freeDu=times,T1_guess=8e-6)
-                T1_us.append(data_fit.attrs['T1_fit']*1e6)
-                if data_fit.attrs['T1_fit']*1e6 > 50: 
-                    save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path,data_fit)   
-            except:
-                save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path)
-                T1_us.append(0)
-        elif exp_type == "T2":
-            T2_ds = open_dataset(file_path)
-            times = array(Dataset.to_dict(T2_ds)["coords"]['x0']['data']) # s
-            I,Q= dataset_to_array(dataset=T2_ds,dims=1)
-            data= (IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[1]))
-            try:
-                data_fit= T2_fit_analysis(data=data,freeDu=times,T2_guess=8e-6)
-                T2_us.append(data_fit.attrs['T2_fit']*1e6)
-                if data_fit.attrs['T2_fit']*1e6 > 30:
-                    save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path, data_fit)
-            except:
-                save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path)
-                T2_us.append(0)
-            
-            
-        elif exp_type == "SingleShot":
-            # collect data to choose training and predict
-            
-            SS_ds = open_dataset(file_path)
-            ss_dict = Dataset.to_dict(SS_ds)
-            # print(ss_dict)
-            pe_I, pe_Q = ss_dict['data_vars']['e']['data']
-            pg_I, pg_Q = ss_dict['data_vars']['g']['data']
-            pgI_collection.append(pg_I)
-            pgQ_collection.append(pg_Q)
-            peI_collection.append(pe_I)
-            peQ_collection.append(pe_Q)
-        else:
-            pass
-
-        # TODO: train GMM
-        # TODO: predict all collection to calculate eff_T for every exp_idx
-
-    print(f"First stage analysis complete for set-{set_idx}!")
-
+    sort_set(sub_folders,0) # sort sets start from 0 
+    ref_iq = other_info_dict[target_q]["refIQ"]
+    transi_freq = other_info_dict[target_q]["f01"] # Hz
     result_folder = create_result_folder(parent_path)
     json_folder = create_json_folder(result_folder)
+    SS_folder = creat_oneshot_folder(result_folder)
+    T1_pic_folder = create_T1T2_folder(result_folder,"t1")
+    T2_pic_folder = create_T1T2_folder(result_folder,"t2")
+    start = time.time()
+    for folder_name in sub_folders:
+        info_dict = create_results_dict()
+        set_idx = folder_name.split("(")[-1].split(")")[0]
+        folder_path = os.path.join(parent_path,folder_name)
+        print(f"==================================================== Set-{set_idx} start")
+        files = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path,name))] # DR1q0_{T1/T2/SingleShot}(exp_idx)_H17M23S19.nc
+        files = sort_files(files) # sort files start from 0 
+        T1_us = []
+        T2_us = []
+        effT_mK = []
 
-    # calc T1
-    T1_us = array(T1_us)
-    mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
-    sd_T1_us = round(std(T1_us[T1_us != 0]),1)
-    info_dict["T1"]["avg"], info_dict["T1"]["std"] = mean_T1_us, sd_T1_us
-    histo_path = os.path.join(result_folder,f"T1-histo-S{set_idx}.png")
-    hist_plot("nobu",{"nobu":T1_us},f"S{set_idx}, T1={mean_T1_us}+/-{sd_T1_us} us",histo_path, False)
-    # calc T2
-    T2_us = array(T2_us)
-    mean_T2_us = round(mean(T2_us[T2_us != 0]),1)
-    sd_T2_us = round(std(T2_us[T2_us != 0]),1)
-    info_dict["T2"]["avg"], info_dict["T2"]["std"] = mean_T2_us, sd_T2_us
-    histo_path = os.path.join(result_folder,f"T2-histo-S{set_idx}.png")
-    hist_plot("nobu",{"nobu":T2_us[T2_us != 0]},f"S{set_idx}, T2={mean_T2_us}+/-{sd_T2_us} us",histo_path, False)
-    
-    # calc OnsShot
+        pgI_collection = []
+        pgQ_collection = []
+        peI_collection = []
+        peQ_collection = []
+        for file_name in files: # in a single set
+            exp_idx = file_name.split("(")[-1].split(")")[0]  # histo_counts
+            exp_type = file_name.split("(")[0].split("_")[-1] # T1/ T2/ SingleShot
+            file_path = os.path.join(folder_path,file_name)
+            print(f"{exp_type}-{exp_idx}")
+            if exp_type == "T1":
+                T1_ds = open_dataset(file_path)
+                
+                times = array(Dataset.to_dict(T1_ds)["coords"]['x0']['data']) # s
+                I,Q= dataset_to_array(dataset=T1_ds,dims=1)
+                data= array(IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[-1]))
+                try:
+                    data_fit= T1_fit_analysis(data=data,freeDu=times,T1_guess=8e-6)
+                    if mode == 'detail':
+                        Fit_analysis_plot(data_fit,P_rescale=False,Dis=None,save_folder=os.path.join(T1_pic_folder,f"T1_S{set_idx}-{exp_idx}.png"))
+                    T1_us.append(data_fit.attrs['T1_fit']*1e6)
+                    if data_fit.attrs['T1_fit']*1e6 > 50: 
+                        save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path,data_fit)   
+                except:
+                    save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path)
+                    T1_us.append(0)
+            elif exp_type == "T2":
+                T2_ds = open_dataset(file_path)
+                times = array(Dataset.to_dict(T2_ds)["coords"]['x0']['data']) # s
+                I,Q= dataset_to_array(dataset=T2_ds,dims=1)
+                data= (IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[1]))
+                try:
+                    data_fit= T2_fit_analysis(data=data,freeDu=times,T2_guess=8e-6)
+                    if mode == 'detail':
+                        Fit_analysis_plot(data_fit,P_rescale=False,Dis=None,save_folder=os.path.join(T2_pic_folder,f"T2_S{set_idx}-{exp_idx}.png"))
+                    T2_us.append(data_fit.attrs['T2_fit']*1e6)
+                    if data_fit.attrs['T2_fit']*1e6 > 30:
+                        save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path, data_fit)
+                except:
+                    save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path)
+                    T2_us.append(0)
+                
+                
+            elif exp_type == "SingleShot":
+                # collect data to choose training and predict
+                SS_ds = open_dataset(file_path)
+                ss_dict = Dataset.to_dict(SS_ds)
+                # print(ss_dict)
+                pe_I, pe_Q = ss_dict['data_vars']['e']['data']
+                pg_I, pg_Q = ss_dict['data_vars']['g']['data']
+                pgI_collection.append(pg_I)
+                pgQ_collection.append(pg_Q)
+                peI_collection.append(pe_I)
+                peQ_collection.append(pe_Q)
 
-    # save the info to plt scatter
-    with open(f"{json_folder}/setInfo({set_idx}).json", "w") as record_file:
-        json.dump(info_dict,record_file)
+                
+            else:
+                pass
+            
+            
+        print(f"First stage analysis complete for set-{set_idx}!")
+            
+        
+        # reshape data to (I,Q)*(g,e)*shots       
+        OS_data = 1000*array([[pgI_collection,peI_collection],[pgQ_collection,peQ_collection]]) # can train or predict 2*2*histo_counts*shot
+        tarin_data, fit_arrays = OSdata_arranger(OS_data)
+        # train GMM
+        dist_model = train_model(tarin_data[0])
+        dist_model.relabel_model(array([ref_iq]).transpose())
+        # predict all collection to calculate eff_T for every exp_idx
+        for histo_i in range(fit_arrays.shape[0]):
+            analysis_data = fit_arrays[histo_i] #your (2,2,N) data to analysis
 
-end = time.time()
-print(f"Analysis time cost: {round((end-start)/60,1)} mins")
+            new_data = moveaxis( analysis_data ,1,0)
+            p0_pop = dist_model.get_state_population(new_data[0].transpose())
+            p1_pop = dist_model.get_state_population(new_data[1].transpose())
+            OneShot_pic_path = os.path.join(SS_folder,f"SingleShot-S{set_idx}-{histo_i}")
+            fig , eff_t = plot_readout_fidelity(analysis_data, transi_freq, OneShot_pic_path)
+            effT_mK.append(eff_t)
+            plt.close()
+        
+        # calc T1
+        T1_us = array(T1_us)
+        mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
+        sd_T1_us = round(std(T1_us[T1_us != 0]),1)
+        info_dict["T1"]["avg"], info_dict["T1"]["std"] = mean_T1_us, sd_T1_us
+        histo_path = os.path.join(result_folder,f"T1-histo-S{set_idx}.png")
+        hist_plot("nobu",{"nobu":T1_us},f"S{set_idx}, T1={mean_T1_us}+/-{sd_T1_us} us",histo_path, False)
+        # calc T2
+        T2_us = array(T2_us)
+        mean_T2_us = round(mean(T2_us[T2_us != 0]),1)
+        sd_T2_us = round(std(T2_us[T2_us != 0]),1)
+        info_dict["T2"]["avg"], info_dict["T2"]["std"] = mean_T2_us, sd_T2_us
+        histo_path = os.path.join(result_folder,f"T2-histo-S{set_idx}.png")
+        hist_plot("nobu",{"nobu":T2_us[T2_us != 0]},f"S{set_idx}, T2={mean_T2_us}+/-{sd_T2_us} us",histo_path, False)
+        # calc OnsShot
+        effT_mK = array(effT_mK)
+        mean_effT_mK = round(mean(effT_mK),1)
+        sd_effT_mK = round(std(effT_mK),1)
+        info_dict["eff_T"]["avg"], info_dict["eff_T"]["std"] = mean_effT_mK, sd_effT_mK
+        # save the info to plt scatter
+        with open(f"{json_folder}/setInfo({set_idx}).json", "w") as record_file:
+            json.dump(info_dict,record_file)
+
+    end = time.time()
+    print(f"Analysis time cost: {round((end-start)/60,1)} mins")
 
 
 
 """ plot behavior """
-temp = '10K'
-parent_folder = os.path.join(meas_raw_dir,temp)
-jsons_folder = os.path.join(parent_folder,"results/jsons")
-static_info = [name for name in os.listdir(jsons_folder) if (os.path.isfile(os.path.join(jsons_folder,name)) and name.split(".")[-1]=='json')]
-sort_set(static_info,0)
+def plot_behavior(target_q:str, temperature:str):
+    other_info_dict = {}
+    parent_folder = os.path.join(meas_raw_dir,temperature)
+    other_info_ = [name for name in os.listdir(parent_folder) if (os.path.isfile(os.path.join(parent_folder,name)) and name.split(".")[-1]=='json')]
+    with open(os.path.join(parent_folder,other_info_[0])) as JJ:
+        other_info_dict = json.load(JJ)
+    # extract every set time
+    time_past_sec_array = array(other_info_dict[target_q]["time_past"]) # shold be the same length with sets, units in second
+    # extract every set info
+    jsons_folder = os.path.join(parent_folder,"results/jsons")
+    static_info = [name for name in os.listdir(jsons_folder) if (os.path.isfile(os.path.join(jsons_folder,name)) and (name.split(".")[-1]=='json' and name.split("(")[0]=='setInfo'))]
+    sort_set(static_info,0)
 
-j_paths = []
-print(static_info)
-for a_json in static_info:
-    j_paths.append(os.path.join(jsons_folder,a_json))
+    j_paths = []
+    for a_json in static_info:
+        print(a_json)
+        j_paths.append(os.path.join(jsons_folder,a_json))
 
 
-plot_time_behavior(j_paths,parent_folder,time_past_sec_array)
+    plot_time_behavior(j_paths,parent_folder,time_past_sec_array)
+
+
+if __name__ == '__main__':
+    target_q = 'q0'
+    temperature = '30K-1'
+
+    # main_analysis(target_q, temperature)
+    # plot_behavior(target_q, temperature)
+    for mode in ['all','part1','part2']:
+        plot_temp_compa(mode)

@@ -96,7 +96,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
             Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
-            cluster.reset
+            cluster.reset()
             T1_us.append(T1_hist[specific_qubits])
         T1_us = array(T1_us)
         mean_T1_us = round(mean(T1_us),1)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     execution = True
     QD_path = 'Modularize/QD_backup/2024_4_26/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"evoT":60e-6,"histo_counts":100}
+        "q0":{"evoT":60e-6,"histo_counts":1}
     }
 
 
