@@ -1,10 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-<<<<<<< HEAD
-
-=======
 from qblox_instruments import Cluster
->>>>>>> origin/RatisWu
 from utils.tutorial_utils import show_args
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
@@ -66,7 +62,7 @@ def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits
     if run:
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q=specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=10000,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -88,17 +84,12 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-<<<<<<< HEAD
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
-    ro_elements = {'q1':{"ro_amp_factor":1}}
-=======
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
-    ro_elements = {'q0':{"ro_amp_factor":1}}
->>>>>>> origin/RatisWu
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
+    ro_elements = {'q0':{"ro_amp_factor":0.3}}
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
 

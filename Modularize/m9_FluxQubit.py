@@ -1,9 +1,5 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/RatisWu
 from numpy import NaN
 from numpy import array, linspace
 from utils.tutorial_utils import show_args

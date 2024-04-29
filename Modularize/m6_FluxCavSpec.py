@@ -1,9 +1,5 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/RatisWu
 from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -14,7 +10,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 
-def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
+def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=60,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
 
     sche_func = One_tone_sche
         
@@ -113,16 +109,11 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-<<<<<<< HEAD
-    ro_elements = ['q1']
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
-=======
     ro_elements = ['q0']
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
->>>>>>> origin/RatisWu
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
 
@@ -130,7 +121,7 @@ if __name__ == "__main__":
     update = False
     FD_results = {}
     for qubit in ro_elements:
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.15)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.3)
         cluster.reset()
         if execution:
             permission = input("Update the QD with this result ? [y/n]") 

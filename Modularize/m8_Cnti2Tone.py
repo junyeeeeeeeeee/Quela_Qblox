@@ -1,15 +1,7 @@
-<<<<<<< HEAD
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
-from numpy import NaN
-from numpy import array, linspace
-=======
 
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import array, linspace, NaN
->>>>>>> origin/RatisWu
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
@@ -129,7 +121,11 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                want_bias = QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)-V_away_from
+                want_bias = QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)-V_away_from
+                ## check
+                print('want bias = ', want_bias) 
+                print('ro = ', QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout())
+                ## check
                 if V_away_from != 0:
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
@@ -162,23 +158,16 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-<<<<<<< HEAD
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
     #
     ro_elements = {
-        "q1":{"xyf_guess":[4.21e9],"xyl_guess":[0.02],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
-=======
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
-    #
-    ro_elements = {
-        "q0":{"xyf_guess":[4.4e9],"xyl_guess":[0.08],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
->>>>>>> origin/RatisWu
+        "q0":{"xyf_guess":[3.9e9],"xyl_guess":[0.02],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
 
     """ Running """
     tt_results = {}

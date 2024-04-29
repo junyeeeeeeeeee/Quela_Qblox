@@ -1,13 +1,6 @@
-<<<<<<< HEAD
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
-import datetime, json
-=======
 import datetime, json
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
->>>>>>> origin/RatisWu
 from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec

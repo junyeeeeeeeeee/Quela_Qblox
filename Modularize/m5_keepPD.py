@@ -1,9 +1,5 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/RatisWu
 from Modularize.support import QDmanager
 
 def fillin_PDans(QD_path:str,ans:dict):
@@ -26,8 +22,8 @@ def fillin_PDans(QD_path:str,ans:dict):
 
 
 if __name__ == "__main__":
-    qd_path = "Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl"
-    PDans = {"q1":{"dressF_Hz":6.014388e9,"dressP":0.01,"bareF_Hz":6.01318e9,"ro_atte":34}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
+    qd_path = "Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl"
+    PDans = {"q0":{"dressF_Hz":5.72238e9,"dressP":0.03,"bareF_Hz":5.72095e9,"ro_atte":34}} # "q0":[5.259e9,0.7,5.2589e9],"q1":[5.5278e9,0.1,5.5277e9],"q2":[5.3596e9,0.1,5.3594e9],"q3":[5.6366e9,0.1,5.6365e9]
     fillin_PDans(qd_path, PDans)
     
     

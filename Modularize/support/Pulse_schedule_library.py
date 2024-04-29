@@ -1212,6 +1212,36 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     fig.tight_layout()
     plt.show()
 
+def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
+    if P_rescale is not True:
+        Nor_f=1/1000
+        y_label= 'Contrast'+' [mV]'
+    elif P_rescale is True:
+        Nor_f= Dis
+        y_label= r"$P_{1}\ $"
+    else: raise KeyError ('P_rescale is not bool') 
+    
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    text_msg = "Fit results\n"
+
+    if all_ramsey_results[0].attrs['exper'] == 'T2':  
+        title= 'Ramsey'
+        x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+        for i in all_ramsey_results:
+            x= i.coords['freeDu']*1e6
+            x_fit= i.coords['para_fit']*1e6
+            text_msg += r"$T_{2}= %.3f $"%(i.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
+            text_msg += r"$detuning= %.3f $"%(i.attrs['f']*1e-6) +' MHz\n'
+            ax.plot(x,i.data_vars['data']/Nor_f,'-',label=r"$data$", alpha=0.5, ms=4)
+            ax.plot(x_fit,i.data_vars['fitting']/Nor_f,'-',label=r"$fit$", alpha=0.8, lw=1) 
+
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    plt.show()
+
 from numpy import array, max, mean, min
 def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)

@@ -148,7 +148,7 @@ if __name__ == "__main__":
     #chip_info = cds.Chip_file()
     
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',False #init_meas_window()
+    QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',True #init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
