@@ -17,7 +17,7 @@ port_register = {
     "192.168.1.12":"5012",
     "192.168.1.13":"5013",
 }
-# hihihihih
+
 
 #%%
 # Hardware settings
