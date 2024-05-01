@@ -5,7 +5,7 @@ from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.m13_T1  import T1_executor
 from Modularize.m12_T2  import ramsey_executor
 from Modularize.m14_SingleShot import SS_executor
-from Modularize.support import QDmanager, init_meas, shut_down
+from Modularize.support import QDmanager, init_meas, shut_down, init_system_atte
 from quantify_core.measurement.control import MeasurementControl
 
 def create_special_folder(parent_dir:str,folder_idx:int):
@@ -49,6 +49,8 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         for set_idx in range(set_number):
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+        
             if set_idx == 0:
                 other_info[qubit]={"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
             

@@ -131,6 +131,9 @@ class QDmanager():
         pi_dura = qubit.rxy.duration()
         ref_iq = self.refIQ[target_q]
         option_dict = {"f01":XYF,"rof":ROF,"pi_amp":pi_amp,"pi_dura":pi_dura,"refIQ":ref_iq,"bias":z_bias}
+
+        self.Notewriter.write_meas_options({target_q:option_dict})
+        print(f"Optional meas point had been recorded! @ Z~{round(z_bias,3)}")
     ### Convenient short cuts
 # Object to manage data and pictures store.
 

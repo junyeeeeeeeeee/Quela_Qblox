@@ -3,11 +3,12 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.m2_CavitySpec import Cavity_spec
 from Modularize.support import Data_manager, QDmanager
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 
 def qualityFit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0):
     rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()+f_shifter}
-    init_system_atte(QD_agent.quantum_device,[specific_qubits],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
+    
     if run:
         qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=True)[specific_qubits]
     else:
@@ -29,7 +30,8 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
+    sweetSpot = True
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
         "q0":{"ro_amp":0.2,"ro_atte":50}
     }
@@ -37,6 +39,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """ 
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
 
@@ -45,7 +48,11 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         if ro_elements[qubit]["ro_atte"] != '':
             QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
-        Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
+        if sweetSpot:
+            Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
+        else:
+            Fctrl[qubit](0)
+        init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=10e6)
         Fctrl[qubit](0)
         cluster.reset()

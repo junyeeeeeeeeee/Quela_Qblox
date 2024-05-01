@@ -10,6 +10,12 @@ from quantify_scheduler.backends.graph_compilation import SerialCompiler
 ip_register = {
     "dr1":"192.168.1.11",
     "dr2":"192.168.1.10"
+} # all keys in lower
+port_register = {
+    "192.168.1.10":"5010",
+    "192.168.1.11":"5011",
+    "192.168.1.12":"5012",
+    "192.168.1.13":"5013",
 }
 
 #%%
@@ -255,6 +261,6 @@ def get_FluxController(cluster, ip:str):
 # }
 
 # Hcfg map
-hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1}
+hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1} # all keys in lower
 
 

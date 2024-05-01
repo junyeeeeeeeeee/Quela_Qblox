@@ -4,14 +4,16 @@ import matplotlib.pyplot as plt
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import linspace, array, where, max, ndarray, sqrt, arctan2
-from Modularize.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte
+from Modularize.m7_RefIQ import refIQ_executor
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
+from numpy import linspace, array, where, max, ndarray, sqrt, arctan2
+from Modularize.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte
 from Modularize.support.Pulse_schedule_library import ROF_Cali_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array
-from Modularize.m7_RefIQ import refIQ_executor
 
-def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6,IF:int=150e6,n_avg:int=500,f_points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},data_folder:str=''):
+
+def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6,IF:int=150e6,n_avg:int=500,f_points:int=101,run:bool=True,q='q1',Experi_info:dict={},data_folder:str=''):
     
     analysis_result = {}
     qubit = QD_agent.quantum_device.get_element(q)
@@ -120,7 +122,7 @@ def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarr
 
     ax[2].plot(ro_f_samples,dis_diff,label='diff')
     ax[2].vlines(x=array([optimized_rof]),ymin=min(dis_diff),ymax=max(dis_diff),colors='black',linestyles='--',label='optimal')
-    ax[2].vlines(x=array([original_rof]),ymin=min(dis_diff),ymax=max(dis_diff),colors='grey',linestyles='--',label='original')
+    ax[2].vlines(x=array([original_rof]),ymin=min(dis_diff),ymax=max(dis_diff),colors='#DCDCDC',linestyles='--',label='original')
     ax[2].set_xlabel('ROF (Hz)')
     ax[2].set_ylabel("diff (V)")
     ax[2].legend()
@@ -129,15 +131,14 @@ def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarr
     return optimized_rof
     
 
-def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,execution:bool=True,ro_f_span:float=20e6):
+def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,execution:bool=True,ro_f_span:float=2e6,fpts:int=100):
     if execution:
-        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=execution)
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
     else:
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=execution)
+        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
 
     return optimal_rof
 
@@ -147,11 +148,12 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute = True
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {'q0':{"span_Hz":5e6}}
 
 
     """ Preparation """
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
 
@@ -159,8 +161,9 @@ if __name__ == '__main__':
     """ Running """
     keep = False
     for qubit in ro_elements:
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         ro_span = ro_elements[qubit]["span_Hz"]
-        
+
         optimal_rof = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,execution=execute,ro_f_span=ro_span)
         if execute:
             if input(f"Update the optimal ROF for {qubit}?[y/n]").lower() == 'y':

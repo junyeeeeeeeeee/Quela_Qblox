@@ -442,7 +442,7 @@ def Z_gate_two_tone_sche(
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
         if Z_ro_amp != 0:
-            Z(sched,Z_ro_amp,R_duration[q],q,spec_pulse,0,'end')
+            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
@@ -939,14 +939,12 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
     plt.show()
     
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
-    print(data[q])
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_xlabel(title)
     ax.set_ylabel('Counts')
     fig.tight_layout()
-    print("OOO")
     if save_path != '':
         fig.savefig(save_path)
     if show:
@@ -1154,7 +1152,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_folder:str=''):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1179,7 +1177,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
         text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
-        
+        ans = np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f+np.array(results.data_vars['fitting']).min()/Nor_f
+        ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey'
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
@@ -1187,6 +1186,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         x_fit= results.coords['para_fit']*1e6
         text_msg += r"$T_{2}= %.3f $"%(results.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
         text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
+        ans = np.exp(-1)*(np.array(results.data_vars['fitting'])[0]-np.array(results.data_vars['fitting'])[-1])/Nor_f+np.array(results.data_vars['fitting'])[-1]/Nor_f
+        ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'Rabi': 
         title= results.attrs['Rabi_type']
         if title=='PowerRabi':
@@ -1212,11 +1213,37 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
     fig.tight_layout()
-    if save_folder == '':
-        plt.show()
-    else:
-        plt.savefig(save_folder)
-        plt.close()
+    plt.show()
+
+def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
+    if P_rescale is not True:
+        Nor_f=1/1000
+        y_label= 'Contrast'+' [mV]'
+    elif P_rescale is True:
+        Nor_f= Dis
+        y_label= r"$P_{1}\ $"
+    else: raise KeyError ('P_rescale is not bool') 
+    
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    text_msg = "Fit results\n"
+
+    if all_ramsey_results[0].attrs['exper'] == 'T2':  
+        title= 'Ramsey'
+        x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+        for i in all_ramsey_results:
+            x= i.coords['freeDu']*1e6
+            x_fit= i.coords['para_fit']*1e6
+            text_msg += r"$T_{2}= %.3f $"%(i.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
+            text_msg += r"$detuning= %.3f $"%(i.attrs['f']*1e-6) +' MHz\n'
+            ax.plot(x,i.data_vars['data']/Nor_f,'-',label=r"$data$", alpha=0.5, ms=4)
+            ax.plot(x_fit,i.data_vars['fitting']/Nor_f,'-',label=r"$fit$", alpha=0.8, lw=1) 
+
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    plt.show()
 
 from numpy import array, max, mean, min
 def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
