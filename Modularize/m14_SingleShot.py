@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute = True
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'
     ro_elements = {'q0':{"roAmp_factor":1}}
     
 

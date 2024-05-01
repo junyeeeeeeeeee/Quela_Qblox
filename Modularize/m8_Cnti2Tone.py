@@ -121,7 +121,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                want_bias = QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)-V_away_from
+                want_bias = QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)-V_away_from
                 if V_away_from != 0:
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
@@ -153,12 +153,12 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    update = 1
+    update = True
     #
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/2024_4_30/DR1#11_SumInfo.pkl'
     #
     ro_elements = {
-        "q0":{"xyf_guess":[5.3e9],"xyl_guess":[0.03],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
+        "q0":{"xyf_guess":[4.4e9],"xyl_guess":[0.07],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
     }
 
 

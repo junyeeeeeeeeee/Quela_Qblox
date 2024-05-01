@@ -29,13 +29,13 @@ def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
 if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
     """ fill in """
-    Temp = '40K-2'
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
+    Temp = 're0K-1'
+    QD_path = 'Modularize/QD_backup/2024_4_30/DR1#11_SumInfo.pkl'
     ro_elements = {
         "q0":{"T2detune":0e6,"freeTime":{"T1":60e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
     }
     data_parent_dir = os.path.join(meas_raw_dir,Temp)
-    set_number = 10
+    set_number = 80
 
     """ Preparations """
     os.mkdir(data_parent_dir)

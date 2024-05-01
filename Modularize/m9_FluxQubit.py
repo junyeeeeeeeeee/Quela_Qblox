@@ -22,10 +22,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     original_f01 = qubit_info.clock_freqs.f01()
-    print(original_f01)
-    print(qubit_info.rxy.amp180())
-    print(qubit_info.measure.pulse_amp())
-    print(qubit_info.clock_freqs.readout())
+
     if xyf == 0:
         xyf_highest = original_f01+IF
     else:
@@ -182,8 +179,7 @@ if __name__ == "__main__":
         
     """ Storing """
     if  execution:
-        # QD_agent.QD_keeper()
-        pass
+        QD_agent.QD_keeper()
     
 
     """ Close """

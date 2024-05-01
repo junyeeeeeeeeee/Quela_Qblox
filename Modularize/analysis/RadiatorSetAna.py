@@ -174,11 +174,11 @@ def plot_temp_compa(mode:str="all"):
     include_mode = []
     for temp in temp_folders:
         if mode.lower() == 'part1':
-            if temp.split("-")[-1] == '1':
+            if temp[-1] == '1':
                 include_mode.append(temp)
                 sub_title = "after radiator ON"
         elif mode.lower() == 'part2':
-            if temp.split("-")[-1] == '2':
+            if temp[-1] == '2':
                 include_mode.append(temp)
                 sub_title = "during stable env"
         else:
@@ -192,7 +192,7 @@ def plot_temp_compa(mode:str="all"):
         with open(os.path.join(json_folder,"temperatureInfo.json")) as J:
             info_recorder[str(temperature)] = json.load(J)
 
-    plot_item = ["T1","eff_T"]#list(info_recorder[list(info_recorder.keys())[0]].keys())
+    plot_item = ["T1","eff_T"] #list(info_recorder[list(info_recorder.keys())[0]].keys())
     fig,ax = plt.subplots(len(plot_item),1,figsize=(15,12))
     for exp_idx in range(len(plot_item)):
         exp_type = plot_item[exp_idx]
@@ -239,7 +239,7 @@ def plot_time_behavior(json_files:list, temperature_folder:str, time_axis:ndarra
     lower_lim_t = 0 #0.5*min(array([mean(array(avg_t1)), mean(array(avg_t1))]))
     upper_lim_T = 1.5*max(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
     lower_lim_T = 0.5*min(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
-    ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
+    # ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
     ax.errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
     
     ax.set_ylabel("Time (µs)")
@@ -424,7 +424,6 @@ def plot_behavior(target_q:str, temperature:str):
 
     j_paths = []
     for a_json in static_info:
-        print(a_json)
         j_paths.append(os.path.join(jsons_folder,a_json))
 
 
@@ -433,9 +432,9 @@ def plot_behavior(target_q:str, temperature:str):
 
 if __name__ == '__main__':
     target_q = 'q0'
-    temperature = '30K-1'
+    temperature = 're0K-1'
 
     # main_analysis(target_q, temperature)
-    # plot_behavior(target_q, temperature)
-    for mode in ['all','part1','part2']:
-        plot_temp_compa(mode)
+    plot_behavior(target_q, temperature)
+    # for mode in ['all','part1','part2']:
+    #     plot_temp_compa(mode)

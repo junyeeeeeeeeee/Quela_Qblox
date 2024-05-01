@@ -62,7 +62,7 @@ def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits
     if run:
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
                                                             # .get_sweetBiasFor
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q=specific_qubits)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=10000,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -84,8 +84,8 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
-    ro_elements = {'q0':{"ro_amp_factor":1.5}}
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'
+    ro_elements = {'q0':{"ro_amp_factor":1}}
 
 
     """ Preparations """

@@ -6,19 +6,20 @@ from numpy import sqrt, array
 import matplotlib.pyplot as plt
 # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 # from quantify_core.analysis.base_analysis import Basic2DAnalysis
-QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo.pkl'
+QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'
 results_path = 'Modularize/Meas_raw/2024_4_29/DR1q0_Flux2tone_H22M57S10.nc' 
 
 Qmanager = QDmanager(QD_path)
 Qmanager.QD_loader()
 ref = Qmanager.refIQ["q0"]
-
-f,z,i,q = convert_netCDF_2_arrays(results_path)
-amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
-fig, ax = plt.subplots()
-c = ax.pcolormesh(z, f, amp, cmap='RdBu')
-fig.colorbar(c, ax=ax)
-plt.show()
+# # plot flux-qubit 
+# f,z,i,q = convert_netCDF_2_arrays(results_path)
+# amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
+# fig, ax = plt.subplots()
+# c = ax.pcolormesh(z, f, amp, cmap='RdBu')
+# fig.colorbar(c, ax=ax)
+# plt.show()
+print(Qmanager.Fluxmanager.get_tuneawayBiasFor("q0"))
 
 
 # from quantify_scheduler.helpers.collections import find_port_clock_path
