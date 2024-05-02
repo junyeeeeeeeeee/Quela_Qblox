@@ -13,6 +13,8 @@ class QDmanager():
         self.Log = "" 
         self.Identity=""
         self.chip_name = ""
+       
+        
 
     def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str=''):
         """
@@ -56,8 +58,7 @@ class QDmanager():
         # dict
         self.Hcfg = gift["Hcfg"]
         self.refIQ = gift["refIQ"]
-   
-
+        
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
     
@@ -167,8 +168,10 @@ class QDmanager():
         qubit.measure.pulse_amp(option_selected["rop"])
         if idx_chosen != '0':
             self.Fluxmanager.save_tuneawayBias_for('manual',target_q,option_selected["bias"])
+            self.Fluxmanager.press_offsweetspot_button(target_q,True) # here is the only way to press this button
         else:
             self.Fluxmanager.save_sweetspotBias_for(target_q,option_selected["bias"])
+            self.Fluxmanager.press_offsweetspot_button(target_q,False)
 
     ### Convenient short cuts
 # Object to manage data and pictures store.

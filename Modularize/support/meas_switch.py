@@ -33,7 +33,7 @@ def switch_a_meas_point(dr:str,last_ip:str,target_q:str):
     QD_path = find_latest_QD_pkl_for_dr(dr,last_ip)
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
-
+    
     options = QD_agent.Notewriter.get_all_meas_options(target_q)
     for opt_idx, option in enumerate(options):
         print(f"idx={opt_idx}: {option}")
@@ -66,6 +66,7 @@ if __name__ == "__main__":
             save_this_meas_option(DRandIP["dr"],DRandIP["last_ip"],qubit,ro_elements[qubit]["z_bias_if_needed"])
         else:
             switch_a_meas_point(DRandIP["dr"],DRandIP["last_ip"],qubit)
+
     
 
 
