@@ -61,7 +61,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
 def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=7000):
 
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q=specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)))
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=shots_num,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """
-    QD_path = "Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl"#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     if execution:
         if keep:
             QD_agent.refresh_log("After IQ ref checking!")
-            QD_agent.QD_keeper(special_path=QD_path)
+            QD_agent.QD_keeper()
 
 
     """ Close """

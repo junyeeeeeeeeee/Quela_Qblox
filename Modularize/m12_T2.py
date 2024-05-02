@@ -102,7 +102,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         
         for ith in range(histo_counts):
             print(f"The {ith}-th T2:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             Ramsey_results, T2_us, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
             cluster.reset()

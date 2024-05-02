@@ -93,7 +93,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         T1_us = []
         for ith in range(histo_counts):
             print(f"The {ith}-th T1:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     """ Storing (Future) """
     if execution:
-        QD_agent.QD_keeper('Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl')
+        QD_agent.QD_keeper()
 
 
     """ Close """

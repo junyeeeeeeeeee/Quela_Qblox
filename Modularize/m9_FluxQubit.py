@@ -168,6 +168,7 @@ if __name__ == "__main__":
 
     
     """ Running """
+    if QD_agent.Fluxmanager.get_offsweetspot_button: raise ValueError("m9 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
     FQ_results = {}
     check_again =[]
     for qubit in ro_elements:

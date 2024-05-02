@@ -196,6 +196,7 @@ if __name__ == "__main__":
    
     
     """ Running """
+    if QD_agent.Fluxmanager.get_offsweetspot_button: raise ValueError("m10 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
     fit_error = []
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))

@@ -121,7 +121,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                want_bias = QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)-V_away_from
+                want_bias = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)-V_away_from
                 if V_away_from != 0:
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
@@ -146,7 +146,9 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
    
     
 
-
+"""
+NOTE: If you find a XYF in a tuneaway z-bias which means the `tune_bias` != 0, please go Modularize/support/meas_switch.py to save it.
+"""
 
 if __name__ == "__main__":
 

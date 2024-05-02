@@ -86,7 +86,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
 
 
 def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0):
-    Fctrl[target_q](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q)))
+    Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
     SS_result, nc= Qubit_state_single_shot(QD_agent,
                 shots=shots,
                 run=execution,
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     snr_rec, effT_rec = [], []
     for i in range(repaet):
         """ Preparation """
-        QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         
 
@@ -142,8 +142,8 @@ if __name__ == '__main__':
         """ Storing """ 
         if execute:
             if keep.lower() == 'y':
-                # QD_agent.QD_keeper('Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl') 
-                pass
+                QD_agent.QD_keeper() 
+                
                 
         """ Close """    
         shut_down(cluster,Fctrl)
