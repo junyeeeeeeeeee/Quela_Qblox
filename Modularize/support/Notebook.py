@@ -2,20 +2,22 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","CoefInG","sweetG","digitalAtte","realAtte"] # all in float
+        self.cata = ["bareF","T1","T2","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp"] # all in float
 
         self.init_dict()
 
     def init_dict(self):
         for i in range(self.q_num):
             self.__InfoDict[f"q{i}"] = {}
-            for float_cata in self.cata:
-                if float_cata not in ["digitalAtte","realAtte"]:
-                    self.__InfoDict[f"q{i}"][float_cata] = 0.0
-                else:
-                    self.__InfoDict[f"q{i}"][float_cata] = {}
-                    self.__InfoDict[f"q{i}"][float_cata]['xy'] = 0
-                    self.__InfoDict[f"q{i}"][float_cata]['ro'] = 0
+            for cata in self.cata:
+                if cata in ["bareF","T1","T2","CoefInG","sweetG","2tone_piamp"]: # float type
+                    self.__InfoDict[f"q{i}"][cata] = 0.0
+                elif cata in ["meas_options"]: # list type
+                    self.__InfoDict[f"q{i}"][cata] = []  
+                else: # dict type
+                    self.__InfoDict[f"q{i}"][cata] = {}
+                    self.__InfoDict[f"q{i}"][cata]['xy'] = 0
+                    self.__InfoDict[f"q{i}"][cata]['ro'] = 0
 
 
     ## About get
@@ -24,7 +26,13 @@ class Notebook():
             return self.__InfoDict[target_q]
         else:
             return self.__InfoDict
-    ## About write and save   
+        
+    ## About write and save 
+    def save_2tone_piamp_for(self,target_q:str,pi_amp:float):
+        self.__InfoDict[target_q]["2tone_piamp"] = pi_amp  
+    def get_2tone_piampFor(self,target_q:str):
+        return self.__InfoDict[target_q]["2tone_piamp"]
+
     # For bare cavity freq
     def save_bareFreq_for(self,bare_freq:float,target_q:str="q1"):
         self.__InfoDict[target_q]["bareF"] = bare_freq
@@ -91,7 +99,25 @@ class Notebook():
         else:
             raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
 
-
+    def create_meas_options(self,target_q:str):
+        meas_elements = {"rof":0,"rop":0,"f01":0,"bias":0,"refIQ":[],"pi_amp":0,"2tone_pi_amp":0,"pi_dura":0,"ro_atte":0}
+        self.__InfoDict[target_q]["meas_options"].append(meas_elements)
+    def get_all_meas_options(self,target_q:str)->list:
+        return self.__InfoDict[target_q]["meas_options"]
+    def write_meas_options(self,options_inclu_targetQ:dict,ToModified_index:int=-1):
+        """
+        1) options_inclu_targetQ={"q0":{"f01","rof","rop","pi_amp","2tone_pi_amp","pi_dura","refIQ","bias","ro_atte"}}.\n
+        2) ToModified_index is the index of the self.__InfoDict[target_q]["meas_options"] list, default is do append it. !Don't use negative index!
+        """
+        if ToModified_index == -1:
+            for target_q in options_inclu_targetQ:
+                self.__InfoDict[target_q]["meas_options"].append(options_inclu_targetQ[target_q])
+        else:
+            for target_q in options_inclu_targetQ:
+                if len(self.__InfoDict[target_q]["meas_options"]) > ToModified_index:
+                    self.__InfoDict[target_q]["meas_options"][ToModified_index] = options_inclu_targetQ[target_q]
+                else:
+                    print("warning the given index > len(write_meas_options) now we have !")
 
     # Activate notebook
     def activate_from_dict(self,old_notebook:dict):
@@ -102,8 +128,10 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata not in ["digitalAtte","realAtte"]:
+                        if cata in ["bareF","T1","T2","CoefInG","sweetG","2tone_piamp"]:
                             self.__InfoDict[qu][cata] = 0.0
+                        elif cata in ["meas_options"]:
+                            self.__InfoDict[qu][cata] = []
                         else:
                             self.__InfoDict[qu][cata] = {}
                             self.__InfoDict[qu][cata]['xy'] = 0

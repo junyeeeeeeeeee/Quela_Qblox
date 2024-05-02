@@ -82,6 +82,7 @@ def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6):
     return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit))
 
 def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6):
+    print(f"T2 freeDu: {min(freeDu)}~{max(freeDu)}")
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=1e-6, max=5*T2_guess) 
     up_lim_f= 5*1e6
@@ -1152,7 +1153,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str=''):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1177,7 +1178,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
         text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
-        
+        ans = np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f+np.array(results.data_vars['fitting']).min()/Nor_f
+        ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey'
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
@@ -1185,6 +1187,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
         x_fit= results.coords['para_fit']*1e6
         text_msg += r"$T_{2}= %.3f $"%(results.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
         text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
+        ans = np.exp(-1)*(np.array(results.data_vars['fitting'])[0]-np.array(results.data_vars['fitting'])[-1])/Nor_f+np.array(results.data_vars['fitting'])[-1]/Nor_f
+        ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'Rabi': 
         title= results.attrs['Rabi_type']
         if title=='PowerRabi':
@@ -1205,6 +1209,40 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
         
     ax.plot(x,results.data_vars['data']/Nor_f,'-', color="blue",label=r"$data$", alpha=0.5, ms=4)
     ax.plot(x_fit,results.data_vars['fitting']/Nor_f,'-', color="red",label=r"$fit$", alpha=0.8, lw=1)       
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
+    plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    if save_path != "":
+        plt.savefig(save_path)
+        plt.close()
+    else:
+        plt.show()
+
+def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
+    if P_rescale is not True:
+        Nor_f=1/1000
+        y_label= 'Contrast'+' [mV]'
+    elif P_rescale is True:
+        Nor_f= Dis
+        y_label= r"$P_{1}\ $"
+    else: raise KeyError ('P_rescale is not bool') 
+    
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+    text_msg = "Fit results\n"
+
+    if all_ramsey_results[0].attrs['exper'] == 'T2':  
+        title= 'Ramsey'
+        x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+        for i in all_ramsey_results:
+            x= i.coords['freeDu']*1e6
+            x_fit= i.coords['para_fit']*1e6
+            text_msg += r"$T_{2}= %.3f $"%(i.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
+            text_msg += r"$detuning= %.3f $"%(i.attrs['f']*1e-6) +' MHz\n'
+            ax.plot(x,i.data_vars['data']/Nor_f,'-',label=r"$data$", alpha=0.5, ms=4)
+            ax.plot(x_fit,i.data_vars['fitting']/Nor_f,'-',label=r"$fit$", alpha=0.8, lw=1) 
+
     ax.set_xlabel(x_label)
     ax.set_title(title)
     ax.set_ylabel(y_label)

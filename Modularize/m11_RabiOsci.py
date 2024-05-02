@@ -2,12 +2,13 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
-from numpy import linspace, array, arange
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from numpy import linspace, array, arange, NaN
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
 
@@ -16,11 +17,15 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     sche_func= Rabi_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
     LO= qubit_info.clock_freqs.f01()+IF
+    print(qubit_info.clock_freqs.f01()*1e-9)
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     
     if Rabi_type.lower() in ['timerabi', 'tr']:
         osci_type = "TimeRabi"
-        Para_XY_amp= qubit_info.rxy.amp180()
+        if qubit_info.rxy.amp180() is not NaN or qubit_info.rxy.amp180() != 0:
+            Para_XY_amp= qubit_info.rxy.amp180() 
+        else:
+            raise ValueError(f"Your rxy.amp180 is {qubit_info.rxy.amp180()} can't perform a time Rabi!")
         Sweep_para=Para_XY_Du = ManualParameter(name="XY_Duration", unit="s", label="Time")
         str_Rabi= 'XY_duration'
         Sweep_para.batched = True
@@ -101,8 +106,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     return analysis_result
     
 
-def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True):
-    init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True,pts:int=100):
     if which_rabi.lower() in ['p','power']:
         exp_type = 'powerRabi'
     elif which_rabi.lower() in ['t','time']:
@@ -113,8 +117,8 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
-        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max)
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
         if Rabi_results == {}:
@@ -123,9 +127,6 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
             Fit_analysis_plot(Rabi_results[specific_qubits],P_rescale=False,Dis=None)
             if abs(Rabi_results[specific_qubits].attrs['pi_2']) <= 0.5:
                 qubit = QD_agent.quantum_device.get_element(specific_qubits)
-                ## check
-                print(qubit.clock_freqs.f01())
-                ## check
                 qubit.rxy.amp180(Rabi_results[specific_qubits].attrs['pi_2'])
                 qubit.rxy.duration(XYdura_max)
                 trustable = True
@@ -138,27 +139,27 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
 if __name__ == "__main__":
     
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
     execution = True
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = ['q0']
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
 
     """Running """
     rabi_results = {}
     for qubit in ro_elements:
-        # Fctrl['q1'](-0.043)
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=100e-9,XYamp_max=0.4)
-        # Fctrl['q1'](0)
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=100e-9,XYamp_max=0.6)
         cluster.reset()
     
         """ Storing """
         if trustable:   
             QD_agent.refresh_log("after Rabi")
-            QD_agent.QD_keeper()
+            QD_agent.QD_keeper('Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl')
 
 
     """ Close """

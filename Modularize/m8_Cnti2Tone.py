@@ -8,6 +8,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
 from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte
 from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
@@ -96,36 +97,31 @@ def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float)
     A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
     sweet_g = calc_g(fb,Revised_f01*1e-6,A)
     qubit.clock_freqs.f01(Revised_f01)
-    qubit.rxy.amp180(XYL)
+    QD_agent.Notewriter.save_2tone_piamp_for(qb,XYL)
     QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
     QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
 
 
 
-def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,xyf_guess:float=0,guess_g:float=48e6,xyAmp_guess:float=0,xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0):
+def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,xyf_guess:float=0,guess_g:float=48e6,xyAmp_guess:list=[],xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0):
     
     if run:
         advised_fq = advise_where_fq(QD_agent,specific_qubits,guess_g)
-        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
         print(f"fq advice for {specific_qubits} @ {round(advised_fq*1e-9,4)} GHz")
         if xyf_guess != 0:
             guess_fq = [xyf_guess]
         else:
             guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
 
-        if xyAmp_guess == 0:
+        if len(xyAmp_guess) == 0 or (len(xyAmp_guess) == 1 and xyAmp_guess[0] == 0):
             xyAmp_guess = [0, 0.03, 0.07, 0.1]
         else:
-            xyAmp_guess = [xyAmp_guess]
+            xyAmp_guess = xyAmp_guess
         
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
                 want_bias = QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)-V_away_from
-                ## check
-                print('want bias = ', want_bias) 
-                print('ro = ', QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout())
-                ## check
                 if V_away_from != 0:
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
@@ -156,31 +152,34 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    update = 1
+    update = True
     #
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR2#10_SumInfo.pkl'
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[3.9e9],"xyl_guess":[0.02],"g_guess":0} # g you can try [42e6, 54e6, 62e6], higher g makes fq lower
-    }
+        "q0":{"xyf_guess":[5.3e9],"xyl_guess":[0.02],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+    }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
 
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     """ Running """
     tt_results = {}
     for qubit in ro_elements:
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+        tune_bias = ro_elements[qubit]["tune_bias"]
         for xyf in ro_elements[qubit]["xyf_guess"]:
-            for xyl in ro_elements[qubit]["xyl_guess"]:
-                g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
+            g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
 
-                tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g,xy_if=100e6,xyf_span=500e6,V_away_from=0)
+            tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=ro_elements[qubit]["xyl_guess"],run=execution,guess_g=g,xy_if=100e6,xyf_span=500e6,V_away_from=tune_bias)
 
-                if execution and xyl != 0:
-                    update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
+            if execution and ro_elements[qubit]["xyl_guess"][0] != 0:
+                print(f'update xyl={ro_elements[qubit]["xyl_guess"][0]}')
+                update_2toneResults_for(QD_agent,qubit,tt_results,ro_elements[qubit]["xyl_guess"][0])
             
     """ Storing """
     if update :

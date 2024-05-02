@@ -1,12 +1,13 @@
 import datetime, json
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')) 
 from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from qblox_instruments import Cluster
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit
 
 def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
@@ -19,7 +20,7 @@ def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
     windows = []
     for step_idx in range(0,5,2): # 0,2,4  reject bottom at flux 
         for sign in [1,-1] if step_idx != 0 else [1]:
-            center = start + sign*step_idx*flux_step
+            center = sign*step_idx*flux_step
             window_from = center - flux_step  
             window_end = center + flux_step
             sweet_mark = 0 if step_idx != 0 else 1
@@ -49,11 +50,12 @@ def window_picker(meas_var:list,maxi_window_num:int=5)->list:
 
 def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float=0.4):
     windows = sweepZ_arranger(QD_agent,qb,Z_guard)
+    sweet_spot_v = QD_agent.Fluxmanager.get_sweetBiasFor(qb)
     meas_var = []
     for window in windows:
-        start_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([window[0]]))[0]
-        end_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([window[-1]]))[0]
-        sweet_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)]))[0]
+        start_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([window[0]+sweet_spot_v]))[0]
+        end_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([window[-1]+sweet_spot_v]))[0]
+        sweet_rof = QD_agent.Fluxmanager.sin_for_cav(qb,array([sweet_spot_v]))[0]
         A = QD_agent.Notewriter.get_CoefInGFor(target_q=qb)
         fb = QD_agent.Notewriter.get_bareFreqFor(target_q=qb)*1e-6
         if window[1]: 
@@ -128,17 +130,11 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
     f_span = 500e6
     xy_if = 100e6
     failed = False
-    init_system_atte(QD_agent.quantum_device,list([target_q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q,'xy'))
     original_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
     if run:
         # ROF is at zero bias
         rof = QD_agent.Fluxmanager.sin_for_cav(target_q,array([0]))[0]
         QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(rof)
-        # get the ref IQ according to the ROF (zero bias)
-        analysis_result = Single_shot_ref_spec(QD_agent,q=target_q,want_state='g',shots=10000)
-        
-        I_ref, Q_ref= analysis_result[target_q]['fit_pack'][0],analysis_result[target_q]['fit_pack'][1]
-        ref = [I_ref,Q_ref]
         
         meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
         x2static = []
@@ -147,13 +143,15 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
         n = 0
         for window in meas_vars:
             # main execution
+            ref_z = QD_agent.Fluxmanager.get_sweetBiasFor(target_q)
             cluster.reset()
+            Fctrl[target_q](ref_z)
             _, raw_path, _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=window["z_start"],Z_amp_end=window["z_end"],q=target_q,run=True,get_data_path=True,Z_points=z_pts,f_points=f_pts,n_avg=re_n,xyf=window["fq_predict"],xyf_span_Hz=f_span,IF=xy_if,analysis=False)
             reset_offset(Fctrl)
             
             xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
             # below can be switch into QM system with the arg `qblox=False`
-            x, y, mag = data2plot(xyf,z,ii,qq,specified_refIQ=ref,qblox=True,q=target_q,filter2D_threshold=peak_threshold,plot_scatter=0)
+            x, y, mag = data2plot(xyf,z+ref_z,ii,qq,specified_refIQ=QD_agent.refIQ[target_q],qblox=True,q=target_q,filter2D_threshold=peak_threshold,plot_scatter=0)
             x2static += x.tolist()
             y2static += y.tolist()
             mag2static+=mag.tolist()
@@ -185,12 +183,13 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = ['q2','q3']
 
 
 
     """ Preparations"""
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
@@ -199,6 +198,8 @@ if __name__ == "__main__":
     """ Running """
     fit_error = []
     for qubit in ro_elements:
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+    
         error = FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, cluster, target_q=qubit, run=execution,peak_threshold=2)
         if error:
             fit_error.append(qubit)

@@ -117,7 +117,7 @@ def convert_netCDF_2_arrays(CDF_path:str):
     ## Return: XYF, z, I, Q
     """
     dataset_processed = dh.to_gridded_dataset(xr.open_dataset(CDF_path))
-    XYF = flip(dataset_processed["x0"].to_numpy())
+    XYF = dataset_processed["x0"].to_numpy()
     z = dataset_processed["x1"].to_numpy()
     S21 = transpose(dataset_processed.y0.data * cos(
             deg2rad(dataset_processed.y1.data)

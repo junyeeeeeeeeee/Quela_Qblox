@@ -16,8 +16,15 @@ class FluxBiasDict():
         self.float_cata = ["SweetSpot","TuneAway","Period"]
         self.list_cata = ["cavFitParas","qubFitParas"] # For the fitting functions access
         self.dict_cata = {"qubFitData":["bias_data","XYF_data"]} # For XYF-Flux fitting data storing
+        self.bool_cata = ["offSweetSpot"]
 
         self.init_bias()
+
+    def press_offsweetspot_button(self,target_q:str,offSweetSpot:bool):
+        self.__bias_dict[target_q]["offSweetSpot"] = offSweetSpot
+    def get_offsweetspot_button(self,target_q:str):
+        return self.__bias_dict[target_q]["offSweetSpot"]
+
 
     def sin_for_cav(self,target_q:str,bias_ary:ndarray):
         """
@@ -63,6 +70,9 @@ class FluxBiasDict():
                 self.__bias_dict[f"q{i}"][dict_cata] = {}
                 for subcata in self.dict_cata[dict_cata]: 
                     self.__bias_dict[f"q{i}"][dict_cata][subcata] = []
+            
+            for bool_cate in self.bool_cata:
+                self.__bias_dict[f"q{i}"][bool_cate] = False #Fasle
 
 
     def save_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
@@ -113,7 +123,19 @@ class FluxBiasDict():
         """
         for q_old in old_bias_dict:
             for catas in old_bias_dict[q_old]:
-                self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
+                try:
+                    self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
+                except:
+                    if catas in self.float_cata:
+                        self.__bias_dict[q_old][catas] = 0.0
+                    elif catas in self.list_cata:
+                        self.__bias_dict[q_old][catas] = []
+                    elif catas in self.dict_cata:
+                        self.__bias_dict[q_old][catas] = {}
+                        for subcata in self.dict_cata[q_old]: 
+                            self.__bias_dict[q_old][catas][subcata] = []
+                    else:
+                        self.__bias_dict[q_old][catas] = 0 #Fasle
 
     def get_sweetBiasFor(self,target_q:str):
         """
@@ -173,6 +195,17 @@ class FluxBiasDict():
 
         return answer
 
+    def get_proper_zbiasFor(self,target_q:str)->float:
+        """
+        According to the `offsweetspot_button`, it returns the z-bias for the given target_q.\n
+        The only way to press this button is in `Modularize/support/meas_switch.py`
+        """
+        if self.get_offsweetspot_button(target_q):
+            print("Now in tune away bias!")
+            return self.get_tuneawayBiasFor(target_q)
+        else:
+            print("Now in sweet spot bias!")
+            return self.get_sweetBiasFor(target_q)
 
 
 if __name__ == "__main__":

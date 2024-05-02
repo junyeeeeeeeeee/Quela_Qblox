@@ -7,6 +7,7 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import mix_T1_sche, T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis, Fit_analysis_plot
 
@@ -55,10 +56,10 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         
         I,Q= dataset_to_array(dataset=T1_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-        try:
-            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=8e-6)
+        if data_folder == '':
+            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=14e-6)
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
-        except:
+        else:
             data_fit=[]
             T1_us[q] = 0
         analysis_result[q] = data_fit
@@ -87,27 +88,25 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     return analysis_result, T1_us
 
 
-def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,specific_folder:str=''):
-    init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,specific_folder:str='',pts:int=100):
     if run:
         T1_us = []
         for ith in range(histo_counts):
             print(f"The {ith}-th T1:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
-            T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder)
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
+            T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
-            cluster.reset
+            cluster.reset()
             T1_us.append(T1_hist[specific_qubits])
-        T1_us = array(T1_us)
             
+        T1_us = array(T1_us)
+        mean_T1_us = round(mean(T1_us),1)
+        sd_T1_us = round(std(T1_us),1)
         if histo_counts == 1:
-            mean_T1_us = 0
-            sd_T1_us = 0
             Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
         else:
-            mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
-            sd_T1_us = round(std(T1_us[T1_us != 0]),1)
-            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}",pic_folder=specific_folder)
+            if specific_folder == '': # when a folder given, the case should be only radiator test so far (2024/04/26) and i don't want it analyze 
+                Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}",pic_folder=specific_folder)
         
     else:
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,exp_idx=0,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
@@ -121,20 +120,22 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    QD_path = 'Modularize/QD_backup/2024_4_30/DR2#10_SumInfo.pkl'
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":60e-6,"histo_counts":50}
+        "q0":{"evoT":80e-6,"histo_counts":100}
     }
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     
     
     """ Running """
     T1_results = {}
     for qubit in ro_elements:
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         evoT = ro_elements[qubit]["evoT"]
         histo_total = ro_elements[qubit]["histo_counts"]
 
@@ -148,7 +149,7 @@ if __name__ == "__main__":
 
     """ Storing (Future) """
     if execution:
-        QD_agent.QD_keeper()
+        QD_agent.QD_keeper('Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl')
 
 
     """ Close """

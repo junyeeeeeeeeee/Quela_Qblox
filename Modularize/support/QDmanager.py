@@ -13,6 +13,8 @@ class QDmanager():
         self.Log = "" 
         self.Identity=""
         self.chip_name = ""
+       
+        
 
     def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str=''):
         """
@@ -56,8 +58,7 @@ class QDmanager():
         # dict
         self.Hcfg = gift["Hcfg"]
         self.refIQ = gift["refIQ"]
-   
-
+        
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
     
@@ -77,6 +78,7 @@ class QDmanager():
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
             print(f'Summarized info had successfully saved to the given path!')
+
     
     def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str):
         """
@@ -114,6 +116,62 @@ class QDmanager():
             qubit.measure.acq_channel(qb_idx)
             self.quantum_device.add_element(qubit)
         
+    def keep_meas_option(self,target_q:str,z_bias:float,modi_idx:int):
+        """ keep the following info into Notebook\n
+        1) XY freq.\n
+        2) RO freq.\n
+        3) RO amp.\n
+        4) pi-pulse amp.\n
+        5) 2tone_pi amp.\n
+        6) pi-pulse duration.\n
+        7) ref-IQ point.\n
+        8) bias of this point.\n
+        9) ro attenuation.
+        """
+        self.Notewriter.create_meas_options(target_q)
+        qubit = self.quantum_device.get_element(target_q)
+        ROF = qubit.clock_freqs.readout()
+        XYF = qubit.clock_freqs.f01()
+        pi_amp = qubit.rxy.amp180()
+        conti_pi_amp = self.Notewriter.get_2tone_piampFor(target_q)
+        pi_dura = qubit.rxy.duration()
+        ref_iq = self.refIQ[target_q]
+        ro_attenuation = self.Notewriter.get_DigiAtteFor(target_q,'ro')
+        ro_amp = qubit.measure.pulse_amp()
+        option_dict = {"f01":XYF,"rof":ROF,"rop":ro_amp,"pi_amp":pi_amp,"2tone_pi_amp":conti_pi_amp,"pi_dura":pi_dura,"refIQ":ref_iq,"bias":z_bias,"ro_atte":ro_attenuation}
+
+        self.Notewriter.write_meas_options({target_q:option_dict},modi_idx)
+        print(f"Optional meas point had been recorded! @ Z~{round(z_bias,3)}")
+
+
+    def write_with_meas_option(self,target_q:str,idx_chosen:str):
+        """ call the following info into QuantumDevice, Fluxmanager, Notewriter, QDmanager\n
+        1) XY freq.\n
+        2) RO freq.\n
+        3) RO amp.\n
+        4) pi-pulse amp.\n
+        5) 2tone_pi amp.\n
+        6) pi-pulse duration.\n
+        7) ref-IQ point.\n
+        8) bias of this point.\n
+        9) ro attenuation.
+        """
+        option_selected = self.Notewriter.get_all_meas_options(target_q)[int(idx_chosen)]
+        qubit = self.quantum_device.get_element(target_q)
+        qubit.clock_freqs.readout(option_selected["rof"])
+        qubit.clock_freqs.f01(option_selected["f01"])
+        qubit.rxy.amp180(option_selected["pi_amp"])
+        self.Notewriter.save_2tone_piamp_for(target_q,float(option_selected["2tone_pi_amp"]))
+        qubit.rxy.duration(option_selected["pi_dura"])
+        self.refIQ[target_q] = option_selected["refIQ"]
+        self.Notewriter.save_DigiAtte_For(int(option_selected["ro_atte"]),target_q,'ro')
+        qubit.measure.pulse_amp(option_selected["rop"])
+        if idx_chosen != '0':
+            self.Fluxmanager.save_tuneawayBias_for('manual',target_q,option_selected["bias"])
+            self.Fluxmanager.press_offsweetspot_button(target_q,True) # here is the only way to press this button
+        else:
+            self.Fluxmanager.save_sweetspotBias_for(target_q,option_selected["bias"])
+            self.Fluxmanager.press_offsweetspot_button(target_q,False)
 
     ### Convenient short cuts
 # Object to manage data and pictures store.

@@ -6,7 +6,7 @@ from tkinter import ttk
 
 from Modularize.support.Experiment_setup import ip_register
 ip_values = list(ip_register.values())
-
+drs = list(ip_register.keys())
 # Initialize measurement window
 def init_meas_window() -> tuple[str, str, str, str, bool]:
     
@@ -30,7 +30,7 @@ def init_meas_window() -> tuple[str, str, str, str, bool]:
     DR_la.pack()
     DR_box = ttk.Combobox(root,
                           width=15,
-                          values=['DR1','DR2','DR3','DR4'])
+                          values=drs)
     DR_box.pack()
     
     ip_la = tk.Label(root, text = 'IP location')   

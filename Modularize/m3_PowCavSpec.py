@@ -7,6 +7,7 @@ from Modularize.support import Data_manager, QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
@@ -82,19 +83,17 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
     return analysis_result
 
 
-def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False):
+def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False,fpts:int=30,ppts:int=30,avg_n:int=100):
 
     if run:
-        init_system_atte(QD_agent.quantum_device,[specific_qubits],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         if sweet_spot:
             Fctrl[specific_qubits](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits))
-        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power,f_points=60,p_points=45)
+        PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,ro_p_max=max_power,f_points=fpts,p_points=ppts,n_avg=avg_n)
         Fctrl[specific_qubits](0.0)
         if PD_results == {}:
             print(f"Power dependence error qubit: {specific_qubits}")
      
     else:
-        init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'))
         PD_results = PowerDep_spec(QD_agent,meas_ctrl,q=specific_qubits, ro_span_Hz=ro_span_Hz,run=False,ro_p_max=max_power)
 
     
@@ -103,18 +102,20 @@ if __name__ == "__main__":
     
     """ fill in """
     execution = True
-    sweetSpot_dispersive = False
-    QD_path = 'Modularize/QD_backup/2024_4_27/DR2#10_SumInfo.pkl'
+    sweetSpot_dispersive = True
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":34}
+        "q0": {"ro_atte":50}
     }
 
     """ preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
     """ Running """
     for qubit in ro_elements:
         QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
         cluster.reset()
         if not execution:
@@ -123,8 +124,8 @@ if __name__ == "__main__":
     QD_agent.refresh_log('after PowerDep')
     
     """ Storing """
-    # if execution: 
-        # QD_agent.QD_keeper()
+    if execution: 
+        QD_agent.QD_keeper()
     
     """ Close """
     print('Power dependence done!')

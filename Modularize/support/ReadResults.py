@@ -1,16 +1,23 @@
-# import xarray as xr
-# import quantify_core.data.handling as dh
+import xarray as xr
+import quantify_core.data.handling as dh
 from Modularize.support.QDmanager import QDmanager
+from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
+from numpy import sqrt, array
+import matplotlib.pyplot as plt
 # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 # from quantify_core.analysis.base_analysis import Basic2DAnalysis
-# results_path = 'Modularize/Meas_raw/2024_3_14/DR2q1_2tone_H15M35S59.nc' 
-# ds = xr.open_dataset(results_path)
-# print(ds)
-# ds = dh.to_gridded_dataset(ds)
-# magnitude_ndarray = ds.y0.data
-# phase_ndarray = ds.y1.data
-# freq_ndarray = ds.x0.data
-# power_ndarray = ds.x1.data
+
+
+
+def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
+    ref = Qmanager.refIQ[target_q]
+    # plot flux-qubit 
+    f,z,i,q = convert_netCDF_2_arrays(nc_path)
+    amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
+    fig, ax = plt.subplots()
+    c = ax.pcolormesh(z, f, amp, cmap='RdBu')
+    fig.colorbar(c, ax=ax)
+    plt.show()
 
 
 # from quantify_scheduler.helpers.collections import find_port_clock_path
@@ -39,28 +46,31 @@ from Modularize.support.QDmanager import QDmanager
 
 
 # from Modularize.support import QDmanager
-from numpy import array
-QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
-QD_agent = QDmanager(QD_path)
-QD_agent.QD_loader()
-for i in ["q0","q1","q2","q3","q4"]:
-    qu = QD_agent.quantum_device.get_element(i)
-    rof = qu.clock_freqs.readout()
-    xyf = qu.clock_freqs.f01()
-    xyl = qu.rxy.amp180()
-    T1 = QD_agent.Notewriter.get_T1For(target_q=i)
-    T2 = QD_agent.Notewriter.get_T2For(target_q=i)
-    print(f"***{i}:")
-    print(f"rof : {rof}")
-    print(f"xyf : {xyf}")
-    print(f"xyl : {xyl}")
-    print(f"T1 : {T1}")
-    print(f"T2 : {T2}")
-    print("===========================\n")
+# from numpy import array
+# QD_path = 'Modularize/QD_backup/2024_3_31/DR2#171_SumInfo.pkl'
+# QD_agent = QDmanager(QD_path)
+# QD_agent.QD_loader()
+# for i in ["q0","q1","q2","q3","q4"]:
+#     qu = QD_agent.quantum_device.get_element(i)
+#     rof = qu.clock_freqs.readout()
+#     xyf = qu.clock_freqs.f01()
+#     xyl = qu.rxy.amp180()
+#     T1 = QD_agent.Notewriter.get_T1For(target_q=i)
+#     T2 = QD_agent.Notewriter.get_T2For(target_q=i)
+#     print(f"***{i}:")
+#     print(f"rof : {rof}")
+#     print(f"xyf : {xyf}")
+#     print(f"xyl : {xyl}")
+#     print(f"T1 : {T1}")
+#     print(f"T2 : {T2}")
+#     print("===========================\n")
 # def aprx_fq(disper_MHz:float,bareF_MHz:float,g_MHz:float=45.0):
 #     return bareF_MHz-(g_MHz**2)/disper_MHz
 
 
 # print("aprx fq=",aprx_fq(x,bare))
 
-
+if __name__ == '__main__':
+    QD_agent = QDmanager('Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl')
+    QD_agent.QD_loader()
+    print(QD_agent.quantum_device.get_element("q0").clock_freqs.f01())

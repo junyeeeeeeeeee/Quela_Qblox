@@ -7,21 +7,25 @@ from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
 from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+from Modularize.support.ReadResults import plot_QbFlux
 from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
 
 
 
 
-def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,IF:int=100e6,xyf:float=0e9,xyf_span_Hz:float=300e6,n_avg:int=1000,RO_z_amp:float=0,Z_points:int=20,f_points:int=30,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False,analysis:bool=True):
+def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_start:float,Z_amp_end:float,IF:int=100e6,xyf:float=0e9,xyf_span_Hz:float=400e6,n_avg:int=1000,RO_z_amp:float=0,Z_points:int=40,f_points:int=60,run:bool=True,q:str='q1',Experi_info={},get_data_path:bool=False,analysis:bool=True):
     print("Zgate 2tone start")
     trustable = True
     sche_func = Z_gate_two_tone_sche
-        
+
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     original_f01 = qubit_info.clock_freqs.f01()
+    print(original_f01)
+
     if xyf == 0:
         xyf_highest = original_f01+IF
     else:
@@ -52,13 +56,12 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
         pass 
 
     Z_samples = linspace(Z_amp_start,Z_amp_end,Z_points)
-    print(Z_samples[0], Z_samples[-1])
     
     spec_sched_kwargs = dict(   
         frequencies=freq,
         q=q,
         Z_amp=Z_bias,
-        spec_amp=qubit_info.rxy.amp180(),
+        spec_amp=QD_agent.Notewriter.get_2tone_piampFor(q),
         spec_Du=50*1e-6,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
         R_duration={str(q):qubit_info.measure.pulse_duration()},
@@ -123,24 +126,25 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
     return analysis_result, path, trustable
 
 
-def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0):
-    init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
+def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=20,fpts:int=30,span_priod_factor:int=12,f_sapn_Hz=400e6):
     center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)
-    partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/8
+    partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/span_priod_factor
 
     if run:
-        results, _, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=center-partial_period+z_shifter,Z_points=10,Z_amp_end=center+partial_period+z_shifter,q=specific_qubits,run=True)
+        Fctrl[specific_qubits](center)
+        results, nc_path, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=-partial_period+z_shifter,Z_points=zpts,f_points=fpts,Z_amp_end=partial_period+z_shifter,q=specific_qubits,run=True,get_data_path=True,xyf_span_Hz=f_sapn_Hz)
         reset_offset(Fctrl)
         if trustable:
             permission = input("Update the QD with this result ? [y/n]") 
             if permission.lower() in ['y','yes']:
                 qubit = QD_agent.quantum_device.get_element(specific_qubits)
                 qubit.clock_freqs.f01(results[specific_qubits].quantities_of_interest["freq_0"].nominal_value)
-                QD_agent.Fluxmanager.check_offset_and_correctFor(target_q=specific_qubits,new_offset=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
-                QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)
+                QD_agent.Fluxmanager.check_offset_and_correctFor(target_q=specific_qubits,new_offset=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value+center)
+                QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=specific_qubits,bias=results[specific_qubits].quantities_of_interest["offset_0"].nominal_value+center)
             else:
                 trustable = False
         else:
+            plot_QbFlux(QD_agent,nc_path,specific_qubits)
             trustable = False
         return results[specific_qubits], trustable
     else:
@@ -150,14 +154,14 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
 
 if __name__ == "__main__":
     
-
     """ Fill in """
-    QD_path = 'Modularize/QD_backup/2024_4_25/DR2#10_SumInfo.pkl'
-    ro_elements = ['q1']
     execution = True
+    DRandIP = {"dr":"dr1","last_ip":"11"}
+    ro_elements = ['q0']
     z_shifter = 0 # V
 
     """ Preparations """
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
@@ -167,9 +171,8 @@ if __name__ == "__main__":
     FQ_results = {}
     check_again =[]
     for qubit in ro_elements:
-        Fctrl['q1'](-0.043)
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         FQ_results[qubit], trustable = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
-        Fctrl['q1'](0)
         cluster.reset()
 
         if not trustable:
@@ -179,7 +182,6 @@ if __name__ == "__main__":
     """ Storing """
     if  execution:
         QD_agent.QD_keeper()
-
     
 
     """ Close """
