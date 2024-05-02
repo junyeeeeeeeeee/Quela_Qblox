@@ -123,7 +123,7 @@ if __name__ == "__main__":
     execution = True
     QD_path = 'Modularize/QD_backup/2024_4_30/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q0":{"evoT":60e-6,"histo_counts":1}
+        "q0":{"evoT":60e-6,"histo_counts":50}
     }
 
 

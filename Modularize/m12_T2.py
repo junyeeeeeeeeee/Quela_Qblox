@@ -135,7 +135,7 @@ if __name__ == "__main__":
     xyf_cali = 0
     QD_path = 'Modularize/QD_backup/2024_4_30/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1}
+        "q0":{"detune":0.1e6,"evoT":40e-6,"histo_counts":1}
     }
 
 
