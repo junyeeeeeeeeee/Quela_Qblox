@@ -98,6 +98,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
             Fctrl[specific_qubits](0.0)
             cluster.reset()
             T1_us.append(T1_hist[specific_qubits])
+            Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None,save_path=os.path.join("Modularize/Meas_raw/2024_5_2/pic/T1",f"T1_({ith}).png"))
         T1_us = array(T1_us)
         mean_T1_us = round(mean(T1_us),1)
         sd_T1_us = round(std(T1_us),1)
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":60e-6,"histo_counts":1}
+        "q0":{"evoT":80e-6,"histo_counts":100}
     }
 
 

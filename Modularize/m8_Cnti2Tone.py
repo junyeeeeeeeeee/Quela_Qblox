@@ -103,7 +103,7 @@ def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float)
 
 
 
-def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,xyf_guess:float=0,guess_g:float=48e6,xyAmp_guess:float=0,xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0):
+def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,xyf_guess:float=0,guess_g:float=48e6,xyAmp_guess:list=[],xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0):
     
     if run:
         advised_fq = advise_where_fq(QD_agent,specific_qubits,guess_g)
@@ -113,10 +113,10 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         else:
             guess_fq = [advised_fq-500e6, advised_fq, advised_fq+500e6]
 
-        if xyAmp_guess == 0:
+        if len(xyAmp_guess) == 0 or (len(xyAmp_guess) == 1 and xyAmp_guess[0] == 0):
             xyAmp_guess = [0, 0.03, 0.07, 0.1]
         else:
-            xyAmp_guess = [xyAmp_guess]
+            xyAmp_guess = xyAmp_guess
         
         for XYF in guess_fq:
             ori_data = []
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr1","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[5.4e9],"xyl_guess":[0.03],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[5.3e9],"xyl_guess":[0.02],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
 
 
@@ -173,13 +173,13 @@ if __name__ == "__main__":
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         tune_bias = ro_elements[qubit]["tune_bias"]
         for xyf in ro_elements[qubit]["xyf_guess"]:
-            for xyl in ro_elements[qubit]["xyl_guess"]:
-                g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
+            g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
 
-                tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=xyl,run=execution,guess_g=g,xy_if=100e6,xyf_span=500e6,V_away_from=tune_bias)
+            tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=ro_elements[qubit]["xyl_guess"],run=execution,guess_g=g,xy_if=100e6,xyf_span=500e6,V_away_from=tune_bias)
 
-                if execution and xyl != 0:
-                    update_2toneResults_for(QD_agent,qubit,tt_results,xyl)
+            if execution and ro_elements[qubit]["xyl_guess"][0] != 0:
+                print(f'update xyl={ro_elements[qubit]["xyl_guess"][0]}')
+                update_2toneResults_for(QD_agent,qubit,tt_results,ro_elements[qubit]["xyl_guess"][0])
             
     """ Storing """
     if update :

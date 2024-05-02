@@ -82,6 +82,7 @@ def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6):
     return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit))
 
 def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6):
+    print(f"T2 freeDu: {min(freeDu)}~{max(freeDu)}")
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=1e-6, max=5*T2_guess) 
     up_lim_f= 5*1e6
@@ -1152,7 +1153,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str=''):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1213,7 +1214,11 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
     fig.tight_layout()
-    plt.show()
+    if save_path != "":
+        plt.savefig(save_path)
+        plt.close()
+    else:
+        plt.show()
 
 def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
     if P_rescale is not True:
