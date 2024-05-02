@@ -195,6 +195,17 @@ class FluxBiasDict():
 
         return answer
 
+    def get_proper_zbiasFor(self,target_q:str)->float:
+        """
+        According to the `offsweetspot_button`, it returns the z-bias for the given target_q.\n
+        The only way to press this button is in `Modularize/support/meas_switch.py`
+        """
+        if self.get_offsweetspot_button(target_q):
+            print("Now in tune away bias!")
+            return self.get_tuneawayBiasFor(target_q)
+        else:
+            print("Now in sweet spot bias!")
+            return self.get_sweetBiasFor(target_q)
 
 
 if __name__ == "__main__":
