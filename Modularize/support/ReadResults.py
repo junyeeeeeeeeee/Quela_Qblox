@@ -70,4 +70,7 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 
 # print("aprx fq=",aprx_fq(x,bare))
 
-
+if __name__ == '__main__':
+    QD_agent = QDmanager('Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl')
+    QD_agent.QD_loader()
+    print(QD_agent.quantum_device.get_element("q0").clock_freqs.f01())

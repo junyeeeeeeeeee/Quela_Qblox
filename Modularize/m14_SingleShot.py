@@ -13,6 +13,15 @@ from Modularize.support import QDmanager, Data_manager,init_system_atte, init_me
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, set_LO_frequency, pulse_preview, Qubit_state_single_shot_fit_analysis
 
 
+try:
+    from qcat.state_discrimination.discriminator import train_model # type: ignore
+    from qcat.visualization.readout_fidelity import plot_readout_fidelity
+    from Modularize.analysis.OneShotAna import a_OSdata_analPlot
+    mode = "AS"
+except:
+    mode = "WeiEn"
+
+
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str=''):
     qubit_info = QD_agent.quantum_device.get_element(q)
     sche_func = Qubit_SS_sche  
@@ -77,7 +86,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
 
 
 def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0):
-    Fctrl[target_q](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q)))
+    Fctrl[target_q](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(target_q)))
     SS_result, nc= Qubit_state_single_shot(QD_agent,
                 shots=shots,
                 run=execution,
@@ -87,41 +96,54 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
                 exp_idx=exp_label)
     Fctrl[target_q](0.0)
     cluster.reset()
-    if plot:
-        Qubit_state_single_shot_plot(SS_result[target_q],Plot_type='both',y_scale='log')
+    
+    
+    if mode == "WeiEn":
+        if plot:
+            Qubit_state_single_shot_plot(SS_result[target_q],Plot_type='both',y_scale='log')
+            effT_mk, snr_dB = 0 , 0
+        else:
+            effT_mk, snr_dB = 0 , 0
+    else:
+        effT_mk, snr_dB = a_OSdata_analPlot(QD_agent,target_q,nc,plot)
 
-
+    return effT_mk, snr_dB
 
 if __name__ == '__main__':
     
 
     """ Fill in """
     execute = True
+    repaet = 1
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {'q0':{"roAmp_factor":1}}
     
 
-    """ Preparation """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-
-    """ Running """
-    for qubit in ro_elements:
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
+    snr_rec, effT_rec = [], []
+    for i in range(repaet):
+        """ Preparation """
+        QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         
-        SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling)
-        
-        if ro_amp_scaling !=1:
-            keep = input(f"Keep this RO amp for {qubit}?[y/n]")
-        else:
-            keep = 'y'
 
-    """ Storing """ 
-    if execute:
-        if keep.lower() == 'y':
-            QD_agent.QD_keeper() 
+        """ Running """
+        for qubit in ro_elements:
+            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
             
-    """ Close """    
-    shut_down(cluster,Fctrl)
+            info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling,plot=False,exp_label=i)
+            snr_rec.append(info[1])
+            effT_rec.append(info[0])
+            if ro_amp_scaling !=1:
+                keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+            else:
+                keep = 'y'
+
+        """ Storing """ 
+        if execute:
+            if keep.lower() == 'y':
+                # QD_agent.QD_keeper('Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl') 
+                pass
+                
+        """ Close """    
+        shut_down(cluster,Fctrl)

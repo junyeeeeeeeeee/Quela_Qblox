@@ -100,13 +100,13 @@ class Notebook():
             raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
 
     def create_meas_options(self,target_q:str):
-        meas_elements = {"rof":0,"f01":0,"bias":0,"refIQ":[],"pi_amp":0,"pi_dura":0}
+        meas_elements = {"rof":0,"rop":0,"f01":0,"bias":0,"refIQ":[],"pi_amp":0,"2tone_pi_amp":0,"pi_dura":0,"ro_atte":0}
         self.__InfoDict[target_q]["meas_options"].append(meas_elements)
     def get_all_meas_options(self,target_q:str)->list:
         return self.__InfoDict[target_q]["meas_options"]
     def write_meas_options(self,options_inclu_targetQ:dict,ToModified_index:int=-1):
         """
-        1) options_inclu_targetQ={"q0":{"f01","rof","pi_amp","pi_dura","refIQ","bias"}}.\n
+        1) options_inclu_targetQ={"q0":{"f01","rof","rop","pi_amp","2tone_pi_amp","pi_dura","refIQ","bias","ro_atte"}}.\n
         2) ToModified_index is the index of the self.__InfoDict[target_q]["meas_options"] list, default is do append it. !Don't use negative index!
         """
         if ToModified_index == -1:

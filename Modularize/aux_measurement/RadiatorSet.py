@@ -29,17 +29,17 @@ def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
 if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
     """ fill in """
-    Temp = 're0K-1'
-    QD_path = 'Modularize/QD_backup/2024_4_30/DR1#11_SumInfo.pkl'
+    Temp = '0K-1'
+    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'
     ro_elements = {
-        "q0":{"T2detune":0e6,"freeTime":{"T1":60e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
+        "q0":{"T2detune":0e6,"freeTime":{"T1":80e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
     }
     data_parent_dir = os.path.join(meas_raw_dir,Temp)
-    set_number = 80
+    set_number = 1
 
     """ Preparations """
-    os.mkdir(data_parent_dir)
-    start = time.time()
+    # os.mkdir(data_parent_dir)
+    # start = time.time()
     
 
 
@@ -49,19 +49,19 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         for set_idx in range(set_number):
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            # init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         
             if set_idx == 0:
                 other_info[qubit]={"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
             
-            set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
-            evoT = ro_elements[qubit]["freeTime"]
-            ramsey_detune = ro_elements[qubit]["T2detune"]
-            histo_count = ro_elements[qubit]["histo_counts"]
+            # set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
+            # evoT = ro_elements[qubit]["freeTime"]
+            # ramsey_detune = ro_elements[qubit]["T2detune"]
+            # histo_count = ro_elements[qubit]["histo_counts"]
 
-            radiation_test(QD_agent, cluster, meas_ctrl, Fctrl, qubit, freeDura=evoT, T2_detu=ramsey_detune, histo_counts=histo_count, new_folder=set_folder)
-            cut_time = time.time()
-            other_info[qubit]["time_past"].append(cut_time-start)
+            # radiation_test(QD_agent, cluster, meas_ctrl, Fctrl, qubit, freeDura=evoT, T2_detu=ramsey_detune, histo_counts=histo_count, new_folder=set_folder)
+            # cut_time = time.time()
+            # other_info[qubit]["time_past"].append(cut_time-start)
             """ Close """
             shut_down(cluster,Fctrl)
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         json.dump(other_info,record_file)
 
 
-    end = time.time()
-    print(f"{set_number}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
+    # end = time.time()
+    # print(f"{set_number}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
 
     
