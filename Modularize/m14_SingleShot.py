@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from xarray import Dataset
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
+from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from numpy import array, linspace, median, std
 from quantify_scheduler.gettables import ScheduleGettable
@@ -27,7 +28,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
     qubit_info.measure.pulse_amp(ro_amp_factor*qubit_info.measure.pulse_amp())
-    print(f"The new RO amp = {round(qubit_info.measure.pulse_amp(),2)}")
+    eyeson_print(f"The new RO amp = {round(qubit_info.measure.pulse_amp(),2)}")
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     data = {}
     analysis_result = {}
@@ -35,6 +36,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
                      )
     
     def state_dep_sched(ini_state:str):
+        slightly_print(f"Shotting for |{ini_state}>")
         sched_kwargs = dict(   
             q=q,
             ini_state=ini_state,
@@ -139,7 +141,7 @@ if __name__ == '__main__':
             snr_rec[qubit].append(info[1])
             effT_rec[qubit].append(info[0])
             if ro_amp_scaling !=1:
-                keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+                keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")
             else:
                 keep = 'y'
 
@@ -153,5 +155,5 @@ if __name__ == '__main__':
         shut_down(cluster,Fctrl)
 
     for qubit in effT_rec:
-        print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
+        highlight_print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
     

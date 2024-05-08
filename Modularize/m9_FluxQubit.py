@@ -4,6 +4,7 @@ from numpy import NaN
 from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -24,7 +25,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     original_f01 = qubit_info.clock_freqs.f01()
-    print(original_f01)
+    
 
     if xyf == 0:
         xyf_highest = original_f01+IF
@@ -146,7 +147,7 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
         results, nc_path, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=-partial_period+z_shifter,Z_points=zpts,f_points=fpts,Z_amp_end=partial_period+z_shifter,q=specific_qubits,run=True,get_data_path=True,xyf_span_Hz=f_sapn_Hz)
         reset_offset(Fctrl)
         if trustable:
-            permission = input("Update the QD with this result ? [y/n]") 
+            permission = mark_input("Update the QD with this result ? [y/n]") 
             if permission.lower() in ['y','yes']:
                 return trustable, {"xyf":results[specific_qubits].quantities_of_interest["freq_0"].nominal_value,"sweet_bias":results[specific_qubits].quantities_of_interest["offset_0"].nominal_value+center}
             else:
@@ -175,27 +176,27 @@ if __name__ == "__main__":
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
 
-    
+
     """ Running """
-    if QD_agent.Fluxmanager.get_offsweetspot_button: raise ValueError("m9 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
     FQ_results = {}
     check_again =[]
     for qubit in ro_elements:
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        trustable, new_ans = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
-        cluster.reset()
+        if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
+            init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+            trustable, new_ans = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)
+            cluster.reset()
 
-        """ Storing """
-        if  trustable:
-            update_by_fluxQubit(QD_agent,new_ans,qubit)
-            QD_agent.QD_keeper()
-        else:
-            check_again.append(qubit)
+            """ Storing """
+            if  trustable:
+                update_by_fluxQubit(QD_agent,new_ans,qubit)
+                QD_agent.QD_keeper()
+            else:
+                check_again.append(qubit)
     
 
     """ Close """
     print('Flux qubit done!')
-    print(f"qubits to check again: {check_again}")
+    warning_print(f"qubits to check again: {check_again}")
     shut_down(cluster,Fctrl)
     
 

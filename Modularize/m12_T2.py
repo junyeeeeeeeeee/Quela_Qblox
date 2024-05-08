@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import std, arange, array, average, mean, sign
@@ -132,10 +133,10 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    xyf_cali = 0
+    xyf_cali = 1
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"detune":0.1e6,"evoT":70e-6,"histo_counts":100}
+        "q0":{"detune":0.5e6,"evoT":30e-6,"histo_counts":1}
     }
 
 
@@ -162,7 +163,7 @@ if __name__ == "__main__":
         all_ramsey_results = []
         actual_detune = []
         for detuning in manual_detune:
-            print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
+            slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
             ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
             actual_detune.append(average_actual_detune[qubit])
             all_ramsey_results.append(ramsey_results[qubit][qubit])
@@ -177,7 +178,7 @@ if __name__ == "__main__":
                     QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf-sign(manual_detune[0])*average(array(actual_detune)))
                 print("Calibrated!!")
             else:
-                print("Warning: Please set a smaller detuning !")
+                warning_print("Please set a smaller detuning !")
             Fit_T2_cali_analysis_plot(all_ramsey_results,P_rescale=False,Dis=None)
         
         if histo_total >= 10:

@@ -5,6 +5,7 @@ from numpy import array, linspace, NaN
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -47,7 +48,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
     exp_kwargs= dict(sweep_F=['start '+'%E' %f01_samples[0],'end '+'%E' %f01_samples[-1]],
                      spec_amp='%E' %spec_sched_kwargs['spec_amp'],
                      spec_Du='%E' %spec_sched_kwargs['spec_Du'])
-    
+    highlight_print(f"Now spec_amp = {xyamp}")
     if run:
         gettable = ScheduleGettable(
             QD_agent.quantum_device,
@@ -154,12 +155,12 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    update = True
+    update = 1
     #
     DRandIP = {"dr":"dr1","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[5.3e9],"xyl_guess":[0.02],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[5.3e9],"xyl_guess":[0.07],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
 
 

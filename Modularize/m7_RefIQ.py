@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q0':{"ro_amp_factor":1}}
+    ro_elements = {'q0':{"ro_amp_factor":1.5}}
 
 
     """ Preparations """
@@ -102,7 +103,7 @@ if __name__ == "__main__":
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         
         if ro_elements[qubit]["ro_amp_factor"] !=1:
-            keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+            keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")
         else:
             keep = 'y'
 

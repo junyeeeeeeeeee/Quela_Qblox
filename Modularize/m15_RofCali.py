@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import matplotlib.pyplot as plt
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
+from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from Modularize.m7_RefIQ import refIQ_executor
 from quantify_scheduler.gettables import ScheduleGettable
@@ -85,9 +86,9 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6
         
         return array(I), array(Q)
     
-    print("Running |1>")
+    slightly_print("Running |1>")
     I_e, Q_e = array(state_dep_sched('e'))
-    print("Running |0>")
+    slightly_print("Running |0>")
     I_g, Q_g = array(state_dep_sched('g'))
     I_diff = I_e-I_g
     Q_diff = Q_e-Q_g
@@ -166,7 +167,7 @@ if __name__ == '__main__':
 
         optimal_rof = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,execution=execute,ro_f_span=ro_span)
         if execute:
-            if input(f"Update the optimal ROF for {qubit}?[y/n]").lower() == 'y':
+            if mark_input(f"Update the optimal ROF for {qubit}?[y/n]").lower() in ['y', 'yes']:
                 QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof)
                 refIQ_executor(QD_agent,cluster,Fctrl,qubit)
                 keep = True

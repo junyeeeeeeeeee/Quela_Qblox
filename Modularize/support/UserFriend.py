@@ -25,7 +25,14 @@ def warning_print(msg:str):
     init(autoreset=True)
     print(Back.RED + Fore.YELLOW + Style.BRIGHT + f"!!! WARNING: {msg} !!!")
 
+# interaction level
+def mark_input(msg:str)->str:
+    init(autoreset=True)
+    ans = input(Fore.RED + Style.BRIGHT + msg)
+    
+    return ans
 
 if __name__ == "__main__":
     highlight_print("hi")
     warning_print("hi")
+    mark_input("hi")
