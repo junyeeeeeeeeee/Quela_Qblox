@@ -28,3 +28,10 @@ This is the library for storing every chip information
     * After fixing the problem, clear the codes in Oidle5QMeas.
   
 #### Single Qubit Charaterization 08-05-2024
+You will need the following package with pip and the firmware:  
+ * qblox-instruments == v0.12.0  
+ * quantify-core == v0.7.4  
+ * quantify-scheduler == v0.19.0  
+ * colorama
+ * firmware == v0.7.0  
+    
