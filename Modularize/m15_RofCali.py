@@ -19,11 +19,6 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6
     analysis_result = {}
     qubit = QD_agent.quantum_device.get_element(q)
 
-    qubit.reset.duration(150e-6)
-    qubit.measure.acq_delay(500e-9)
-    qubit.measure.pulse_duration(2.5e-6)
-    qubit.measure.integration_time(2e-6-4e-9)
-    qubit.measure.pulse_amp(qubit.measure.pulse_amp()*0.5)
     ro_f_origin= qubit.clock_freqs.readout()
     LO= ro_f_origin+IF+ro_span_Hz
     from numpy import NaN
