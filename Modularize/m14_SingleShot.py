@@ -120,7 +120,7 @@ if __name__ == '__main__':
     execute = True
     repaet = 1
     DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q0':{"roAmp_factor":1}}
+    ro_elements = {'q0':{"roAmp_factor":1.2}}
     
 
     snr_rec, effT_rec = {}, {}

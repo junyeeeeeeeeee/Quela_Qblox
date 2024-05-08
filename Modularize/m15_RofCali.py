@@ -145,7 +145,7 @@ if __name__ == '__main__':
     """ Fill in """
     execute = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q0':{"span_Hz":5e6}}
+    ro_elements = {'q0':{"span_Hz":8e6}}
 
 
     """ Preparation """
