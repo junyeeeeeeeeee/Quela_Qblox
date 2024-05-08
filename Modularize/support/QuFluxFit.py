@@ -201,10 +201,9 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     f = pi/period
     b = offset
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
-    wide_period = 4*period/3
-    narrow_period = period/4
-    upper_bound = [pi/narrow_period,offset+offset*0.1,0.32,100,1] #[a, b, Ec, Ej_sum, d]
-    bottom_bound = [pi/wide_period,offset-offset*0.1,0.28,1,0]
+
+    upper_bound = [f*1.1,offset*1.1,0.32,100,1] #[a, b, Ec, Ej_sum, d]
+    bottom_bound = [f*0.9,offset*0.9,0.28,1,0]
 
     return guess, upper_bound, bottom_bound
 

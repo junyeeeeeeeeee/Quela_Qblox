@@ -3,6 +3,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')) 
 from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
+from Modularize.support.UserFriend import *
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from qblox_instruments import Cluster
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
@@ -18,7 +19,7 @@ def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
     start = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)
     flux_step = (QD_agent.Fluxmanager.get_PeriodFor(target_q=qb)/2)/6
     windows = []
-    for step_idx in range(0,5,2): # 0,2,4  reject bottom at flux 
+    for step_idx in range(0,3,2): # 0,2,4  reject bottom at flux 
 
         for sign in [1,-1] if step_idx != 0 else [1]:
             center = sign*step_idx*flux_step
@@ -103,7 +104,7 @@ def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float
     z_pts = 10
         
 
-    print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
+    eyeson_print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
     return meas_var, z_pts
 
     
