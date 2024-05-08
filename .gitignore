@@ -1,7 +1,8 @@
 **/.DS_Store
-.data/
 **/__pycache__/
 **/.ipynb_checkpoint/
+**/Data/
+.data/
 Modularize/Meas_raw/
 Modularize/QD_backup/
 Modularize/support/Experiment_setup.py

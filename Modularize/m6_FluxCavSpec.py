@@ -135,10 +135,11 @@ if __name__ == "__main__":
             break
 
     
-    """ Storing """
-    if update and execution:
-        QD_agent.refresh_log("after FluxDep")
-        QD_agent.QD_keeper()
+        """ Storing """
+        if update and execution:
+            QD_agent.refresh_log("after FluxDep")
+            QD_agent.QD_keeper()
+            update = False
 
 
     """ Close """

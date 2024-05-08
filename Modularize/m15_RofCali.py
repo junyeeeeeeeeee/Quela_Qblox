@@ -171,12 +171,11 @@ if __name__ == '__main__':
                 refIQ_executor(QD_agent,cluster,Fctrl,qubit)
                 keep = True
 
- 
-
-    """ Storing """ 
-    if execute:
-        if keep:
-            QD_agent.QD_keeper() 
+        """ Storing """ 
+        if execute:
+            if keep:
+                QD_agent.QD_keeper()
+                keep = False 
 
     """ Close """    
     shut_down(cluster,Fctrl)

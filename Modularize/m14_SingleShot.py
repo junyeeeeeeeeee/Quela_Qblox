@@ -1,10 +1,10 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from xarray import Dataset
-from numpy import array, linspace
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from numpy import array, linspace, median, std
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -86,7 +86,9 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
 
 
 def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0):
+
     Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
+
     SS_result, nc= Qubit_state_single_shot(QD_agent,
                 shots=shots,
                 run=execution,
@@ -119,7 +121,7 @@ if __name__ == '__main__':
     ro_elements = {'q0':{"roAmp_factor":1}}
     
 
-    snr_rec, effT_rec = [], []
+    snr_rec, effT_rec = {}, {}
     for i in range(repaet):
         """ Preparation """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -128,22 +130,28 @@ if __name__ == '__main__':
 
         """ Running """
         for qubit in ro_elements:
+            if i == 0:
+                snr_rec[qubit], effT_rec[qubit] = [], []
             init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
             
             info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling,plot=False,exp_label=i)
-            snr_rec.append(info[1])
-            effT_rec.append(info[0])
+            snr_rec[qubit].append(info[1])
+            effT_rec[qubit].append(info[0])
             if ro_amp_scaling !=1:
                 keep = input(f"Keep this RO amp for {qubit}?[y/n]")
             else:
                 keep = 'y'
 
-        """ Storing """ 
-        if execute:
-            if keep.lower() == 'y':
-                QD_agent.QD_keeper() 
-                
+            """ Storing """ 
+            if execute:
+                if keep.lower() in ['y', 'yes']:
+                    QD_agent.QD_keeper() 
+
                 
         """ Close """    
         shut_down(cluster,Fctrl)
+
+    for qubit in effT_rec:
+        print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
+    

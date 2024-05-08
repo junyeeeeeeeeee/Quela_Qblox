@@ -108,7 +108,6 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
             cluster.reset()
             if T2_us[specific_qubits] != 0: T2_us_rec.append(T2_us[specific_qubits]) 
             if average_actual_detune[specific_qubits] != 0: detune_rec.append(average_actual_detune[specific_qubits])
-            Fit_analysis_plot(Ramsey_results[specific_qubits],P_rescale=False,Dis=None,save_path=os.path.join("Modularize/Meas_raw/2024_5_2/pic/T2",f"T2_({ith}).png"))
         T2_us_rec = array(T2_us_rec)
         
         if histo_counts == 1:
@@ -119,7 +118,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         else:
             mean_T2_us = round(mean(T2_us_rec),1)
             sd_T2_us = round(std(T2_us_rec),1)
-            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T2_us_rec},specific_qubits,mode="t2",T1orT2=f"{mean_T2_us}+/-{sd_T2_us}_4.4G",pic_folder=specific_folder)
+            Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T2_us_rec},specific_qubits,mode="t2",T1orT2=f"{mean_T2_us}+/-{sd_T2_us}",pic_folder=specific_folder)
     else:
         Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
         mean_T2_us = 0
