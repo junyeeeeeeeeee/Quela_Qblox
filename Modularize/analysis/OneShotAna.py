@@ -4,12 +4,12 @@ from xarray import Dataset, open_dataset
 from Modularize.analysis.RadiatorSetAna import OSdata_arranger
 import os
 from Modularize.support.QDmanager import QDmanager
-from numpy import array, moveaxis, mean, std
+from numpy import array, moveaxis, mean, std, median
 import matplotlib.pyplot as plt
 
 def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=True, pic_path:str=''):
     folder = os.path.join(os.path.split(nc_path)[0],'pic')
-    pic_save_path = os.path.join(folder,f'{os.path.split(nc_path)[1].split(".")[0]}.png') if pic_path == '' else pic_path
+    pic_save_path = os.path.join(folder,os.path.split(nc_path)[1].split(".")[0]) if pic_path == '' else pic_path
     SS_ds = open_dataset(nc_path)
     ss_dict = Dataset.to_dict(SS_ds)
     # print(ss_dict)
@@ -25,7 +25,7 @@ def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=Tru
     # train GMM
     dist_model = train_model(tarin_data[0])
     dist_model.relabel_model(array([QD_agent.refIQ[target_q]]).transpose())
-    transi_freq = QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
+    transi_freq = 4.4e9#QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
     
     # predict all collection to calculate eff_T for every exp_idx
     
@@ -41,4 +41,33 @@ def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=Tru
     return effT_mK, snr_dB
 
 if __name__ == "__main__":
-    pass
+    # files = ["Modularize/Meas_raw/2024_4_25/DR1q0_SingleShot(0)_H15M1S14.nc","Modularize/Meas_raw/2024_4_25/DR1q0_SingleShot(0)_H15M1S41.nc","Modularize/Meas_raw/2024_4_25/DR1q0_SingleShot(0)_H15M10S1.nc"]
+    folder = 'Modularize/Meas_raw/OS'
+    files = [os.path.join(folder,name) for name in os.listdir(folder) if os.path.isfile(os.path.join(folder,name))]
+    QD_path = "Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl"
+    QD_agent = QDmanager(QD_path)
+    QD_agent.QD_loader()
+
+    effts = []
+    x = []
+    for nc in files:
+        try:
+            efft, _ = a_OSdata_analPlot(QD_agent,"q0",nc)
+            x.append(int(nc.split("(")[-1].split(")")[0]))
+            effts.append(efft)
+        except:
+            pass
+  
+    plt.scatter(x,effts)
+    plt.xlabel("exp index",fontsize=20)
+    plt.ylabel("Effective temp. (mK)",fontsize=20) 
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.hlines(median(array(effts)),colors="red",xmin=0,xmax=99,label=f'median={round(median(array(effts)),1)}')
+    plt.hlines(median(array(effts))+std(array(effts)),colors="red",linestyles="--",xmin=0,xmax=99)
+    plt.hlines(median(array(effts))-std(array(effts)),colors="red",linestyles="--",xmin=0,xmax=99)
+    plt.title("Effective temp raw data distribution",fontsize=20)
+    plt.legend()
+    plt.show()
+    
+    print(std(array(effts)))

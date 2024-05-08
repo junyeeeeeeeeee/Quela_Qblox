@@ -1,4 +1,4 @@
-import pickle
+import pickle, os
 from typing import Callable
 from Modularize.support.Experiment_setup import get_FluxController
 from Modularize.support.Experiment_setup import ip_register
@@ -92,7 +92,7 @@ def get_ip_specifier(QD_path:str):
     return specifier 
 
 def get_dr_loca(QD_path:str):
-    loc = QD_path.split("#")[0].split("/")[-1]
+    loc = os.path.split(QD_path)[-1].split("#")[0]
     return loc
 
 # Configure_measurement_control_loop
@@ -395,3 +395,6 @@ def two_tone_spec_sched_nco(
 
     return sched
 '''
+
+if __name__ == "__main__":
+    a = 'Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl'
