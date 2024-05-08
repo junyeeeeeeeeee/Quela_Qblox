@@ -26,3 +26,5 @@ This is the library for storing every chip information
     * Figure out the problem why two-tone can't draw the measuring pulse: if the pulse is longer than 1us, then the pulse will not show.
     * Waiting for Qblox to fix.
     * After fixing the problem, clear the codes in Oidle5QMeas.
+  
+#### Single Qubit Charaterization 08-05-2024
