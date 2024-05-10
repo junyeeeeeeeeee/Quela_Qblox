@@ -38,17 +38,17 @@ class QDmanager():
         """
         self.Log = message
 
-    def QD_loader(self):
+    def QD_loader(self, new_Hcfg:bool=False):
         """
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
         with open(self.path, 'rb') as inp:
             gift = pickle.load(inp) # refer to `merged_file` in QD_keeper()
         # string and int
-        self.chip_name = gift["chip_name"]
-        self.Identity = gift["ID"]
-        self.Log = gift["Log"]
-        self.q_num = len(list(gift["Flux"].keys()))
+        self.chip_name:str = gift["chip_name"]
+        self.Identity:str = gift["ID"]
+        self.Log:str = gift["Log"]
+        self.q_num:int = len(list(gift["Flux"].keys()))
         # class    
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
         self.Fluxmanager.activate_from_dict(gift["Flux"])
@@ -56,8 +56,12 @@ class QDmanager():
         self.Notewriter.activate_from_dict(gift["Note"])
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
-        self.Hcfg = gift["Hcfg"]
-        self.refIQ = gift["refIQ"]
+        if new_Hcfg:
+            from Modularize.support.Experiment_setup import hcfg_map
+            self.Hcfg = hcfg_map[self.Identity.split("#")[0].lower()]
+        else:
+            self.Hcfg = gift["Hcfg"]
+        self.refIQ:dict = gift["refIQ"]
         
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
