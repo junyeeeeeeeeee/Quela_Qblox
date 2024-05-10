@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from Modularize.support.Path_Book import meas_raw_dir
 import re
 
-from qcat.state_discrimination.discriminator import train_model # type: ignore
+from qcat.state_discrimination.discriminator import train_GMModel  # type: ignore
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
@@ -435,7 +435,7 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
         OS_data = 1000*array([[pgI_collection,peI_collection],[pgQ_collection,peQ_collection]]) # can train or predict 2*2*histo_counts*shot
         tarin_data, fit_arrays = OSdata_arranger(OS_data)
         # train GMM
-        dist_model = train_model(tarin_data[0])
+        dist_model = train_GMModel (tarin_data[0])
         dist_model.relabel_model(array([ref_iq]).transpose())
         # predict all collection to calculate eff_T for every exp_idx
         for histo_i in range(fit_arrays.shape[0]):

@@ -201,10 +201,10 @@ class FluxBiasDict():
         The only way to press this button is in `Modularize/support/meas_switch.py`
         """
         if self.get_offsweetspot_button(target_q):
-            eyeson_print("Now in tune away bias!")
+            eyeson_print(f"Now in tune away bias = {self.get_tuneawayBiasFor(target_q)} V")
             return self.get_tuneawayBiasFor(target_q)
         else:
-            eyeson_print("Now in sweet spot bias!")
+            eyeson_print(f"Now in sweet spot bias = {self.get_sweetBiasFor(target_q)} V ")
             return self.get_sweetBiasFor(target_q)
 
 

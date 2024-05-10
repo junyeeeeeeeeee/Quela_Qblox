@@ -128,7 +128,10 @@ class QDmanager():
         8) bias of this point.\n
         9) ro attenuation.
         """
-        self.Notewriter.create_meas_options(target_q)
+        print(z_bias)
+        if modi_idx != "-1":
+            if len(self.Notewriter.get_all_meas_options(target_q)) <= modi_idx:
+                self.Notewriter.create_meas_options(target_q)
         qubit = self.quantum_device.get_element(target_q)
         ROF = qubit.clock_freqs.readout()
         XYF = qubit.clock_freqs.f01()
@@ -289,6 +292,12 @@ class Data_manager:
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)
+        elif mode.lower() in ["ss", "os"] :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_effThisto_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"effT= {T1orT2} mK",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

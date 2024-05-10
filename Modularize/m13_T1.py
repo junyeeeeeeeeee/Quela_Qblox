@@ -94,9 +94,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         T1_us = []
         for ith in range(histo_counts):
             slightly_print(f"The {ith}-th T1:")
-
             Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
-
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
@@ -125,7 +123,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":80e-6,"histo_counts":1}
+        "q0":{"evoT":80e-6,"histo_counts":100}
     }
 
 

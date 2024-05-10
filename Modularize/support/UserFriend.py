@@ -3,32 +3,27 @@ This script sorts the functions to print different color to emphasize a importan
 Here are different level: slightly -> should look -> very important -> warning . 
 """
 from colorama import init, Fore, Back, Style
-init(autoreset=True)
+
 
 # slightly important level
 def slightly_print(msg:str):
-    init(autoreset=True)
-    print(Fore.YELLOW + msg)
+    print(Fore.YELLOW + msg + Style.RESET_ALL)
 
 # print should look level
 def eyeson_print(msg:str):
-    init(autoreset=True)
-    print(Back.WHITE + Fore.GREEN + Style.BRIGHT + msg)
+    print(Back.WHITE + Fore.GREEN + Style.BRIGHT + msg + Style.RESET_ALL)
 
 # very important level
 def highlight_print(msg:str):
-    init(autoreset=True)
-    print(Back.YELLOW + Fore.RED + Style.BRIGHT + f"*** {msg} ***")
+    print(Back.YELLOW + Fore.RED + Style.BRIGHT + f"*** {msg} ***" + Style.RESET_ALL)
 
 # warning level
 def warning_print(msg:str):
-    init(autoreset=True)
-    print(Back.RED + Fore.YELLOW + Style.BRIGHT + f"!!! WARNING: {msg} !!!")
+    print(Back.RED + Fore.YELLOW + Style.BRIGHT + f"!!! WARNING: {msg} !!!" + Style.RESET_ALL)
 
 # interaction level
 def mark_input(msg:str)->str:
-    init(autoreset=True)
-    ans = input(Fore.RED + Style.BRIGHT + msg)
+    ans = input(Fore.RED + Style.BRIGHT + msg + Style.RESET_ALL)
     
     return ans
 
