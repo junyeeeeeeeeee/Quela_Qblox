@@ -13,7 +13,7 @@ def save_this_meas_option(dr:str,last_ip:str,target_q:str,z_bias:float='sweet'):
     QD_path = find_latest_QD_pkl_for_dr(dr,last_ip)
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
-    
+
     options = QD_agent.Notewriter.get_all_meas_options(target_q)
     for opt_idx, option in enumerate(options):
         slightly_print("=====================================")
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     """ fill in """
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        'q0':{"mode_idx":0,"z_bias_forSave":'off-sweet'}   #["save","switch"] # save sweet spot bias with z_bias
+        'q0':{"mode_idx":1,"z_bias_forSave":'sweet'}   #["save","switch"] # save sweet spot bias with z_bias
     }                                                      #["sweet","off-sweet"] or a float number
  
     """ Running and Storing"""

@@ -133,10 +133,9 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    xyf_cali = 0
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"detune":0.2e6,"evoT":30e-6,"histo_counts":1}
+        "q0":{"detune":0e6,"evoT":30e-6,"histo_counts":1}
     }
 
 
@@ -146,50 +145,25 @@ if __name__ == "__main__":
     
 
     """ Running """
-    Trustable = False # don't change
     ramsey_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         freeTime = ro_elements[qubit]["evoT"]
         histo_total = ro_elements[qubit]["histo_counts"]
-        if xyf_cali:
-            manual_detune = [ro_elements[qubit]["detune"],-ro_elements[qubit]["detune"]]
-            plot_result = False
-            if histo_total != 1: raise ValueError("Histo_counts should be 1 in the XYF_calibration mode!") 
-        else:
-            manual_detune = [ro_elements[qubit]["detune"]]
-            plot_result = True
+        detuning = ro_elements[qubit]["detune"]
+        plot_result = True
             
-        all_ramsey_results = []
-        actual_detune = []
-        for detuning in manual_detune:
-            slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
-            ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
-            actual_detune.append(average_actual_detune[qubit])
-            all_ramsey_results.append(ramsey_results[qubit][qubit])
-        if xyf_cali:
-            if average(array(actual_detune)) - abs(manual_detune[0]) > 1e4:
-                Trustable = True
-                if actual_detune[0] <= actual_detune[1]: # qb freq > clock.f01
-                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf+sign(manual_detune[0])*average(array(actual_detune)))
-                else:  # qb freq < clock.f01
-                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf-sign(manual_detune[0])*average(array(actual_detune)))
-                print("Calibrated!!")
-            else:
-                warning_print("Please set a smaller detuning !")
-            Fit_T2_cali_analysis_plot(all_ramsey_results,P_rescale=False,Dis=None)
-        
-        if histo_total >= 10:
-            Trustable = True
-            QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
 
-    
-    """ Storing """
-    if execution:
-        if Trustable:
-            QD_agent.QD_keeper()
+        slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
+        ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
+
+        
+       
+        """ Storing """
+        if execution:
+            if histo_total >= 50:
+                QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
+                QD_agent.QD_keeper()
         
         
     """ Close """
