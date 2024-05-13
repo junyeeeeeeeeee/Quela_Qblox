@@ -108,7 +108,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
             cluster.reset()
             if T2_us[specific_qubits] != 0: T2_us_rec.append(T2_us[specific_qubits]) 
             if average_actual_detune[specific_qubits] != 0: detune_rec.append(average_actual_detune[specific_qubits])
-            Fit_analysis_plot(Ramsey_results[specific_qubits],P_rescale=False,Dis=None,save_path=os.path.join("Modularize/Meas_raw/2024_5_2/pic/T2",f"T2_({ith}).png"))
+            # Fit_analysis_plot(Ramsey_results[specific_qubits],P_rescale=False,Dis=None,save_path=os.path.join("Modularize/Meas_raw/2024_5_2/pic/T2",f"T2_({ith}).png"))
         T2_us_rec = array(T2_us_rec)
         
         if histo_counts == 1:
@@ -133,10 +133,10 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    xyf_cali = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    xyf_cali = 1
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"detune":0.1e6,"evoT":70e-6,"histo_counts":100}
+        "q0":{"detune":0.1e6,"evoT":70e-6,"histo_counts":1}
     }
 
 

@@ -93,7 +93,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         T1_us = []
         for ith in range(histo_counts):
             print(f"The {ith}-th T1:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_tuneawayBiasFor(specific_qubits)))
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
@@ -120,14 +120,14 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"evoT":80e-6,"histo_counts":100}
+        "q0":{"evoT":80e-6,"histo_counts":1}
     }
 
 
     """ Preparations """
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'#find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
     
