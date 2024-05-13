@@ -142,15 +142,13 @@ if __name__ == "__main__":
 
         T1_results[qubit], mean_T1_us, std_T1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,histo_counts=histo_total,run=execution)
         highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
-
-        if histo_total >= 10:
-            QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
-    
-
-
-    """ Storing (Future) """
-    if execution:
-        QD_agent.QD_keeper()
+        
+        
+        """ Storing """
+        if execution:
+            if histo_total >= 50:
+                QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
+                QD_agent.QD_keeper()
 
 
     """ Close """
