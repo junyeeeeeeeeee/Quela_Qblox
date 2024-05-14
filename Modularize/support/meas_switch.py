@@ -1,6 +1,7 @@
 """
 This py support you to measure at a different bias, the detail info is recorded in Notebook in QD file.
 """
+import os, sys
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import QDmanager
 from Modularize.support.UserFriend import *

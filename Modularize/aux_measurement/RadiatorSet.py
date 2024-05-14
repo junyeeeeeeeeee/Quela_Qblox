@@ -30,12 +30,12 @@ if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
     """ fill in """
     Temp = '0K-1'
-    QD_path = 'Modularize/QD_backup/2024_4_29/DR1#11_SumInfo-44G.pkl'
+    QD_path = 'Modularize/QD_backup/2024_5_13/DR1#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"T2detune":0e6,"freeTime":{"T1":80e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
+        "q0":{"T2detune":0e6,"freeTime":{"T1":120e-6,"T2":20e-6},"histo_counts":2} # histo_counts min = 2 when for test
     }
     data_parent_dir = os.path.join(meas_raw_dir,Temp)
-    tracking_time_min= 1 * 60
+    tracking_time_min= 0.1 * 60
 
     """ Preparations """
     os.mkdir(data_parent_dir)
@@ -76,6 +76,6 @@ if __name__ == "__main__":
 
 
     end = time.time()
-    print(f"{set_number}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
+    print(f"{set_idx}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
 
     

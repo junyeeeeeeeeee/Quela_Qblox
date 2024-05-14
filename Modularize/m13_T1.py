@@ -123,7 +123,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":80e-6,"histo_counts":100}
+        "q0":{"evoT":100e-6,"histo_counts":1}
     }
 
 

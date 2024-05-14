@@ -211,7 +211,7 @@ def plot_temp_compa(mode:str="all"):
     plt.savefig(os.path.join(temp_compa_path,f"{mode}_temp_compa.png"))
     plt.close()
 
-def plot_time_behavior_sep(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
+def plot_time_behavior_sep_withREF(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
     # after turn off radiator
     effT_ = 73.1
     std_effT_ = 13.4
@@ -275,11 +275,6 @@ def plot_time_behavior_sep(json_files:list, temperature_folder:str, time_axis:nd
 
 
 def plot_time_behavior_coX(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
-    effT_ = 77.25
-    std_effT_ = 13.4
-    T1_ = 10.6
-    std_T1_ = 0.6
-
 
     radiator_temp = temperature_folder.split("/")[-1]
     a_set_time = 7 # min
@@ -299,15 +294,15 @@ def plot_time_behavior_coX(json_files:list, temperature_folder:str, time_axis:nd
         set_n += 1
     time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)
     fig, ax = plt.subplots()
-    upper_lim_t = 20 #1.5*max(array([mean(array(avg_t1)), mean(array(avg_t1))]))
-    lower_lim_t = 0 #0.5*min(array([mean(array(avg_t1)), mean(array(avg_t1))]))
-    upper_lim_T = 1.5*max(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
-    lower_lim_T = 0.5*min(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
+    upper_lim_t = mean(array(avg_t1)) + 2.5*std(array(avg_t1))
+    lower_lim_t = mean(array(avg_t1)) - 2.5*std(array(avg_t1))
+    upper_lim_T = mean(array(avg_eff_T)) + 2.5*std(array(avg_eff_T))
+    lower_lim_T = mean(array(avg_eff_T)) - 2.5*std(array(avg_eff_T))
     # ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
     ax.errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
     # ax.axhline(y=T1_)
-    ax.set_ylabel("Time (µs)")
-    ax.set_xlabel("Time after radiator ON (min)")
+    ax.set_ylabel("Time (µs)",fontsize=20)
+    ax.set_xlabel("Time after radiator ON (min)",fontsize=20)
     ax.set_ylim(lower_lim_t,upper_lim_t)
     ax.legend(loc='upper left')
     axT = ax.twinx()
@@ -315,11 +310,65 @@ def plot_time_behavior_coX(json_files:list, temperature_folder:str, time_axis:nd
     # axT.axhline(y=effT_)
     axT.spines['right'].set_color("orange")
     axT.yaxis.label.set_color('orange')
-    axT.set_ylabel("Effective Temp. (mK)")
+    axT.set_ylabel("Effective Temp. (mK)",fontsize=20)
     axT.set_ylim(lower_lim_T,upper_lim_T)
-    axT.legend(loc='upper right')
-    plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox")
-    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior.png")
+    axT.legend(loc='upper right',fontsize=20)
+    plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox",fontsize=17)
+    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior_coX.png")
+    plt.savefig(behavior_path)
+    plt.close()
+    ax.xaxis.set_tick_params(labelsize=20)
+    ax.yaxis.set_tick_params(labelsize=20)
+    axT.yaxis.set_tick_params(labelsize=20)
+    json_folder = os.path.join(temperature_folder,"results/jsons")
+    to_keep = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T},"Time":list(time_axis_min)}
+    with open(f"{json_folder}/temperatureInfo.json", "w") as record_file:
+        json.dump(to_keep,record_file)
+
+def plot_time_behavior_sepX(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
+
+    radiator_temp = temperature_folder.split("/")[-1]
+    a_set_time = 7 # min
+    avg_t1, std_t1 = [], []
+    avg_t2, std_t2 = [], []
+    avg_eff_T, std_eff_T = [], []
+    set_n = 1
+    for a_json_file in json_files:
+        with open(a_json_file) as J:
+            info_dict = json.load(J)
+            avg_t1.append(float(info_dict["T1"]["avg"]))
+            std_t1.append(float(info_dict["T1"]["std"]))
+            avg_t2.append(float(info_dict["T2"]["avg"]))
+            std_t2.append(float(info_dict["T2"]["std"]))
+            avg_eff_T.append(float(info_dict["eff_T"]["avg"]))
+            std_eff_T.append(float(info_dict["eff_T"]["std"]))
+        set_n += 1
+    time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)
+    fig, ax = plt.subplots(2,1,figsize=(18,15),sharex=True)
+    plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox",fontsize=20)
+    upper_lim_t = mean(array(avg_t1)) + 2.5*std(array(avg_t1))
+    lower_lim_t = mean(array(avg_t1)) - 2.5*std(array(avg_t1))
+    upper_lim_T = mean(array(avg_eff_T)) + 2.5*std(array(avg_eff_T))
+    lower_lim_T = mean(array(avg_eff_T)) - 2.5*std(array(avg_eff_T))
+    # ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
+    ax[0].errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
+    # ax.axhline(y=T1_)
+    ax[0].set_ylabel("Time (µs)",fontsize=20)
+    ax[0].set_ylim(lower_lim_t,upper_lim_t)
+    ax[0].legend(loc='upper left',fontsize=20)
+    ax[0].xaxis.set_tick_params(labelsize=20)
+    ax[0].yaxis.set_tick_params(labelsize=20)
+    
+    ax[1].errorbar(time_axis_min,avg_eff_T,yerr=std_eff_T,fmt="o-",color='orange',label='eff_T')
+    ax[1].set_ylabel("Effective Temp. (mK)",fontsize=20)
+    ax[1].set_ylim(lower_lim_T,upper_lim_T)
+    ax[1].legend(loc='upper right',fontsize=20)
+    ax[1].set_xlabel("Time after radiator ON (min)",fontsize=20)
+    ax[1].xaxis.set_tick_params(labelsize=20)
+    ax[1].yaxis.set_tick_params(labelsize=20)
+    
+    plt.tight_layout()
+    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior_sep.png")
     plt.savefig(behavior_path)
     plt.close()
 
@@ -327,8 +376,6 @@ def plot_time_behavior_coX(json_files:list, temperature_folder:str, time_axis:nd
     to_keep = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T},"Time":list(time_axis_min)}
     with open(f"{json_folder}/temperatureInfo.json", "w") as record_file:
         json.dump(to_keep,record_file)
-
-
     
 
 def main_analysis(target_q:str, temperature:str, mode:str='quick'):
@@ -445,7 +492,7 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
             p0_pop = dist_model.get_state_population(new_data[0].transpose())
             p1_pop = dist_model.get_state_population(new_data[1].transpose())
             OneShot_pic_path = os.path.join(SS_folder,f"SingleShot-S{set_idx}-{histo_i}")
-            fig , eff_t, snr = plot_readout_fidelity(analysis_data, transi_freq, OneShot_pic_path)
+            fig , eff_t, snr = plot_readout_fidelity(analysis_data, transi_freq, OneShot_pic_path, False)
             effT_mK.append(eff_t)
             plt.close()
         
@@ -505,7 +552,7 @@ def plot_behavior(target_q:str, temperature:str, coX:bool=False):
     if coX:
         plot_time_behavior_coX(j_paths,parent_folder,time_past_sec_array)
     else:
-        plot_time_behavior_sep(j_paths,parent_folder,time_past_sec_array)
+        plot_time_behavior_sepX(j_paths,parent_folder,time_past_sec_array)
 
 
 def plot_stable_temp_dep(temp_folder_names:list):
@@ -574,11 +621,11 @@ def plot_stable_temp_dep(temp_folder_names:list):
 
 if __name__ == '__main__':
     target_q = 'q0'
-    temperature = 're0K-1'
+    temperature = '10K'
 
     # main_analysis(target_q, temperature)
-    # plot_behavior(target_q, temperature)
+    plot_behavior(target_q, temperature,coX=True)
     # for mode in ['all','part1','part2']:
     #     plot_temp_compa(mode)
 
-    plot_stable_temp_dep(['20K-2', '30K-2','40K-2', '60K-2'])
+    # plot_stable_temp_dep(['20K-2', '30K-2','40K-2', '60K-2'])
