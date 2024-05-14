@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -61,7 +62,9 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
 def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=7000):
 
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)))
+
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)))
+
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=shots_num,ro_amp_scaling=ro_amp_adj)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -100,16 +103,16 @@ if __name__ == "__main__":
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         
         if ro_elements[qubit]["ro_amp_factor"] !=1:
-            keep = input(f"Keep this RO amp for {qubit}?[y/n]")
+            keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")
         else:
             keep = 'y'
-
 
         """ Storing """
         if execution:
             if keep.lower() in ["y", "yes"]:
                 QD_agent.refresh_log("After IQ ref checking!")
                 QD_agent.QD_keeper()
+
 
 
     """ Close """

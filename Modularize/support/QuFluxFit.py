@@ -133,7 +133,7 @@ def mag_repalce_origin(I_ary:ndarray,Q_ary:ndarray,ref_IQ,qblox_rotation:bool=Fa
     For Qblox system, data needs to be transpose and flip, turn on the `qblox_rotation`.
     """
     if qblox_rotation:
-        displaced_magnitude = flip(transpose(IQ_data_dis(I_data=I_ary,Q_data=Q_ary,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])),axis=0)
+        displaced_magnitude = array(IQ_data_dis(I_data=I_ary,Q_data=Q_ary,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])).transpose()
     else:
         displaced_magnitude = IQ_data_dis(I_data=I_ary,Q_data=Q_ary,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
 
@@ -199,12 +199,11 @@ def set_fitting_paras(period:float,offset:float,flux_array:ndarray,Ec_guess_GHz:
     Return guess, upper_bound, bottom_bound.
     """
     f = pi/period
-    b = offset/f
+    b = offset
     guess = (f,b,Ec_guess_GHz,Ej_sum_guess_GHz,squid_ratio_guess) #[a, b, Ec, Ej_sum, d]
-    wide_period = 4*period/3
-    narrow_period = period/4
-    upper_bound = [pi/narrow_period,max(flux_array)/f,0.23,100,1] #[a, b, Ec, Ej_sum, d]
-    bottom_bound = [pi/wide_period,min(flux_array)/f,0.19,1,0]
+
+    upper_bound = [f*1.1,offset*1.1,0.32,100,1] #[a, b, Ec, Ej_sum, d]
+    bottom_bound = [f*0.9,offset*0.9,0.28,1,0]
 
     return guess, upper_bound, bottom_bound
 
@@ -254,7 +253,7 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
 
     flux, f01 = read_fq_data(data2fit_path)
     original_datapoints = flux.shape[0]
-    guess, upper_bound, bottom_bound = set_fitting_paras(period,offset,flux)
+    guess, upper_bound, bottom_bound = set_fitting_paras(period,offset,flux,0.3)
     popt, pcov = curve_fit(FqEqn, flux, f01,p0=guess,bounds=(bottom_bound,upper_bound))
 
     # try filter and fit again

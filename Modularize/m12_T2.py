@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import std, arange, array, average, mean, sign
@@ -101,8 +102,8 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         detune_rec = []
         
         for ith in range(histo_counts):
-            print(f"The {ith}-th T2:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+            slightly_print(f"The {ith}-th T2:")
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             Ramsey_results, T2_us, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
@@ -132,10 +133,9 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    xyf_cali = 0
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"detune":0.1e6,"evoT":70e-6,"histo_counts":100}
+        "q0":{"detune":0e6,"evoT":30e-6,"histo_counts":1}
     }
 
 
@@ -145,50 +145,25 @@ if __name__ == "__main__":
     
 
     """ Running """
-    Trustable = False # don't change
     ramsey_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         freeTime = ro_elements[qubit]["evoT"]
         histo_total = ro_elements[qubit]["histo_counts"]
-        if xyf_cali:
-            manual_detune = [ro_elements[qubit]["detune"],-ro_elements[qubit]["detune"]]
-            plot_result = False
-            if histo_total != 1: raise ValueError("Histo_counts should be 1 in the XYF_calibration mode!") 
-        else:
-            manual_detune = [ro_elements[qubit]["detune"]]
-            plot_result = True
+        detuning = ro_elements[qubit]["detune"]
+        plot_result = True
             
-        all_ramsey_results = []
-        actual_detune = []
-        for detuning in manual_detune:
-            print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
-            ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
-            actual_detune.append(average_actual_detune[qubit])
-            all_ramsey_results.append(ramsey_results[qubit][qubit])
-        if xyf_cali:
-            if average(array(actual_detune)) - abs(manual_detune[0]) > 1e4:
-                Trustable = True
-                if actual_detune[0] <= actual_detune[1]: # qb freq > clock.f01
-                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf+sign(manual_detune[0])*average(array(actual_detune)))
-                else:  # qb freq < clock.f01
-                    original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf-sign(manual_detune[0])*average(array(actual_detune)))
-                print("Calibrated!!")
-            else:
-                print("Warning: Please set a smaller detuning !")
-            Fit_T2_cali_analysis_plot(all_ramsey_results,P_rescale=False,Dis=None)
-        
-        if histo_total >= 10:
-            Trustable = True
-            QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
 
-    
-    """ Storing """
-    if execution:
-        if Trustable:
-            QD_agent.QD_keeper()
+        slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
+        ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
+
+        
+       
+        """ Storing """
+        if execution:
+            if histo_total >= 50:
+                QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
+                QD_agent.QD_keeper()
         
         
     """ Close """

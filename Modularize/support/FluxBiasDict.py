@@ -1,5 +1,5 @@
 from numpy import array, ndarray, sin, sqrt, cos, pi, real
-
+from Modularize.support.UserFriend import *
 
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
@@ -22,7 +22,7 @@ class FluxBiasDict():
 
     def press_offsweetspot_button(self,target_q:str,offSweetSpot:bool):
         self.__bias_dict[target_q]["offSweetSpot"] = offSweetSpot
-    def get_offsweetspot_button(self,target_q:str):
+    def get_offsweetspot_button(self,target_q:str)->bool:
         return self.__bias_dict[target_q]["offSweetSpot"]
 
 
@@ -201,10 +201,10 @@ class FluxBiasDict():
         The only way to press this button is in `Modularize/support/meas_switch.py`
         """
         if self.get_offsweetspot_button(target_q):
-            print("Now in tune away bias!")
+            eyeson_print(f"Now in tune away bias = {self.get_tuneawayBiasFor(target_q)} V")
             return self.get_tuneawayBiasFor(target_q)
         else:
-            print("Now in sweet spot bias!")
+            eyeson_print(f"Now in sweet spot bias = {self.get_sweetBiasFor(target_q)} V ")
             return self.get_sweetBiasFor(target_q)
 
 

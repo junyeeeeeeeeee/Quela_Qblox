@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.m2_CavitySpec import Cavity_spec
 from Modularize.support import Data_manager, QDmanager
+from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=10e6)
         Fctrl[qubit](0)
         cluster.reset()
-        print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
+        highlight_print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
         _ = show_quality_for(CS_results,qubit)
 
     """ Storing (future) """

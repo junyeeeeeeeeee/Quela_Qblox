@@ -395,3 +395,6 @@ def two_tone_spec_sched_nco(
 
     return sched
 '''
+
+if __name__ == "__main__":
+    a = 'Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl'

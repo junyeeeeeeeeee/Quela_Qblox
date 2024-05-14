@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from numpy import mean, array, arange, std
 from utils.tutorial_utils import show_args
+from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
@@ -92,8 +93,8 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
     if run:
         T1_us = []
         for ith in range(histo_counts):
-            print(f"The {ith}-th T1:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+            slightly_print(f"The {ith}-th T1:")
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":80e-6,"histo_counts":100}
+        "q0":{"evoT":100e-6,"histo_counts":1}
     }
 
 
@@ -140,16 +141,14 @@ if __name__ == "__main__":
         histo_total = ro_elements[qubit]["histo_counts"]
 
         T1_results[qubit], mean_T1_us, std_T1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,histo_counts=histo_total,run=execution)
-        print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
-
-        if histo_total >= 10:
-            QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
-    
-
-
-    """ Storing (Future) """
-    if execution:
-        QD_agent.QD_keeper()
+        highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
+        
+        
+        """ Storing """
+        if execution:
+            if histo_total >= 50:
+                QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
+                QD_agent.QD_keeper()
 
 
     """ Close """

@@ -78,7 +78,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
 def QD_RO_init(QD_agent:QDmanager, target_q:str):
     qubit = QD_agent.quantum_device.get_element(target_q)
     qubit.reset.duration(150e-6)
-    qubit.measure.acq_delay(500e-9)
+    qubit.measure.acq_delay(100e-9)
     qubit.measure.pulse_amp(0.15)
     qubit.measure.pulse_duration(2e-6)
     qubit.measure.integration_time(1.5e-6-4e-9)
