@@ -7,7 +7,7 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 
-def qualityFit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
+def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
     rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()+f_shifter}
     
     if run:
@@ -19,24 +19,17 @@ def qualityFit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:f
 
     return qb_CSresults
 
-def show_quality_for(CS_results:dict,target_q:str)->dict:
-    qi = round(CS_results[target_q].quantities_of_interest['Qi'].nominal_value*1e-3,2) # in k
-    ql = round(CS_results[target_q].quantities_of_interest['Ql'].nominal_value*1e-3,2)
-    qc = round(CS_results[target_q].quantities_of_interest['Qc'].nominal_value*1e-3,2)
-
-    print(f"{target_q}: Qi= {qi}k, Qc= {qc}k, Ql= {ql}k")
-    return {"QI":qi,"QC":qc,"QL":ql}
-
 if __name__ == "__main__":
 
     """ Fill in """
-    execution = True
-    sweetSpot = True
+    execution:bool = True
+    sweetSpot:bool = 0
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"ro_amp":0.4,"ro_atte":8}
+        "q0":{"bare" :{"ro_amp":0.4,"ro_atte":8,"window_shift":0},
+              "dress":{"ro_amp":0.4,"ro_atte":8,"window_shift":0}}
     }
-    freq_shift = -1.5e6
+
 
 
     """ Preparations """ 
@@ -47,18 +40,18 @@ if __name__ == "__main__":
     """ Running """
     CS_results = {}
     for qubit in ro_elements:
-        if ro_elements[qubit]["ro_atte"] != '':
-            QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
-        if sweetSpot:
-            Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
-        else:
+        for state in ro_elements[qubit]:
+            if ro_elements[qubit][state]["ro_atte"] != '':
+                QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit][state]["ro_atte"],qubit,'ro')
+            if sweetSpot:
+                Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
+            else:
+                Fctrl[qubit](0)
+            init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            CS_results[qubit] = preciseCavity_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit][state]["ro_amp"],run = execution, f_shifter=ro_elements[qubit][state]["window_shift"],ro_span_Hz=3e6)
             Fctrl[qubit](0)
-        init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=3e6,fpts=600)
-        Fctrl[qubit](0)
-        cluster.reset()
-        highlight_print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
-        _ = show_quality_for(CS_results,qubit)
+            cluster.reset()
+            highlight_print(f"{qubit}: {state} Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
 
     """ Storing (future) """
 
