@@ -275,7 +275,7 @@ class Data_manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str='',pic_folder:str=''):
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
         if pic_folder == '':
@@ -289,19 +289,19 @@ class Data_manager:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=f"T1= {T1orT2} us",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T1",save_path=fig_path, show=show_fig)
         elif mode.lower() =="t2" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T2",save_path=fig_path, show=show_fig)
         elif mode.lower() in ["ss", "os"] :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_effThisto_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=f"effT= {T1orT2} mK",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"eff_T",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

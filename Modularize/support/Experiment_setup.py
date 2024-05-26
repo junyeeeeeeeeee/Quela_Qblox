@@ -329,14 +329,14 @@ Hcfg_dr3 = {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
         },
-        "clusterdr3_module6": {
-            "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
-            "real_output_1": {"portclock_configs": [{"port": "q6:fl", "clock": "cl0.baseband"}]},
-            "real_output_2": {"portclock_configs": [{"port": "q7:fl", "clock": "cl0.baseband"}]},
-            "real_output_3": {"portclock_configs": [{"port": "q8:fl", "clock": "cl0.baseband"}]},
+        # "clusterdr3_module6": {
+        #     "instrument_type": "QCM",
+        #     "real_output_0": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
+        #     "real_output_1": {"portclock_configs": [{"port": "q6:fl", "clock": "cl0.baseband"}]},
+        #     "real_output_2": {"portclock_configs": [{"port": "q7:fl", "clock": "cl0.baseband"}]},
+        #     "real_output_3": {"portclock_configs": [{"port": "q8:fl", "clock": "cl0.baseband"}]},
 
-        },
+        # },
         # ============ READOUT ============#
         "clusterdr3_module18": {
             "instrument_type": "QRM_RF",
@@ -408,10 +408,6 @@ def get_FluxController(cluster, ip:str):
             "q2":cluster.module2.out2_offset,
             "q3":cluster.module2.out3_offset,
             "q4":cluster.module4.out0_offset,
-            "q5":cluster.module6.out0_offset,
-            "q6":cluster.module6.out1_offset,
-            "q7":cluster.module6.out2_offset,
-            "q8":cluster.module6.out3_offset
         }   
     elif which_dr.lower() == 'dr1':
         Fctrl: callable = {
@@ -420,6 +416,25 @@ def get_FluxController(cluster, ip:str):
     else:
         raise KeyError ("please input ip label like '170' or '171'!")
     return Fctrl
+
+def get_CouplerController(cluster, ip:str):
+    which_dr = ''
+    for dr in ip_register:
+        if ip_register[dr] == ip:
+            which_dr = dr
+    if which_dr == '':
+        raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
+    
+    
+    if which_dr.lower() == 'dr3':
+        Cctrl = {
+            "c0":cluster.module6.out0_offset,
+            "c1":cluster.module6.out1_offset,
+            "c2":cluster.module6.out2_offset,
+            "c3":cluster.module6.out3_offset
+        }
+    
+    return Cctrl
 
 # # Cluster registerations
 # clusters_online = {

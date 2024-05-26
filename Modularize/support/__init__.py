@@ -25,6 +25,11 @@ import Modularize.support.Chip_Data_Store as cds
 
 from numpy import asarray, ndarray, real
 
+def multiples_of_x(raw_number:float, x:float):
+    multiples = int(raw_number//x) + 1
+    return x * multiples
+    
+
 def find_nearest(ary:ndarray, value:float):
     """ find the element  which is closest to the given target_value in the given array"""
     ary = asarray(ary)
@@ -32,7 +37,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -397,4 +402,4 @@ def two_tone_spec_sched_nco(
 '''
 
 if __name__ == "__main__":
-    a = 'Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl'
+    pass

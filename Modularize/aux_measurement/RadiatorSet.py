@@ -1,4 +1,5 @@
 import os, sys, json, time
+from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from Modularize.support.Path_Book import meas_raw_dir
@@ -39,10 +40,10 @@ if __name__ == "__main__":
 
     """ Preparations """
     os.mkdir(data_parent_dir)
+    exp_start_time = datetime.now()
+    exp_start_time = f"{exp_start_time.strftime('%Y-%m-%d')} {exp_start_time.strftime('%H:%M')}"
     start = time.time()
     cut_time = time.time()
-
-
 
     """ Running """
     other_info= {}
@@ -54,7 +55,7 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         
             if set_idx == 0:
-                other_info[qubit]={"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
+                other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
             
             set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
             evoT = ro_elements[qubit]["freeTime"]

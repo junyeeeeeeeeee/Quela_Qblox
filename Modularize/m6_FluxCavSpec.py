@@ -106,12 +106,14 @@ def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific
 
     return FD_results
 
+# accident: q2, q3, q4
+
 if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = ['q0']
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q4']
     
 
     """ Preparations """
@@ -125,7 +127,7 @@ if __name__ == "__main__":
     FD_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.05,ro_span_Hz=6e6, zpts=30)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.4,ro_span_Hz=6e6, zpts=30)
         cluster.reset()
         if execution:
             permission = mark_input("Update the QD with this result ? [y/n]") 

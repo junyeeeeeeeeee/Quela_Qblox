@@ -1,15 +1,85 @@
-import os, sys, time, json
+"""
+This program is only for analyzing a series of radiation tests like 0K, 20K 40K 60K and re0K with/without shielding. This didn't support comparison between with and without shielding
+"""
+import os, sys, time, json, pickle
+from pandas import DataFrame as DF
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox, Fit_analysis_plot
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
-from numpy import array, ndarray, mean, std, round, arange, moveaxis, transpose
+from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros
 # from Modularize.support.Pulse_schedule_library import hist_plot
 import matplotlib.pyplot as plt
 from Modularize.support.Path_Book import meas_raw_dir
-import re
-
+from Modularize.analysis.DRtemp import Kelvin_collector
 from qcat.state_discrimination.discriminator import train_GMModel  # type: ignore
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
+
+# ================================ Functional =========================================================================================
+def find_nearest(ary:ndarray, value:float)->tuple[int,float]:
+    """ find the element  which is closest to the given target_value in the given array"""
+    idx = (abs(ary - value)).argmin()
+    return idx, float(ary[idx])
+
+def timelabelfolder_creator(folder_path:str,additional_folder_name:str='')->str:
+    import datetime
+    current_time = datetime.datetime.now()
+    temp_dep_folder_name =  f"{additional_folder_name}_H{current_time.hour}M{current_time.minute}S{current_time.second}"
+    temp_dep_folder_path = os.path.join(folder_path,temp_dep_folder_name)
+    if not os.path.exists(temp_dep_folder_path):
+        os.mkdir(temp_dep_folder_path)
+    return temp_dep_folder_path
+
+def pic_values_saver(folder_path:str,mode:str,*args):
+    """ 
+        mode indicates the axis in this pic is time with the mode='time', or temperature with the mode='temp'.
+    """
+    exp_type = [data_dict["exp"].upper() for data_dict in args]
+    if "T1" in exp_type:
+        title=["T1","us"]
+    elif "T2" in exp_type:
+        title=["T2","us"]
+    elif  any(array(["EFFT" in exp_type, "EFF_T" in exp_type])):
+        title=["effT","mK"]
+    else:
+        title=["EXP","a.u."]
+
+    if mode.lower() in ["time"]:
+        x_axis_unit = "min"
+    elif mode.lower() in ["temp","temperature","tempera"]:
+        x_axis_unit = "K"
+    else:
+        raise KeyError("Unsupported mode given!")
+
+    to_csv_dict = {f"exp_x_({x_axis_unit})":[],f"exp_y_({title[-1]})":[],f"exp_yerr_({title[-1]})":[],
+                   f"exp_dr_temp_x_({x_axis_unit})":[],"exp_dr_temp_(K)":[],"exp_dr_temp_err_(K)":[],
+                   f"ref_x_(K)":[],f"ref_y_({title[-1]})":[],f"ref_yerr_({title[-1]})":[]
+                   }
+    for data_dict in args:
+        if data_dict["exp"].lower() in ["t1", "t2", "efft", "eff_t"]:
+            to_csv_dict[f"exp_x_({x_axis_unit})"] = data_dict["x"]
+            to_csv_dict[f"exp_y_({title[-1]})"] += data_dict["y"]
+            to_csv_dict[f"exp_yerr_({title[-1]})"] += data_dict["yerr"]
+
+        elif data_dict["exp"].lower() in ["ref-t1", "ref-t2", "ref-efft", "ref-eff_t"]:
+            to_csv_dict[f"ref_x_(K)"] += data_dict["x"] # reference measured at 4K
+            to_csv_dict[f"ref_y_({title[-1]})"] += data_dict["y"]
+            to_csv_dict[f"ref_yerr_({title[-1]})"] += data_dict["yerr"]
+        else:
+            if data_dict["exp"].split("-")[-1] == '6':
+                n = 1/1000
+            else:
+                n = 1
+            to_csv_dict[f"exp_dr_temp_x_({x_axis_unit})"] = data_dict["x"]
+            to_csv_dict["exp_dr_temp_(K)"] = array(data_dict["y"])*n
+            to_csv_dict["exp_dr_temp_err_(K)"] = array(data_dict["yerr"])*n
+
+    df = DF.from_dict(to_csv_dict, orient='index').transpose()
+    DF.to_csv(df, os.path.join(folder_path,f"{title[0]}_dataValues.csv"))
+
+    return folder_path
+    
+        
+
 
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
@@ -115,6 +185,7 @@ def save_weired_data_pic(x_s:ndarray,y:ndarray,exp_type:str,exp_idx:str,set_idx:
         plt.close()
 
 def sort_set(name_list:list, by_which_num_idx:str):
+    import re
     name_list.sort(key=lambda l: int(re.findall('\d+',l)[by_which_num_idx]))
     
 
@@ -161,241 +232,67 @@ def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
     
     return array(train_set), array(total_sets)
 
-def plot_temp_compa(mode:str="all"):
-    """
-    mode: 'all', 'part1' or 'part2'. Default is 'all'.
-    """
-    temp_compa_path = os.path.join(meas_raw_dir,"Temperature Compa")
-    if not os.path.isdir(temp_compa_path):
-        os.mkdir(temp_compa_path)
-
-    temp_folders = [name for name in os.listdir(meas_raw_dir) if (os.path.isdir(os.path.join(meas_raw_dir,name)) and (len(name.split("K"))==2 and name.split("K")[-1][0]=='-'))]
-    
-    include_mode = []
-    for temp in temp_folders:
-        if mode.lower() == 'part1':
-            if temp[-1] == '1':
-                include_mode.append(temp)
-                sub_title = "after radiator ON"
-        elif mode.lower() == 'part2':
-            if temp[-1] == '2':
-                include_mode.append(temp)
-                sub_title = "during stable env"
-        else:
-            include_mode.append(temp)
-            sub_title = ""
-
-    info_recorder = {} # Ex. 20K-2: {"T1":{"avg","std"},"T2":{"avg","std"},"eff_T":{"avg","std"}}
-    for temperature in include_mode:
-        temperature_folder = os.path.join(meas_raw_dir,temperature)
-        json_folder = os.path.join(temperature_folder,"results/jsons")
-        with open(os.path.join(json_folder,"temperatureInfo.json")) as J:
-            info_recorder[str(temperature)] = json.load(J)
-
-    plot_item = ["T1","eff_T"] #list(info_recorder[list(info_recorder.keys())[0]].keys())
-    fig,ax = plt.subplots(len(plot_item),1,figsize=(15,12))
-    for exp_idx in range(len(plot_item)):
-        exp_type = plot_item[exp_idx]
-        if exp_type != "eff_T":
-            y_label = "Time (µs)"
-        else:
-            y_label = "Effective temperature (mK)"
-        if exp_type != "Time":
-            for temperature in info_recorder:
-                ax[exp_idx].errorbar(info_recorder[temperature]['Time'],info_recorder[temperature][exp_type]["avg"],yerr=info_recorder[temperature][exp_type]["std"],fmt='o-',label=f"{temperature}")
-                ax[exp_idx].set_xlabel(f"Time {sub_title} (min)")
-                ax[exp_idx].set_ylabel(y_label)
-                ax[exp_idx].set_title(f"Temperature comparisom on {exp_type} by Qblox")
-            ax[exp_idx].legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(temp_compa_path,f"{mode}_temp_compa.png"))
-    plt.close()
-
-def plot_time_behavior_sep_withREF(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
-    # after turn off radiator
-    effT_ = 73.1
-    std_effT_ = 13.4
-    T1_ = 10.6
-    std_T1_ = 0.6
-    # before turn on radiator
-    effT_b4 = 67.01
-    std_effT_b4 = 0.39
-    T1_b4 = 11.1
-    std_T1_b4 = 1
-    radiator_temp = temperature_folder.split("/")[-1]
-    a_set_time = 7 # min
-    avg_t1, std_t1 = [], []
-    avg_t2, std_t2 = [], []
-    avg_eff_T, std_eff_T = [], []
-    set_n = 1
-    for a_json_file in json_files:
-        with open(a_json_file) as J:
+def collect_allSets_inTempera(temperature_folder_path:str)->dict:
+    json_path = os.path.join(f"{temperature_folder_path}","results","jsons")
+    info_dict = {}
+    if os.path.exists(os.path.join(json_path,"temperatureInfo.json")):
+        print("read old json")
+        with open(os.path.join(json_path,"temperatureInfo.json")) as J:
             info_dict = json.load(J)
-            avg_t1.append(float(info_dict["T1"]["avg"]))
-            std_t1.append(float(info_dict["T1"]["std"]))
-            avg_t2.append(float(info_dict["T2"]["avg"]))
-            std_t2.append(float(info_dict["T2"]["std"]))
-            avg_eff_T.append(float(info_dict["eff_T"]["avg"]))
-            std_eff_T.append(float(info_dict["eff_T"]["std"]))
-        set_n += 1
-    time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)  
-    upper_lim_T = 1.5*max(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
-    lower_lim_T = 0.5*min(array([mean(array(avg_eff_T)), mean(array(avg_eff_T))]))
-    fig, ax = plt.subplots(2,1,figsize=(18,15),sharex=True)
-    ax[0].errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
-    ax[0].axhline(y=T1_,color='#000080',label='Stable after Radiator OFF',lw=3.5)
-    ax[0].fill_between(time_axis_min,y1=T1_-std_T1_,y2=T1_+std_T1_,color='#1E90FF',alpha=0.5)
-    ax[0].axhline(y=T1_b4,color='#FA8072',label='Before Radiator ON',lw=3.5)
-    ax[0].fill_between(time_axis_min,y1=T1_b4-std_T1_b4,y2=T1_b4+std_T1_b4,color='#FFA07A',alpha=0.5)
-    ax[0].set_ylabel("T1 (µs)",fontsize=20)
-
-    ax[0].set_ylim(5,12.5)
-    ax[0].legend(loc='lower right', fontsize="23")
-    ax[0].xaxis.set_tick_params(labelsize=20)
-    ax[0].yaxis.set_tick_params(labelsize=20)
+    else:
+        avg_t1, std_t1 = [], []
+        avg_t2, std_t2 = [], []
+        avg_eff_T, std_eff_T = [], []
+        json_files = [name for name in os.listdir(json_path) if (os.path.isfile(os.path.join(json_path,name)) and name.split(".")[-1]=='json' and name.split("(")[0]=='setInfo')]
+        sort_set(json_files,0)
+        j_paths = []
+        for a_json in json_files:
+            j_paths.append(os.path.join(json_path,a_json))
+        for a_json_file in j_paths:
+            with open(a_json_file) as J:
+                set_dict = json.load(J)
+                avg_t1.append(float(set_dict["T1"]["avg"]))
+                std_t1.append(float(set_dict["T1"]["std"]))
+                avg_t2.append(float(set_dict["T2"]["avg"]))
+                std_t2.append(float(set_dict["T2"]["std"]))
+                avg_eff_T.append(float(set_dict["eff_T"]["avg"]))
+                std_eff_T.append(float(set_dict["eff_T"]["std"]))
+        info_dict = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T}}  # contains the AVG and SG for every set
+        with open(os.path.join(json_path,"temperatureInfo.json"), "w") as record_file:
+            json.dump(info_dict,record_file)
     
-
-    ax[1].errorbar(time_axis_min,avg_eff_T,yerr=std_eff_T,fmt="o-",color='orange',label='eff_T')
-    ax[1].axhline(y=effT_,color='#000080',label='Stable after Radiator OFF',lw=3.5)
-    ax[1].fill_between(time_axis_min,y1=effT_-std_effT_,y2=effT_+std_effT_,color='#1E90FF',alpha=0.5)
-    ax[1].axhline(y=effT_b4,color='#FA8072',label='Before Radiator ON',lw=3.5)
-    ax[1].fill_between(time_axis_min,y1=effT_b4-std_effT_b4,y2=effT_b4+std_effT_b4,color='#FFA07A',alpha=0.5)
-    ax[1].set_ylabel("Effective Temp. (mK)",fontsize=20)
-    ax[1].set_xlabel("Time after radiator OFF (min)",fontsize=20)
-    ax[1].set_ylim(60,90)
-    ax[1].legend(loc='upper right', fontsize="23")
-    ax[1].xaxis.set_tick_params(labelsize=20)
-    ax[1].yaxis.set_tick_params(labelsize=20)
-    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior_afterOFF.png")
-    plt.tight_layout()
-    plt.savefig(behavior_path)
-    plt.close()
-    # plt.show()
+    return info_dict
 
 
+def get_time_axis(target_q:str, folder_path:str)->ndarray:
+    other_info_dict = {}
+    other_info_ = [name for name in os.listdir(folder_path) if (os.path.isfile(os.path.join(folder_path,name)) and name.split(".")[0]=='otherInfo')]
+    with open(os.path.join(folder_path,other_info_[0])) as JJ:
+        other_info_dict = json.load(JJ)
+    # extract every set time
+    return array(other_info_dict[target_q]["time_past"]) # shold be the same length with sets, units in min
 
-def plot_time_behavior_coX(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
+# ============================================ Analysis ================================================================================
 
-    radiator_temp = temperature_folder.split("/")[-1]
-    a_set_time = 7 # min
-    avg_t1, std_t1 = [], []
-    avg_t2, std_t2 = [], []
-    avg_eff_T, std_eff_T = [], []
-    set_n = 1
-    for a_json_file in json_files:
-        with open(a_json_file) as J:
-            info_dict = json.load(J)
-            avg_t1.append(float(info_dict["T1"]["avg"]))
-            std_t1.append(float(info_dict["T1"]["std"]))
-            avg_t2.append(float(info_dict["T2"]["avg"]))
-            std_t2.append(float(info_dict["T2"]["std"]))
-            avg_eff_T.append(float(info_dict["eff_T"]["avg"]))
-            std_eff_T.append(float(info_dict["eff_T"]["std"]))
-        set_n += 1
-    time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)
-    fig, ax = plt.subplots()
-    upper_lim_t = mean(array(avg_t1)) + 2.5*std(array(avg_t1))
-    lower_lim_t = mean(array(avg_t1)) - 2.5*std(array(avg_t1))
-    upper_lim_T = mean(array(avg_eff_T)) + 2.5*std(array(avg_eff_T))
-    lower_lim_T = mean(array(avg_eff_T)) - 2.5*std(array(avg_eff_T))
-    # ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
-    ax.errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
-    # ax.axhline(y=T1_)
-    ax.set_ylabel("Time (µs)",fontsize=20)
-    ax.set_xlabel("Time after radiator ON (min)",fontsize=20)
-    ax.set_ylim(lower_lim_t,upper_lim_t)
-    ax.legend(loc='upper left')
-    axT = ax.twinx()
-    axT.errorbar(time_axis_min,avg_eff_T,yerr=std_eff_T,fmt="o-",color='orange',label='eff_T')
-    # axT.axhline(y=effT_)
-    axT.spines['right'].set_color("orange")
-    axT.yaxis.label.set_color('orange')
-    axT.set_ylabel("Effective Temp. (mK)",fontsize=20)
-    axT.set_ylim(lower_lim_T,upper_lim_T)
-    axT.legend(loc='upper right',fontsize=20)
-    plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox",fontsize=17)
-    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior_coX.png")
-    plt.savefig(behavior_path)
-    plt.close()
-    ax.xaxis.set_tick_params(labelsize=20)
-    ax.yaxis.set_tick_params(labelsize=20)
-    axT.yaxis.set_tick_params(labelsize=20)
-    json_folder = os.path.join(temperature_folder,"results/jsons")
-    to_keep = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T},"Time":list(time_axis_min)}
-    with open(f"{json_folder}/temperatureInfo.json", "w") as record_file:
-        json.dump(to_keep,record_file)
-
-def plot_time_behavior_sepX(json_files:list, temperature_folder:str, time_axis:ndarray=array([])):
-
-    radiator_temp = temperature_folder.split("/")[-1]
-    a_set_time = 7 # min
-    avg_t1, std_t1 = [], []
-    avg_t2, std_t2 = [], []
-    avg_eff_T, std_eff_T = [], []
-    set_n = 1
-    for a_json_file in json_files:
-        with open(a_json_file) as J:
-            info_dict = json.load(J)
-            avg_t1.append(float(info_dict["T1"]["avg"]))
-            std_t1.append(float(info_dict["T1"]["std"]))
-            avg_t2.append(float(info_dict["T2"]["avg"]))
-            std_t2.append(float(info_dict["T2"]["std"]))
-            avg_eff_T.append(float(info_dict["eff_T"]["avg"]))
-            std_eff_T.append(float(info_dict["eff_T"]["std"]))
-        set_n += 1
-    time_axis_min = arange(1,set_n)*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)
-    fig, ax = plt.subplots(2,1,figsize=(18,15),sharex=True)
-    plt.title(f"Behavior after radiator ON (T={radiator_temp}) by Qblox",fontsize=20)
-    upper_lim_t = mean(array(avg_t1)) + 2.5*std(array(avg_t1))
-    lower_lim_t = mean(array(avg_t1)) - 2.5*std(array(avg_t1))
-    upper_lim_T = mean(array(avg_eff_T)) + 2.5*std(array(avg_eff_T))
-    lower_lim_T = mean(array(avg_eff_T)) - 2.5*std(array(avg_eff_T))
-    # ax.errorbar(time_axis_min,avg_t2,yerr=std_t2,fmt="o-",color='blue',label='T2')
-    ax[0].errorbar(time_axis_min,avg_t1,yerr=std_t1,fmt="o-",color='red',label='T1')
-    # ax.axhline(y=T1_)
-    ax[0].set_ylabel("Time (µs)",fontsize=20)
-    ax[0].set_ylim(lower_lim_t,upper_lim_t)
-    ax[0].legend(loc='upper left',fontsize=20)
-    ax[0].xaxis.set_tick_params(labelsize=20)
-    ax[0].yaxis.set_tick_params(labelsize=20)
-    
-    ax[1].errorbar(time_axis_min,avg_eff_T,yerr=std_eff_T,fmt="o-",color='orange',label='eff_T')
-    ax[1].set_ylabel("Effective Temp. (mK)",fontsize=20)
-    ax[1].set_ylim(lower_lim_T,upper_lim_T)
-    ax[1].legend(loc='upper right',fontsize=20)
-    ax[1].set_xlabel("Time after radiator ON (min)",fontsize=20)
-    ax[1].xaxis.set_tick_params(labelsize=20)
-    ax[1].yaxis.set_tick_params(labelsize=20)
-    
-    plt.tight_layout()
-    behavior_path = os.path.join(temperature_folder,f"T_{radiator_temp}_behavior_sep.png")
-    plt.savefig(behavior_path)
-    plt.close()
-
-    json_folder = os.path.join(temperature_folder,"results/jsons")
-    to_keep = {"T1":{"avg":avg_t1,"std":std_t1},"T2":{"avg":avg_t2,"std":std_t2},"eff_T":{"avg":avg_eff_T,"std":std_eff_T},"Time":list(time_axis_min)}
-    with open(f"{json_folder}/temperatureInfo.json", "w") as record_file:
-        json.dump(to_keep,record_file)
-    
-
-def main_analysis(target_q:str, temperature:str, mode:str='quick'):
+def main_analysis(target_q:str, temperature_folder_path:str, mode:str='quick'):
     """
     target_q: 'q0'\n
     temperature: '10K'\n
     mode: 'quick' or 'detail', represented save all the results pic or just histogram.\n
     """
     other_info_dict = {}
-    parent_path = os.path.join(meas_raw_dir,temperature)
+    temperature = os.path.split(temperature_folder_path)[-1]
+    parent_path = temperature_folder_path
 
-    sub_folders = [name for name in os.listdir(parent_path) if (os.path.isdir(os.path.join(parent_path,name)) and name[:8]=='Radiator')] # Radiator(idx)
-    other_info_ = [name for name in os.listdir(parent_path) if (os.path.isfile(os.path.join(parent_path,name)) and name.split(".")[-1]=='json')]
-    with open(os.path.join(parent_path,other_info_[0])) as JJ:
+    sub_folders = [name for name in os.listdir(temperature_folder_path) if (os.path.isdir(os.path.join(temperature_folder_path,name)) and name[:8]=='Radiator')] # Radiator(idx)
+    other_info_ = [name for name in os.listdir(temperature_folder_path) if (os.path.isfile(os.path.join(temperature_folder_path,name)) and name.split(".")[-1]=='json')]
+    with open(os.path.join(temperature_folder_path,other_info_[0])) as JJ:
         other_info_dict = json.load(JJ)
 
     sort_set(sub_folders,0) # sort sets start from 0 
     ref_iq = other_info_dict[target_q]["refIQ"]
     transi_freq = other_info_dict[target_q]["f01"] # Hz
-    result_folder = create_result_folder(parent_path)
+    result_folder = create_result_folder(temperature_folder_path)
     json_folder = create_json_folder(result_folder)
     SS_folder = creat_oneshot_folder(result_folder)
     T1_pic_folder = create_T1T2_folder(result_folder,"t1")
@@ -405,10 +302,11 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
     T2s = []
     effTs = []
 
+
     for folder_name in sub_folders:
         info_dict = create_results_dict()
         set_idx = folder_name.split("(")[-1].split(")")[0]
-        folder_path = os.path.join(parent_path,folder_name)
+        folder_path = os.path.join(temperature_folder_path,folder_name)
         print(f"==================================================== Set-{set_idx} start")
         files = [name for name in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path,name))] # DR1q0_{T1/T2/SingleShot}(exp_idx)_H17M23S19.nc
         files = sort_files(files) # sort files start from 0 
@@ -437,9 +335,9 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
                         Fit_analysis_plot(data_fit,P_rescale=False,Dis=None,save_folder=os.path.join(T1_pic_folder,f"T1_S{set_idx}-{exp_idx}.png"))
                     T1_us.append(data_fit.attrs['T1_fit']*1e6)
                     if data_fit.attrs['T1_fit']*1e6 > 50: 
-                        save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path,data_fit)   
+                        save_weired_data_pic(times, data, "T1", exp_idx, set_idx, temperature_folder_path,data_fit)   
                 except:
-                    save_weired_data_pic(times, data, "T1", exp_idx, set_idx, parent_path)
+                    save_weired_data_pic(times, data, "T1", exp_idx, set_idx, temperature_folder_path)
                     T1_us.append(0)
             elif exp_type == "T2":
                 T2_ds = open_dataset(file_path)
@@ -452,9 +350,9 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
                         Fit_analysis_plot(data_fit,P_rescale=False,Dis=None,save_folder=os.path.join(T2_pic_folder,f"T2_S{set_idx}-{exp_idx}.png"))
                     T2_us.append(data_fit.attrs['T2_fit']*1e6)
                     if data_fit.attrs['T2_fit']*1e6 > 30:
-                        save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path, data_fit)
+                        save_weired_data_pic(times, data, "T2", exp_idx, set_idx, temperature_folder_path, data_fit)
                 except:
-                    save_weired_data_pic(times, data, "T2", exp_idx, set_idx, parent_path)
+                    save_weired_data_pic(times, data, "T2", exp_idx, set_idx, temperature_folder_path)
                     T2_us.append(0)
                 
                 
@@ -522,8 +420,8 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
         with open(f"{json_folder}/setInfo({set_idx}).json", "w") as record_file: 
             json.dump(info_dict,record_file)
 
-    every_value = {"T1s":list(array(T1s).reshape(-1)),"T2s":list(array(T2s).reshape(-1)),"effTs":list(array(effTs).reshape(-1))}
-    with open(f"{json_folder}/every_values.json", "w") as record_file:
+    every_value = {"T1s":list(array(T1s).reshape(-1)),"T2s":list(array(T2s).reshape(-1)),"effTs":list(array(effTs).reshape(-1))} # This contains all the data point to calc a AVG and SD in a temp
+    with open(f"{json_folder}/every_values.json", "w") as record_file:   
             json.dump(every_value,record_file)
 
     end = time.time()
@@ -531,101 +429,485 @@ def main_analysis(target_q:str, temperature:str, mode:str='quick'):
 
 
 
-""" plot behavior """
-def plot_behavior(target_q:str, temperature:str, coX:bool=False):
-    other_info_dict = {}
-    parent_folder = os.path.join(meas_raw_dir,temperature)
-    other_info_ = [name for name in os.listdir(parent_folder) if (os.path.isfile(os.path.join(parent_folder,name)) and name.split(".")[-1]=='json')]
-    with open(os.path.join(parent_folder,other_info_[0])) as JJ:
-        other_info_dict = json.load(JJ)
-    # extract every set time
-    time_past_sec_array = array(other_info_dict[target_q]["time_past"]) # shold be the same length with sets, units in second
-    # extract every set info
-    jsons_folder = os.path.join(parent_folder,"results/jsons")
-    static_info = [name for name in os.listdir(jsons_folder) if (os.path.isfile(os.path.join(jsons_folder,name)) and (name.split(".")[-1]=='json' and name.split("(")[0]=='setInfo'))]
-    sort_set(static_info,0)
+# ============================================ Plot ================================================================================
 
-    j_paths = []
-    for a_json in static_info:
-        j_paths.append(os.path.join(jsons_folder,a_json))
+def plot_temp_compa(mode:str="all"):
+    """
+    plot T1/effT/T2 with different temperature in a fiqure along time axis.\n
+    mode: 'all', 'part1' or 'part2'. Default is 'all'.
+    ## this will be modified in the future
+    """
+    temp_compa_path = os.path.join(meas_raw_dir,"Temperature Compa")
+    if not os.path.isdir(temp_compa_path):
+        os.mkdir(temp_compa_path)
 
-    if coX:
-        plot_time_behavior_coX(j_paths,parent_folder,time_past_sec_array)
+    temp_folders = [name for name in os.listdir(meas_raw_dir) if (os.path.isdir(os.path.join(meas_raw_dir,name)) and (len(name.split("K"))==2 and name.split("K")[-1][0]=='-'))]
+    
+    include_mode = []
+    for temp in temp_folders:
+        if mode.lower() == 'part1':
+            if temp[-1] == '1':
+                include_mode.append(temp)
+                sub_title = "after radiator ON"
+        elif mode.lower() == 'part2':
+            if temp[-1] == '2':
+                include_mode.append(temp)
+                sub_title = "during stable env"
+        else:
+            include_mode.append(temp)
+            sub_title = ""
+
+    info_recorder = {} # Ex. 20K-2: {"T1":{"avg","std"},"T2":{"avg","std"},"eff_T":{"avg","std"}}
+    for temperature in include_mode:
+        temperature_folder = os.path.join(meas_raw_dir,temperature)
+        json_folder = os.path.join(temperature_folder,"results","jsons")
+        with open(os.path.join(json_folder,"temperatureInfo.json")) as J:
+            info_recorder[str(temperature)] = json.load(J)
+
+    plot_item = ["T1","eff_T"] #list(info_recorder[list(info_recorder.keys())[0]].keys())
+    fig,ax = plt.subplots(len(plot_item),1,figsize=(15,12))
+    for exp_idx in range(len(plot_item)):
+        exp_type = plot_item[exp_idx]
+        if exp_type != "eff_T":
+            y_label = "Time (µs)"
+        else:
+            y_label = "Effective temperature (mK)"
+        if exp_type != "Time":
+            for temperature in info_recorder:
+                ax[exp_idx].errorbar(info_recorder[temperature]['Time'],info_recorder[temperature][exp_type]["avg"],yerr=info_recorder[temperature][exp_type]["std"],fmt='o-',label=f"{temperature}")
+                ax[exp_idx].set_xlabel(f"Time {sub_title} (min)")
+                ax[exp_idx].set_ylabel(y_label)
+                ax[exp_idx].set_title(f"Temperature comparisom on {exp_type} by Qblox")
+            ax[exp_idx].legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(temp_compa_path,f"{mode}_temp_compa.png"))
+    plt.close()
+
+def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=array([]), radiator_act:str="ON")->plt.Axes:
+    """
+    Plot T1/T2/eff_T trend along time axis.\n
+    arg `mode` assign which value to plot : 'T1', 'T2' or 'effT' 
+    """
+    
+    tempera_into = collect_allSets_inTempera(temperature_folder)
+    a_set_time = 7 # mins
+    time_axis_min = arange(1,len(tempera_into["T1"]["avg"]))*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)  
+    
+    ax_info = {"exp":mode, "x":time_axis_min.tolist()}
+
+    fig, ax = plt.subplots(1,1,figsize=(15,10))
+    ax:plt.Axes
+    if mode.lower() == 't1':
+        ax.errorbar(time_axis_min,tempera_into["T1"]["avg"],yerr=tempera_into["T1"]["std"],fmt="o-",color='red')
+        ax_info["y"], ax_info["yerr"] = tempera_into["T1"]["avg"], tempera_into["T1"]["std"]
+        ax.set_ylabel("$T_{1}$ (µs)",fontsize=26)
+        ax.yaxis.label.set_color("red")
+    
+    elif mode.lower() == 'efft':
+        ax.errorbar(time_axis_min,tempera_into["eff_T"]["avg"],yerr=tempera_into["eff_T"]["std"],fmt="o-",color='orange')
+        ax_info["y"], ax_info["yerr"] = tempera_into["eff_T"]["avg"], tempera_into["eff_T"]["std"]
+        ax.set_ylabel("Effective Temp. (mK)",fontsize=26)
+        ax.yaxis.label.set_color('orange')
+        
+    
     else:
-        plot_time_behavior_sepX(j_paths,parent_folder,time_past_sec_array)
-
-
-def plot_stable_temp_dep(temp_folder_names:list):
-    effT_ = 73.1
-    std_effT_ = 13.4
-    T1_ = 10.6
-    std_T1_ = 0.6
-
-    temps = []
-    T1 = {"avgs":[],"stds":[]}
-    T2 = {"avgs":[],"stds":[]}
-    effT = {"avgs":[],"stds":[]}
-
-    for temperature in temp_folder_names:
-        folder = os.path.join(meas_raw_dir,temperature)
-        json_file = os.path.join(folder,"results/jsons/every_values.json")
-        with open(json_file) as JJ:
-            JJ = json.load(JJ)
-            temps.append(int(temperature.split("K")[0]))
-            T1["avgs"].append(mean(array(JJ["T1s"])))
-            T1["stds"].append(std(array(JJ["T1s"])))
-            T2["avgs"].append(mean(array(JJ["T2s"])))
-            T2["stds"].append(std(array(JJ["T2s"])))
-            effT["avgs"].append(mean(array(JJ["effTs"])))
-            effT["stds"].append(std(array(JJ["effTs"])))
-
-    for exp_type in ["T1","effT"]:
-        if exp_type == "T1":
-            plt.figure(figsize=(12,9))
-            plt.errorbar(temps,T1["avgs"],yerr=T1["stds"],fmt="o-",c='red',label='exp value')
-            plt.errorbar(0,11.1,yerr=1,fmt="o-",c='orange',label='before Radiator ON')
-            plt.errorbar(0,T1_,yerr=std_T1_,fmt="o-",c='#1E90FF',label='Stable after Radiator OFF')
-
-            plt.legend(loc="lower left",fontsize=20)
-        elif exp_type == "T2":
-            plt.errorbar(temps,T2["avgs"],yerr=T2["stds"],fmt="o-")
-        else:
-            plt.figure(figsize=(12,9))
-            plt.errorbar(temps,effT["avgs"],yerr=effT["stds"],fmt="o-",c='red',label='exp value')
-            plt.errorbar(4,effT_,yerr=std_effT_,fmt="o-",c='#1E90FF',label='Stable after Radiator OFF')
-            plt.errorbar(4,67.01,yerr=0.39,fmt="o-",c='orange',label='before Radiator ON')
-            
-            plt.legend(loc="lower right",fontsize=20)
-        plt.xlabel("Radiator temp. (K)",fontsize=20)
-        if exp_type != "effT":
-            plt.ylabel("Time. (us)",fontsize=20)
-        else:
-            plt.ylabel("Effective temp (mK)",fontsize=20)
+        ax.errorbar(time_axis_min,tempera_into["T2"]["avg"],yerr=tempera_into["T2"]["std"],fmt="o-",color='blue')
+        ax_info["y"], ax_info["yerr"] = tempera_into["T2"]["avg"], tempera_into["T2"]["std"]
+        ax.set_ylabel("$T_{2}$ (µs)",fontsize=26)
+        ax.yaxis.label.set_color('blue')
         
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        
-        plt.title(f"{exp_type} by Qblox",fontsize=20)
-        # plt.show()
-        plt.savefig(f"Modularize/Meas_raw/Temperature Compa/{exp_type}.png")
-        plt.close()
-
+    ax.xaxis.set_tick_params(labelsize=26)
+    ax.yaxis.set_tick_params(labelsize=26)
+    ax.set_xlabel(f"time after radiator {radiator_act} (min)", fontsize=28)
+    
+    return ax, ax_info
 
     
 
+def plot_ref_onAxes(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, which:str="T1")->plt.Axes:
+    """ #### ref_dict keys should follow the form: `{"T1","T1_sd","T2","T2_sd","effT","effT_sd"}`\n
+        the element in dict must be given in value-sd pair, which kinds of pair is optional.\n
+        If the dict is empty, we don't plot it on Axes. 
+    """
+    ax_info = {"exp":f"ref-{which}","x":[],"y":[],"yerr":[]}
+    if ref_dict_b4 != {}:
+        key_names_b4 = list(ref_dict_b4.keys())
+        if ("T1" in key_names_b4) and ("T1_sd" in key_names_b4) and (which.lower() == 't1'):
+            ax.axhline(y=ref_dict_b4["T1"],color='#000080',label=f"{which.upper()}-Before turn ON radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_b4["T1"]-ref_dict_b4["T1_sd"],y2=ref_dict_b4["T1"]+ref_dict_b4["T1_sd"],color='#1E90FF',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_b4["T1"]), ax_info["yerr"].append(ref_dict_b4["T1_sd"])
+        if  ("T2" in key_names_b4) and ("T2_sd" in key_names_b4) and (which.lower() == 't2'):
+            ax.axhline(y=ref_dict_b4["T2"],color='#000080',label=f"{which.upper()}-Before turn ON radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_b4["T2"]-ref_dict_b4["T2_sd"],y2=ref_dict_b4["T2"]+ref_dict_b4["T2_sd"],color='#1E90FF',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_b4["T2"]), ax_info["yerr"].append(ref_dict_b4["T2_sd"])
+        if ("effT" in key_names_b4) and ("effT_sd" in key_names_b4) and (which.lower() == 'efft'):
+            ax.axhline(y=ref_dict_b4["effT"],color='#000080',label=f"{which.upper()}-Before turn ON radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_b4["effT"]-ref_dict_b4["effT_sd"],y2=ref_dict_b4["effT"]+ref_dict_b4["effT_sd"],color='#1E90FF',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_b4["effT"]), ax_info["yerr"].append(ref_dict_b4["effT_sd"])
+    if ref_dict_recover != {}:
+        key_names_rc = list(ref_dict_recover.keys())
+        if ("T1" in key_names_rc) and ("T1_sd" in key_names_rc) and (which.lower() == 't1'):
+            ax.axhline(y=ref_dict_recover["T1"],color='#FA8072',label=f"{which.upper()}-LONG enough After turn OFF radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_recover["T1"]-ref_dict_recover["T1_sd"],y2=ref_dict_recover["T1"]+ref_dict_recover["T1_sd"],color='#FFA07A',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_recover["T1"]), ax_info["yerr"].append(ref_dict_recover["T1_sd"])
+        if  ("T2" in key_names_rc) and ("T2_sd" in key_names_rc) and (which.lower() == 't2'):
+            ax.axhline(y=ref_dict_recover["T2"],color='#FA8072',label=f"{which.upper()}-LONG enough After turn OFF radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_recover["T2"]-ref_dict_recover["T2_sd"],y2=ref_dict_recover["T2"]+ref_dict_recover["T2_sd"],color='#FFA07A',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_recover["T2"]), ax_info["yerr"].append(ref_dict_recover["T2_sd"])
+        if ("effT" in key_names_rc) and ("effT_sd" in key_names_rc) and (which.lower() == 'efft'):
+            ax.axhline(y=ref_dict_recover["effT"],color='#FA8072',label=f"{which.upper()}-LONG enough After turn OFF radiator",lw=3.5)
+            ax.fill_between(ax.lines[0].get_xdata(),y1=ref_dict_recover["effT"]-ref_dict_recover["effT_sd"],y2=ref_dict_recover["effT"]+ref_dict_recover["effT_sd"],color='#FFA07A',alpha=0.3)
+            ax_info["x"].append(4), ax_info["y"].append(ref_dict_recover["effT"]), ax_info["yerr"].append(ref_dict_recover["effT_sd"])
+    
+    return ax, ax_info
+    
+
+def plot_DR_tempera(start_date:str="",start_time:str="",temp_chennel:int=6,DR_log_folder_path:str="",ax:plt.Axes=None,time_axis:ndarray=array([]))-> plt.Axes:
+    """
+    ## Plot only when start_date, start_time, and DR_log_folder_path are ALL given.
+    """
+    dr_info = {"exp":f"Chennel-{temp_chennel}","x":[],"y":[],"yerr":[]} # no average here
+    if ax is None:
+        fig, axDR = plt.subplots(1,1,figsize=(12,9))
+        axDR.set_xlabel("Time past (min)", fontsize=26)
+    else:
+        if start_date == "" or start_time == "" or DR_log_folder_path == "":
+            axDR = ax
+        else:
+            axDR:plt.Axes = ax.twinx()
+            axDR.spines['right'].set_color("green")
+            axDR.yaxis.label.set_color("green")
+    # call DR temperature coresponding to temp. chennel
+    if start_date == "" or start_time == "" or DR_log_folder_path == "":
+        pass
+    else:
+        dr_time_array, dr_temp_array = Kelvin_collector(DR_log_folder_path,start_date,start_time,int((time_axis[-1]-time_axis[0])/60),temp_chennel)
+        
+        if temp_chennel in [6, "6"]:
+            y_name = 'MXC temp. (mK)'
+            dr_temp_array *= 1000
+        elif temp_chennel in [2, "2"]:
+            y_name = '4K-plate temp. (K)'
+        else:
+            y_name = f"Chennel-{temp_chennel} temp. (K)"
+        
+        axDR.plot(dr_time_array, dr_temp_array, c="cyan",lw=3.5)
+        axDR.plot(dr_time_array, dr_temp_array, c="green",lw=2.8)
+        axDR.set_ylabel(y_name,fontsize=26)
+        axDR.set_ylim(min(dr_temp_array)-std(dr_temp_array), max(dr_temp_array)+std(dr_temp_array))
+        axDR.xaxis.set_tick_params(labelsize=26)
+        axDR.yaxis.set_tick_params(labelsize=26)
+        dr_info["x"] = dr_time_array.tolist()
+        dr_info["y"] = dr_temp_array.tolist()
+        dr_info["yerr"] = zeros(dr_temp_array.shape[0]).tolist()
+    return axDR, dr_info
+
+def scat_DR_avg_temp(need_log_info:dict,DR_log_folder_path:str="",ax:plt.Axes=None,temp_chennel:int=6)->tuple[plt.Axes, plt.Axes]:
+    """ 
+    `need_log_info` follows the form: {temp:{"keep_time_min", "start_date", "start_time", "avg_min_from_the_end"}}
+    """
+    button:bool = 1
+    dr_info = {"exp":f"Chennel-{temp_chennel}"}
+    if ax is None :
+        plt.close()
+        fig, axDR = plt.subplots(1,1,figsize=(12,9))
+        axDR.set_xlabel("Radiator temp. (K)", fontsize=26)
+        x_axis = []
+        x_axis += [int(temp.split("K")[0]) for temp in need_log_info]
+   
+
+    dr_temp_avg = []
+    dr_temp_std = []
+    x_axis = []
+    for temperature in need_log_info:
+        exp_keep_time_min:int = need_log_info[temperature]["keep_time_min"]
+        start_date:str = need_log_info[temperature]["start_date"]
+        start_time:str = need_log_info[temperature]["start_time"]
+        avg_min_from_the_end:int = need_log_info[temperature]["avg_min_from_the_end"]
+
+        if DR_log_folder_path == "" or start_date == "" or start_time == "":
+            pass
+        else:
+            if button:
+                axDR:plt.Axes = ax.twinx()
+                axDR.spines['right'].set_color("green")
+                axDR.yaxis.label.set_color("green")
+                button = 0
+
+            dr_time_array, dr_temp_array = Kelvin_collector(DR_log_folder_path,start_date,start_time,exp_keep_time_min,temp_chennel)
+            avg_start_min = int(dr_time_array[-1] - avg_min_from_the_end)
+            idx, _ = find_nearest(dr_time_array, avg_start_min)
+            dr_temp_avg.append(mean(dr_temp_array[idx:]))
+            dr_temp_std.append(std(dr_temp_array[idx:]))
+            x_axis.append(int(temperature.split("K")[0]))
+    dr_temp_avg = array(dr_temp_avg)
+    dr_temp_std = array(dr_temp_std)
+
+    if int(temp_chennel) == 6 :
+        y_name = 'MXC temp. (mK)'
+        dr_temp_avg *= 1000
+        dr_temp_std *= 1000
+    elif int(temp_chennel) == 2 :
+        y_name = '4K-plate temp. (K)'
+    else:
+        y_name = f"Chennel-{temp_chennel} temp. (K)"
+
+    if button:
+        axDR = ax
+        dr_info["x"], dr_info["y"], dr_info["yerr"] = [], [], []
+    else:
+        dr_info["x"], dr_info["y"], dr_info["yerr"] = x_axis, dr_temp_avg, dr_temp_std
+        axDR.errorbar(x_axis, dr_temp_avg, yerr=dr_temp_std, fmt='o-', c="green")
+        axDR.set_ylabel(y_name,fontsize=26)
+        axDR.set_ylim(min(dr_temp_avg)-std(dr_temp_avg), max(dr_temp_avg)+std(dr_temp_avg))
+        axDR.xaxis.set_tick_params(labelsize=26) 
+        axDR.yaxis.set_tick_params(labelsize=26)    
+    return axDR, dr_info
 
 
+def plot_stable_temp_dep(temp_folder_names:list, exp_type:str, slice_min_from_the_end:list=[0])->tuple[plt.Axes, dict, str, dict]:
+    """exp_type should be one of ['T1', 'T2', 'effT']"""
+    keep_time = {}
+    x_axis = []
+    exp_value = {"avgs":[],"stds":[]}
+    for idx, temperature in enumerate(temp_folder_names):
+        every_value_dict = {}
+        tempera_folder = os.path.join(meas_raw_dir,sameple_folder,conditional_folder,temperature)
+        time_past_min_array = get_time_axis(target_q,tempera_folder)/60
+        keep_time[temperature] = int(time_past_min_array[-1]-time_past_min_array[0])
+        set_number = time_past_min_array.shape[0]
+        json_file = os.path.join(tempera_folder,"results","jsons","every_values.json")
+        with open(json_file) as JJ:
+            every_value_dict = json.load(JJ)
+            x_axis.append(int(temperature.split("K")[0]))
+
+        slice_from_this_min = int(time_past_min_array[-1]-slice_min_from_the_end[idx])
+        histo_count_in_set = int(len(every_value_dict[f"{exp_type}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
+        this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
+        histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set          
+        exp_value["avgs"].append(mean(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
+        exp_value["stds"].append( std(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
+
+    fig, ax = plt.subplots(1,1,figsize=(15,10))   
+    plt.grid()  
+    ax: plt.Axes
+    ax.yaxis.label.set_color("red")
+    ax.errorbar(x_axis,exp_value["avgs"],yerr=exp_value["stds"],fmt="o-",c='red')
+    ax.set_xlabel("Radiator temp. (K)",fontsize=26)
+    
+    if exp_type in ["T1", "T2"]:
+        ax.set_ylabel(f"{exp_type} (us)",fontsize=26)
+    else:
+        ax.set_ylabel("Effective temp (mK)",fontsize=26)
+    
+    ax.xaxis.set_tick_params(labelsize=26)
+    ax.yaxis.set_tick_params(labelsize=26)
+
+
+    return ax, keep_time, os.path.split(tempera_folder)[0], {"exp":exp_type,"x":x_axis,"y":exp_value["avgs"],"yerr":exp_value["stds"]}
+
+def scat_ref_temp_dep(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, which:str="T1")->tuple[plt.Axes, list, list, dict]:
+    """ #### ref_dict keys should follow the form: `{"T1","T1_sd","T2","T2_sd","effT","effT_sd"}`\n
+        the element in dict must be given in value-sd pair, which kinds of pair is optional.\n
+        If the dict is empty, we don't plot it on Axes. 
+    """
+    x = []
+    y = []
+    yerr = []
+    if ref_dict_b4 != {}:
+        key_names_b4 = list(ref_dict_b4.keys())
+        if ("T1" in key_names_b4) and ("T1_sd" in key_names_b4) and (which.lower() == 't1'):
+            ax.scatter([4],ref_dict_b4["T1"], s=150, marker='X')
+            ax.errorbar([4],ref_dict_b4["T1"],yerr=ref_dict_b4["T1_sd"],fmt="X",label=f"{which.upper()}-Before turn ON radiator")
+            x.append(4)
+            y.append(ref_dict_b4["T1"])
+            yerr.append(ref_dict_b4["T1_sd"])
+        if  ("T2" in key_names_b4) and ("T2_sd" in key_names_b4) and (which.lower() == 't2'):
+            ax.scatter([4],ref_dict_b4["T2"], s=150, marker='X')
+            ax.errorbar([4],ref_dict_b4["T2"],yerr=ref_dict_b4["T2_sd"],fmt="X",label=f"{which.upper()}-Before turn ON radiator")
+            x.append(4)
+            y.append(ref_dict_b4["T2"])
+            yerr.append(ref_dict_b4["T2_sd"])
+        if ("effT" in key_names_b4) and ("effT_sd" in key_names_b4) and (which.lower() == 'efft'):
+            ax.scatter([4],ref_dict_b4["effT"], s=150, marker='X')
+            ax.errorbar([4],ref_dict_b4["effT"],yerr=ref_dict_b4["effT_sd"],fmt="X",label=f"{which.upper()}-Before turn ON radiator")
+            x.append(4)
+            y.append(ref_dict_b4["effT"])
+            yerr.append(ref_dict_b4["effT_sd"])
+    if ref_dict_recover != {}:
+        key_names_rc = list(ref_dict_recover.keys())
+        if ("T1" in key_names_rc) and ("T1_sd" in key_names_rc) and (which.lower() == 't1'):
+            ax.scatter([4],ref_dict_recover["T1"], s=150, marker='D')
+            ax.errorbar([4],ref_dict_recover["T1"],yerr=ref_dict_recover["T1_sd"],fmt="D",label=f"{which.upper()}-LONG enough After turn OFF radiator")
+            x.append(4)
+            y.append(ref_dict_recover["T1"])
+            yerr.append(ref_dict_recover["T1_sd"])
+        if  ("T2" in key_names_rc) and ("T2_sd" in key_names_rc) and (which.lower() == 't2'):
+            ax.scatter([4],ref_dict_recover["T2"], s=150, marker='D')
+            ax.errorbar([4],ref_dict_recover["T2"],yerr=ref_dict_recover["T2_sd"],fmt="D",label=f"{which.upper()}-LONG enough After turn OFF radiator")
+            x.append(4)
+            y.append(ref_dict_recover["T2"])
+            yerr.append(ref_dict_recover["T2_sd"])
+        if ("effT" in key_names_rc) and ("effT_sd" in key_names_rc) and (which.lower() == 'efft'):
+            ax.scatter([4],ref_dict_recover["effT"], s=150, marker='D')
+            ax.errorbar([4],ref_dict_recover["effT"],yerr=ref_dict_recover["effT_sd"],fmt="D",label=f"{which.upper()}-LONG enough After turn OFF radiator")
+            x.append(4)
+            y.append(ref_dict_recover["effT"])
+            yerr.append(ref_dict_recover["effT_sd"])
+    handles, labels = ax.get_legend_handles_labels()
+    return ax, handles, labels, {"exp":f"ref-{which}","x":x,"y":y,"yerr":yerr}
+    
+
+
+#                         ==============
+#                         =            =
+# ========================= user layer ================================
+#                         =            =
+#                         ==============
+
+def time_trend_artist(tempera_folder:str, exp_catas:list, time_past_sec_array:ndarray, ref_before:dict, ref_recove:dict, DR_time_info:dict, log_folder:str, DRtemp_che:int=6):
+    start_date = DR_time_info["start_date"]
+    start_time = DR_time_info["start_time"]
+    temperature = os.path.split(tempera_folder)[-1]
+    if temperature[:2] == "re":
+        action = "OFF"
+    else:
+        action = "ON"
+    for exp in exp_catas:
+        ax, trend_info = plot_time_behavior_sep(tempera_folder,exp,time_axis=time_past_sec_array,radiator_act=action)
+        ax, ref_info = plot_ref_onAxes(ax,ref_before,ref_recove,exp)
+        handles, labels = ax.get_legend_handles_labels()
+        plt.grid(axis='both')
+        ax, dr_info = plot_DR_tempera(start_date,start_time,DRtemp_che,log_folder,ax,time_axis=time_past_sec_array)
+        new_folder_path = timelabelfolder_creator(tempera_folder,f"{target_q}_{temperature}TIME_{exp}")
+        pic_values_saver(new_folder_path,'time',trend_info, ref_info, dr_info)
+        plt.legend(handles, labels, fontsize=20,bbox_to_anchor=(1,1.2))
+        plt.tight_layout()
+        plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp}_timeMonitor.png"))
+        plt.close()
+
+def temp_depen_artist(temperature_list:list, log_info_dict:dict, exp_catas:list, ref_before:dict={}, ref_recove:dict={}, log_folder="", tempera_che:int=6):
+    for exp in exp_catas:
+        ax, keep_time_info, conditional_folder_path, axes_info = plot_stable_temp_dep(temperature_list,exp,[log_info_dict[temp]["avg_min_from_the_end"] for temp in temperature_list])
+        for tempera in log_info_dict:
+            log_info_dict[tempera]["keep_time_min"] = keep_time_info[tempera]
+        ax, handles, labels, ref_info = scat_ref_temp_dep(ax,ref_before,ref_recove,exp)
+        
+        ax, dr_info = scat_DR_avg_temp(log_info_dict,DR_log_folder_path=log_folder,ax=ax,temp_chennel=tempera_che)
+        new_folder_path = timelabelfolder_creator(conditional_folder_path,f"{target_q}_TEMP_{exp}")
+        pic_values_saver(new_folder_path,'temp',axes_info, ref_info, dr_info)
+        plt.legend(handles, labels, fontsize=22,bbox_to_anchor=(1,1.15))
+        plt.tight_layout()
+        plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp}_tempDependence.png"))
+        plt.close()
+        # plt.show()
+    
+# without shielding 
+"""
+# after recovering
+effT_recov = 73.1
+std_effT_recov = 13.4
+T1_recov = 10.6
+std_T1_recov = 0.6
+
+# before turn on
+effT_b4 = 67.01
+std_effT_b4 = 0.39
+T1_b4 = 11.1
+std_T1_b4 = 1
+"""
 
 
 
 
 if __name__ == '__main__':
+    # // If you wanna plot DR temperature, "start_date" and "start_time" in log_info_dict and also log_folder ALL should be given !
+    # *********** Manully settings ***********
+    analysis:bool = 0
+    plot_time_trend:bool = 1
+    always_plot_timeTrend:bool = 1
+    plot_temp_dependence: bool = 1
+    save_ref:bool = 0
+
     target_q = 'q0'
-    temperature = '10K'
+    exp_catas = ["effT", "T1"]
+    sameple_folder = "Radiator_wisconsinQ1"
+    conditional_folder = "Radiator_WS"
 
-    # main_analysis(target_q, temperature)
-    plot_behavior(target_q, temperature,coX=True)
-    # for mode in ['all','part1','part2']:
-    #     plot_temp_compa(mode)
+    # ?  log_info_dict at least should have the temperature with its 'avg_min_from_the_end'
+    # // If there is only one temperature in `log_info_dict`, it will plot time trend. Or u can set 'always_plot_timeTrend = True` to enforce it plot no matter how many temperatures are there.
+    # log_info_dict = {"20K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
+    #                  "30K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
+    #                  "40K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
+    #                  "60K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60}
+    #                 }
+    log_info_dict = {"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},
+                     "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},
+                     "40K":{"start_date":"2024-05-14", "start_time":"16:15", "avg_min_from_the_end":60},
+                     "60K":{"start_date":"2024-05-15", "start_time":"09:15", "avg_min_from_the_end":60}
+                    }
+    
+    # ? For references.
+    # ? (1) If dict is empty = {}, it won't plot that reference 
+    # ? (2) avg and SD should be all given but which exp is optional, 
+        # * {"T1", "T1_sd"}, {"effT", "effT_sd"} are all aceptable. 
+        # ! {"T1"}, {"T1","effT_sd"} are forbidden !
+    ref_before = {"T1":35.9,"T1_sd":2,"effT":65.2,"effT_sd":1.8} # WS
+    ref_recove = {"T1":29.2,"T1_sd":3.2,"effT":56.3,"effT_sd":3.1}
+    # ref_before = {"T1":11.1,"T1_sd":1,"effT":67.01,"effT_sd":0.39} # WOS
+    # ref_recove = {"T1":10.6,"T1_sd":0.6,"effT":73.1,"effT_sd":13.4}
 
-    # plot_stable_temp_dep(['20K-2', '30K-2','40K-2', '60K-2'])
+
+    # ? If this folder is "", it won't plot the MXC temperature. 
+    log_folder = "/Users/ratiswu/Downloads/DR_temperature_log"
+
+
+
+
+    # ! Don't touch below !
+    temperature_list = list(log_info_dict.keys())
+    if len(temperature_list) == 1 or always_plot_timeTrend :
+        for tempera in temperature_list:
+            tempera_folder = os.path.join(meas_raw_dir,sameple_folder,conditional_folder,tempera)
+            if analysis:
+                main_analysis(target_q, tempera_folder)
+            time_past_sec_array = get_time_axis(target_q,tempera_folder)
+            # plot time trend with a given temperature (time as x-axis, in min)
+            if plot_time_trend:
+                time_trend_artist(tempera_folder, exp_catas, time_past_sec_array, ref_before, ref_recove, log_info_dict[tempera], log_folder, DRtemp_che=6)
+    else:
+        if plot_temp_dependence:
+            temp_depen_artist(temperature_list, log_info_dict, exp_catas, ref_before, ref_recove, log_folder, tempera_che=6)
+
+
+    # save reference 
+    if save_ref:
+        if conditional_folder == "":
+            from datetime import datetime as d
+            ref_name = str(d.now().date())
+        else:
+            ref_name = conditional_folder
+
+        ref_path = os.path.join(meas_raw_dir,sameple_folder,"references.json")
+        if os.path.exists(ref_path):
+            old_ref = {}
+            with open(ref_path) as record_file: 
+                old_ref = json.load(record_file)
+            
+            old_ref[ref_name] = {"ref_before":ref_before,"ref_recove":ref_recove}
+            with open(ref_path,'w') as record_file: 
+                json.dump(old_ref,record_file)
+        else:
+            new_ref = {str(ref_name):{"ref_before":ref_before,"ref_recove":ref_recove}}
+            with open(ref_path,'w') as record_file: 
+                json.dump(new_ref,record_file)
+
+                
+                
+
+
+            
+        
+        
+        
+   

@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from xarray import Dataset
 from qblox_instruments import Cluster
@@ -122,13 +122,14 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute = True
-    repaet = 1
+    repaet = 100
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {'q0':{"roAmp_factor":1}}
     
 
     snr_rec, effT_rec = {}, {}
     for i in range(repaet):
+        start_time = time.time()
         """ Preparation """
         slightly_print(f"The {i}th OS:")
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -157,9 +158,11 @@ if __name__ == '__main__':
                 
         """ Close """    
         shut_down(cluster,Fctrl)
+        end_time = time.time()
+        slightly_print(f"time cose: {round(end_time-start_time,1)} secs")
 
     for qubit in effT_rec:
         highlight_print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
-        Data_manager().save_histo_pic(QD_agent,effT_rec,qubit,mode="ss",T1orT2=f"{round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)}")
+        Data_manager().save_histo_pic(QD_agent,effT_rec,qubit,mode="ss")
         
     

@@ -46,9 +46,9 @@ def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=Tru
     return effT_mK, snr_dB
 
 if __name__ == "__main__":
-    folder = 'Modularize/Meas_raw/Radiator_WS/10mK/effT'
+    folder = 'Modularize/Meas_raw/2024_5_16'
     files = [os.path.join(folder,name) for name in os.listdir(folder) if (os.path.isfile(os.path.join(folder,name)) and name.split("_")[1].split("(")[0]=="SingleShot")]
-    QD_path = "Modularize/QD_backup/2024_5_9/DR1#11_SumInfo.pkl"
+    QD_path = "Modularize/QD_backup/2024_5_16/DR1#11_SumInfo.pkl"
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 

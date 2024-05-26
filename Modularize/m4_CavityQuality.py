@@ -7,11 +7,11 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 
-def qualityFit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0):
+def qualityFit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
     rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()+f_shifter}
     
     if run:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=True)[specific_qubits]
+        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=True,points=fpts)[specific_qubits]
     else:
         qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=False)[specific_qubits]
     
@@ -34,9 +34,9 @@ if __name__ == "__main__":
     sweetSpot = True
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"ro_amp":0.2,"ro_atte":50}
+        "q0":{"ro_amp":0.4,"ro_atte":8}
     }
-    freq_shift = 0
+    freq_shift = -1.5e6
 
 
     """ Preparations """ 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         else:
             Fctrl[qubit](0)
         init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=10e6)
+        CS_results[qubit] = qualityFit_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit]["ro_amp"],run = execution, f_shifter=freq_shift,ro_span_Hz=3e6,fpts=600)
         Fctrl[qubit](0)
         cluster.reset()
         highlight_print(f"{qubit}: Cavity @ {round(CS_results[qubit].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
@@ -66,3 +66,18 @@ if __name__ == "__main__":
     """ Close """
     print('Cavity quality fit done!')
     shut_down(cluster,Fctrl)
+
+
+
+
+    # If you want to analyze a cavity nc by ResonatorSpectroscopyAnalysis 
+    # # re-analyze a nc
+    # from xarray import open_dataset
+    # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
+    # import quantify_core.data.handling as dh
+    # from quantify_core.data.handling import set_datadir
+    # set_datadir('path_to_datadir')
+    # meas_datadir = '.data'
+    # rs_ds = open_dataset("Modularize/Meas_raw/2024_4_29/DR1q0_CavitySpectro_H20M41S2.nc")
+    # x = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
+    # print(x)

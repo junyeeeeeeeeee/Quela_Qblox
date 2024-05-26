@@ -161,7 +161,7 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
 
         pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
         try:
-            fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False) 
+            fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False,FitFilter_threshold=2.5) 
         except:
             failed = True
         QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(original_rof)
@@ -181,7 +181,7 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
 
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     
     """ Storing (Future) """
     if execution:
-        QD_agent.QD_keeper()
+        pass # QD_agent.QD_keeper()
 
 
     """ Close """
