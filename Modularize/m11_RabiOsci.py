@@ -17,7 +17,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     sche_func= Rabi_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
     LO= qubit_info.clock_freqs.f01()+IF
-    print(qubit_info.clock_freqs.f01()*1e-9)
+
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     
     if Rabi_type.lower() in ['timerabi', 'tr']:
@@ -117,7 +117,7 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     rabi_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=100e-9,XYamp_max=0.6)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=40e-9,XYamp_max=0.6)
         cluster.reset()
     
         """ Storing """

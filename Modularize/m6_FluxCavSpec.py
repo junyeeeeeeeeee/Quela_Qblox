@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -105,12 +106,14 @@ def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific
 
     return FD_results
 
+# accident: q2, q3, q4
+
 if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = ['q1']
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q4']
     
 
     """ Preparations """
@@ -124,10 +127,10 @@ if __name__ == "__main__":
     FD_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.3,ro_span_Hz=3e6, zpts=30)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.4,ro_span_Hz=6e6, zpts=30)
         cluster.reset()
         if execution:
-            permission = input("Update the QD with this result ? [y/n]") 
+            permission = mark_input("Update the QD with this result ? [y/n]") 
             if permission.lower() in ['y','yes']:
                 update_flux_info_in_results_for(QD_agent,qubit,FD_results)
                 update = True
@@ -135,10 +138,11 @@ if __name__ == "__main__":
             break
 
     
-    """ Storing """
-    if update and execution:
-        QD_agent.refresh_log("after FluxDep")
-        QD_agent.QD_keeper()
+        """ Storing """
+        if update and execution:
+            QD_agent.refresh_log("after FluxDep")
+            QD_agent.QD_keeper()
+            update = False
 
 
     """ Close """

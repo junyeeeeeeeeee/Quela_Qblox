@@ -1,5 +1,5 @@
 from numpy import array, ndarray, sin, sqrt, cos, pi, real
-
+from Modularize.support.UserFriend import *
 
 # TODO: Test this class to store the bias info
 # dict to save the filux bias information
@@ -22,7 +22,7 @@ class FluxBiasDict():
 
     def press_offsweetspot_button(self,target_q:str,offSweetSpot:bool):
         self.__bias_dict[target_q]["offSweetSpot"] = offSweetSpot
-    def get_offsweetspot_button(self,target_q:str):
+    def get_offsweetspot_button(self,target_q:str)->bool:
         return self.__bias_dict[target_q]["offSweetSpot"]
 
 
@@ -180,18 +180,18 @@ class FluxBiasDict():
         if self.__bias_dict[target_q]["qubFitParas"] == []:
             raise ValueError("You have NOT fit the transition frequency with bias!")
 
-        a,b,Ec,coefA,d = self.__bias_dict[target_q]["qubFitParas"][0], self.__bias_dict[target_q]["qubFitParas"][1], self.__bias_dict[target_q]["qubFitParas"][2], self.__bias_dict[target_q]["qubFitParas"][3], self.__bias_dict[target_q]["qubFitParas"][4]
-        to_solve = sp.sqrt(8*coefA*Ec*sp.sqrt(sp.cos(a*(z-b))**2+d**2*sp.sin(a*(z-b))**2))-Ec - target_fq_Hz*1e-9
+        a,b,Ec,Ej_sum,d = self.__bias_dict[target_q]["qubFitParas"][0], self.__bias_dict[target_q]["qubFitParas"][1], self.__bias_dict[target_q]["qubFitParas"][2], self.__bias_dict[target_q]["qubFitParas"][3], self.__bias_dict[target_q]["qubFitParas"][4]
+        to_solve = sp.sqrt(8*Ej_sum*Ec*sp.sqrt(sp.cos(a*(z-b))**2+d**2*sp.sin(a*(z-b))**2))-Ec - target_fq_Hz*1e-9
 
         candidators = array(sp.solvers.solve(to_solve, z))
         
         if candidators.shape[0] == 0:
             answer = 'n'
             fq_max = self.fqEqn_for_qub(target_q,array([self.get_sweetBiasFor(target_q)]))[0]
-            print(f"Can NOT find a bias makes the fq @ {target_fq_Hz*1e-9} GHz !")
-            print(f"The max fq about this qubit = {fq_max} GHz")
+            warning_print(f"Can NOT find a bias makes the fq @ {target_fq_Hz*1e-9} GHz !")
+            warning_print(f"The max fq about this qubit = {fq_max} GHz")
         else:
-            answer = find_nearest(candidators, 0) if find_nearest(candidators, 0) < flux_guard else flux_guard
+            answer = find_nearest(candidators, 0) if abs(find_nearest(candidators, 0)) < flux_guard else flux_guard
 
         return answer
 
@@ -201,10 +201,10 @@ class FluxBiasDict():
         The only way to press this button is in `Modularize/support/meas_switch.py`
         """
         if self.get_offsweetspot_button(target_q):
-            print("Now in tune away bias!")
+            eyeson_print(f"Now in tune away bias = {self.get_tuneawayBiasFor(target_q)} V")
             return self.get_tuneawayBiasFor(target_q)
         else:
-            print("Now in sweet spot bias!")
+            eyeson_print(f"Now in sweet spot bias = {self.get_sweetBiasFor(target_q)} V ")
             return self.get_sweetBiasFor(target_q)
 
 

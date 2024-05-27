@@ -1,0 +1,205 @@
+"""
+This program is only for analyzing a series of radiation tests like 0K, 20K 40K 60K and re0K with/without shielding. This didn't support comparison between with and without shielding
+"""
+import os, sys, time, json
+from pandas import DataFrame as DF
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
+from numpy import array, ndarray, mean, std, round, arange
+# from Modularize.support.Pulse_schedule_library import hist_plot
+import matplotlib.pyplot as plt
+from Modularize.support.Path_Book import meas_raw_dir
+from Modularize.analysis.RadiatorSetAna import collect_allSets_inTempera, get_time_axis, timelabelfolder_creator, find_nearest
+
+
+# +++++++++++++++++++++++ Functions +++++++++++++++++++++++++++++++++++++++++++++++
+def get_conditional_folders(sample_folder_name:str)->list:
+    sample_path = os.path.join(meas_raw_dir,sample_folder_name)
+    conditional_folder_paths = [os.path.join(sample_path,name) for name in os.listdir(sample_path) if (os.path.isdir(os.path.join(sample_path,name)) and name[:-5].lower() != 'compa')]
+    return conditional_folder_paths
+
+def search_tempera_folder(sample_folder_name:str, tempera:str)->list:
+    temp_folder_paths = []
+    for conditional_folder in get_conditional_folders(sample_folder_name):
+        temp_folder_paths += [os.path.join(conditional_folder,name) for name in os.listdir(conditional_folder) if (os.path.isdir(os.path.join(conditional_folder,name)) and name == tempera)]
+    
+    return temp_folder_paths
+
+def save_picvalues_Vcompa(folder_path:str,axes_infos:list, exp_type:str, mode:str):
+    """ 
+    mode indicates the axis in this pic is time with the mode='time', or temperature with the mode='temp'.
+    """
+    to_csv_dict = {}
+    y_unit = "us" if exp_type.lower() in ["t1","t2"] else "mK"
+    x_unit = "min" if mode.lower() in ["time"] else "K"
+    for line_info in axes_infos:
+        to_csv_dict[f"{line_info['condition']}_x_({x_unit})"] = line_info["x"]
+        to_csv_dict[f"{line_info['condition']}_y_({y_unit})"] = line_info["y"]
+        to_csv_dict[f"{line_info['condition']}_yerr_({y_unit})"] = line_info["yerr"]
+
+
+    df = DF.from_dict(to_csv_dict, orient='index').transpose()
+    DF.to_csv(df, os.path.join(folder_path,f"{exp_type}_dataValues.csv"))
+    
+
+# +++++++++++++++++++++++ plot function inside +++++++++++++++++++++++++++++++++++++++++++++++
+def time_monitoring_compa_figure_sameTemp(temperature_folder_list:list, target_q:str, mode:str, radiator_act:str="ON",savefig:bool=True):
+    """
+    Compare one of T1/T2/eff_T trend along time axis. Up to 6 trends.\n
+    arg `mode` assign which value to plot : 'T1', 'T2' or 'effT' 
+    """
+    if len(temperature_folder_list) > 6: raise ValueError("The number of given temperature folder should be equal or less than 6")
+    colors = ["#1E90FF","#FF6347","#DAA520","#3CB371","#EE82EE","#000000"]
+    handles = []
+    labels  = []
+    
+    fig, ax = plt.subplots(1,1,figsize=(15,10))
+    a_set_time = 7 # mins
+    ax:plt.Axes
+    plt.grid()
+    temp_name = os.path.split(temperature_folder_list[0])[-1]
+    compa_folder = os.path.split(os.path.split(temperature_folder_list[0])[0])[0] # "Modularize/Meas_raw/Radiator_wisconsinQ1" with "Modularize/Meas_raw/Radiator_wisconsinQ1/Radiator_WOS/re0K-1" is the given temperature_folder
+    pic_info =[]
+    for temperature_folder in temperature_folder_list:
+        n = len(pic_info)
+        time_axis = get_time_axis(target_q, temperature_folder)
+        condition_name = os.path.split(os.path.split(temperature_folder)[0])[-1]  # "Radiator_WOS" with "Modularize/Meas_raw/Radiator_wisconsinQ1/Radiator_WOS/re0K-1" is the given temperature_folder
+        tempera_into = collect_allSets_inTempera(temperature_folder)
+        time_axis_min = arange(1,len(tempera_into["T1"]["avg"]))*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)  
+        line_info = {"condition":condition_name,"x":time_axis_min.tolist()}
+        if mode.lower() == 't1':
+            ax.errorbar(time_axis_min,tempera_into["T1"]["avg"],yerr=tempera_into["T1"]["std"],fmt="o-",color=colors[n],label=condition_name)
+            line_info["y"], line_info["yerr"] = tempera_into["T1"]["avg"], tempera_into["T1"]["std"]
+        elif mode.lower() == 'efft':
+            ax.errorbar(time_axis_min,tempera_into["eff_T"]["avg"],yerr=tempera_into["eff_T"]["std"],fmt="o-",color=colors[n],label=condition_name)
+            line_info["y"], line_info["yerr"] = tempera_into["eff_T"]["avg"], tempera_into["eff_T"]["std"]
+        else:
+            ax.errorbar(time_axis_min,tempera_into["T2"]["avg"],yerr=tempera_into["T2"]["std"],fmt="o-",color=colors[n],label=condition_name)
+            line_info["y"], line_info["yerr"] = tempera_into["T2"]["avg"], tempera_into["T2"]["std"]
+            
+        hs, ls = ax.get_legend_handles_labels()
+        labels += [ls[-1]]
+        handles += [hs[-1]] 
+        pic_info.append(line_info)
+
+
+    if mode.lower() == 't1':
+        ax.set_ylabel("$T_{1}$ (µs)",fontsize=26)
+    elif mode.lower() == 'efft':
+        ax.set_ylabel("Effective Temp. (mK)",fontsize=26)
+    else:
+        ax.set_ylabel("$T_{2}$ (µs)",fontsize=26)
+    
+    ax.set_xlabel(f"time after radiator {radiator_act} (min)", fontsize=28)
+    ax.xaxis.set_tick_params(labelsize=26)
+    ax.yaxis.set_tick_params(labelsize=26)
+    plt.legend(handles, labels, fontsize=20,bbox_to_anchor=(1,1.2))
+    plt.tight_layout()
+    new_folder_path = timelabelfolder_creator(compa_folder,f"{target_q}_{mode}_{temp_name}_TIME")
+    save_picvalues_Vcompa(new_folder_path,pic_info,mode,"time")
+    if savefig:
+        plt.savefig(os.path.join(new_folder_path,f"{target_q}_{temp_name}_{mode}_comparison.png"))
+        plt.close()
+    else:
+        plt.show()
+
+
+
+def plot_conditional_temp_dep(sample_folder_name:str,temp_folder_names:list,target_q:str,exp_type:str, slice_min_from_the_end:list=[0])->tuple[plt.Axes, dict, str, dict]:
+    """exp_type should be one of ['T1', 'T2', 'effT']"""
+    
+    
+    rec = []
+    conditionla_folders = get_conditional_folders(sample_folder_name)
+    for conditional_folder in conditionla_folders:
+        condition = os.path.split(conditional_folder)[-1]
+        values = {"condition":condition,"x":[],"y":[],"yerr":[]}
+        for idx, temperature in enumerate(temp_folder_names):
+            every_value_dict = {}
+            tempera_folder = os.path.join(conditional_folder,temperature)
+            if os.path.exists(tempera_folder):
+                time_past_min_array = get_time_axis(target_q,tempera_folder)/60
+                
+                set_number = time_past_min_array.shape[0]
+                json_file = os.path.join(tempera_folder,"results","jsons","every_values.json")
+                with open(json_file) as JJ:
+                    every_value_dict = json.load(JJ)
+                    values["x"].append(int(temperature.split("K")[0]))
+
+                slice_from_this_min = int(time_past_min_array[-1]-slice_min_from_the_end[idx])
+                histo_count_in_set = int(len(every_value_dict[f"{exp_type}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
+                this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
+                histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set          
+                values["y"].append(mean(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
+                values["yerr"].append( std(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
+        if len(values["x"]) != 0:
+            rec.append(values)
+
+    fig, ax = plt.subplots(1,1,figsize=(15,10))   
+    plt.grid()  
+    ax: plt.Axes
+    for condition_values in rec:
+        ax.errorbar(condition_values["x"],condition_values["y"],yerr=condition_values["yerr"],label=condition_values["condition"],fmt='o-')
+    ax.set_xlabel("Radiator temp. (K)",fontsize=26)
+    
+    if exp_type in ["T1", "T2"]:
+        ax.set_ylabel(f"{exp_type} (us)",fontsize=26)
+    else:
+        ax.set_ylabel("Effective temp (mK)",fontsize=26)
+    
+    ax.xaxis.set_tick_params(labelsize=26)
+    ax.yaxis.set_tick_params(labelsize=26)
+    hs, ls = ax.get_legend_handles_labels()
+    plt.legend(hs, ls, fontsize=20,bbox_to_anchor=(1,1.2))
+    plt.tight_layout()
+    new_folder_path = timelabelfolder_creator(os.path.join(meas_raw_dir,sample_folder_name),f"{target_q}_{exp_type}_TEMP")
+    save_picvalues_Vcompa(new_folder_path,rec,exp_type,"temp")
+    plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp_type}_TEMPcomparison.png"))
+    plt.close()
+
+
+
+
+
+
+
+
+#                         ==============
+#                         =            =
+# ========================= user layer ================================
+#                         =            =
+#                         ==============
+
+
+def plot_time_monitor_compa(sameple_folder:str, compa_tempera:list, target_q:str, exp_to_plot:list, savefig:bool=True):
+    for temp in compa_tempera:
+        temperature2compa = search_tempera_folder(sameple_folder,temp)
+        action = "OFF" if temp[:2] == "re" else "ON"
+        for exp in exp_to_plot:
+            time_monitoring_compa_figure_sameTemp(temperature2compa,target_q,exp,action, savefig)
+
+
+def plot_temp_monitor_compa(sample_folder_name:str,exp_catas:list,temp_names:dict,target_q:str):
+    """
+    temp_names = {"10K":100}, where 100 is the minutes from the end to average.
+    """
+    avg_time_minutes = list(temp_names.values())
+    for exp in exp_catas:
+        plot_conditional_temp_dep(sample_folder_name,temp_names,target_q,exp,avg_time_minutes)
+
+if __name__ == '__main__':
+    target_q:str = 'q0'
+    sameple_folder:str = "Radiator_wisconsinQ1"
+    compa_tempera:dict = {"10K":60,
+                          "20K":60,
+                          "30K":60,
+                          "40K":60,
+                          "60K":60}
+    exps:list = ["effT","T1"]
+    
+
+    # plot time trend (time past as x-axis)
+    plot_time_monitor_compa(sameple_folder, ["re0K"], target_q, exps)
+
+    # plot temperature dependence (radiator temperature as x-axis) 
+    # plot_temp_monitor_compa(sameple_folder,exps,compa_tempera,target_q)

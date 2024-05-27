@@ -38,17 +38,17 @@ class QDmanager():
         """
         self.Log = message
 
-    def QD_loader(self):
+    def QD_loader(self, new_Hcfg:bool=False):
         """
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
         with open(self.path, 'rb') as inp:
             gift = pickle.load(inp) # refer to `merged_file` in QD_keeper()
         # string and int
-        self.chip_name = gift["chip_name"]
-        self.Identity = gift["ID"]
-        self.Log = gift["Log"]
-        self.q_num = len(list(gift["Flux"].keys()))
+        self.chip_name:str = gift["chip_name"]
+        self.Identity:str = gift["ID"]
+        self.Log:str = gift["Log"]
+        self.q_num:int = len(list(gift["Flux"].keys()))
         # class    
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
         self.Fluxmanager.activate_from_dict(gift["Flux"])
@@ -56,8 +56,12 @@ class QDmanager():
         self.Notewriter.activate_from_dict(gift["Note"])
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
-        self.Hcfg = gift["Hcfg"]
-        self.refIQ = gift["refIQ"]
+        if new_Hcfg:
+            from Modularize.support.Experiment_setup import hcfg_map
+            self.Hcfg = hcfg_map[self.Identity.split("#")[0].lower()]
+        else:
+            self.Hcfg = gift["Hcfg"]
+        self.refIQ:dict = gift["refIQ"]
         
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
@@ -128,7 +132,10 @@ class QDmanager():
         8) bias of this point.\n
         9) ro attenuation.
         """
-        self.Notewriter.create_meas_options(target_q)
+        print(z_bias)
+        if modi_idx != "-1":
+            if len(self.Notewriter.get_all_meas_options(target_q)) <= modi_idx:
+                self.Notewriter.create_meas_options(target_q)
         qubit = self.quantum_device.get_element(target_q)
         ROF = qubit.clock_freqs.readout()
         XYF = qubit.clock_freqs.f01()
@@ -268,7 +275,7 @@ class Data_manager:
         if get_data_loc:
             return path
     
-    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True, T1orT2:str='',pic_folder:str=''):
+    def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
         if pic_folder == '':
@@ -282,13 +289,19 @@ class Data_manager:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=f"T1= {T1orT2} us",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T1",save_path=fig_path, show=show_fig)
         elif mode.lower() =="t2" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
             else:
                 fig_path = ''
-            hist_plot(qb,hist_dict ,title=f"T2= {T1orT2} us",save_path=fig_path, show=show_fig)
+            hist_plot(qb,hist_dict ,title=f"T2",save_path=fig_path, show=show_fig)
+        elif mode.lower() in ["ss", "os"] :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_effThisto_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"eff_T",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

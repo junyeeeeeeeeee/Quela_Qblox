@@ -3,6 +3,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')) 
 from numpy import array, ndarray, mean, std, where, sort
 from Modularize.m7_RefIQ import Single_shot_ref_spec
+from Modularize.support.UserFriend import *
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from qblox_instruments import Cluster
 from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
@@ -18,7 +19,8 @@ def sweepZ_arranger(QD_agent:QDmanager,qb:str,Z_guard:float=0.4):
     start = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qb)
     flux_step = (QD_agent.Fluxmanager.get_PeriodFor(target_q=qb)/2)/6
     windows = []
-    for step_idx in range(0,5,2): # 0,2,4  reject bottom at flux 
+    for step_idx in range(0,3,2): # 0,2,4  reject bottom at flux 
+
         for sign in [1,-1] if step_idx != 0 else [1]:
             center = sign*step_idx*flux_step
             window_from = center - flux_step  
@@ -102,7 +104,7 @@ def Fq_z_coordinator(QD_agent:QDmanager,qb:str,IF:float,span:float,Z_guard:float
     z_pts = 10
         
 
-    print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
+    eyeson_print(f"Total {len(meas_var)} pics for Flux vs. Fq exp.")
     return meas_var, z_pts
 
     
@@ -126,16 +128,12 @@ def mag_static_filter(x_array:ndarray,y_array:ndarray,mag_array:ndarray,threshol
     return x_choosen, y_choosen
 
 # main execute program
-def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, cluster:Cluster,target_q:str, run:bool=True, f_pts:int=30, re_n:int=500, peak_threshold:float=1.0):
+def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:dict, cluster:Cluster,target_q:str, run:bool=True, f_pts:int=30, re_n:int=500, peak_threshold:float=3):
     f_span = 500e6
     xy_if = 100e6
     failed = False
     original_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
     if run:
-        # ROF is at zero bias
-        rof = QD_agent.Fluxmanager.sin_for_cav(target_q,array([0]))[0]
-        QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(rof)
-        
         meas_vars, z_pts = Fq_z_coordinator(QD_agent,target_q,xy_if,f_span)
         x2static = []
         y2static = []
@@ -151,7 +149,7 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
             
             xyf,z,ii,qq = convert_netCDF_2_arrays(raw_path)
             # below can be switch into QM system with the arg `qblox=False`
-            x, y, mag = data2plot(xyf,z+ref_z,ii,qq,specified_refIQ=QD_agent.refIQ[target_q],qblox=True,q=target_q,filter2D_threshold=peak_threshold,plot_scatter=0)
+            x, y, mag = data2plot(xyf,z+ref_z,ii,qq,specified_refIQ=QD_agent.refIQ[target_q],qblox=True,q=target_q,filter2D_threshold=peak_threshold,plot_scatter=1)
             x2static += x.tolist()
             y2static += y.tolist()
             mag2static+=mag.tolist()
@@ -163,7 +161,7 @@ def FluxFqFit_execution(QD_agent:QDmanager, meas_ctrl:MeasurementControl, Fctrl:
 
         pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
         try:
-            fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False) 
+            fq_fit(QD_agent,json_path,target_q,savefig_path=pic_parentpath,saveParas=True,plot=False,FitFilter_threshold=2.5) 
         except:
             failed = True
         QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(original_rof)
@@ -183,8 +181,8 @@ if __name__ == "__main__":
    
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = ['q2','q3']
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q0']
 
 
 
@@ -198,6 +196,7 @@ if __name__ == "__main__":
     """ Running """
     fit_error = []
     for qubit in ro_elements:
+        if QD_agent.Fluxmanager.get_offsweetspot_button(qubit): raise ValueError("m10 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
     
         error = FluxFqFit_execution(QD_agent, meas_ctrl, Fctrl, cluster, target_q=qubit, run=execution,peak_threshold=2)
@@ -208,7 +207,7 @@ if __name__ == "__main__":
     
     """ Storing (Future) """
     if execution:
-        QD_agent.QD_keeper()
+        pass # QD_agent.QD_keeper()
 
 
     """ Close """

@@ -82,6 +82,18 @@ class Notebook():
             self.__InfoDict[target_q]["realAtte"][mode] = atte_dB
         else:
             raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+    def modify_DigiAtte_For(self,add_atte_dB:int,target_q:str, mode:str):
+        """
+        For a target_q, directly add the given add_atte_dB to its saved DigiAtte.\n
+        add_atte_dB should be a multiple of 2.\n
+        mode : 'ro' for readout atte, 'xy' for control atte.
+        """
+        if mode.lower() in ['xy', 'ro']:
+            self.__InfoDict[target_q]["digitalAtte"][mode] = self.__InfoDict[target_q]["digitalAtte"][mode] + add_atte_dB
+        else:
+            raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
+
+
     def get_DigiAtteFor(self,target_q:str,mode:str):
         """
         Return digital attenuation for target q according to the mode = 'xy' or 'ro'. 

@@ -5,6 +5,7 @@ from numpy import array, linspace, NaN
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
+from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -47,7 +48,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
     exp_kwargs= dict(sweep_F=['start '+'%E' %f01_samples[0],'end '+'%E' %f01_samples[-1]],
                      spec_amp='%E' %spec_sched_kwargs['spec_amp'],
                      spec_Du='%E' %spec_sched_kwargs['spec_Du'])
-    
+    highlight_print(f"Now spec_amp = {xyamp}")
     if run:
         gettable = ScheduleGettable(
             QD_agent.quantum_device,
@@ -121,7 +122,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                want_bias = QD_agent.Fluxmanager.get_sweetBiasFor(specific_qubits)-V_away_from
+                want_bias = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)-V_away_from
                 if V_away_from != 0:
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
@@ -146,21 +147,23 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
    
     
 
-
+"""
+NOTE: If you find a XYF in a tuneaway z-bias which means the `tune_bias` != 0, please go Modularize/support/meas_switch.py to save it.
+"""
 
 if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    update = True
+    update = 1
     #
     DRandIP = {"dr":"dr2","last_ip":"10"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[3.9e9],"xyl_guess":[0.07],"g_guess":0, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[4.4e9],"xyl_guess":[0.07],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
 
-
+    #0.03332
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])

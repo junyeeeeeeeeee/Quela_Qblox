@@ -78,16 +78,15 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
 def QD_RO_init(QD_agent:QDmanager, target_q:str):
     qubit = QD_agent.quantum_device.get_element(target_q)
     qubit.reset.duration(150e-6)
-    qubit.measure.acq_delay(500e-9)
+    qubit.measure.acq_delay(100e-9)
     qubit.measure.pulse_amp(0.15)
     qubit.measure.pulse_duration(2e-6)
     qubit.measure.integration_time(1.5e-6-4e-9)
 
 
 # execution pack
-def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,qb:str,real_atte_dB:int,ro_span_Hz:float=10e6,run:bool=True):
+def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,qb:str,ro_span_Hz:float=10e6,run:bool=True):
     if run:
-        QD_agent.Notewriter.save_RealAtte_For(atte_dB=real_atte_dB,target_q=qb,mode='ro')
         qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess,q=qb,ro_span_Hz=ro_span_Hz,)[qb]
         if qb_CSresults != {}:
             print(f'Cavity {qb} @ {qb_CSresults.quantities_of_interest["fr"].nominal_value} Hz')
@@ -109,14 +108,14 @@ if __name__ == "__main__":
     execution = 1
     chip_info_restore = 0
     init_RO_DigiAtte = 26
-    real_atte_ro = 0
     # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
+    # [5.8577 5.9057 5.9468 6.0092 6.0354] @ dr3 
     ro_bare=dict(
-        q0=5.72231e9,
-        q1=6.014085e9,
-        q2=5.835977e9,
-        q3=6.102536e9,
-        q4=5.9086e9        
+        q0=5.9057e9,
+        q1=6.0092e9,
+        q2=5.8577e9,
+        q3=6.0354e9,
+        q4=5.9468e9        
     )
     #q1 or q3 = 5.8175e9,
     # q? = 6.207e9,
@@ -125,7 +124,7 @@ if __name__ == "__main__":
     # Create or Load chip information
     # chip_info = cds.Chip_file()
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = '','dr2','192.168.1.10','n',False #uw.init_meas_window()
+    QD_path, dr, ip, mode, vpn = uw.init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
