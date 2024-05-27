@@ -37,7 +37,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,mode:str='new',chip_name:str='',chip_type:str='')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -52,6 +52,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
     if mode.lower() in ['new', 'n']:
         from Modularize.support.Experiment_setup import hcfg_map
         cfg, pth = hcfg_map[dr_loc.lower()], ''
+        cluster_ip = ip_register[dr_loc.lower()]
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
@@ -63,25 +64,25 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         raise KeyError("The given mode can not be recognized!")
     
     # Connect to the Qblox cluster
-    if not vpn:
-        # connect, ip = connect_clusters() ## Single cluster online
-        # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-        ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
-    else: # haven't done
-        if cluster_ip == '192.168.1.11':
-            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5011)
-        elif cluster_ip == '192.168.1.10':
-            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5010)
-        else:
-            raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
-        ip = ip_register[dr_loc.lower()]
+    # connect, ip = connect_clusters() ## Single cluster online
+    # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    # ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
+    # cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
+    if cluster_ip == '192.168.1.11':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5011)
+    elif cluster_ip == '192.168.1.10':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5010)
+    elif cluster_ip == '192.168.1.13':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5013)
+    else:
+        raise KeyError("args 'cluster_ip' should be assigned with '10' or '11' or '13', check it!")
+    ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
-        Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
+        Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
         Qmanager.refresh_log("new-born!")
     else:
         Qmanager.QD_loader()

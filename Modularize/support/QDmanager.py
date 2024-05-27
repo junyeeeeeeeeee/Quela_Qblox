@@ -13,16 +13,17 @@ class QDmanager():
         self.Log = "" 
         self.Identity=""
         self.chip_name = ""
-       
+        self.chip_type = ""
         
 
-    def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str=''):
+    def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str='',chip_type = ''):
         """
         Register this QDmanager according to the cluster ip and in which dr and the chip name.
         """
         specifier = cluster_ip_adress.split(".")[-1] # 192.168.1.specifier
         self.Identity = which_dr.upper()+"#"+specifier # Ex. DR2#171
         self.chip_name = chip_name
+        self.chip_type = chip_type
 
     def memo_refIQ(self,ref_dict:dict):
         """
@@ -84,7 +85,7 @@ class QDmanager():
             print(f'Summarized info had successfully saved to the given path!')
 
     
-    def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str):
+    def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
         """
         Build up a new Quantum Device, here are something must be given about it:\n
         (1) qubit_number: how many qubits is in the chip.\n
@@ -95,7 +96,7 @@ class QDmanager():
         print("Building up a new quantum device system....")
         self.q_num = qubit_number
         self.Hcfg = Hcfg
-        self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc)
+        self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         """ #for firmware v0.6.2

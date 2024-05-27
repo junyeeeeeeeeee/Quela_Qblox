@@ -19,7 +19,6 @@ def init_meas_window() -> tuple[str, str, str, str, bool]:
         dr = DR_box.get()
         ip = ip_box.get()
         mode = mode_box.get()
-        vpn = vpn_box.get()
         root.destroy()
     QD_path_la = tk.Label(root, text = 'QD path')
     QD_path_la.pack()
@@ -47,43 +46,15 @@ def init_meas_window() -> tuple[str, str, str, str, bool]:
                           values=['new','load'])
     mode_box.pack()
     
-    vpn_la = tk.Label(root, text = 'vpn')   
-    vpn_la.pack()
-    vpn_box = ttk.Combobox(root,
-                          width=15,
-                          values=['y','n'])
-    vpn_box.pack()
 
     btn = tk.Button(root, text='Enter', command=init)   # 建立按鈕，點擊按鈕時，執行 show 函式
     btn.pack()
     root.mainloop()
-    if dr == '' or ip == '' or mode == '' or vpn =='':
+    if dr == '' or ip == '' or mode == '':
             raise KeyError('You have to insert the variables!')
-    if vpn == 'y':
-        vpnbool = True
-    else:
-        vpnbool = False
     
-    return QD_path, dr, ip, mode, vpnbool
+    return QD_path, dr, ip, mode
 
-def chip_name_window() -> str:
-    setfile = tk.Tk()
-    setfile.title('Chip name window')
-    setfile.geometry('200x200')
-    def create_name():
-        global chip_name
-        chip_name = chip_name_en.get()
-        setfile.destroy()
-    chip_name_la = tk.Label(setfile, text = "chip name")
-    chip_name_la.pack()
-    chip_name_en = tk.Entry(setfile, width=20, justify='center')
-    chip_name_en.pack()
-    check_button = tk.Button(setfile, text="Enter", command=create_name)
-    check_button.pack()
-    setfile.mainloop()
-    if chip_name == '':
-        raise KeyError("Please set name")
-    return chip_name
 
 def Basic_information_window() -> tuple[str, int, int]:
     setfile = tk.Tk()
