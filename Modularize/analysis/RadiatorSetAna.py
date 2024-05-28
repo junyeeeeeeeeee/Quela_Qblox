@@ -518,7 +518,7 @@ def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=a
         
     ax.xaxis.set_tick_params(labelsize=26)
     ax.yaxis.set_tick_params(labelsize=26)
-    ax.set_xlabel(f"time after radiator {radiator_act} (min)", fontsize=28)
+    ax.set_xlabel(f"time after radiator {radiator_act} (min)", fontsize=26)
     
     return ax, ax_info
 
@@ -781,7 +781,7 @@ def time_trend_artist(tempera_folder:str, exp_catas:list, time_past_sec_array:nd
         ax, dr_info = plot_DR_tempera(start_date,start_time,DRtemp_che,log_folder,ax,time_axis=time_past_sec_array)
         new_folder_path = timelabelfolder_creator(tempera_folder,f"{target_q}_{temperature}TIME_{exp}")
         pic_values_saver(new_folder_path,'time',trend_info, ref_info, dr_info)
-        plt.legend(handles, labels, fontsize=20,bbox_to_anchor=(1,1.2))
+        plt.legend(handles, labels, fontsize=30,bbox_to_anchor=(1,1.2))
         plt.tight_layout()
         plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp}_timeMonitor.png"))
         plt.close()
@@ -796,7 +796,7 @@ def temp_depen_artist(temperature_list:list, log_info_dict:dict, exp_catas:list,
         ax, dr_info = scat_DR_avg_temp(log_info_dict,DR_log_folder_path=log_folder,ax=ax,temp_chennel=tempera_che)
         new_folder_path = timelabelfolder_creator(conditional_folder_path,f"{target_q}_TEMP_{exp}")
         pic_values_saver(new_folder_path,'temp',axes_info, ref_info, dr_info)
-        plt.legend(handles, labels, fontsize=22,bbox_to_anchor=(1,1.15))
+        plt.legend(handles, labels, fontsize=30,bbox_to_anchor=(1,1.15))
         plt.tight_layout()
         plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp}_tempDependence.png"))
         plt.close()

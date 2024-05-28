@@ -20,6 +20,23 @@ def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_am
 
     return qb_CSresults
 
+def fillin_PDans(QD_agent:QDmanager,ans:dict):
+    """
+    Fill in the power dep answer to the quantum_device.\n
+    format:\n
+    `ans = {"q0":{"dressF_Hz":,"dressP":,"bareF_Hz":},...}`
+    """
+    for q in ans:
+        qubit = QD_agent.quantum_device.get_element(q)
+        if ans[q]["dressP"] != "": qubit.measure.pulse_amp(ans[q]["dressP"]) 
+        if ans[q]["dressF_Hz"] != "": qubit.clock_freqs.readout(ans[q]["dressF_Hz"])
+        if ans[q]["bareF_Hz"] != "": QD_agent.Notewriter.save_bareFreq_for(target_q=q,bare_freq=ans[q]["bareF_Hz"])
+        if ans[q]["ro_atte"] != "": QD_agent.Notewriter.save_DigiAtte_For(atte_dB=ans[q]["ro_atte"],target_q=q,mode='ro')
+
+    QD_agent.refresh_log("PD answer stored!")
+    QD_agent.QD_keeper()
+
+
 if __name__ == "__main__":
 
     """ Fill in """
@@ -43,8 +60,10 @@ if __name__ == "__main__":
 
     """ Running """
     CS_results = {}
+    PDans = {}
     for qubit in ro_elements:
         CS_results[qubit] = {}
+        PDans[qubit] = {"dressF_Hz":0,"dressP":0,"bareF_Hz":0,"ro_atte":0}
         for state in ro_elements[qubit]:
             if ro_elements[qubit][state]["ro_atte"] != '':
                 QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit][state]["ro_atte"],qubit,'ro')
@@ -56,9 +75,17 @@ if __name__ == "__main__":
             CS_results[qubit][state] = preciseCavity_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit][state]["ro_amp"],run = execution, f_shifter=ro_elements[qubit][state]["window_shift"],ro_span_Hz=3e6)
             Fctrl[qubit](0)
             cluster.reset()
-            highlight_print(f"{qubit}: {state} Cavity @ {round(CS_results[qubit][state].quantities_of_interest['fr'].nominal_value*1e-9,5)} GHz")
+            if state == "bare":
+                PDans[qubit]["bareF_Hz"] = CS_results[qubit][state].quantities_of_interest['fr'].nominal_value
+            else:
+                PDans[qubit]["dressF_Hz"] = CS_results[qubit][state].quantities_of_interest['fr'].nominal_value
+                PDans[qubit]["dressP"] = ro_elements[qubit][state]["ro_amp"]
+                PDans[qubit]["ro_atte"] = QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro')
+
 
     """ Storing (future) """
+    fillin_PDans(QD_agent, PDans)
+
     if chip_info_restore:
         if sweetSpot:
             chip_info.update_Cavity_spec_sweet(CS_results)
