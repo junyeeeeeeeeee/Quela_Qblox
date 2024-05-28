@@ -157,7 +157,7 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     #
     ro_elements = {
         "q0":{"xyf_guess":[4.4e9],"xyl_guess":[0.07],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.

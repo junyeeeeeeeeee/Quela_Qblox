@@ -1,23 +1,24 @@
 {
     "basic_information": {
-        "chip_name": "",
-        "chip_type": "",
-        "create_time": ""
+        "chip_name": "20240430_8_5Q4C",
+        "chip_type": "5Q4C",
+        "create_time": "20240527",
+        "chip_file": "C:\\PersonalWorks\\Quela\\Quela_Qblox\\chip_information\\20240430_8_5Q4C.json"
     },
     "1Q_information": {
         "q0": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
+                    "bare_freq": 5973271200.066502,
+                    "Qi": 20652.850519669788,
+                    "Qc": 3399.9706425972972,
                     "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
+                        "dress_freq": 5978376208.368968,
+                        "Qi": 6651.087772389958,
+                        "Qc": 2772.210948963682,
                         "Ql": 0
                     },
                     "qubit": {
@@ -28,7 +29,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -112,9 +113,9 @@
         "q1": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
+                    "bare_freq": 6087191501.369912,
+                    "Qi": 2683.437064315349,
+                    "Qc": 5648.205749348233,
                     "Ql": 0
                 },
                 "zeroflux": {
@@ -132,7 +133,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -236,7 +237,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -340,7 +341,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -444,7 +445,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -524,7 +525,11 @@
                     "time": 0
                 }
             }
-        }
+        },
+        "c0": {},
+        "c1": {},
+        "c2": {},
+        "c3": {}
     },
     "2Q_information": {}
 }

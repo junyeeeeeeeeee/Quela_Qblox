@@ -105,32 +105,39 @@ def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_ba
 if __name__ == "__main__":
     
     """ fill in part """
+    # Basic info of measuring instrument, chip
+    # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
+    # 1 = Run the measurement
+    # 0 = plot the output signal
     execution = 1
-    chip_info_restore = 0
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
+    # RO attenuation
+    # 0 ~ 60
     init_RO_DigiAtte = 26
-    # guess [5.72088012 5.83476623 5.90590196 6.01276471 6.1014995 ] @DR2 
-    # [5.8577 5.9057 5.9468 6.0092 6.0354] @ dr3 
+
     ro_bare=dict(
-        q0=5.9057e9,
-        q1=6.0092e9,
-        q2=5.8577e9,
-        q3=6.0354e9,
-        q4=5.9468e9        
+        q0=5.9732e9,
+        q1=6.0823e9,
+        #q2=5.9198e9,
+        #q3=6.0991e9,
+        #q4=6.0102e9        
     )
-    #q1 or q3 = 5.8175e9,
-    # q? = 6.207e9,
-    # q? = 6.407e9,
     """ Preparations """
-    # Create or Load chip information
-    # chip_info = cds.Chip_file()
+    
     # Reload the QuantumDevice or build up a new one
-    QD_path, dr, ip, mode, vpn = uw.init_meas_window()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
                                                         mode=mode,
-                                                        vpn=vpn,
+                                                        chip_name=chip_name,
+                                                        chip_type=chip_type,
                                                         qubit_number=5)
+    # Create or Load chip information
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
+
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=init_RO_DigiAtte)
     
