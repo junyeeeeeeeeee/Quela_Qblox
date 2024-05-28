@@ -30,7 +30,12 @@ def save_picvalues_Vcompa(folder_path:str,axes_infos:list, exp_type:str, mode:st
     mode indicates the axis in this pic is time with the mode='time', or temperature with the mode='temp'.
     """
     to_csv_dict = {}
-    y_unit = "us" if exp_type.lower() in ["t1","t2"] else "mK"
+    if exp_type.lower() in ["t1","t2"]:
+        y_unit = "us" 
+    elif exp_type.lower() in ["Gamma_T1_IR","Gamma_T2_IR"]:
+        y_unit = "MHz"
+    else:
+        y_unit = "mK"
     x_unit = "min" if mode.lower() in ["time"] else "K"
     for line_info in axes_infos:
         to_csv_dict[f"{line_info['condition']}_x_({x_unit})"] = line_info["x"]
@@ -150,12 +155,99 @@ def plot_conditional_temp_dep(sample_folder_name:str,temp_folder_names:list,targ
     ax.xaxis.set_tick_params(labelsize=26)
     ax.yaxis.set_tick_params(labelsize=26)
     hs, ls = ax.get_legend_handles_labels()
-    plt.legend(hs, ls, fontsize=20,bbox_to_anchor=(1,1.2))
+    plt.legend(hs, ls, fontsize=30,bbox_to_anchor=(1,1.2))
     plt.tight_layout()
     new_folder_path = timelabelfolder_creator(os.path.join(meas_raw_dir,sample_folder_name),f"{target_q}_{exp_type}_TEMP")
     save_picvalues_Vcompa(new_folder_path,rec,exp_type,"temp")
     plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp_type}_TEMPcomparison.png"))
     plt.close()
+
+
+def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_min_from_the_end:list,target_q:str,subtract_ref:bool=True,mode:str="T1"):
+
+    ref_dict = {}
+    with open(os.path.join(meas_raw_dir,sample_folder_name,"references.json")) as J:
+        file_dict = json.load(J)
+        for condition in file_dict:
+            ref_dict[condition] = {"avg":0,"sd":0}
+            if mode == "T1":
+                if not subtract_ref:
+                    ref_dict[condition]["avg"] = 0
+                    ref_dict[condition]["sd"] = 0
+                else:
+                    ref_dict[condition]["avg"] = 1/file_dict[condition]["ref_before"][mode]
+                    ref_dict[condition]["sd"] = 1/file_dict[condition]["ref_before"][f"{mode}_sd"]
+            elif mode == "effT":
+                if not subtract_ref:
+                    ref_dict[condition]["avg"] = 0
+                    ref_dict[condition]["sd"] = 0
+                else:
+                    ref_dict[condition]["avg"] = file_dict[condition]["ref_before"][mode]
+                    ref_dict[condition]["sd"] = file_dict[condition]["ref_before"][f"{mode}_sd"]
+            else:
+                pass
+    
+    rec = []
+    conditionla_folders = get_conditional_folders(sample_folder_name)
+    for conditional_folder in conditionla_folders:
+        condition = os.path.split(conditional_folder)[-1]
+        values = {"condition":condition,"x":[],"y":[],"yerr":[]}
+        for idx, temperature in enumerate(temp_folder_names):
+            every_value_dict = {}
+            tempera_folder = os.path.join(conditional_folder,temperature)
+            if os.path.exists(tempera_folder):
+                time_past_min_array = get_time_axis(target_q,tempera_folder)/60
+                
+                set_number = time_past_min_array.shape[0]
+                json_file = os.path.join(tempera_folder,"results","jsons","every_values.json")
+                with open(json_file) as JJ:
+                    every_value_dict = json.load(JJ)
+                    values["x"].append(int(temperature.split("K")[0]))
+
+                slice_from_this_min = int(time_past_min_array[-1]-slice_min_from_the_end[idx])
+                histo_count_in_set = int(len(every_value_dict[f"{mode}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
+                this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
+                histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set  
+                if mode in ["T1", "T_phi"]:        
+                    values["y"].append(1/mean(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))-ref_dict[condition]["avg"])
+                    values["yerr"].append( 1/std(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))) # -ref_dict[condition]["sd"]
+                else:
+                    values["y"].append(mean(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))-ref_dict[condition]["avg"])
+                    values["yerr"].append(std(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))) # -ref_dict[condition]["sd"]
+        if len(values["x"]) != 0:
+            rec.append(values)
+
+    fig, ax = plt.subplots(1,1,figsize=(15,10))   
+    plt.grid()  
+    ax: plt.Axes
+    y_for_lim = []
+    for condition_values in rec:
+        ax.errorbar(condition_values["x"],condition_values["y"],yerr=condition_values["yerr"],label=condition_values["condition"],fmt='o-')
+        y_for_lim += condition_values["y"]
+    ax.set_xlabel("Radiator temp. (K)",fontsize=26)
+    ax.set_ylim(min(array(y_for_lim))-std(array(y_for_lim)),max(array(y_for_lim))+std(array(y_for_lim)))
+    if mode in ["T1", "T2"]:
+        if subtract_ref:
+            ax.set_ylabel("$\Gamma_{IR}$ difference (MHz)",fontsize=26)
+        else:
+            ax.set_ylabel("Gamma_IR (MHz)",fontsize=26)
+        file_name = f"DeltaGamma_{mode}_IR"
+
+    else:
+        ax.set_ylabel("Effective temp difference (mK)",fontsize=26)
+        file_name = "DeltaEffT"
+    
+    ax.xaxis.set_tick_params(labelsize=26)
+    ax.yaxis.set_tick_params(labelsize=26)
+    hs, ls = ax.get_legend_handles_labels()
+    plt.legend(hs, ls, fontsize=20,bbox_to_anchor=(1,1.2))
+    plt.tight_layout()
+    # new_folder_path = timelabelfolder_creator(os.path.join(meas_raw_dir,sample_folder_name),f"{target_q}_{file_name}_TEMP")
+    # save_picvalues_Vcompa(new_folder_path,rec,file_name,"temp")
+    # plt.savefig(os.path.join(new_folder_path,f"{target_q}_{file_name}_TEMPcomparison.png"))
+    # plt.close()
+    plt.show()
+
 
 
 
@@ -187,6 +279,17 @@ def plot_temp_monitor_compa(sample_folder_name:str,exp_catas:list,temp_names:dic
     for exp in exp_catas:
         plot_conditional_temp_dep(sample_folder_name,temp_names,target_q,exp,avg_time_minutes)
 
+
+def gamma_compa_artist(sample_folder_name:str, temp_folder_names:dict, exp_catas:list, target_q:str, ref:bool=True):
+    """
+    temp_names = {"10K":100}, where 100 is the minutes from the end to average.
+    """
+    avg_time_minutes = list(temp_folder_names.values())
+    for exp in exp_catas:
+        gamma_compa_temp_dep(sample_folder_name, temp_folder_names,slice_min_from_the_end=avg_time_minutes,target_q=target_q,subtract_ref=ref,mode=exp)
+
+
+
 if __name__ == '__main__':
     target_q:str = 'q0'
     sameple_folder:str = "Radiator_wisconsinQ1"
@@ -195,11 +298,14 @@ if __name__ == '__main__':
                           "30K":60,
                           "40K":60,
                           "60K":60}
-    exps:list = ["effT","T1"]
+    exps:list = ["T1"]
     
 
-    # plot time trend (time past as x-axis)
-    plot_time_monitor_compa(sameple_folder, ["re0K"], target_q, exps)
+    # # plot time trend (time past as x-axis)
+    # plot_time_monitor_compa(sameple_folder, ["re0K"], target_q, exps)
 
-    # plot temperature dependence (radiator temperature as x-axis) 
+    # # plot temperature dependence (radiator temperature as x-axis) 
     # plot_temp_monitor_compa(sameple_folder,exps,compa_tempera,target_q)
+
+    # # plot Gamma temperature dependence (radiator temperature as x-axis) 
+    gamma_compa_artist(sameple_folder,compa_tempera,exps,target_q)

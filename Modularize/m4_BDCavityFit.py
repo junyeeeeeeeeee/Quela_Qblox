@@ -63,14 +63,16 @@ if __name__ == "__main__":
 
 
 
-    # If you want to analyze a cavity nc by ResonatorSpectroscopyAnalysis 
+    # # If you want to analyze a cavity nc by ResonatorSpectroscopyAnalysis 
     # # re-analyze a nc
+    # from numpy import pi
     # from xarray import open_dataset
     # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
     # import quantify_core.data.handling as dh
     # from quantify_core.data.handling import set_datadir
+    
     # set_datadir('path_to_datadir')
-    # meas_datadir = '.data'
+   
     # rs_ds = open_dataset("Modularize/Meas_raw/2024_4_29/DR1q0_CavitySpectro_H20M41S2.nc")
     # x = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
-    # print(x)
+    # print((x.quantities_of_interest["fr"].nominal_value*2*pi/x.quantities_of_interest["Ql"].nominal_value)/(2*pi*1e6))

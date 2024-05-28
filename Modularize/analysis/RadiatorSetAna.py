@@ -841,10 +841,11 @@ if __name__ == '__main__':
     #                  "40K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
     #                  "60K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60}
     #                 }
-    log_info_dict = {"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},
-                     "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},
-                     "40K":{"start_date":"2024-05-14", "start_time":"16:15", "avg_min_from_the_end":60},
-                     "60K":{"start_date":"2024-05-15", "start_time":"09:15", "avg_min_from_the_end":60}
+    log_info_dict = {#"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},
+                    #  "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},
+                    #  "40K":{"start_date":"2024-05-14", "start_time":"16:15", "avg_min_from_the_end":60},
+                    #  "60K":{"start_date":"2024-05-15", "start_time":"09:15", "avg_min_from_the_end":60},
+                     "re0K":{"start_date":"2024-05-15", "start_time":"15:43", "avg_min_from_the_end":60}
                     }
     
     # ? For references.
