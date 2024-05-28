@@ -69,7 +69,7 @@ class Chip_file():
         if self.chip_type == "5Q":
             blank_file = "blank_info\\5Q_blank.json"
         elif self.chip_type == "5Q4C":
-            blank_file = "blank_info\\5Q4C_blank.json"
+            blank_file = os.path.join("blank_info","5Q4C_blank.json")
         elif self.chip_type == "Cavity":
             blank_file = "blank_info\\Cavity_blank.json"
         else:

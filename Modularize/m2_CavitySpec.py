@@ -107,7 +107,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1', '11', 'n','20240528_5Qcav', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
@@ -116,14 +116,14 @@ if __name__ == "__main__":
     chip_info_restore = 1
     # RO attenuation
     # 0 ~ 60
-    init_RO_DigiAtte = 26
-
+    init_RO_DigiAtte = 0
+    5.4537, 5.456, 5.507, 5.558, 5.566
     ro_bare=dict(
-        q0=5.9732e9,
-        q1=6.0823e9,
-        #q2=5.9198e9,
-        #q3=6.0991e9,
-        #q4=6.0102e9        
+        q0=5.4537e9,
+        q1=5.456e9,
+        q2=5.507e9,
+        q3=5.558e9,
+        q4=5.566e9        
     )
     """ Preparations """
     
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     CS_results = {}
     for qubit in ro_bare:
         if QD_path == '': QD_RO_init(QD_agent,qubit)
-        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,run = execution)
+        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,run = execution,ro_span_Hz=10e6)
         if not execution:
             break
     
