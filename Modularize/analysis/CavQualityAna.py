@@ -114,10 +114,10 @@ def plot_allCav_quality():
 
 
 if __name__ == "__main__":
-    CavQua_nc_folder_path = "Modularize/Meas_raw/2024_5_29/q2_CavityQuality_RTatte0dB_H20M36S21"
+    CavQua_nc_folder_path = "Modularize/Meas_raw/2024_5_30/q2_CavityQuality_RTatte0dB_H11M45S55"
 
     # # plot quality factors
-    plot_quality_results_for_aQ(CavQua_nc_folder_path, sep_qua=True)
+    plot_quality_results_for_aQ(CavQua_nc_folder_path, sep_qua=False)
 
     # # plot cavity and its fitting
     # officallyPlot_a_givenAtte_cav(CavQua_nc_folder_path,0)
