@@ -125,7 +125,7 @@ def reduce_to_min(time_array:ndarray, date_array:ndarray)->ndarray:
         datetimes.append(dt.strptime(f"20{date} {value}","%Y-%m-%d %H:%M:%S"))
     past_mins = []
     for a_dt in datetimes:
-        past_mins.append((a_dt-datetimes[0]).total_seconds() / 60)
+        past_mins.append(round((a_dt-datetimes[0]).total_seconds() / 60,1))
 
     return array(past_mins)
     

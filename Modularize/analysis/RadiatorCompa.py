@@ -134,9 +134,10 @@ def plot_conditional_temp_dep(sample_folder_name:str,temp_folder_names:list,targ
                 slice_from_this_min = int(time_past_min_array[-1]-slice_min_from_the_end[idx])
                 histo_count_in_set = int(len(every_value_dict[f"{exp_type}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
                 this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
-                histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set          
-                values["y"].append(mean(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
-                values["yerr"].append( std(array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])))
+                histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set 
+                target_y = array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])         
+                values["y"].append(mean(target_y[target_y != 0]))
+                values["yerr"].append(std(target_y[target_y != 0]))
         if len(values["x"]) != 0:
             rec.append(values)
 
@@ -162,30 +163,31 @@ def plot_conditional_temp_dep(sample_folder_name:str,temp_folder_names:list,targ
     plt.savefig(os.path.join(new_folder_path,f"{target_q}_{exp_type}_TEMPcomparison.png"))
     plt.close()
 
-
+# TODO:
 def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_min_from_the_end:list,target_q:str,subtract_ref:bool=True,mode:str="T1"):
+    """ mode: 'T1' for gamma1, 'T2' for gamma2, 'phi' for gamma_pha"""
 
     ref_dict = {}
     with open(os.path.join(meas_raw_dir,sample_folder_name,"references.json")) as J:
         file_dict = json.load(J)
         for condition in file_dict:
             ref_dict[condition] = {"avg":0,"sd":0}
-            if mode == "T1":
+            if mode.lower() in ["t1","t2"]:
                 if not subtract_ref:
                     ref_dict[condition]["avg"] = 0
                     ref_dict[condition]["sd"] = 0
                 else:
                     ref_dict[condition]["avg"] = 1/file_dict[condition]["ref_before"][mode]
                     ref_dict[condition]["sd"] = 1/file_dict[condition]["ref_before"][f"{mode}_sd"]
-            elif mode == "effT":
+            elif mode.lower() == "phi":
                 if not subtract_ref:
                     ref_dict[condition]["avg"] = 0
                     ref_dict[condition]["sd"] = 0
                 else:
-                    ref_dict[condition]["avg"] = file_dict[condition]["ref_before"][mode]
+                    ref_dict[condition]["avg"] = 1/file_dict[condition]["ref_before"]["T2"] - 0.5/file_dict[condition]["ref_before"]["T1"]
                     ref_dict[condition]["sd"] = file_dict[condition]["ref_before"][f"{mode}_sd"]
             else:
-                pass
+                raise KeyError("Unsupported mode was given!")
     
     rec = []
     conditionla_folders = get_conditional_folders(sample_folder_name)
@@ -208,12 +210,17 @@ def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_mi
                 histo_count_in_set = int(len(every_value_dict[f"{mode}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
                 this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
                 histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set  
-                if mode in ["T1", "T_phi"]:        
-                    values["y"].append(1/mean(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))-ref_dict[condition]["avg"])
-                    values["yerr"].append( 1/std(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))) # -ref_dict[condition]["sd"]
+                if mode.lower() == 't1':
+                    target_y = array(every_value_dict["gamma1s"][histo_idx_this_min:])
+                elif mode.lower() == 't2':
+                    target_y = array(every_value_dict["gamma2s"][histo_idx_this_min:])
                 else:
-                    values["y"].append(mean(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))-ref_dict[condition]["avg"])
-                    values["yerr"].append(std(array(every_value_dict[f"{mode}s"][histo_idx_this_min:]))) # -ref_dict[condition]["sd"]
+                    target_y = array(every_value_dict["gamma2s"][histo_idx_this_min:])-0.5*array(every_value_dict["gamma1s"][histo_idx_this_min:])
+                
+
+                values["y"].append(mean(target_y[target_y != 0])-ref_dict[condition]["avg"])
+                values["yerr"].append(std(target_y[target_y != 0])) # -ref_dict[condition]["sd"]
+
         if len(values["x"]) != 0:
             rec.append(values)
 
@@ -240,7 +247,7 @@ def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_mi
     ax.xaxis.set_tick_params(labelsize=26)
     ax.yaxis.set_tick_params(labelsize=26)
     hs, ls = ax.get_legend_handles_labels()
-    plt.legend(hs, ls, fontsize=20,bbox_to_anchor=(1,1.2))
+    plt.legend(hs, ls, fontsize=30,bbox_to_anchor=(1,1.2))
     plt.tight_layout()
     # new_folder_path = timelabelfolder_creator(os.path.join(meas_raw_dir,sample_folder_name),f"{target_q}_{file_name}_TEMP")
     # save_picvalues_Vcompa(new_folder_path,rec,file_name,"temp")
@@ -301,11 +308,14 @@ if __name__ == '__main__':
     exps:list = ["T1"]
     
 
-    # # plot time trend (time past as x-axis)
+    # plot time trend (time past as x-axis)
     # plot_time_monitor_compa(sameple_folder, ["re0K"], target_q, exps)
 
-    # # plot temperature dependence (radiator temperature as x-axis) 
+    # plot temperature dependence (radiator temperature as x-axis) 
     # plot_temp_monitor_compa(sameple_folder,exps,compa_tempera,target_q)
 
-    # # plot Gamma temperature dependence (radiator temperature as x-axis) 
-    gamma_compa_artist(sameple_folder,compa_tempera,exps,target_q)
+    # plot Gamma temperature dependence (radiator temperature as x-axis) 
+    # gamma_compa_artist(sameple_folder,compa_tempera,exps,target_q) # test in next run (un-finished)
+
+    
+ 
