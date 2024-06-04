@@ -66,6 +66,9 @@ if __name__ == "__main__":
         
             if set_idx == 0:
                 other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
+            else:
+                with open(f"{data_parent_dir}/otherInfo.json") as JJ:
+                    other_info = json.load(JJ)
             
             set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
             evoT = ro_elements[qubit]["freeTime"]
@@ -80,12 +83,9 @@ if __name__ == "__main__":
             shut_down(cluster,Fctrl)
             set_idx += 1
 
-
-
-    """ Storing """
-    with open(f"{data_parent_dir}/otherInfo.json","w") as record_file:
-        json.dump(other_info,record_file)
-
+            """ Storing """
+            with open(f"{data_parent_dir}/otherInfo.json","w") as record_file:
+                json.dump(other_info,record_file)
 
     end = time.time()
     print(f"{set_idx}*{ro_elements['q0']['histo_counts']} Cost time: {round((end-start)/60,1)} mins")
