@@ -3,7 +3,7 @@ When RadiatorSet program is running and we didn't set a timer, we can use this t
 """
 
 import os
-from Modularize.analysis.RadiatorSetAna import main_analysis, time_trend_artist, get_time_axis
+from Modularize.analysis.Radiator.RadiatorSetAna import main_analysis, time_trend_artist, get_time_axis
 from Modularize.support.Path_Book import meas_raw_dir
 
 target_q:str = 'q0'

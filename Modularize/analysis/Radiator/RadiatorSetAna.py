@@ -879,7 +879,7 @@ def plot_DR_tempera(start_date:str="",start_time:str="",temp_chennel:int=6,DR_lo
         dr_info["yerr"] = zeros(dr_temp_array.shape[0]).tolist()
     return axDR, dr_info
 
-def scat_DR_avg_temp(need_log_info:dict,DR_log_folder_path:str="",ax:plt.Axes=None,temp_chennel:int=6)->tuple[plt.Axes, plt.Axes]:
+def scat_DR_avg_temp(need_log_info:dict,sample_folder_name:str="",conditional_folder_name:str="",DR_log_folder_path:str="",ax:plt.Axes=None,temp_chennel:int=6)->tuple[plt.Axes, plt.Axes]:
     """ 
     `need_log_info` follows the form: {temp:{"keep_time_min", "start_date", "start_time", "avg_min_from_the_end"}}
     """
@@ -898,9 +898,20 @@ def scat_DR_avg_temp(need_log_info:dict,DR_log_folder_path:str="",ax:plt.Axes=No
     x_axis = []
     for temperature in need_log_info:
         exp_keep_time_min:int = need_log_info[temperature]["keep_time_min"]
-        start_date:str = need_log_info[temperature]["start_date"]
-        start_time:str = need_log_info[temperature]["start_time"]
         avg_min_from_the_end:int = need_log_info[temperature]["avg_min_from_the_end"]
+        try:
+            other_info = {}
+            with open(os.path.join(meas_raw_dir,sample_folder_name,conditional_folder_name,temperature,"otherInfo.json")) as JJ:
+                other_info = json.load(JJ)
+            start_date:str = other_info[target_q]["start_time"].split(" ")[0]
+            start_time:str = other_info[target_q]["start_time"].split(" ")[-1]
+        except:
+            try:
+                start_date:str = need_log_info[temperature]["start_date"]
+                start_time:str = need_log_info[temperature]["start_time"]
+            except:
+                start_date = ""
+                start_time = ""
 
         if DR_log_folder_path == "" or start_date == "" or start_time == "":
             pass
@@ -1023,8 +1034,20 @@ def scat_ref_temp_dep(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, 
 #                         ==============
 
 def time_trend_artist(tempera_folder:str, target_q:str, exp_catas:list, time_past_sec_array:ndarray, ref_before:dict, ref_recove:dict, DR_time_info:dict, log_folder:str, DRtemp_che:int=6, show:bool=0):
-    start_date = DR_time_info["start_date"]
-    start_time = DR_time_info["start_time"]
+    try:
+        other_info = {}
+        with open(os.path.join(tempera_folder,"otherInfo.json")) as JJ:
+            other_info = json.load(JJ)
+        start_date = other_info[target_q]["start_time"].split(" ")[0]
+        start_time = other_info[target_q]["start_time"].split(" ")[-1]
+    except:
+        print("OtherInfo.json didn't work!")
+        try:
+            start_date = DR_time_info["start_date"]
+            start_time = DR_time_info["start_time"]
+        except:
+            start_date = ""
+            start_time = ""
     temperature = os.path.split(tempera_folder)[-1]
     if temperature[:2] == "re":
         action = "OFF"
@@ -1047,13 +1070,19 @@ def time_trend_artist(tempera_folder:str, target_q:str, exp_catas:list, time_pas
             plt.show()
 
 def temp_depen_artist(temperature_list:list, target_q:str, sample_folder:str, conditional_folder:str, log_info_dict:dict, exp_catas:list, ref_before:dict={}, ref_recove:dict={}, log_folder="", tempera_che:int=6):
+    avg_time_list = []
+    for temp in temperature_list: 
+        try:
+            avg_time_list.append(log_info_dict[temp]["avg_min_from_the_end"])
+        except:
+            avg_time_list.append(60)
     for exp in exp_item_translator(exp_catas):
-        ax, keep_time_info, conditional_folder_path, axes_info = plot_stable_temp_dep(temperature_list,exp,[log_info_dict[temp]["avg_min_from_the_end"] for temp in temperature_list], sample_folder, conditional_folder)
+        ax, keep_time_info, conditional_folder_path, axes_info = plot_stable_temp_dep(temperature_list, exp, avg_time_list, sample_folder, conditional_folder)
         for tempera in log_info_dict:
             log_info_dict[tempera]["keep_time_min"] = keep_time_info[tempera]
         ax, handles, labels, ref_info = scat_ref_temp_dep(ax,ref_before,ref_recove,exp)
         
-        ax, dr_info = scat_DR_avg_temp(log_info_dict,DR_log_folder_path=log_folder,ax=ax,temp_chennel=tempera_che)
+        ax, dr_info = scat_DR_avg_temp(log_info_dict,sample_folder,conditional_folder,DR_log_folder_path=log_folder,ax=ax,temp_chennel=tempera_che)
         new_folder_path = timelabelfolder_creator(conditional_folder_path,f"{target_q}_TEMP_{exp}")
         pic_values_saver(new_folder_path,'temp',axes_info, ref_info, dr_info)
         plt.legend(handles, labels, fontsize=legend_font_size,bbox_to_anchor=(1,1.15))
@@ -1090,13 +1119,13 @@ if __name__ == '__main__':
     
     # ?  log_info_dict at least should have the temperature with its 'avg_min_from_the_end'
     # // If there is only one temperature in `log_info_dict`, it will plot time trend. Or u can set 'always_plot_timeTrend = True` to enforce it plot no matter how many temperatures are there.
-    # log_info_dict = {"20K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
+    # log_info_dict = {"20K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},   
     #                  "30K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
     #                  "40K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
     #                  "60K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60}
     #                 }
-    log_info_dict = {"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},
-                     "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},
+    log_info_dict = {"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},   # if keyname 'avg_min_from_the_end' is not inside, the default is 60 minutes
+                     "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},   # 'start_date' and 'start_time' are not neccessary if otherInfo have them.
                      "40K":{"start_date":"2024-05-14", "start_time":"16:15", "avg_min_from_the_end":60},
                      "60K":{"start_date":"2024-05-15", "start_time":"09:15", "avg_min_from_the_end":60},
                     #"re0K":{"start_date":"2024-05-15", "start_time":"15:43", "avg_min_from_the_end":60}

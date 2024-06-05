@@ -67,7 +67,7 @@ if __name__ == "__main__":
             if set_idx == 0:
                 other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
             else:
-                with open(f"{data_parent_dir}/otherInfo.json") as JJ:
+                with open(os.path.join(data_parent_dir,"otherInfo.json")) as JJ:
                     other_info = json.load(JJ)
             
             set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             set_idx += 1
 
             """ Storing """
-            with open(f"{data_parent_dir}/otherInfo.json","w") as record_file:
+            with open(os.path.join(data_parent_dir,"otherInfo.json"),"w") as record_file:
                 json.dump(other_info,record_file)
 
     end = time.time()
