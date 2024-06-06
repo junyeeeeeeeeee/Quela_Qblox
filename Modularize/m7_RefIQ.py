@@ -87,7 +87,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = {'q0':{"ro_amp_factor":1}}
+    ro_elements = {'q4':{"ro_amp_factor":1}}
 
 
     """ Preparations """
@@ -96,6 +96,13 @@ if __name__ == "__main__":
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
 
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c3':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
 
     """ Running """
     for qubit in ro_elements:

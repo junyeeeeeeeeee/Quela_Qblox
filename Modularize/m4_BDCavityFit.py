@@ -1,8 +1,7 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.m2_CavitySpec import Cavity_spec
-from Modularize.support import Data_manager, QDmanager
-from Modularize.support import cds
+from Modularize.support import Data_manager, QDmanager, cds
 from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -27,8 +26,17 @@ if __name__ == "__main__":
     sweetSpot:bool = 0
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"bare" :{"ro_amp":0.4,"ro_atte":20,"window_shift":0},
-              "dress":{"ro_amp":0.02,"ro_atte":20,"window_shift":4e6}}
+        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-5e6}},
+        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
+        "q1":{  "bare" :{"ro_amp":0.6,"ro_atte":30,"window_shift":-2e6}},
+        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":4e6}},
+        "q2":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
+                # "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}}
+        "q3":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
+        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
+        "q4":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
+        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
+
     }
     # 1 = Store
     # 0 = not store
@@ -60,6 +68,7 @@ if __name__ == "__main__":
 
     """ Storing (future) """
     if chip_info_restore:
+        chip_info.update_QD(CS_results)
         if sweetSpot:
             chip_info.update_Cavity_spec_sweet(CS_results)
         else:

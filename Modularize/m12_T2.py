@@ -20,6 +20,10 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     Real_detune= {}
     
     qubit = QD_agent.quantum_device.get_element(q)
+
+    # Manually change f01
+    f01 = qubit.clock_freqs.f01()
+    qubit.clock_freqs.f01(f01-2.47e6)
     
     New_fxy= qubit.clock_freqs.f01()+arti_detune
     
@@ -136,9 +140,9 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":15e-6,"histo_counts":1}
+        "q0":{"detune":0e6,"evoT":50e-6,"histo_counts":1}
     }
 
 
@@ -146,6 +150,13 @@ if __name__ == "__main__":
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c0':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
 
     """ Running """
     ramsey_results = {}
@@ -159,7 +170,7 @@ if __name__ == "__main__":
 
         slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
         ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
-        highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,3)} GHz")
+        highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             
         
        

@@ -140,7 +140,7 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr2","last_ip":"10"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
 
 
@@ -148,6 +148,13 @@ if __name__ == "__main__":
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c0':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
 
     """Running """
     rabi_results = {}

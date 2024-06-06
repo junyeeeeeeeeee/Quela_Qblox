@@ -4,13 +4,15 @@ from numpy import array, linspace, pi
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
+
+
 
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
@@ -113,24 +115,40 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
+    
     ro_elements = ['q4']
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
+    
     
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c3':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
+
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     """ Running """
     update = False
     FD_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.4,ro_span_Hz=6e6, zpts=30)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.5,ro_span_Hz=8e6, zpts=40)
         cluster.reset()
         if execution:
-            permission = mark_input("Update the QD with this result ? [y/n]") 
+            # permission = mark_input("Update the QD with this result ? [y/n]") 
+            permission = 'y'
             if permission.lower() in ['y','yes']:
                 update_flux_info_in_results_for(QD_agent,qubit,FD_results)
                 update = True
@@ -143,8 +161,11 @@ if __name__ == "__main__":
             QD_agent.refresh_log("after FluxDep")
             QD_agent.QD_keeper()
             update = False
-
+    if chip_info_restore:
+        chip_info.update_Flux_cavity_spec(result=FD_results)
 
     """ Close """
     print('Flux dependence done!')
+    for i in Cctrl:
+        Cctrl[i](0.0)
     shut_down(cluster,Fctrl)

@@ -116,14 +116,14 @@ if __name__ == "__main__":
     chip_info_restore = 1
     # RO attenuation
     # 0 ~ 60
-    init_RO_DigiAtte = 26
+    init_RO_DigiAtte = 30
 
     ro_bare=dict(
         q0=5.9732e9,
         q1=6.0823e9,
-        #q2=5.9198e9,
-        #q3=6.0991e9,
-        #q4=6.0102e9        
+        q2=5.9198e9,
+        q3=6.0991e9,
+        q4=6.0102e9        
     )
     """ Preparations """
     

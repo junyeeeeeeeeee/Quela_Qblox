@@ -1,26 +1,26 @@
 {
     "basic_information": {
-        "chip_name": "",
+        "chip_name": "20240430_8_5Q4C",
         "chip_type": "5Q4C",
-        "create_time": "",
-        "chip_file": ""
+        "create_time": "20240527",
+        "chip_file": "C:\\PersonalWorks\\Quela\\Quela_Qblox\\chip_information\\20240430_8_5Q4C.json"
     },
     "1Q_information": {
-        "ro_att": -1,
+        "ro_att": 30,
         "q0": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
-                    "Ql": 0
+                    "bare_freq": 5977463041.694341,
+                    "Qi": 6772.849772507287,
+                    "Qc": 3898.777523655654,
+                    "Ql": 2474.3962407347303
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
-                        "Ql": 0
+                        "dress_freq": 5979326009.709601,
+                        "Qi": 15770.988236346488,
+                        "Qc": 3700.0674881360474,
+                        "Ql": 2996.946937792841
                     },
                     "qubit": {
                         "freq": 0,
@@ -32,7 +32,7 @@
                 },
                 "Sweet": {
                     "res": {
-                        "dress_freq": 0,
+                        "dress_freq": 5978666359.945938,
                         "Qi": 0,
                         "Qc": 0,
                         "Ql": 0
@@ -42,7 +42,7 @@
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": 0.08136041525367116,
                     "g": 0
                 },
                 "min": {
@@ -79,12 +79,12 @@
             "oper": {
                 "xy_att": -1,
                 "readout": {
-                    "amp": 0,
-                    "dura_time": 0,
-                    "acq_delay": 0,
-                    "integ_time": 0,
-                    "flux": 0,
-                    "freq": 0
+                    "amp": 0.01,
+                    "dura_time": 2e-06,
+                    "acq_delay": 1e-07,
+                    "integ_time": 1.496e-06,
+                    "flux": 0.08136041525367116,
+                    "freq": 5978666359.945938
                 },
                 "x_gate": {
                     "waveform": {
@@ -106,24 +106,24 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
         "q1": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
-                    "Ql": 0
+                    "bare_freq": 6088746679.042166,
+                    "Qi": 3039.714683639655,
+                    "Qc": 4534.185747224336,
+                    "Ql": 1819.7533912675435
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
-                        "Ql": 0
+                        "dress_freq": 6092282375.162393,
+                        "Qi": 13292.295204703443,
+                        "Qc": 4116.407045164128,
+                        "Ql": 3143.054366815817
                     },
                     "qubit": {
                         "freq": 0,
@@ -135,7 +135,7 @@
                 },
                 "Sweet": {
                     "res": {
-                        "dress_freq": 0,
+                        "dress_freq": 6808969448.92822,
                         "Qi": 0,
                         "Qc": 0,
                         "Ql": 0
@@ -145,7 +145,7 @@
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": -86.70440064861008,
                     "g": 0
                 },
                 "min": {
@@ -182,12 +182,12 @@
             "oper": {
                 "xy_att": -1,
                 "readout": {
-                    "amp": 0,
-                    "dura_time": 0,
-                    "acq_delay": 0,
-                    "integ_time": 0,
-                    "flux": 0,
-                    "freq": 0
+                    "amp": 0.01,
+                    "dura_time": 2e-06,
+                    "acq_delay": 1e-07,
+                    "integ_time": 1.496e-06,
+                    "flux": -86.70440064861008,
+                    "freq": 6808969448.92822
                 },
                 "x_gate": {
                     "waveform": {
@@ -209,24 +209,24 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
         "q2": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
-                    "Ql": 0
+                    "bare_freq": 5919998796.780729,
+                    "Qi": 12617.25182000964,
+                    "Qc": 4199.0453129090665,
+                    "Ql": 3150.5397233314325
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
-                        "Ql": 0
+                        "dress_freq": 5921075416.364415,
+                        "Qi": 17233.287098829434,
+                        "Qc": 3103.8505326248837,
+                        "Ql": 2630.141385179494
                     },
                     "qubit": {
                         "freq": 0,
@@ -238,7 +238,7 @@
                 },
                 "Sweet": {
                     "res": {
-                        "dress_freq": 0,
+                        "dress_freq": 5923672911.676642,
                         "Qi": 0,
                         "Qc": 0,
                         "Ql": 0
@@ -248,7 +248,7 @@
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": -0.18304074545879684,
                     "g": 0
                 },
                 "min": {
@@ -285,12 +285,12 @@
             "oper": {
                 "xy_att": -1,
                 "readout": {
-                    "amp": 0,
-                    "dura_time": 0,
-                    "acq_delay": 0,
-                    "integ_time": 0,
-                    "flux": 0,
-                    "freq": 0
+                    "amp": 0.01,
+                    "dura_time": 2e-06,
+                    "acq_delay": 1e-07,
+                    "integ_time": 1.496e-06,
+                    "flux": -0.18304074545879684,
+                    "freq": 5923672911.676642
                 },
                 "x_gate": {
                     "waveform": {
@@ -312,24 +312,24 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
         "q3": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
-                    "Ql": 0
+                    "bare_freq": 6099496282.311073,
+                    "Qi": 16382.534204769572,
+                    "Qc": 3934.4571716239257,
+                    "Ql": 3172.5356376447735
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
-                        "Ql": 0
+                        "dress_freq": 6102516437.684792,
+                        "Qi": 18693.066287912974,
+                        "Qc": 3138.559790732162,
+                        "Ql": 2687.353933481055
                     },
                     "qubit": {
                         "freq": 0,
@@ -341,7 +341,7 @@
                 },
                 "Sweet": {
                     "res": {
-                        "dress_freq": 0,
+                        "dress_freq": 6323854299.309228,
                         "Qi": 0,
                         "Qc": 0,
                         "Ql": 0
@@ -351,7 +351,7 @@
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": 124.39788499529962,
                     "g": 0
                 },
                 "min": {
@@ -388,12 +388,12 @@
             "oper": {
                 "xy_att": -1,
                 "readout": {
-                    "amp": 0,
-                    "dura_time": 0,
-                    "acq_delay": 0,
-                    "integ_time": 0,
-                    "flux": 0,
-                    "freq": 0
+                    "amp": 0.01,
+                    "dura_time": 2e-06,
+                    "acq_delay": 1e-07,
+                    "integ_time": 1.496e-06,
+                    "flux": 124.39788499529962,
+                    "freq": 6323854299.309228
                 },
                 "x_gate": {
                     "waveform": {
@@ -415,24 +415,24 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
         "q4": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0,
-                    "Ql": 0
+                    "bare_freq": 6010520418.566977,
+                    "Qi": 17959.739476150742,
+                    "Qc": 4253.322257585543,
+                    "Ql": 3438.902775763409
                 },
                 "zeroflux": {
                     "res": {
-                        "dress_freq": 0,
-                        "Qi": 0,
-                        "Qc": 0,
-                        "Ql": 0
+                        "dress_freq": 6013562459.208041,
+                        "Qi": 17689.86645501652,
+                        "Qc": 3838.2529604397223,
+                        "Ql": 3153.9300289277744
                     },
                     "qubit": {
                         "freq": 0,
@@ -444,7 +444,7 @@
                 },
                 "Sweet": {
                     "res": {
-                        "dress_freq": 0,
+                        "dress_freq": 6093771213.15855,
                         "Qi": 0,
                         "Qc": 0,
                         "Ql": 0
@@ -454,7 +454,7 @@
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": -71.24375350530397,
                     "g": 0
                 },
                 "min": {
@@ -491,12 +491,12 @@
             "oper": {
                 "xy_att": -1,
                 "readout": {
-                    "amp": 0,
-                    "dura_time": 0,
-                    "acq_delay": 0,
-                    "integ_time": 0,
-                    "flux": 0,
-                    "freq": 0
+                    "amp": 0.01,
+                    "dura_time": 2e-06,
+                    "acq_delay": 1e-07,
+                    "integ_time": 1.496e-06,
+                    "flux": -71.24375350530397,
+                    "freq": 6093771213.15855
                 },
                 "x_gate": {
                     "waveform": {
@@ -518,18 +518,14 @@
             },
             "init": {
                 "wait": {
-                    "time": 0
+                    "time": 0.00015
                 }
             }
         },
-        "c0": {
-        },
-        "c1": {
-        },
-        "c2": {
-        },
-        "c3": {
-        }
+        "c0": {},
+        "c1": {},
+        "c2": {},
+        "c3": {}
     },
     "2Q_information": {}
 }

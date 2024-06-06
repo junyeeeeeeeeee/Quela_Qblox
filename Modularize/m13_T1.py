@@ -95,6 +95,11 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
     if run:
         T1_us = []
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
+
+        # Manually change f01
+        f01 = qubit_info.clock_freqs.f01()
+        qubit_info.clock_freqs.f01(f01+0.7e6)
+
         ori_reset = qubit_info.reset.duration()
         # qubit_info.reset.duration(150e-6)#qubit_info.reset.duration()+freeDura)
         warning_print(qubit_info.reset.duration()*1e6)
@@ -105,6 +110,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
+            slightly_print(f"T1: {T1_hist[specific_qubits]} µs")
             T1_us.append(T1_hist[specific_qubits])
             every_end = time.time()
             slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
@@ -131,9 +137,9 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr2","last_ip":"10"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":1}
+        "q4":{"evoT":100e-6,"histo_counts":1}
     }
 
 
@@ -141,7 +147,13 @@ if __name__ == "__main__":
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
-    
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c3':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
     
     """ Running """
     T1_results = {}

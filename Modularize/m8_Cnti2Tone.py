@@ -157,17 +157,26 @@ if __name__ == "__main__":
     execution = True
     update = 1
     #
-    DRandIP = {"dr":"dr2","last_ip":"10"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.4e9],"xyl_guess":[0.07],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q3":{"xyf_guess":[4.25e9],"xyl_guess":[0.11],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
 
     #0.03332
 
+
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c2':0.1,'c3':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
 
     """ Running """
     tt_results = {}
