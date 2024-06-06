@@ -107,7 +107,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1', '11', 'n','20240528_5Qcav', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240606_5Qtest', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
