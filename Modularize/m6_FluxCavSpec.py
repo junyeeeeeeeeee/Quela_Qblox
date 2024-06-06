@@ -8,7 +8,7 @@ from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
@@ -92,6 +92,16 @@ def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
         offset=FD_results[qb].quantities_of_interest["offset"].nominal_value
     )
 
+def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
+    """
+    Update the idle bias in Fluxmanager for couplers.\n
+    --------------------------
+    ### Args:\n
+    cp_elements = {"c0":0.2}
+    """
+    for cp in cp_elements:
+        QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
+
 
 def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
     
@@ -114,6 +124,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q4']
+    cp_ctrl = {"c3":0}
     
 
     """ Preparations """
@@ -124,6 +135,7 @@ if __name__ == "__main__":
 
     """ Running """
     update = False
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
     FD_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
@@ -133,6 +145,7 @@ if __name__ == "__main__":
             permission = mark_input("Update the QD with this result ? [y/n]") 
             if permission.lower() in ['y','yes']:
                 update_flux_info_in_results_for(QD_agent,qubit,FD_results)
+                update_coupler_bias(QD_agent, cp_ctrl)
                 update = True
         else:
             break
@@ -147,4 +160,4 @@ if __name__ == "__main__":
 
     """ Close """
     print('Flux dependence done!')
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

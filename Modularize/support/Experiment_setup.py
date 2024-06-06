@@ -490,7 +490,7 @@ Hcfg_dr3 = {
 }
 
 
-def get_FluxController(cluster, ip:str):
+def get_FluxController(cluster, ip:str)->dict:
     which_dr = ''
     for dr in ip_register:
         if ip_register[dr] == ip:
@@ -498,7 +498,7 @@ def get_FluxController(cluster, ip:str):
     if which_dr == '':
         raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
     
-    
+    Fctrl = {}
     if which_dr.lower() == 'dr2':
         Fctrl: callable = {
             "q0":cluster.module2.out0_offset,
@@ -523,7 +523,7 @@ def get_FluxController(cluster, ip:str):
         raise KeyError ("please input ip label like '170' or '171'!")
     return Fctrl
 
-def get_CouplerController(cluster, ip:str):
+def get_CouplerController(cluster, ip:str)->dict:
     which_dr = ''
     for dr in ip_register:
         if ip_register[dr] == ip:
@@ -531,7 +531,7 @@ def get_CouplerController(cluster, ip:str):
     if which_dr == '':
         raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
     
-    
+    Cctrl = {}
     if which_dr.lower() == 'dr3':
         Cctrl = {
             "c0":cluster.module6.out0_offset,

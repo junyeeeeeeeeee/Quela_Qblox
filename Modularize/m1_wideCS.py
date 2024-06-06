@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, json
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import numpy as np
@@ -137,46 +137,34 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     plt.show()
 
 if __name__ == "__main__":
-    from Modularize.support import init_meas, init_system_atte, shut_down
-    from numpy import NaN
-    import json
+    from Modularize.support import init_meas, init_system_atte, shut_down, QRM_nco_init
     from Modularize.support.UI_Window import init_meas_window
     
-    #chip_info_restore = True
+    """ Fill in """
+    QD_path, dr, ip, mode = "", "dr1", "192.168.1.11","n" #init_meas_window()
+    qrmRF_slot_idx:int  = 6
+    lo_start_freq:float = 5.4  * 1e9
+    lo_stop_freq:float = 6.1   * 1e9
+    num_data:int = 2100
 
-    # Create or Load chip information
-    #chip_info = cds.Chip_file()
-    
-    # Reload the QuantumDevice or build up a new one
 
-    QD_path, dr, ip, mode= "", "dr1", "192.168.1.11","n" #init_meas_window()
-
+    """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
                                                         cluster_ip=ip,
                                                         mode=mode,
                                                         qubit_number=5)
-    print(f"{cluster.modules[5]}\n")
-
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-    for i in range(6):
-
-        getattr(cluster.module6, f"sequencer{i}").nco_prop_delay_comp_en(True)
-        getattr(cluster.module6, f"sequencer{i}").nco_prop_delay_comp(50)
-
-    # Initial value
-    lo_start_freq = 5.4e9
-    lo_stop_freq =6.1e9
-    num_data = 2100
-
-
-    
+    QRM_nco_init(cluster)
     # Readout select
-    readout_module = cluster.modules[5]
+    readout_module = cluster.modules[qrmRF_slot_idx-1]
 
+
+    """ Running """
     wideCS(readout_module=readout_module, lo_start_freq=lo_start_freq, lo_stop_freq=lo_stop_freq, num_data=num_data)
 
+
+    """ Close """
     shut_down(cluster,Fctrl)
     
-    # [5.4537, 5.456, 5.507, 5.558, 5.566]

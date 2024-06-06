@@ -5,7 +5,7 @@ from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Fit_analysis_plot
 from Modularize.m12_T2 import ramsey_executor
 from pandas import Series
@@ -44,6 +44,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q0":{"evoT":15e-6}
     }
+    couplers = ['c0','c1']
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     
 
     """ Running """
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         freeTime = ro_elements[qubit]["evoT"]
@@ -64,4 +66,4 @@ if __name__ == "__main__":
         
         
     """ Close """
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

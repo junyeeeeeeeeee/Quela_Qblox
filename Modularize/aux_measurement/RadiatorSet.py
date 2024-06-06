@@ -6,7 +6,7 @@ from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.m13_T1  import T1_executor
 from Modularize.m12_T2  import ramsey_executor
 from Modularize.m14_SingleShot import SS_executor
-from Modularize.support import QDmanager, init_meas, shut_down, init_system_atte
+from Modularize.support import QDmanager, init_meas, shut_down, init_system_atte, coupler_zctrl
 from quantify_core.measurement.control import MeasurementControl
 
 def create_special_folder(parent_dir:str,folder_idx:int):
@@ -27,7 +27,7 @@ def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
         SS_executor(QD_agent,cluster,Fctrl,specific_qubits,execution=run,data_folder=new_folder,exp_label=ith,plot=False)
 
 def time_monitor(monitoring_info:dict, other_info:dict, qubit:str, data_parent_dir:str, start_time):
-    from Modularize.analysis.RadiatorSetAna import a_set_analysis,live_time_monitoring_plot
+    from Modularize.analysis.Radiator.RadiatorSetAna import a_set_analysis,live_time_monitoring_plot
     monitoring_info = a_set_analysis(set_folder,monitoring_info,other_info[qubit]["refIQ"],other_info[qubit]["f01"])
     monitoring_info["x_minutes"].append(round((time.time()-start_time)/60,1))
     live_time_monitoring_plot(monitoring_info,data_parent_dir)
@@ -41,6 +41,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q0":{"T2detune":0e6,"freeTime":{"T1":120e-6,"T2":20e-6},"histo_counts":2} # histo_counts min = 2 when for test
     }
+    couplers = ['c0','c1']
     tracking_time_min = "free"         # if you wanna interupt it manually, set 'free'
 
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     exp_start_time = f"{exp_start_time.strftime('%Y-%m-%d')} {exp_start_time.strftime('%H:%M')}"
     start = time.time()
     cut_time = time.time()
+    dr = os.path.split(QD_path)[-1].split("#")[0].lower()
 
     """ Running """
     other_info= {}
@@ -63,7 +65,7 @@ if __name__ == "__main__":
         while (cut_time-start)/60 < tracking_time_min:
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
             init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        
+            Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             if set_idx == 0:
                 other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
             else:
@@ -80,7 +82,7 @@ if __name__ == "__main__":
             cut_time = time.time()
             other_info[qubit]["time_past"].append(cut_time-start)
             """ Close """
-            shut_down(cluster,Fctrl)
+            shut_down(cluster,Fctrl,Cctrl)
             set_idx += 1
 
             """ Storing """
