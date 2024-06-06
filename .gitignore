@@ -1,8 +1,8 @@
 **/.DS_Store
 **/__pycache__/
-**/.ipynb_checkpoint/
+**/.ipynb_checkpoints/
 **/Data/
 .data/
 Modularize/Meas_raw/
 Modularize/QD_backup/
-Modularize/support/Experiment_setup.py
+chip_infomation/Timestamp/
