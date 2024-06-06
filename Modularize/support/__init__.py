@@ -25,6 +25,8 @@ import Modularize.support.Chip_Data_Store as cds
 
 from numpy import asarray, ndarray, real
 
+
+
 def multiples_of_x(raw_number:float, x:float):
     multiples = int(raw_number//x) + 1
     return x * multiples
@@ -37,7 +39,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,mode:str='new',chip_name:str='',chip_type:str='')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,coupler_number:int=4,mode:str='new',chip_name:str='',chip_type:str='')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -82,7 +84,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
-        Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
+        Qmanager.build_new_QD(qubit_number,coupler_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
         Qmanager.refresh_log("new-born!")
     else:
         Qmanager.QD_loader()

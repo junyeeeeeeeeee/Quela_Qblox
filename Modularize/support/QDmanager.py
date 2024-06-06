@@ -5,6 +5,20 @@ from Modularize.support.Notebook import Notebook
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
 
+def ret_q(dict_a):
+    x = []
+    for i in dict_a:
+        if i[0] == 'q':
+            x.append(i)
+    return x
+
+def ret_c(dict_a):
+    x = []
+    for i in dict_a:
+        if i[0] == 'c':
+            x.append(i)
+    return x
+
 class QDmanager():
     def __init__(self,QD_path:str=''):
         self.path = QD_path
@@ -49,9 +63,10 @@ class QDmanager():
         self.chip_name:str = gift["chip_name"]
         self.Identity:str = gift["ID"]
         self.Log:str = gift["Log"]
-        self.q_num:int = len(list(gift["Flux"].keys()))
+        self.q_num:int = len(list(filter(ret_q,gift["Flux"])))
+        self.c_num:int = len(list(filter(ret_c,gift["Flux"])))
         # class    
-        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num,cp_number=self.c_num)
         self.Fluxmanager.activate_from_dict(gift["Flux"])
         self.Notewriter: Notebook = Notebook(q_number=self.q_num)
         self.Notewriter.activate_from_dict(gift["Note"])
@@ -86,7 +101,7 @@ class QDmanager():
 
     
 
-    def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
+    def build_new_QD(self,qubit_number:int,coupler_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
 
         """
         Build up a new Quantum Device, here are something must be given about it:\n
@@ -97,12 +112,13 @@ class QDmanager():
         """
         print("Building up a new quantum device system....")
         self.q_num = qubit_number
+        self.cp_num = coupler_number
         self.Hcfg = Hcfg
         self.chip_name = chip_name
         self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
 
-        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         """ #for firmware v0.6.2
         self.quantum_device = QuantumDevice("academia_sinica_device")
