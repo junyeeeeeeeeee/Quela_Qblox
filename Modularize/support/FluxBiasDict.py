@@ -10,13 +10,16 @@ class FluxBiasDict():
     """
     This class helps to memorize the flux bias. 
     """
-    def __init__(self,qb_number:int):
+    def __init__(self,qb_number:int, cp_number:int):
         self.__bias_dict = {}
         self.q_num = qb_number
+        self.c_num = cp_number
         self.float_cata = ["SweetSpot","TuneAway","Period"]
         self.list_cata = ["cavFitParas","qubFitParas"] # For the fitting functions access
         self.dict_cata = {"qubFitData":["bias_data","XYF_data"]} # For XYF-Flux fitting data storing
         self.bool_cata = ["offSweetSpot"]
+
+        self.cp_float_cata = ["idle", "operation", "max"]
 
         self.init_bias()
 
@@ -73,7 +76,11 @@ class FluxBiasDict():
             
             for bool_cate in self.bool_cata:
                 self.__bias_dict[f"q{i}"][bool_cate] = False #Fasle
-
+        
+        for i in range(self.c_num):
+            self.__bias_dict[f"c{i}"] = {}
+            for bias_position in self.cp_float_cata:
+                self.__bias_dict[f"c{i}"][bias_position] = 0.0
 
     def save_sweetspotBias_for(self,target_q:str='q0',bias:float=0.0):
         """
@@ -122,20 +129,27 @@ class FluxBiasDict():
         Activate the dict which super from the old record.
         """
         for q_old in old_bias_dict:
-            for catas in old_bias_dict[q_old]:
-                try:
-                    self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
-                except:
-                    if catas in self.float_cata:
+            if q_old[0] == "q": # qubit 
+                for catas in old_bias_dict[q_old]:
+                    try:
+                        self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
+                    except:
+                        if catas in self.float_cata:
+                            self.__bias_dict[q_old][catas] = 0.0
+                        elif catas in self.list_cata:
+                            self.__bias_dict[q_old][catas] = []
+                        elif catas in self.dict_cata:
+                            self.__bias_dict[q_old][catas] = {}
+                            for subcata in self.dict_cata[q_old]: 
+                                self.__bias_dict[q_old][catas][subcata] = []
+                        else:
+                            self.__bias_dict[q_old][catas] = 0 #Fasle
+            else: # coupler 
+                for catas in old_bias_dict[q_old]:
+                    try:
+                        self.__bias_dict[q_old][catas] = old_bias_dict[q_old][catas]
+                    except:
                         self.__bias_dict[q_old][catas] = 0.0
-                    elif catas in self.list_cata:
-                        self.__bias_dict[q_old][catas] = []
-                    elif catas in self.dict_cata:
-                        self.__bias_dict[q_old][catas] = {}
-                        for subcata in self.dict_cata[q_old]: 
-                            self.__bias_dict[q_old][catas][subcata] = []
-                    else:
-                        self.__bias_dict[q_old][catas] = 0 #Fasle
 
     def get_sweetBiasFor(self,target_q:str):
         """
@@ -206,6 +220,59 @@ class FluxBiasDict():
         else:
             eyeson_print(f"Now in sweet spot bias = {self.get_sweetBiasFor(target_q)} V ")
             return self.get_sweetBiasFor(target_q)
+        
+
+    def save_idleBias_for(self,target_q:str,idle_bias:float):
+        """ Save the idle bias for a qubit """
+        self.__bias_dict[target_q]["idle"] = idle_bias
+
+    def get_idleBiasFor(self, target_q:str):
+        """ Get the idle bias for a qubit """
+        return self.__bias_dict[target_q]["idle"]
+
+    def save_operationBias_for(self, target_q:str, operation_bias:float):
+        """ Save the operation bias for a qubit """
+        self.__bias_dict[target_q]["operation"] = operation_bias
+
+    def get_operationBiasFor(self, target_q:str):
+        """ Get the operation bias for a qubit """
+        return self.__bias_dict[target_q]["operation"]
+
+    def save_CPmaxBias_for(self, target_q:str, max_freq_bias:float):
+        """ Save the max freq bias for a qubit """
+        self.__bias_dict[target_q]["max"] = max_freq_bias
+
+    def get_CPmaxBiasFor(self, target_q:str):
+        """ Get the max freq bias for a qubit """
+        return self.__bias_dict[target_q]["max"]
+    
+    def build_Cctrl_instructions(self, cp_names:list, bias_where:str='idle')->dict:
+        """
+        #### Build up a dict for Cctrl control by the given coupler names in list and the bias you want.
+        --------------
+        ### Args:\n
+        `cp_names` in list, like ["c0", "c2"].\n
+        `bias_where` should be "idle", "operation" or "max".\n
+        --------------
+        ### Returns:\n
+        Dict, {"c0":0.2, "c2":0.08} for example.
+        """
+        if bias_where.lower() in ['idle','i','id']:
+            cata = 'idle'
+        elif  bias_where.lower() in ['operation','o','op']:
+            cata = 'operation'
+        elif  bias_where.lower() in ['max','m']:
+            cata = 'max'
+        else:
+            raise ValueError(f"Unsupported bias was given = {bias_where}!")
+
+        dict_for_Cctrl = {}
+        for cp_name in cp_names:
+            dict_for_Cctrl[cp_name] = self.__bias_dict[cp_name][cata]
+        
+        return dict_for_Cctrl
+
+
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
-from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte
+from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
 
 def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q3":{"xyf_guess":[4.25e9],"xyl_guess":[0.11],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-
+    couplers = ["c2","c3"]
     #0.03332
 
 
@@ -180,6 +180,7 @@ if __name__ == "__main__":
 
     """ Running """
     tt_results = {}
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -201,5 +202,5 @@ if __name__ == "__main__":
 
     """ Close """
     print('2-tone done!')
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)
     

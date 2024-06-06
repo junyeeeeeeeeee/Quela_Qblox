@@ -44,8 +44,84 @@ Hcfg_dr1 = {
                         "mixer_phase_error_deg": 0.0,
                     }
                 ],
+            },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q1:mw",
+                        "clock": "q1.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
             }
         },
+        # f"clusterdr1_module4": {
+        #     "instrument_type": "QCM_RF",
+        #     "complex_output_0": {
+        #         "output_att": 0,
+        #         "dc_mixer_offset_I": 0.0,
+        #         "dc_mixer_offset_Q": 0.0,
+        #         "lo_freq": 4e9,
+        #         "portclock_configs": [
+        #             {
+        #                 "port": "q2:mw",
+        #                 "clock": "q2.01",
+        #                 "mixer_amp_ratio": 1.0,
+        #                 "mixer_phase_error_deg": 0.0,
+        #             }
+        #         ],
+        #     },
+        #     "complex_output_1": {
+        #         "output_att": 0,
+        #         "dc_mixer_offset_I": 0.0,
+        #         "dc_mixer_offset_Q": 0.0,
+        #         "lo_freq": 4e9,
+        #         "portclock_configs": [
+        #             {
+        #                 "port": "q3:mw",
+        #                 "clock": "q3.01",
+        #                 "mixer_amp_ratio": 1.0,
+        #                 "mixer_phase_error_deg": 0.0,
+        #             }
+        #         ],
+        #     }
+        # },
+        # f"clusterdr1_module4": {
+        #     "instrument_type": "QCM_RF",
+        #     "complex_output_0": {
+        #         "output_att": 0,
+        #         "dc_mixer_offset_I": 0.0,
+        #         "dc_mixer_offset_Q": 0.0,
+        #         "lo_freq": 4e9,
+        #         "portclock_configs": [
+        #             {
+        #                 "port": "q4:mw",
+        #                 "clock": "q4.01",
+        #                 "mixer_amp_ratio": 1.0,
+        #                 "mixer_phase_error_deg": 0.0,
+        #             }
+        #         ],
+        #     },
+        #     "complex_output_1": {
+        #         "output_att": 0,
+        #         "dc_mixer_offset_I": 0.0,
+        #         "dc_mixer_offset_Q": 0.0,
+        #         "lo_freq": 4e9,
+        #         "portclock_configs": [
+        #             {
+        #                 "port": "q5:mw",
+        #                 "clock": "q5.01",
+        #                 "mixer_amp_ratio": 1.0,
+        #                 "mixer_phase_error_deg": 0.0,
+        #             }
+        #         ],
+        #     }
+        # },
         # ============ FLUX ============#
         f"clusterdr1_module2": {
             "instrument_type": "QCM",
@@ -59,14 +135,44 @@ Hcfg_dr1 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 6.17e9,       # *** Should be set as a parameter later on
+                "lo_freq": 5.52e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
                         "clock": "q0.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
-                    }
+                    },
+                    {
+                        "port": "q1:res",
+                        "clock": "q1.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q2:res",
+                        "clock": "q2.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q3:res",
+                        "clock": "q3.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q4:res",
+                        "clock": "q4.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q5:res",
+                        "clock": "q5.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
                 ],
             },
         },
@@ -384,7 +490,7 @@ Hcfg_dr3 = {
 }
 
 
-def get_FluxController(cluster, ip:str):
+def get_FluxController(cluster, ip:str)->dict:
     which_dr = ''
     for dr in ip_register:
         if ip_register[dr] == ip:
@@ -392,7 +498,7 @@ def get_FluxController(cluster, ip:str):
     if which_dr == '':
         raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
     
-    
+    Fctrl = {}
     if which_dr.lower() == 'dr2':
         Fctrl: callable = {
             "q0":cluster.module2.out0_offset,
@@ -417,7 +523,7 @@ def get_FluxController(cluster, ip:str):
         raise KeyError ("please input ip label like '170' or '171'!")
     return Fctrl
 
-def get_CouplerController(cluster, ip:str):
+def get_CouplerController(cluster, ip:str)->dict:
     which_dr = ''
     for dr in ip_register:
         if ip_register[dr] == ip:
@@ -425,7 +531,7 @@ def get_CouplerController(cluster, ip:str):
     if which_dr == '':
         raise ValueError("Please register the dr location with it's cluster ip in Experiment_setup.py in support folder! Or check the given ip_label is correct!")
     
-    
+    Cctrl = {}
     if which_dr.lower() == 'dr3':
         Cctrl = {
             "c0":cluster.module6.out0_offset,

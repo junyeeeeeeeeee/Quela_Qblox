@@ -9,7 +9,7 @@ from Modularize.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
 
 def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_duration:float=20e-9, IF:int=150e6,n_avg:int=300,points:int=100,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
@@ -142,6 +142,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
+    couplers = ["c2","c3"]
 
 
     """ Preparations """
@@ -158,6 +159,7 @@ if __name__ == "__main__":
 
     """Running """
     rabi_results = {}
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=40e-9,XYamp_max=0.6)
@@ -171,4 +173,4 @@ if __name__ == "__main__":
 
     """ Close """
     print('Rabi osci done!')
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

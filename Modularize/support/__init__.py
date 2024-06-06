@@ -1,6 +1,6 @@
 import pickle, os
 from typing import Callable
-from Modularize.support.Experiment_setup import get_FluxController
+from Modularize.support.Experiment_setup import get_FluxController, get_CouplerController
 from Modularize.support.Experiment_setup import ip_register
 from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
@@ -163,11 +163,13 @@ def configure_measurement_control_loop(
 
 
 # close all instruments
-def shut_down(cluster:Cluster,flux_map:dict):
+def shut_down(cluster:Cluster,flux_map:dict, cp_flux_map:dict={}):
     '''
         Disconnect all the instruments.
     '''
     reset_offset(flux_map)
+    if cp_flux_map != {}:
+        reset_offset(cp_flux_map)
     cluster.reset() 
     Instrument.close_all() 
     print("All instr are closed and zeroed all flux bias!")
@@ -303,6 +305,24 @@ def check_QD_info(QD_agent:QDmanager,target_q:str):
     qubit = QD_agent.quantum_device.get_element(target_q)
     show_readout_args(qubit)
     show_drive_args(qubit)
+
+def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
+    """
+    control coupler Z bias.
+    ------------------------------
+    # * Args:\n
+    cp_elements follows the form: `{ coupler_name:bias (V)}`, like `{"c0":0.2}`
+    ------------------------------
+    # * Example:\n
+    coupler_zctrl(dr2,cluster,cp_elements={"c0":0.2})
+    ------------------------------
+    """
+    ip = ip_register[dr.lower()]
+    Cctrl = get_CouplerController(cluster, ip)
+    for cp in cp_elements:
+        Cctrl[cp](cp_elements[cp])
+    
+    return Cctrl
 
 
 #TOO_OLD

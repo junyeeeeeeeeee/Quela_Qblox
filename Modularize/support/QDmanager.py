@@ -85,7 +85,9 @@ class QDmanager():
             print(f'Summarized info had successfully saved to the given path!')
 
     
+
     def build_new_QD(self,qubit_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
+
         """
         Build up a new Quantum Device, here are something must be given about it:\n
         (1) qubit_number: how many qubits is in the chip.\n
@@ -96,7 +98,10 @@ class QDmanager():
         print("Building up a new quantum device system....")
         self.q_num = qubit_number
         self.Hcfg = Hcfg
+        self.chip_name = chip_name
+        self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
+
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         """ #for firmware v0.6.2

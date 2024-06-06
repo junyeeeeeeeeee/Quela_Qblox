@@ -10,7 +10,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.Pulse_schedule_library import Qubit_state_single_shot_plot
-from Modularize.support import QDmanager, Data_manager,init_system_atte, init_meas, shut_down
+from Modularize.support import QDmanager, Data_manager,init_system_atte, init_meas, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, set_LO_frequency, pulse_preview, Qubit_state_single_shot_fit_analysis
 
 
@@ -125,6 +125,7 @@ if __name__ == '__main__':
     repaet = 100
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {'q0':{"roAmp_factor":1}}
+    couplers = ['c0','c1']
     
 
     snr_rec, effT_rec = {}, {}
@@ -136,6 +137,7 @@ if __name__ == '__main__':
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         # QD_agent.Notewriter.modify_DigiAtte_For(-4,'q0','ro')
         """ Running """
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         for qubit in ro_elements:
             if i == 0:
                 snr_rec[qubit], effT_rec[qubit] = [], []
@@ -157,7 +159,7 @@ if __name__ == '__main__':
                     
                 
         """ Close """    
-        shut_down(cluster,Fctrl)
+        shut_down(cluster,Fctrl,Cctrl)
         end_time = time.time()
         slightly_print(f"time cose: {round(end_time-start_time,1)} secs")
 

@@ -15,7 +15,7 @@ from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_previ
 from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 
 
-def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ro_amp:float=0)->dict:
+def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:int=15e6,n_avg:int=300,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ro_amp:float=0,particular_folder:str="")->dict:
     """
         Do the cavity search by the given QuantumDevice with a given target qubit q. \n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay! 
@@ -58,7 +58,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:di
         rs_ds = meas_ctrl.run("One-tone")
         analysis_result[q] = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
         # save the xarrry into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS')
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS',specific_dataFolder=particular_folder)
 
         print(f"{q} Cavity:")
         show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1', '11', 'n','20240528_5Qcav', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
@@ -121,9 +121,9 @@ if __name__ == "__main__":
     ro_bare=dict(
         q0=5.9732e9,
         q1=6.0823e9,
-        q2=5.9198e9,
-        q3=6.0991e9,
-        q4=6.0102e9        
+        #q2=5.9198e9,
+        #q3=6.0991e9,
+        #q4=6.0102e9        
     )
     """ Preparations """
     
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     CS_results = {}
     for qubit in ro_bare:
         if QD_path == '': QD_RO_init(QD_agent,qubit)
-        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,run = execution)
+        CS_results[qubit] = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,qb=qubit,run = execution,ro_span_Hz=10e6)
         if not execution:
             break
     

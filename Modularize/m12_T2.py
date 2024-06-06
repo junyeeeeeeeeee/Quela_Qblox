@@ -9,7 +9,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from numpy import std, arange, array, average, mean, sign
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot
 
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q0":{"detune":0e6,"evoT":50e-6,"histo_counts":1}
     }
-
+    couplers = ['c0','c1']
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -160,6 +160,7 @@ if __name__ == "__main__":
 
     """ Running """
     ramsey_results = {}
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         freeTime = ro_elements[qubit]["evoT"]
@@ -183,4 +184,4 @@ if __name__ == "__main__":
         
     """ Close """
     print('T2 done!')
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

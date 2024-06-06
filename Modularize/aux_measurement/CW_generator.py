@@ -28,19 +28,19 @@ def get_cluster_modules(cluster_ip:str, cluster_name:str, slot_idx:int, port_idx
     with contextlib.suppress(KeyError):
         Cluster.find_instrument(cluster_name).close()
     cluster = Cluster(
-    name=cluster_name,
-    identifier=cluster_ip,
-    dummy_cfg={
-        2: ClusterType.CLUSTER_QCM,
-        4: ClusterType.CLUSTER_QCM,
-        8: ClusterType.CLUSTER_QRM_RF,
-        12: ClusterType.CLUSTER_QCM_RF,
-        14: ClusterType.CLUSTER_QCM_RF,
-        16: ClusterType.CLUSTER_QCM_RF,
-    }
-    if cluster_ip is None
-    else None,
-    )
+        name=cluster_name,
+        identifier=cluster_ip,
+        dummy_cfg={
+            2: ClusterType.CLUSTER_QCM,
+            4: ClusterType.CLUSTER_QCM,
+            8: ClusterType.CLUSTER_QRM_RF,
+            12: ClusterType.CLUSTER_QCM_RF,
+            14: ClusterType.CLUSTER_QCM_RF,
+            16: ClusterType.CLUSTER_QCM_RF,
+        }
+        if cluster_ip is None
+        else None,
+        )
     connected_module = get_connected_modules(cluster)[slot_idx]
     cluster.reset()
     if port_idx == 0:
@@ -123,16 +123,16 @@ if __name__ == "__main__":
     """ Fill in """
     cluster_ip:str = "192.168.1.11"
     cluster_name:str = "cluster11"
-    slot_idx:int = 8
-    out_voltage:float = 0.5
+    slot_idx:int = 6
+    out_voltage:float = 0.3
     ro_atte:int = 0 # dB, multiple of 2
-    port_idx:int = 0 # ignored when module is qrm type
-    want_freq = 4e9 # LO + IF = RF
-    LO_freq = 4.6e9 # inside your experiment_setup.py
+    port_idx:int = 0 # 0 for qrm always
+    want_freq = 6.1e9 # LO + IF = RF
+    LO_freq = 6e9 # inside your experiment_setup.py
 
 
     """ execute """
-    cluster, connected_module = CW_executor(cluster_ip, cluster_name, slot_idx, port_idx, ro_atte, out_voltage, want_freq, LO_freq)
+    cluster, connected_module = CW_executor(None, slot_idx, port_idx, ro_atte, out_voltage, want_freq, LO_freq, cluster_ip, cluster_name)
     stop = input("input 'n' to stop sequencer: ")
     if stop.lower() in ["n", "no"]:
         turn_off_sequencer(cluster, connected_module)

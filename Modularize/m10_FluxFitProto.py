@@ -6,7 +6,7 @@ from Modularize.m7_RefIQ import Single_shot_ref_spec
 from Modularize.support.UserFriend import *
 from Modularize.m9_FluxQubit import Zgate_two_tone_spec
 from qblox_instruments import Cluster
-from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas
+from Modularize.support import QDmanager, Data_manager, init_system_atte, reset_offset, shut_down, init_meas, coupler_zctrl
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_fq_g_excluded, convert_netCDF_2_arrays, data2plot, fq_fit
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
-
+    couplers = ["c2","c3"]
 
 
     """ Preparations"""
@@ -195,6 +195,7 @@ if __name__ == "__main__":
     
     """ Running """
     fit_error = []
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         if QD_agent.Fluxmanager.get_offsweetspot_button(qubit): raise ValueError("m10 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -213,7 +214,7 @@ if __name__ == "__main__":
     """ Close """
     print('done!')
     print(f"fitting error occured at {fit_error}")
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)
     
         
         
