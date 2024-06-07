@@ -4,7 +4,7 @@ from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import std, arange, array, average, mean, sign
 from quantify_core.measurement.control import MeasurementControl
@@ -107,7 +107,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         
         for ith in range(histo_counts):
             start_time = time.time()
-            slightly_print(f"The {ith}-th T2:")
+            slightly_print(f"The {ith+1}-th T2:")
             Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             Ramsey_results, T2_us, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder)
             Fctrl[specific_qubits](0.0)
@@ -131,7 +131,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
         mean_T2_us = 0
 
-    return Ramsey_results, mean_T2_us, average_actual_detune
+    return Ramsey_results, mean_T2_us, sd_T2_us, average_actual_detune
 
 
 
@@ -142,13 +142,17 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"detune":1e6,"evoT":50e-6,"histo_counts":50}
+        "q0":{"detune":1e6,"evoT":50e-6,"histo_counts":5}
     }
     couplers = ['c0']
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     """ Running """
     ramsey_results = {}
@@ -162,7 +166,7 @@ if __name__ == "__main__":
             
 
         slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
-        ramsey_results[qubit], mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
+        ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
         highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             
         
@@ -172,6 +176,8 @@ if __name__ == "__main__":
             if histo_total >= 50:
                 QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
                 QD_agent.QD_keeper()
+                if chip_info_restore:
+                    chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {sd_T2_us}')
         
         
     """ Close """
