@@ -5,7 +5,7 @@ from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Fit_analysis_plot
 from Modularize.m12_T2 import ramsey_executor
 from pandas import Series
@@ -29,6 +29,7 @@ def xyf_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
             highlight_print(f"{specific_qubit} XYF calibration done, now detuning = {round(min_detune_after*1e-6,2)} MHz")
             original_xyf = QD_agent.quantum_device.get_element(specific_qubit).clock_freqs.f01()
             QD_agent.quantum_device.get_element(specific_qubit).clock_freqs.f01(original_xyf+to_cali_detune[min_idx])
+            highlight_print(f"{specific_qubit} correct XYF = {round(QD_agent.quantum_device.get_element(specific_qubit).clock_freqs.f01()*1e-9,3)} GHz")
             if plot_cali_result:
                 Fit_analysis_plot(ramsey_results[specific_qubit],P_rescale=False,Dis=None)
             Trustable = True
@@ -41,15 +42,17 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":30e-6}
+        "q0":{"evoT":15e-6}
     }
+    couplers = ['c0','c1']
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',vpn=True)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
 
     """ Running """
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         freeTime = ro_elements[qubit]["evoT"]
@@ -63,4 +66,4 @@ if __name__ == "__main__":
         
         
     """ Close """
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

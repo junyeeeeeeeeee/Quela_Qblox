@@ -1,6 +1,5 @@
 import os, json, time
 from Modularize.support.QDmanager import QDmanager
-import Modularize.support.UI_Window as uw
 
 # This file should be setup after finishing Experiment setup, before any experiment start.
 
@@ -14,13 +13,15 @@ How to use:
 
 class Chip_file():
     
-    def __init__(self):
+    def __init__(self,QD_agent:QDmanager):
         '''
         chip_name:  The name of the chip, needs to be the same as in fabricaation,
                     using the date of big current exposure + # of chip, eg. "20240206#8"
         '''
         # 設定 chip 名稱
-        self.name = uw.chip_name_window()
+        self.QD_agent = QD_agent
+        self.name = self.QD_agent.chip_name
+        self.chip_type = self.QD_agent.chip_type
         self.file = self.name+".json"   # chip 檔案名稱
         self.file_path = os.path.join(os.getcwd(),"chip_information")  # chip 檔案位置
         self.file_name = os.path.join(self.file_path, self.file)    # chip 檔案完整位置+名稱
@@ -52,8 +53,7 @@ class Chip_file():
         if file_exist == False:
             print("File doesn't exist, creating new file...")
             # 手動輸入
-            chip_type, ro_out_att, xy_out_att = uw.Basic_information_window()
-            self.create_chip_file(chip_type, ro_out_att, xy_out_att)
+            self.create_chip_file()
             
         else:
             with open(self.file_name, 'r') as qu:
@@ -61,13 +61,17 @@ class Chip_file():
             self.create_today_file()
             self.update_to_json()    
 
-    def create_chip_file(self, chip_type:str = "5Q", ro_out_att:int = 20, xy_out_att:int = 10) -> None:
+    def create_chip_file(self) -> None:
         """
         僅使用於init_chip_file，當該名稱的chip不存在時將會執行此函式
         """
         
-        if chip_type == "5Q":
-            blank_file = "blank_chip_information.json"
+        if self.chip_type == "5Q":
+            blank_file = os.path.join('blank_info', "5Q_blank.json")
+        elif self.chip_type == "5Q4C":
+            blank_file = os.path.join("blank_info","5Q4C_blank.json")
+        elif self.chip_type == "Cavity":
+            blank_file = os.path.join('blank_info', "Cavity_blank.json")
         else:
             raise ValueError("We don't have this chip type, are you live in parallel universe?")
         
@@ -75,10 +79,8 @@ class Chip_file():
             self.__chip_dict = json.load(blank)
         
         self.__chip_dict["basic_information"]["chip_name"] = self.name
-        self.__chip_dict["basic_information"]["chip_type"] = chip_type
+        self.__chip_dict["basic_information"]["chip_type"] = self.chip_type
         self.__chip_dict["basic_information"]["chip_file"] = self.file_name
-        self.__chip_dict["basic_information"]["ro_att"] = ro_out_att
-        self.__chip_dict["basic_information"]["xy_att"] = xy_out_att
         self.__chip_dict["basic_information"]["create_time"] = time.strftime('%Y%m%d',time.localtime(time.time()))
         
         self.create_today_file()
@@ -94,37 +96,94 @@ class Chip_file():
     def get_chip_dict(self) -> dict:
         return self.__chip_dict
     
-    def update_QD(self, QB_name:dict = {'q0':None, 'q1':None, 'q2':None, 'q3':None, 'q4':None}, QD_path = '') -> None:
+    def update_QD(self, result:dict = {}) -> None:
         
         '''
         QB_name: the names of qubits. eg. {'q0':None, 'q1':None, 'q2':None, 'q3':None, 'q4':None}
         QD_path: 
         '''
+        for qb in result:
+            qubit = self.QD_agent.quantum_device.get_element(qb)
+            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["dura_time"] = qubit.measure.pulse_duration()
+            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["acq_delay"] = qubit.measure.acq_delay()
+            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["integ_time"] = qubit.measure.integration_time()
+            self.__chip_dict["1Q_information"][qb]["init"]["wait"]["time"] = qubit.reset.duration()
+            self.__chip_dict["1Q_information"]['ro_att'] = self.QD_agent.Notewriter.get_DigiAtteFor(qb,'ro')
+        self.update_to_json()
+        print("Quantum_device updated!")     
         
-        if QD_path == '':
-            print("No Quantum_device is being stored")
-            pass
-        else:
-            Qmanager = QD_Manager(QD_path)
-            Qmanager.QD_loader()
-            for qb in QB_name:
-                qubit = Qmanager.quantum_device.get_element(qb)
-                self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["dura_time"] = qubit.measure.pulse_duration()
-                self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["acq_delay"] = qubit.measure.acq_delay()
-                self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["integ_time"] = qubit.measure.integration_time()
-                self.__chip_dict["1Q_information"][qb]["init"]["wait"]["time"] = qubit.reset.duration()
-            self.update_to_json()
-            print("Quantum_device updated!")     
-        
-    def update_Cavity_spec_bare(self, QB_name:dict = {'q0':None, 'q1':None, 'q2':None, 'q3':None, 'q4':None}, result:dict = {}) -> None:
-        
-        for qb in QB_name:
+    def update_CavitySpec(self, result:dict = {}) -> None:
+        # Data storing for m2_CavitySpec
+        for qb in result:
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["bare_freq"] = result[qb].quantities_of_interest["fr"].nominal_value
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qi"] = result[qb].quantities_of_interest["Qi"].nominal_value
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qc"] = result[qb].quantities_of_interest["Qc"].nominal_value
-        
+            self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Ql"] = result[qb].quantities_of_interest["Ql"].nominal_value
+       
         self.update_to_json()
          
+    def update_BDCavityFit(self, result:dict = {}) -> None:
+        # Data storing for m4_BDCavityFit with 0 flux
+        for qb in result:
+            for state in result[qb]:
+                if state == 'bare':
+                    self.__chip_dict["1Q_information"][qb]["char"]["bare"]["bare_freq"] = result[qb]['bare'].quantities_of_interest["fr"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qi"] = result[qb]['bare'].quantities_of_interest["Qi"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qc"] = result[qb]['bare'].quantities_of_interest["Qc"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Ql"] = result[qb]['bare'].quantities_of_interest["Ql"].nominal_value
+                elif state == 'dress':
+                    qubit = self.QD_agent.quantum_device.get_element(qb)
+                    self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["dress_freq"] = result[qb]['dress'].quantities_of_interest["fr"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Qi"] = result[qb]['dress'].quantities_of_interest["Qi"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Qc"] = result[qb]['dress'].quantities_of_interest["Qc"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Ql"] = result[qb]['dress'].quantities_of_interest["Ql"].nominal_value
+                    self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["amp"] = qubit.measure.pulse_amp()
+
+        self.update_to_json()
+    
+    def update_BDCavityFit_sweet(self, result:dict = {}) -> None:
+        # Data storing for m4_BDCavityFit with sweet bias
+        for qb in result:
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result[qb].quantities_of_interest["fr"].nominal_value
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qi"] = result[qb].quantities_of_interest["Qi"].nominal_value
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qc"] = result[qb].quantities_of_interest["Qc"].nominal_value
+        
+        self.update_to_json()
+
+    def update_FluxCavitySpec(self,qb='', result:dict = {}) -> None:
+        # Data storing for m6_FluxCavitySpec
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result.quantities_of_interest["freq_0"]
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['flux'] = result.quantities_of_interest["offset_0"].nominal_value
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['flux'] = result.quantities_of_interest["offset_0"].nominal_value
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['freq'] = result.quantities_of_interest["freq_0"]
+        
+        self.update_to_json()
+
+    def update_Cnti2Tone(self, result:dict = {}) -> None:
+        # Data storing for m8_Cnti2Tone
+        for qb in result:
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = result[qb].attrs['f01_fit']
+            self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = result[qb].attrs['f01_fit']
+
+        self.update_to_json()
+
+    def update_FluxQubit(self, qb='', result:dict = {}) -> None:
+        # Data storing for m9_FluxQubit
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = result["xyf"]
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = result["xyf"]
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['flux'] = result["sweet_bias"]
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['flux'] = result["sweet_bias"]
+
+        self.update_to_json()
+
+    def update_RabiOsci(self, qb='') -> None:
+        # Data storing for m11_RabiOsci
+        qubit = self.QD_agent.quantum_device.get_element(qb)
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['amp'] = qubit.rxy.amp180()
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['dura_time'] = qubit.rxy.duration()
+
+        self.update_to_json()
+    
     def update_to_json(self):
         with open(self.file_name, 'w') as up:
             json.dump(self.__chip_dict, up, indent=4)

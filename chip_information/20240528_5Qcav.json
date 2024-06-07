@@ -1,25 +1,25 @@
 {
     "basic_information": {
-        "chip_name": "h",
-        "chip_type": "5Q",
-        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/h.json",
-        "ro_att": 0,
-        "xy_att": 0,
-        "create_time": "20240401"
+        "chip_name": "20240528_5Qcav",
+        "chip_type": "5Q4C",
+        "create_time": "20240528",
+        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/20240528_5Qcav.json"
     },
     "1Q_information": {
         "q0": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0
+                    "bare_freq": 5453131810.086571,
+                    "Qi": 2754.6946402949748,
+                    "Qc": 1427.2792610957586,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -29,11 +29,12 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -47,7 +48,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -61,7 +63,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -73,6 +76,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -108,15 +113,17 @@
         "q1": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0
+                    "bare_freq": 5452935761.747261,
+                    "Qi": 2695.328429096928,
+                    "Qc": 1369.2410911449617,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -126,11 +133,12 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -144,7 +152,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -158,7 +167,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -170,6 +180,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -205,15 +217,17 @@
         "q2": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0
+                    "bare_freq": 5506593232.918055,
+                    "Qi": 60601.82578087945,
+                    "Qc": 1682.3814369945756,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -223,11 +237,12 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -241,7 +256,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -255,7 +271,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -267,6 +284,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -302,15 +321,17 @@
         "q3": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0
+                    "bare_freq": 5567999693.445462,
+                    "Qi": 1005.3583285212696,
+                    "Qc": 225.75039129224385,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -320,11 +341,12 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -338,7 +360,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -352,7 +375,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -364,6 +388,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -399,15 +425,17 @@
         "q4": {
             "char": {
                 "bare": {
-                    "bare_freq": 0,
-                    "Qi": 0,
-                    "Qc": 0
+                    "bare_freq": 5560682882.864914,
+                    "Qi": -9.438618879075205,
+                    "Qc": 9.40773883785545,
+                    "Ql": 0
                 },
                 "zeroflux": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -417,11 +445,12 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -435,7 +464,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -449,7 +479,8 @@
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
-                        "Qc": 0
+                        "Qc": 0,
+                        "Ql": 0
                     },
                     "qubit": {
                         "freq": 0,
@@ -461,6 +492,8 @@
                 }
             },
             "oper": {
+                "ro_att": -1,
+                "xy_att": -1,
                 "readout": {
                     "amp": 0,
                     "dura_time": 0,
@@ -492,7 +525,11 @@
                     "time": 0
                 }
             }
-        }
+        },
+        "c0": {},
+        "c1": {},
+        "c2": {},
+        "c3": {}
     },
     "2Q_information": {}
 }

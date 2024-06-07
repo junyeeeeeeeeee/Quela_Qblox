@@ -11,14 +11,14 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 
 
 
-def fqExam_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,Fctrl:dict,bias:float,specific_qubits:str,xyf_guess:float,xyAmp_guess:list=[],xyf_span:float=500e6,xy_if:float=100e6,run:bool=True):
+def fqExam_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,bias:float,specific_qubits:str,xyf_guess:float,xyAmp_guess:list=[],xyf_span:float=500e6,xy_if:float=100e6,run:bool=True):
     
     if run:
         init_system_atte(QD_agent.quantum_device,list([specific_qubits]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(specific_qubits,'xy'))
         original_rof = QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()
         this_rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([bias]))[0]
         QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(this_rof)
-        guess_fq = [xyf_guess-500e6, xyf_guess, xyf_guess+500e6]
+        guess_fq = [xyf_guess-500e6+100e6, xyf_guess+100e6, xyf_guess+500e6+100e6]
 
         if len(xyAmp_guess) == 0:
             xyAmp_guess = [0, QD_agent.Notewriter.get_2tone_piampFor(specific_qubits)]
@@ -73,10 +73,6 @@ def fqExam_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Clus
 # test on 5Q4C 5/15
 # q0 (4.49) : set 4.3 get 4.41, set 4.0 get 4.29, set 3.7 get 4.1
 
-### 
-# assign = [4.5, 4.45, 4.4, 4.35, 4.3, 4.25, 4.2, 4.15, 4.1, 4.05, 4.0, 3.95, 3.9]
-# z = [-0.12363310112050828, -0.10091577892001294, -0.08899541749401903, -0.0797748633555727, -0.07198633775825916, -0.06512428584980591, -0.058925813740038364, -0.0532334880965163, -0.04794412618388684, -0.04298576453405387, -0.03830583786473896, -0.033864559428041244, -0.029630949672850578]
-# xyf = [4.5077, 4.4852, 4.4634, 4.4396, 4.4165, 4.3948, 4.3691, 4.35, 4.331, 4.311, 4.2894, 4.2672, 4.2484]
 
 
 
@@ -84,7 +80,7 @@ if __name__ == "__main__":
 
     """ Fill in """
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    desired_fq = 4.0e9
+    desired_fq = 4.3e9
     target_q = 'q0'
     x_amp = []
     execution = True
@@ -99,7 +95,7 @@ if __name__ == "__main__":
 
     """ Running """
     if desired_bias != 'n':
-        tt_results = fqExam_executor(QD_agent,meas_ctrl,cluster,Fctrl,bias=desired_bias,specific_qubits=target_q,xyf_guess=desired_fq,xyAmp_guess=x_amp,run=execution)
+        tt_results = fqExam_executor(QD_agent,meas_ctrl,cluster,bias=desired_bias,specific_qubits=target_q,xyf_guess=desired_fq,xyAmp_guess=x_amp,run=execution)
 
 
     """ Storing """
@@ -109,38 +105,3 @@ if __name__ == "__main__":
     """ Close """
     print('Fq Fit examination done!')
     shut_down(cluster,Fctrl)
-    
-    # assign = [4.5, 4.45, 4.4, 4.35, 4.3, 4.25, 4.2, 4.15, 4.1, 4.05, 4.0, 3.95, 3.9]
-    # z = [-0.12363310112050828, -0.10091577892001294, -0.08899541749401903, -0.0797748633555727, -0.07198633775825916, -0.06512428584980591, -0.058925813740038364, -0.0532334880965163, -0.04794412618388684, -0.04298576453405387, -0.03830583786473896, -0.033864559428041244, -0.029630949672850578]
-    # xyf = [4.5077, 4.4852, 4.4634, 4.4396, 4.4165, 4.3948, 4.3691, 4.35, 4.331, 4.311, 4.2894, 4.2672, 4.2484]
-
-
-    
-    # import json
-    # import matplotlib.pyplot as plt
-
-    # d = {}
-
-    # with open("measANDfit_points.json") as dd:
-    #     d = json.load(dd)
-    
-    # # d["exam"] = {"z":z,"xyf":xyf,"assign":assign}
-    # # with open("measANDfit_points.json", "w") as record_file:
-    # #     json.dump(d,record_file)
-
-
-    # plt.rc('font',size=30)
-    # plt.plot(d["fit"]["z"],d["fit"]["xyf"],c='orange',label='fitting',lw=2.5)
-    # plt.scatter(d["meas"]["z"],d["meas"]["xyf"],s=120*1.5,label='Z2tone data')
-    # plt.vlines(x=d["exam"]["z"],ymin=d["exam"]["assign"],ymax=d["exam"]["xyf"],linestyles='--',colors='black')
-    # plt.scatter(d["exam"]["z"],d["exam"]["assign"],c='red',marker="*",s=120*2,label='wantted fq')
-    # plt.scatter(d["exam"]["z"],d["exam"]["xyf"],c='pink',s=120*1.5,label='2tone get')
-        
-    # plt.legend()
-    # plt.grid()
-    # plt.xlabel("Flux (V)")
-    # plt.ylabel("XY Frequency (GHz)")
-    
-    # plt.show()
-    # print(d["meas"]["z"])
- 

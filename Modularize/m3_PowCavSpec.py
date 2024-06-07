@@ -11,18 +11,18 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
-def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=3e6,ro_p_min:float=0.01,ro_p_max:float=0.7,n_avg:int=100,f_points:int=20,p_points:int=30,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
+def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=4e6,ro_p_min:float=0.01,ro_p_max:float=0.5,n_avg:int=100,f_points:int=10,p_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
 
     sche_func = One_tone_sche
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
-    ro_f_center = qubit_info.clock_freqs.readout()
+    ro_f_start = qubit_info.clock_freqs.readout()-1e6
     # avoid frequency conflicts 
     from numpy import NaN
     qubit_info.clock_freqs.readout(NaN)
 
-    ro_f_samples = linspace(ro_f_center-ro_span_Hz,ro_f_center+ro_span_Hz,f_points)
+    ro_f_samples = linspace(ro_f_start,ro_f_start+2*ro_span_Hz,f_points)
     ro_p_samples = linspace(ro_p_min,ro_p_max,p_points)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
@@ -79,7 +79,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         if Experi_info != {}:
             show_args(Experi_info(q))
     
-    qubit_info.clock_freqs.readout(ro_f_center)
+    qubit_info.clock_freqs.readout(ro_f_start+1e6)
     return analysis_result
 
 
@@ -103,9 +103,9 @@ if __name__ == "__main__":
     """ fill in """
     execution = True
     sweetSpot_dispersive = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":50}
+        "q2": {"ro_atte":30},
     }
 
     """ preparations """
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive)
+        powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive,max_power=0.5,ro_span_Hz=5e6, fpts=60)
         cluster.reset()
         if not execution:
             break

@@ -1,10 +1,12 @@
 {
     "basic_information": {
         "chip_name": "",
-        "chip_type": "",
-        "create_time": ""
+        "chip_type": "5Q4C",
+        "create_time": "",
+        "chip_file": ""
     },
     "1Q_information": {
+        "ro_att": -1,
         "q0": {
             "char": {
                 "bare": {
@@ -28,7 +30,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -75,7 +77,6 @@
                 }
             },
             "oper": {
-                "ro_att": -1,
                 "xy_att": -1,
                 "readout": {
                     "amp": 0,
@@ -132,7 +133,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -179,7 +180,6 @@
                 }
             },
             "oper": {
-                "ro_att": -1,
                 "xy_att": -1,
                 "readout": {
                     "amp": 0,
@@ -236,7 +236,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -283,7 +283,6 @@
                 }
             },
             "oper": {
-                "ro_att": -1,
                 "xy_att": -1,
                 "readout": {
                     "amp": 0,
@@ -340,7 +339,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -387,7 +386,6 @@
                 }
             },
             "oper": {
-                "ro_att": -1,
                 "xy_att": -1,
                 "readout": {
                     "amp": 0,
@@ -444,7 +442,7 @@
                     "flux": 0,
                     "g": 0
                 },
-                "Max": {
+                "Sweet": {
                     "res": {
                         "dress_freq": 0,
                         "Qi": 0,
@@ -491,7 +489,6 @@
                 }
             },
             "oper": {
-                "ro_att": -1,
                 "xy_att": -1,
                 "readout": {
                     "amp": 0,
@@ -524,6 +521,14 @@
                     "time": 0
                 }
             }
+        },
+        "c0": {
+        },
+        "c1": {
+        },
+        "c2": {
+        },
+        "c3": {
         }
     },
     "2Q_information": {}

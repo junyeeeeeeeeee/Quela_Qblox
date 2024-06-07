@@ -1,6 +1,6 @@
 import pickle, os
 from typing import Callable
-from Modularize.support.Experiment_setup import get_FluxController
+from Modularize.support.Experiment_setup import get_FluxController, get_CouplerController
 from Modularize.support.Experiment_setup import ip_register
 from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
@@ -25,6 +25,13 @@ import Modularize.support.Chip_Data_Store as cds
 
 from numpy import asarray, ndarray, real
 
+
+
+def multiples_of_x(raw_number:float, x:float):
+    multiples = int(raw_number//x) + 1
+    return x * multiples
+    
+
 def find_nearest(ary:ndarray, value:float):
     """ find the element  which is closest to the given target_value in the given array"""
     ary = asarray(ary)
@@ -32,7 +39,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5, mode:str='new',vpn:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,coupler_number:int=4,mode:str='new',chip_name:str='',chip_type:str='')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -47,6 +54,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
     if mode.lower() in ['new', 'n']:
         from Modularize.support.Experiment_setup import hcfg_map
         cfg, pth = hcfg_map[dr_loc.lower()], ''
+        cluster_ip = ip_register[dr_loc.lower()]
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
@@ -58,25 +66,25 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         raise KeyError("The given mode can not be recognized!")
     
     # Connect to the Qblox cluster
-    if not vpn:
-        # connect, ip = connect_clusters() ## Single cluster online
-        # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-        ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
-    else: # haven't done
-        if cluster_ip == '192.168.1.11':
-            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5011)
-        elif cluster_ip == '192.168.1.10':
-            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5010)
-        else:
-            raise KeyError("args 'cluster_ip' should be assigned with '170' or '171', check it!")
-        ip = ip_register[dr_loc.lower()]
+    # connect, ip = connect_clusters() ## Single cluster online
+    # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
+    # ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
+    # cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
+    if cluster_ip == '192.168.1.11':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5011)
+    elif cluster_ip == '192.168.1.10':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5010)
+    elif cluster_ip == '192.168.1.13':
+        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5013)
+    else:
+        raise KeyError("args 'cluster_ip' should be assigned with '10' or '11' or '13', check it!")
+    ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
     if pth == '':
-        Qmanager.build_new_QD(qubit_number,cfg,ip,dr_loc)
+        Qmanager.build_new_QD(qubit_number,coupler_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
         Qmanager.refresh_log("new-born!")
     else:
         Qmanager.QD_loader()
@@ -157,11 +165,13 @@ def configure_measurement_control_loop(
 
 
 # close all instruments
-def shut_down(cluster:Cluster,flux_map:dict):
+def shut_down(cluster:Cluster,flux_map:dict, cp_flux_map:dict={}):
     '''
         Disconnect all the instruments.
     '''
     reset_offset(flux_map)
+    if cp_flux_map != {}:
+        reset_offset(cp_flux_map)
     cluster.reset() 
     Instrument.close_all() 
     print("All instr are closed and zeroed all flux bias!")
@@ -298,6 +308,24 @@ def check_QD_info(QD_agent:QDmanager,target_q:str):
     show_readout_args(qubit)
     show_drive_args(qubit)
 
+def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
+    """
+    control coupler Z bias.
+    ------------------------------
+    # * Args:\n
+    cp_elements follows the form: `{ coupler_name:bias (V)}`, like `{"c0":0.2}`
+    ------------------------------
+    # * Example:\n
+    coupler_zctrl(dr2,cluster,cp_elements={"c0":0.2})
+    ------------------------------
+    """
+    ip = ip_register[dr.lower()]
+    Cctrl = get_CouplerController(cluster, ip)
+    for cp in cp_elements:
+        Cctrl[cp](cp_elements[cp])
+    
+    return Cctrl
+
 
 #TOO_OLD
 '''
@@ -397,4 +425,4 @@ def two_tone_spec_sched_nco(
 '''
 
 if __name__ == "__main__":
-    a = 'Modularize/QD_backup/2024_5_2/DR1#11_SumInfo.pkl'
+    pass

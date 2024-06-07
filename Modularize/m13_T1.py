@@ -1,24 +1,26 @@
-import os, sys
+import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
 from numpy import mean, array, arange, std
 from utils.tutorial_utils import show_args
 from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, multiples_of_x
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import mix_T1_sche, T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis, Fit_analysis_plot
 
-def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,IF:int=150e6,n_avg:int=300,points:int=200,run:bool=True,q='q1',exp_idx:int=0, Experi_info:dict={},ref_IQ:list=[0,0],data_folder:str=''):
+def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,IF:int=150e6,n_avg:int=300,points:int=100,run:bool=True,q='q1',exp_idx:int=0, Experi_info:dict={},ref_IQ:list=[0,0],data_folder:str=''):
 
     T1_us = {}
     analysis_result = {}
   
     sche_func= T1_sche
+
     qubit_info = QD_agent.quantum_device.get_element(q)
+
     LO= qubit_info.clock_freqs.f01()+IF
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
@@ -74,8 +76,8 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 
         
     else:
-        n_s = 2
-        sweep_para= array(samples[:n_s])
+        n_s = -2
+        sweep_para= array(samples[n_s:])
         sched_kwargs['freeduration']= sweep_para.reshape(sweep_para.shape or (1,))
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
         
@@ -92,22 +94,36 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,specific_folder:str='',pts:int=100):
     if run:
         T1_us = []
+        qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
+
+        # Manually change f01
+        f01 = qubit_info.clock_freqs.f01()
+        qubit_info.clock_freqs.f01(f01+0.7e6)
+
+        ori_reset = qubit_info.reset.duration()
+        # qubit_info.reset.duration(150e-6)#qubit_info.reset.duration()+freeDura)
+        warning_print(qubit_info.reset.duration()*1e6)
         for ith in range(histo_counts):
+            every_start = time.time()
             slightly_print(f"The {ith}-th T1:")
             Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
+            slightly_print(f"T1: {T1_hist[specific_qubits]} µs")
             T1_us.append(T1_hist[specific_qubits])
-            
+            every_end = time.time()
+            slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
+        
         T1_us = array(T1_us)
         mean_T1_us = round(mean(T1_us),1)
         sd_T1_us = round(std(T1_us),1)
+        qubit_info.reset.duration(ori_reset)
         if histo_counts == 1:
             Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
         else:
             if specific_folder == '': # when a folder given, the case should be only radiator test so far (2024/04/26) and i don't want it analyze 
-                Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",T1orT2=f"{mean_T1_us}+/-{sd_T1_us}",pic_folder=specific_folder)
+                Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",pic_folder=specific_folder)
         
     else:
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,exp_idx=0,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
@@ -121,20 +137,27 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":1}
+        "q4":{"evoT":100e-6,"histo_counts":1}
     }
-
+    couplers = ['c0','c1']
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     
-    
+    # 暫時的Coupler tuneaway
+    ip = '192.168.1.13'
+    coupler_tuneaway = {'c3':0.1}
+    from Modularize.support.Experiment_setup import get_CouplerController
+    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
+    for i in coupler_tuneaway:
+        Cctrl[i](coupler_tuneaway[i])
     
     """ Running """
     T1_results = {}
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         evoT = ro_elements[qubit]["evoT"]
@@ -147,10 +170,11 @@ if __name__ == "__main__":
         """ Storing """
         if execution:
             if histo_total >= 50:
+                QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
                 QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
                 QD_agent.QD_keeper()
 
 
     """ Close """
     print('T1 done!')
-    shut_down(cluster,Fctrl)
+    shut_down(cluster,Fctrl,Cctrl)

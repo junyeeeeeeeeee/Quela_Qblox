@@ -5,12 +5,12 @@ from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
-from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset
+from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset, coupler_zctrl
 from Modularize.support.ReadResults import plot_QbFlux
 from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
 
@@ -166,20 +166,26 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
+    couplers = ["c0"]
     z_shifter = 0 # V
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
 
     """ Running """
     FQ_results = {}
     check_again =[]
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -190,14 +196,16 @@ if __name__ == "__main__":
             if  trustable:
                 update_by_fluxQubit(QD_agent,new_ans,qubit)
                 QD_agent.QD_keeper()
+                if chip_info_restore:
+                    chip_info.update_FluxQubit(qb=qubit, result=new_ans)
             else:
-                check_again.append(qubit)
-    
+                check_again.append(qubit)    
 
     """ Close """
     print('Flux qubit done!')
-    warning_print(f"qubits to check again: {check_again}")
-    shut_down(cluster,Fctrl)
+    if len(check_again) != 0:
+        warning_print(f"qubits to check again: {check_again}")
+    shut_down(cluster,Fctrl,Cctrl)
     
 
 
