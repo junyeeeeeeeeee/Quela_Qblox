@@ -183,6 +183,18 @@ class Chip_file():
         self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['dura_time'] = qubit.rxy.duration()
 
         self.update_to_json()
+
+    def update_T2(self, qb='', T2='') -> None:
+        # Data storing for m12_T2
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']['T2'] = T2
+
+        self.update_to_json()
+
+    def update_T1(self, qb='', T1="") -> None:
+        # Data storing for m13_T1
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']['T1'] = T1
+
+        self.update_to_json()
     
     def update_to_json(self):
         with open(self.file_name, 'w') as up:
