@@ -173,8 +173,6 @@ def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_mi
                         ref_dict[condition][mode]["avg"] = file_dict[condition]["ref_before"][mode]
                     except:
                         print(f"no ref called {mode} in reference.json !")
-                else:
-                    raise KeyError("Unsupported mode was given!")
     
     rec = []
     conditionla_folders = [get_conditional_folders(sample_folder_name)[-1]]
