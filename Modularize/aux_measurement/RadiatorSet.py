@@ -1,6 +1,6 @@
 import os, sys, json, time
 from datetime import datetime
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_instruments import Cluster
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.m13_T1  import T1_executor
@@ -21,7 +21,7 @@ def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContr
     # do T1
     _, mean_T1_us, std_T1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubits,freeDura=freeDura["T1"],histo_counts=histo_counts,run=run,specific_folder=new_folder)
     # do T2
-    _, mean_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubits,artificial_detune=T2_detu,freeDura=freeDura["T2"],histo_counts=histo_counts,run=run,plot=False,specific_folder=new_folder)
+    _, mean_T2_us, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubits,artificial_detune=T2_detu,freeDura=freeDura["T2"],histo_counts=histo_counts,run=run,plot=False,specific_folder=new_folder)
     # do single shot
     for ith in range(histo_counts):
         SS_executor(QD_agent,cluster,Fctrl,specific_qubits,execution=run,data_folder=new_folder,exp_label=ith,plot=False)

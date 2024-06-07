@@ -3,7 +3,7 @@ This program is only for analyzing a series of radiation tests like 0K, 20K 40K 
 """
 import os, sys, time, json, pickle
 from pandas import DataFrame as DF
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox, Fit_analysis_plot
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
 from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros, delete

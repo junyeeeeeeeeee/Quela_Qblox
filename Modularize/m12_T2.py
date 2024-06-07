@@ -119,7 +119,8 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         T2_us_rec = array(T2_us_rec)
         
         if histo_counts == 1:
-            mean_T2_us = 0
+            mean_T2_us = T2_us_rec[0]
+            sd_T2_us = 0
             if plot:
                 Fit_analysis_plot(Ramsey_results[specific_qubits],P_rescale=False,Dis=None)
         # set the histo save path

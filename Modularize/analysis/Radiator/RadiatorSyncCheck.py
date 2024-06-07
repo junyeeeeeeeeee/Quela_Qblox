@@ -2,7 +2,8 @@
 When RadiatorSet program is running and we didn't set a timer, we can use this to plot the time trend to check it in the mean time.
 """
 
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from Modularize.analysis.Radiator.RadiatorSetAna import main_analysis, time_trend_artist, get_time_axis
 from Modularize.support.Path_Book import meas_raw_dir
 

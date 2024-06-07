@@ -1,5 +1,5 @@
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import matplotlib.pyplot as plt
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args

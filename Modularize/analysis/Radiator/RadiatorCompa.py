@@ -2,8 +2,8 @@
 This program is only for analyzing a series of radiation tests like 0K, 20K 40K 60K and re0K with/without shielding. This didn't support comparison between with and without shielding
 """
 import os, sys, time, json
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from pandas import DataFrame as DF
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
 from numpy import array, ndarray, mean, std, round, arange
 # from Modularize.support.Pulse_schedule_library import hist_plot
