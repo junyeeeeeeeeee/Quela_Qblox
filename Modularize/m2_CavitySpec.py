@@ -87,7 +87,7 @@ def QD_RO_init(QD_agent:QDmanager, target_q:str):
 # execution pack
 def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,qb:str,ro_span_Hz:float=10e6,run:bool=True):
     if run:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess,q=qb,ro_span_Hz=ro_span_Hz,)[qb]
+        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess,q=qb,ro_span_Hz=ro_span_Hz,ro_amp=1)[qb]
         if qb_CSresults != {}:
             print(f'Cavity {qb} @ {qb_CSresults.quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(qb_CSresults.quantities_of_interest["fr"].nominal_value)
@@ -119,11 +119,11 @@ if __name__ == "__main__":
     init_RO_DigiAtte = 30
 
     ro_bare=dict(
-        q0=5.9732e9,
-        q1=6.0823e9,
-        #q2=5.9198e9,
-        #q3=6.0991e9,
-        #q4=6.0102e9        
+        q0=5.974e9,
+        q1=6.083e9,
+        q2=5.920e9,
+        q3=6.099e9,
+        q4=6.011e9        
     )
     """ Preparations """
     
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         
         # Chip info!
         if chip_info_restore:
-            chip_info.update_Cavity_spec_bare(result=CS_results)
+            chip_info.update_CavitySpec(result=CS_results)
 
     """ Close """
     shut_down(cluster,Fctrl)

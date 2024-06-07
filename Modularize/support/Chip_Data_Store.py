@@ -104,7 +104,6 @@ class Chip_file():
         '''
         for qb in result:
             qubit = self.QD_agent.quantum_device.get_element(qb)
-            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["amp"] = qubit.measure.pulse_amp()
             self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["dura_time"] = qubit.measure.pulse_duration()
             self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["acq_delay"] = qubit.measure.acq_delay()
             self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["integ_time"] = qubit.measure.integration_time()
@@ -113,7 +112,7 @@ class Chip_file():
         self.update_to_json()
         print("Quantum_device updated!")     
         
-    def update_Cavity_spec_bare(self, result:dict = {}) -> None:
+    def update_CavitySpec(self, result:dict = {}) -> None:
         # Data storing for m2_CavitySpec
         for qb in result:
             self.__chip_dict["1Q_information"][qb]["char"]["bare"]["bare_freq"] = result[qb].quantities_of_interest["fr"].nominal_value
@@ -123,7 +122,7 @@ class Chip_file():
        
         self.update_to_json()
          
-    def update_Cavity_spec(self, result:dict = {}) -> None:
+    def update_BDCavityFit(self, result:dict = {}) -> None:
         # Data storing for m4_BDCavityFit with 0 flux
         for qb in result:
             for state in result[qb]:
@@ -133,14 +132,16 @@ class Chip_file():
                     self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Qc"] = result[qb]['bare'].quantities_of_interest["Qc"].nominal_value
                     self.__chip_dict["1Q_information"][qb]["char"]["bare"]["Ql"] = result[qb]['bare'].quantities_of_interest["Ql"].nominal_value
                 elif state == 'dress':
+                    qubit = self.QD_agent.quantum_device.get_element(qb)
                     self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["dress_freq"] = result[qb]['dress'].quantities_of_interest["fr"].nominal_value
                     self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Qi"] = result[qb]['dress'].quantities_of_interest["Qi"].nominal_value
                     self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Qc"] = result[qb]['dress'].quantities_of_interest["Qc"].nominal_value
                     self.__chip_dict["1Q_information"][qb]["char"]["zeroflux"]['res']["Ql"] = result[qb]['dress'].quantities_of_interest["Ql"].nominal_value
-            
+                    self.__chip_dict["1Q_information"][qb]["oper"]["readout"]["amp"] = qubit.measure.pulse_amp()
+
         self.update_to_json()
     
-    def update_Cavity_spec_sweet(self, result:dict = {}) -> None:
+    def update_BDCavityFit_sweet(self, result:dict = {}) -> None:
         # Data storing for m4_BDCavityFit with sweet bias
         for qb in result:
             self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result[qb].quantities_of_interest["fr"].nominal_value
@@ -149,21 +150,38 @@ class Chip_file():
         
         self.update_to_json()
 
-    def update_PDans(self, result:dict = {}) -> None:
-        # Data storing for m4_BDCavityFit with sweet bias
-        for qb in result:
-            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['amp'] = result[qb]["dressP"]
+    def update_FluxCavitySpec(self,qb='', result:dict = {}) -> None:
+        # Data storing for m6_FluxCavitySpec
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result.quantities_of_interest["freq_0"]
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['flux'] = result.quantities_of_interest["offset_0"].nominal_value
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['flux'] = result.quantities_of_interest["offset_0"].nominal_value
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['freq'] = result.quantities_of_interest["freq_0"]
         
         self.update_to_json()
 
-    def update_Flux_cavity_spec(self, result:dict = {}) -> None:
-        # Data storing for m4_BDCavityFit with sweet bias
+    def update_Cnti2Tone(self, result:dict = {}) -> None:
+        # Data storing for m8_Cnti2Tone
         for qb in result:
-            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result[qb].quantities_of_interest["freq_0"]
-            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['flux'] = result[qb].quantities_of_interest["offset_0"].nominal_value
-            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['flux'] = result[qb].quantities_of_interest["offset_0"].nominal_value
-            self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['freq'] = result[qb].quantities_of_interest["freq_0"]
-        
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = result[qb].attrs['f01_fit']
+            self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = result[qb].attrs['f01_fit']
+
+        self.update_to_json()
+
+    def update_FluxQubit(self, qb='', result:dict = {}) -> None:
+        # Data storing for m9_FluxQubit
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = result["xyf"]
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = result["xyf"]
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['flux'] = result["sweet_bias"]
+        self.__chip_dict["1Q_information"][qb]["oper"]["readout"]['flux'] = result["sweet_bias"]
+
+        self.update_to_json()
+
+    def update_RabiOsci(self, qb='') -> None:
+        # Data storing for m11_RabiOsci
+        qubit = self.QD_agent.quantum_device.get_element(qb)
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['amp'] = qubit.rxy.amp180()
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['dura_time'] = qubit.rxy.duration()
+
         self.update_to_json()
     
     def update_to_json(self):

@@ -5,7 +5,7 @@ from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from numpy import linspace, array, arange, NaN
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -142,20 +142,15 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
-    couplers = ["c2","c3"]
-
+    couplers = ["c0"]
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-    # 暫時的Coupler tuneaway
-    ip = '192.168.1.13'
-    coupler_tuneaway = {'c0':0.1}
-    from Modularize.support.Experiment_setup import get_CouplerController
-    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
-    for i in coupler_tuneaway:
-        Cctrl[i](coupler_tuneaway[i])
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     """Running """
     rabi_results = {}
@@ -169,6 +164,9 @@ if __name__ == "__main__":
         if trustable:   
             QD_agent.refresh_log("after Rabi")
             QD_agent.QD_keeper()
+            if chip_info_restore:
+                chip_info.update_RabiOsci(qb=qubit)
+
 
 
     """ Close """

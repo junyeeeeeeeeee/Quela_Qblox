@@ -6,7 +6,7 @@ from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -160,23 +160,17 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr3","last_ip":"13"}
     #
     ro_elements = {
-        "q3":{"xyf_guess":[4.25e9],"xyl_guess":[0.11],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[4.56e9],"xyl_guess":[0.03],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = ["c2","c3"]
-    #0.03332
-
+    couplers = ["c0"]
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-
-    # 暫時的Coupler tuneaway
-    ip = '192.168.1.13'
-    coupler_tuneaway = {'c2':0.1,'c3':0.1}
-    from Modularize.support.Experiment_setup import get_CouplerController
-    Cctrl = get_CouplerController(cluster=cluster, ip=ip)
-    for i in coupler_tuneaway:
-        Cctrl[i](coupler_tuneaway[i])
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     """ Running """
     tt_results = {}
@@ -198,7 +192,8 @@ if __name__ == "__main__":
     if update :
         QD_agent.refresh_log("After continuous 2-tone!")
         QD_agent.QD_keeper()
-
+    if chip_info_restore:
+        chip_info.update_Cnti2Tone(tt_results)
 
     """ Close """
     print('2-tone done!')

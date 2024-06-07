@@ -183,7 +183,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
-    couplers = ["c2","c3"]
+    couplers = ["c0"]
 
 
     """ Preparations"""

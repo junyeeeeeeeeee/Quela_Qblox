@@ -126,14 +126,13 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     
-    ro_elements = ['q4']
+    ro_elements = ['q0']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
     
-    cp_ctrl = {"c3":0}
+    cp_ctrl = { "c0":0.1}
     
-
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -164,9 +163,10 @@ if __name__ == "__main__":
         if update and execution:
             QD_agent.refresh_log("after FluxDep")
             QD_agent.QD_keeper()
+            if chip_info_restore:
+                chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
             update = False
-    if chip_info_restore:
-        chip_info.update_Flux_cavity_spec(result=FD_results)
+    
 
     """ Close """
     print('Flux dependence done!')

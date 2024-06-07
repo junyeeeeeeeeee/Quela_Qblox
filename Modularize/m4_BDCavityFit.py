@@ -8,6 +8,7 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 
 def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
+    # QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(5.92e9)
     rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()+f_shifter}
     
     if run:
@@ -43,16 +44,16 @@ if __name__ == "__main__":
     sweetSpot:bool = 0
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-5e6}},
-        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
-        "q1":{  "bare" :{"ro_amp":0.6,"ro_atte":30,"window_shift":-2e6}},
-        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":4e6}},
-        "q2":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
-                # "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}}
-        "q3":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
-        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
-        "q4":{  "bare" :{"ro_amp":0.5,"ro_atte":30,"window_shift":-4e6}},
-        #         "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":2e6}},
+        # "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":3}},
+        # "q1":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
+         "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":1},
+                  "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":4}}
+        #  "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
+        #  "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
 
     }
     # 1 = Store
@@ -97,9 +98,9 @@ if __name__ == "__main__":
     if chip_info_restore:
         chip_info.update_QD(CS_results)
         if sweetSpot:
-            chip_info.update_Cavity_spec_sweet(CS_results)
+            chip_info.update_BDCavityFit_sweet(CS_results)
         else:
-            chip_info.update_Cavity_spec(CS_results)
+            chip_info.update_BDCavityFit(CS_results)
 
     """ Close """
     print('Cavity quality fit done!')
