@@ -87,7 +87,7 @@ def QD_RO_init(QD_agent:QDmanager, target_q:str):
 # execution pack
 def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,qb:str,ro_span_Hz:float=10e6,run:bool=True):
     if run:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess,q=qb,ro_span_Hz=ro_span_Hz,)[qb]
+        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess,q=qb,ro_span_Hz=ro_span_Hz,ro_amp=1)[qb]
         if qb_CSresults != {}:
             print(f'Cavity {qb} @ {qb_CSresults.quantities_of_interest["fr"].nominal_value} Hz')
             QD_agent.quantum_device.get_element(qb).clock_freqs.readout(qb_CSresults.quantities_of_interest["fr"].nominal_value)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1', '11', 'n','20240528_5Qcav', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240606_5Qtest', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
@@ -116,14 +116,14 @@ if __name__ == "__main__":
     chip_info_restore = 1
     # RO attenuation
     # 0 ~ 60
-    init_RO_DigiAtte = 0
-    # 5.4537, 5.456, 5.507, 5.558, 5.566
+    init_RO_DigiAtte = 30
+
     ro_bare=dict(
-        q0=5.4537e9,
-        q1=5.456e9,
-        q2=5.507e9,
-        q3=5.558e9,
-        q4=5.566e9        
+        q0=5.974e9,
+        q1=6.083e9,
+        q2=5.920e9,
+        q3=6.099e9,
+        q4=6.011e9        
     )
     """ Preparations """
     
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         
         # Chip info!
         if chip_info_restore:
-            chip_info.update_Cavity_spec_bare(result=CS_results)
+            chip_info.update_CavitySpec(result=CS_results)
 
     """ Close """
     shut_down(cluster,Fctrl)

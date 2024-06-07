@@ -5,7 +5,7 @@ from numpy import array, linspace
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
-from Modularize.support import QDmanager, Data_manager
+from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -165,17 +165,21 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
 if __name__ == "__main__":
     
     """ Fill in """
-    execution = False
+    execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
-    couplers = ["c2","c3"]
+    couplers = ["c0"]
     z_shifter = 0 # V
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     if ro_elements == 'all':
         ro_elements = list(Fctrl.keys())
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
 
 
     """ Running """
@@ -192,9 +196,10 @@ if __name__ == "__main__":
             if  trustable:
                 update_by_fluxQubit(QD_agent,new_ans,qubit)
                 QD_agent.QD_keeper()
+                if chip_info_restore:
+                    chip_info.update_FluxQubit(qb=qubit, result=new_ans)
             else:
-                check_again.append(qubit)
-    
+                check_again.append(qubit)    
 
     """ Close """
     print('Flux qubit done!')

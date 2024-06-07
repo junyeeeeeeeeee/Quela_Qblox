@@ -5,7 +5,7 @@ from numpy import mean, array, arange, std
 from utils.tutorial_utils import show_args
 from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
-from Modularize.support import QDmanager, Data_manager, multiples_of_x
+from Modularize.support import QDmanager, Data_manager, multiples_of_x, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
@@ -95,6 +95,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
     if run:
         T1_us = []
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
+
         ori_reset = qubit_info.reset.duration()
         # qubit_info.reset.duration(150e-6)#qubit_info.reset.duration()+freeDura)
         warning_print(qubit_info.reset.duration()*1e6)
@@ -105,6 +106,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
             T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
+            slightly_print(f"T1: {T1_hist[specific_qubits]} µs")
             T1_us.append(T1_hist[specific_qubits])
             every_end = time.time()
             slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
@@ -131,17 +133,19 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr2","last_ip":"10"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":1}
+        "q0":{"evoT":100e-6,"histo_counts":5}
     }
-    couplers = ['c0','c1']
+    couplers = ['c0']
+    # 1 = Store
+    # 0 = not store
+    chip_info_restore = 1
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-    
+    chip_info = cds.Chip_file(QD_agent=QD_agent)
     
     """ Running """
     T1_results = {}
@@ -161,6 +165,8 @@ if __name__ == "__main__":
                 QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
                 QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
                 QD_agent.QD_keeper()
+                if chip_info_restore:
+                    chip_info.update_T1(qb=qubit, T1=f"{mean_T1_us} +- {std_T1_us}")
 
 
     """ Close """
