@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """
-    data_parent_dir = 
+    data_parent_dir = create_temperature_folder(Temp)
     exp_start_time = datetime.now()
     exp_start_time = f"{exp_start_time.strftime('%Y-%m-%d')} {exp_start_time.strftime('%H:%M')}"
     start = time.time()
