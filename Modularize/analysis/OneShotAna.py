@@ -1,8 +1,9 @@
+import os, sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qcat.state_discrimination.discriminator import train_GMModel # type: ignore
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from xarray import Dataset, open_dataset
-from Modularize.analysis.RadiatorSetAna import OSdata_arranger
-import os
+from Modularize.analysis.Radiator.RadiatorSetAna import OSdata_arranger
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager
 from numpy import array, moveaxis, mean, std, median

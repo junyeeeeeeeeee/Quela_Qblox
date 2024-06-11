@@ -3,7 +3,7 @@ This program is only for analyzing a series of radiation tests like 0K, 20K 40K 
 """
 import os, sys, time, json, pickle
 from pandas import DataFrame as DF
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox, Fit_analysis_plot
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
 from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros, delete
@@ -898,7 +898,7 @@ def scat_DR_avg_temp(need_log_info:dict,sample_folder_name:str="",conditional_fo
     x_axis = []
     for temperature in need_log_info:
         exp_keep_time_min:int = need_log_info[temperature]["keep_time_min"]
-        avg_min_from_the_end:int = need_log_info[temperature]["avg_min_from_the_end"]
+        avg_min_from_the_end:int = need_log_info[temperature]["avg_min_from_the_end"] if "avg_min_from_the_end" in  need_log_info[temperature] else 60
         try:
             other_info = {}
             with open(os.path.join(meas_raw_dir,sample_folder_name,conditional_folder_name,temperature,"otherInfo.json")) as JJ:
@@ -1132,8 +1132,8 @@ if __name__ == '__main__':
                     }
     
     # ? For references.
-    ref_before = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_before"]
-    ref_recove = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_recove"]
+    ref_before = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_before"] if "ref_before" in get_ref_from_json(target_q,sample_folder,conditional_folder).keys() else {}
+    ref_recove = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_recove"] if "ref_recove" in get_ref_from_json(target_q,sample_folder,conditional_folder).keys() else {}
 
 
     # ? If this folder is "", it won't plot the MXC temperature. 

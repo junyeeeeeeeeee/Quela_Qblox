@@ -2,8 +2,8 @@
 This program is only for analyzing a series of radiation tests like 0K, 20K 40K 60K and re0K with/without shielding. This didn't support comparison between with and without shielding
 """
 import os, sys, time, json
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from pandas import DataFrame as DF
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
 from numpy import array, ndarray, mean, std, round, arange
 # from Modularize.support.Pulse_schedule_library import hist_plot
@@ -23,7 +23,14 @@ exp_colors = {"T2":"#1E90FF",
 # +++++++++++++++++++++++ Functions +++++++++++++++++++++++++++++++++++++++++++++++
 def get_conditional_folders(sample_folder_name:str)->list:
     sample_path = os.path.join(meas_raw_dir,sample_folder_name)
-    conditional_folder_paths = [os.path.join(sample_path,name) for name in os.listdir(sample_path) if (os.path.isdir(os.path.join(sample_path,name)) and name.split("_")[1] not in list(exp_items.values()))]
+    conditional_folder_paths = []
+    for name in os.listdir(sample_path):
+        if os.path.isdir(os.path.join(sample_path,name)):
+            if len(name.split("_")) >= 2:
+                if name.split("_")[1] not in list(exp_items.values()):
+                    conditional_folder_paths.append(os.path.join(sample_path,name))
+            else:
+                conditional_folder_paths.append(os.path.join(sample_path,name))
     return conditional_folder_paths
 
 def search_tempera_folder(sample_folder_name:str, tempera:str)->list:
@@ -173,8 +180,6 @@ def gamma_compa_temp_dep(sample_folder_name:str, temp_folder_names:dict,slice_mi
                         ref_dict[condition][mode]["avg"] = file_dict[condition]["ref_before"][mode]
                     except:
                         print(f"no ref called {mode} in reference.json !")
-                else:
-                    raise KeyError("Unsupported mode was given!")
     
     rec = []
     conditionla_folders = [get_conditional_folders(sample_folder_name)[-1]]

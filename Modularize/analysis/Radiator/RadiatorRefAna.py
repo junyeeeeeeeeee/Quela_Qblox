@@ -1,6 +1,8 @@
 """
 This program focus on analyze the references.
 """
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from Modularize.analysis.Radiator.RadiatorSetAna import main_analysis, get_references_from_ResultJson, save_ref
 
 
