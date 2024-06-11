@@ -9,12 +9,22 @@ from Modularize.m14_SingleShot import SS_executor
 from Modularize.support import QDmanager, init_meas, shut_down, init_system_atte, coupler_zctrl
 from quantify_core.measurement.control import MeasurementControl
 
-def create_special_folder(parent_dir:str,folder_idx:int):
+def create_set_folder(parent_dir:str,folder_idx:int):
     folder_name = f"Radiator({folder_idx})"
     new_folder_path = os.path.join(parent_dir,folder_name)
     os.mkdir(new_folder_path)
     print(f"dir '{folder_name}' had been created!")
     return new_folder_path
+
+def create_temperature_folder(temperature:str,within_specific_path:str="")->str:
+    if within_specific_path != "":
+        temp_folder_path = os.path.join(within_specific_path,temperature)
+    else:
+        temp_folder_path = os.path.join(meas_raw_dir,temperature)
+    os.mkdir(temp_folder_path)
+
+    return temp_folder_path
+
 
 
 def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:dict,T2_detu:float=0e6,histo_counts:int=10,run:bool=True,new_folder:str=''):
@@ -46,8 +56,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """
-    data_parent_dir = os.path.join(meas_raw_dir,Temp)
-    os.mkdir(data_parent_dir)
+    data_parent_dir = 
     exp_start_time = datetime.now()
     exp_start_time = f"{exp_start_time.strftime('%Y-%m-%d')} {exp_start_time.strftime('%H:%M')}"
     start = time.time()
@@ -72,7 +81,7 @@ if __name__ == "__main__":
                 with open(os.path.join(data_parent_dir,"otherInfo.json")) as JJ:
                     other_info = json.load(JJ)
             
-            set_folder = create_special_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
+            set_folder = create_set_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
             evoT = ro_elements[qubit]["freeTime"]
             ramsey_detune = ro_elements[qubit]["T2detune"]
             histo_count = ro_elements[qubit]["histo_counts"]

@@ -23,7 +23,14 @@ exp_colors = {"T2":"#1E90FF",
 # +++++++++++++++++++++++ Functions +++++++++++++++++++++++++++++++++++++++++++++++
 def get_conditional_folders(sample_folder_name:str)->list:
     sample_path = os.path.join(meas_raw_dir,sample_folder_name)
-    conditional_folder_paths = [os.path.join(sample_path,name) for name in os.listdir(sample_path) if (os.path.isdir(os.path.join(sample_path,name)) and name.split("_")[1] not in list(exp_items.values()))]
+    conditional_folder_paths = []
+    for name in os.listdir(sample_path):
+        if os.path.isdir(os.path.join(sample_path,name)):
+            if len(name.split("_")) >= 2:
+                if name.split("_")[1] not in list(exp_items.values()):
+                    conditional_folder_paths.append(os.path.join(sample_path,name))
+            else:
+                conditional_folder_paths.append(os.path.join(sample_path,name))
     return conditional_folder_paths
 
 def search_tempera_folder(sample_folder_name:str, tempera:str)->list:
