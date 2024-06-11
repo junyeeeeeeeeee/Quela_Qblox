@@ -13,13 +13,13 @@ from pandas import Series
 def xyf_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubit:str,max_evoT:float,execution:bool=True,plot_cali_result:bool=False):
     Trustable = False
     avg_N = 500
-    _, _, _, detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubit,artificial_detune=0e6,freeDura=max_evoT,histo_counts=1,run=execution,plot=False,avg_n=avg_N)
+    _, _, _, _, detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubit,artificial_detune=0e6,freeDura=max_evoT,histo_counts=1,run=execution,plot=False,avg_n=avg_N)
     if execution:
         to_cali_detune = [detune[specific_qubit], -detune[specific_qubit]]
         detune_after = []
         for arti_detune in to_cali_detune:
             slightly_print(f"Ramsey with detuning = {round(arti_detune*1e-6,2)} MHz")
-            ramsey_results, _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubit,artificial_detune=arti_detune,freeDura=max_evoT,histo_counts=1,run=execution,plot=False,avg_n=avg_N)
+            ramsey_results, _, _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubit,artificial_detune=arti_detune,freeDura=max_evoT,histo_counts=1,run=execution,plot=False,avg_n=avg_N)
             detune_after.append(average_actual_detune[specific_qubit])
 
 

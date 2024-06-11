@@ -1,6 +1,7 @@
 """ 600 fpoints, 100 avg ~ 0.6 min"""
 
-import json, os
+import json, os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import arange, pi, mean, array
 from Modularize.m2_CavitySpec import Cavity_spec
 from Modularize.support.Experiment_setup import ip_register

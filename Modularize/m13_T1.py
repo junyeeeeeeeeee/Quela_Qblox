@@ -97,8 +97,7 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
 
         ori_reset = qubit_info.reset.duration()
-        # qubit_info.reset.duration(150e-6)#qubit_info.reset.duration()+freeDura)
-        warning_print(qubit_info.reset.duration()*1e6)
+        qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
         for ith in range(histo_counts):
             every_start = time.time()
             slightly_print(f"The {ith}-th T1:")
