@@ -23,7 +23,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
     # Manually change f01
     # f01 = qubit.clock_freqs.f01()
-    # qubit.clock_freqs.f01(f01-2.47e6)
+    # qubit.clock_freqs.f01(f01+1e6)
     
     New_fxy= qubit.clock_freqs.f01()+arti_detune
     
@@ -131,6 +131,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
     else:
         Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
         mean_T2_us = 0
+    print(f"measured detune = {round(average_actual_detune[specific_qubits]*1e-6,5)} MHz")
 
     return Ramsey_results, mean_T2_us, sd_T2_us, average_actual_detune
 
@@ -143,9 +144,9 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"detune":1e6,"evoT":50e-6,"histo_counts":5}
+        "q1":{"detune":0e6,"evoT":50e-6,"histo_counts":1}
     }
-    couplers = ['c0']
+    couplers = ['c0', 'c1']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
