@@ -46,17 +46,18 @@ def time_monitor(monitoring_info:dict, other_info:dict, qubit:str, data_parent_d
 if __name__ == "__main__":
     # 2 sets, 2 histo_counts, take 2.7 mins
     """ fill in """
-    Temp = '0K'                        # avoid named start with 're', this name is only for radiator off. If it's for reference please use 4K as temperature name 
-    QD_path = 'Modularize/QD_backup/2024_5_13/DR1#11_SumInfo.pkl'
+    Temp = '4K'                        # avoid named start with 're', this name is only for radiator off. If it's for reference please use 4K as temperature name 
+    special_parent_dir = "Modularize/Meas_raw/Radiator/ScalinQ_Q4"
+    QD_path = 'Modularize/QD_backup/2024_6_11/DR1SCA#11_SumInfo.pkl'
     ro_elements = {
-        "q0":{"T2detune":0e6,"freeTime":{"T1":120e-6,"T2":20e-6},"histo_counts":2} # histo_counts min = 2 when for test
+        "q0":{"T2detune":0.2e6,"freeTime":{"T1":120e-6,"T2":20e-6},"histo_counts":10} # histo_counts min = 2 when for test
     }
-    couplers = ['c0','c1']
+    couplers = ['c0']
     tracking_time_min = "free"         # if you wanna interupt it manually, set 'free'
 
 
     """ Preparations """
-    data_parent_dir = create_temperature_folder(Temp)
+    data_parent_dir = create_temperature_folder(Temp,within_specific_path=special_parent_dir)
     exp_start_time = datetime.now()
     exp_start_time = f"{exp_start_time.strftime('%Y-%m-%d')} {exp_start_time.strftime('%H:%M')}"
     start = time.time()

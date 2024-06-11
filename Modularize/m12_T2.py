@@ -141,9 +141,9 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
-        "q0":{"detune":1e6,"evoT":50e-6,"histo_counts":5}
+        "q0":{"detune":0.2e6,"evoT":15e-6,"histo_counts":1}
     }
     couplers = ['c0']
     # 1 = Store

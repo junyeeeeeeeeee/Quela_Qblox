@@ -140,7 +140,7 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = ['q0']
     couplers = ["c0"]
     # 1 = Store

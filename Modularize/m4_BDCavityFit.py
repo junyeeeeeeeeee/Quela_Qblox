@@ -42,19 +42,10 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     sweetSpot:bool = 0
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
-        # "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                # "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":3}},
-        # "q1":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
-         "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":1},
-                  "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":4}}
-        #  "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
-        #  "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                #  "dress":{"ro_amp":0.01,"ro_atte":30,"window_shift":0}},
-
+        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":20,"window_shift":-5},
+                "dress":{"ro_amp":0.2,"ro_atte":30,"window_shift":7}},
     }
     # 1 = Store
     # 0 = not store

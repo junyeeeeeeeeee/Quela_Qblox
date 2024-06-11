@@ -122,10 +122,10 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute = True
-    repaet = 100
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q0':{"roAmp_factor":1}}
-    couplers = ['c0','c1']
+    repaet = 1
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    ro_elements = {'q0':{"roAmp_factor":1.3}}
+    couplers = ['c0']
     
 
     snr_rec, effT_rec = {}, {}

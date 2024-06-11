@@ -40,11 +40,11 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
         "q0":{"evoT":15e-6}
     }
-    couplers = ['c0','c1']
+    couplers = ['c0']
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])

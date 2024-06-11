@@ -101,11 +101,11 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
 if __name__ == "__main__":
     
     """ fill in """
-    execution = True
-    sweetSpot_dispersive = True
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    execution:bool = True
+    sweetSpot_dispersive:bool = 0
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {    # measurement target q from this dict 
-        "q2": {"ro_atte":30},
+        "q0": {"ro_atte":20},
     }
 
     """ preparations """
