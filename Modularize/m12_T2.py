@@ -144,7 +144,7 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q1":{"detune":0e6,"evoT":50e-6,"histo_counts":1}
+        "q0":{"detune":0.13e6,"evoT":50e-6,"histo_counts":1}
     }
     couplers = ['c0', 'c1']
     # 1 = Store
@@ -170,9 +170,7 @@ if __name__ == "__main__":
         slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
         ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
         highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
-            
         
-       
         """ Storing """
         if execution:
             if histo_total >= 50:

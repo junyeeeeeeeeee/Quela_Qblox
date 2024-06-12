@@ -44,7 +44,7 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q1":{"evoT":45e-6}
+        "q0":{"evoT":50e-6}
     }
     couplers = ['c0', 'c1']
     # 1 = Store

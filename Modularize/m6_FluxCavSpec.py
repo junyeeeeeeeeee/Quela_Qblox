@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # 0 = not store
     chip_info_restore = 1
     
-    cp_ctrl = { "c0":0.1}
+    cp_ctrl = {"c0":0.1, "c1":0.11,}
     
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])

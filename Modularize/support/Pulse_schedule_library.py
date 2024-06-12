@@ -776,6 +776,48 @@ def Zgate_Ramsey_sche(
 
     return sched
 
+def Zz_Interaction(
+    q:str,
+    excite_q:str,
+    pi_amp: dict,
+    excite_pi_amp: dict,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    excite_pi_dura:float=20e-9,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+
+    excite_pi_Du= excite_pi_dura
+   
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        X_pi_p(sched,excite_pi_amp,excite_q,excite_pi_Du,spec_pulse,freeDu=freeDu+excite_pi_Du+pi_Du)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
 
 def Qubit_SS_sche(
     q:str,
