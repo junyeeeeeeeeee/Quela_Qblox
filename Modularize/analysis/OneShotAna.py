@@ -29,7 +29,7 @@ def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=Tru
     # train GMM
     dist_model = train_GMModel(tarin_data[0])
     dist_model.relabel_model(array([QD_agent.refIQ[target_q]]).transpose())
-    transi_freq = 4.4e9#QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
+    transi_freq = QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
     
     # predict all collection to calculate eff_T for every exp_idx
     

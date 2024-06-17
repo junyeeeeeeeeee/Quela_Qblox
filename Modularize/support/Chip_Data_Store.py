@@ -195,6 +195,14 @@ class Chip_file():
         self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']['T1'] = T1
 
         self.update_to_json()
+
+    def update_xyfCali(self, qb='') -> None:
+        # Data storing for m11_RabiOsci
+        qubit = self.QD_agent.quantum_device.get_element(qb)
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = qubit.clock_freqs.f01()
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = qubit.clock_freqs.f01()
+
+        self.update_to_json()
     
     def update_to_json(self):
         with open(self.file_name, 'w') as up:
