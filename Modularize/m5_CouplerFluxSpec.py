@@ -1,3 +1,8 @@
+"""
+### This program focus on a readout freq. and tune the flux on the given coupler.\n
+We expects to see 2 rabi-splitting poles.\n
+Once you get the bias about these poles you calculate the max coupler freq bias and use it in m6 program.
+"""
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import array, linspace, pi
@@ -149,25 +154,10 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,Cctrl,qubit,coupler,run=execution,flux_span=0.5,ro_span_Hz=8e6, zpts=40)
             cluster.reset()
-        # if execution:
-        #     permission = mark_input("Update the QD with this result ? [y/n]") 
-        #     if permission.lower() in ['y','yes']:
-        #         update_flux_info_in_results_for(QD_agent,qubit,FD_results)
         
-        #         update = True
-        # else:
-        #     break
-
-    
-        # """ Storing """
-        # if update and execution:
-        #     QD_agent.refresh_log("after FluxDep")
-        #     QD_agent.QD_keeper()
-        #     if chip_info_restore:
-        #         chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
-        #     update = False
-    
+        """ Storing """
+        # empty
 
     """ Close """
-    print('Flux dependence done!')
+    print('Rabi-spliting done!')
     shut_down(cluster,Fctrl,Cctrl)
