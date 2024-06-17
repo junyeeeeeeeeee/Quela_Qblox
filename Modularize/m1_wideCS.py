@@ -142,7 +142,7 @@ if __name__ == "__main__":
     
     """ Fill in """
     QD_path, dr, ip, mode = "", "dr3", "192.168.1.13","n" #init_meas_window()
-    qrmRF_slot_idx:int  = 6
+    qrmRF_slot_idx:int  = 18
     lo_start_freq:float = 5.4  * 1e9
     lo_stop_freq:float = 6.1   * 1e9
     num_data:int = 2100
