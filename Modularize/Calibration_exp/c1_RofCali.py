@@ -143,21 +143,22 @@ def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCon
 if __name__ == '__main__':
 
     """ Fill in """
-    execute = True
+    execute:bool = True
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {'q0':{"span_Hz":8e6}}
     couplers = ['c0']
 
+
     """ Preparation """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-
-
-    """ Running """
-    keep = False
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        
+
+        """ Running """
+        keep = False
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         ro_span = ro_elements[qubit]["span_Hz"]
 
@@ -165,7 +166,6 @@ if __name__ == '__main__':
         if execute:
             if mark_input(f"Update the optimal ROF for {qubit}?[y/n]").lower() in ['y', 'yes']:
                 QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof)
-                refIQ_executor(QD_agent,cluster,Fctrl,qubit)
                 keep = True
 
         """ Storing """ 
@@ -174,6 +174,16 @@ if __name__ == '__main__':
                 QD_agent.QD_keeper()
                 keep = False 
 
-    """ Close """    
-    shut_down(cluster,Fctrl,Cctrl)
+        """ Close """    
+        shut_down(cluster,Fctrl,Cctrl)
+    
+    for qubit in ro_elements:
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+        refIQ_executor(QD_agent,cluster,Fctrl,qubit)
 
+        """ Close """ 
+        QD_agent.QD_keeper()   
+        shut_down(cluster,Fctrl,Cctrl)

@@ -91,76 +91,82 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     return analysis_result, T1_us
 
 
-def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,specific_folder:str='',pts:int=100):
+def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,run:bool=True,specific_folder:str='',pts:int=100,ith:int=0):
     if run:
-        T1_us = []
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
 
         ori_reset = qubit_info.reset.duration()
         qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
-        for ith in range(histo_counts):
-            every_start = time.time()
-            slightly_print(f"The {ith}-th T1:")
-            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
-            T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
-            Fctrl[specific_qubits](0.0)
-            cluster.reset()
-            slightly_print(f"T1: {T1_hist[specific_qubits]} µs")
-            T1_us.append(T1_hist[specific_qubits])
-            every_end = time.time()
-            slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
         
-        T1_us = array(T1_us)
-        mean_T1_us = round(mean(T1_us),1)
-        sd_T1_us = round(std(T1_us),1)
+        every_start = time.time()
+        slightly_print(f"The {ith}-th T1:")
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
+        Fctrl[specific_qubits](0.0)
+        cluster.reset()
+        this_t1_us = T1_hist[specific_qubits]
+        slightly_print(f"T1: {this_t1_us} µs")
+        every_end = time.time()
+        slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
+        
         qubit_info.reset.duration(ori_reset)
-        if histo_counts == 1:
-            Fit_analysis_plot(T1_results[specific_qubits],P_rescale=False,Dis=None)
-        else:
-            if specific_folder == '': # when a folder given, the case should be only radiator test so far (2024/04/26) and i don't want it analyze 
-                Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T1_us},specific_qubits,mode="t1",pic_folder=specific_folder)
         
     else:
-        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,exp_idx=0,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False)
-        mean_T1_us = 0 
-        sd_T1_us = 0
+        T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=False,exp_idx=ith,data_folder=specific_folder,points=pts)
+        this_t1_us = 0 
+
     
-    return T1_results, mean_T1_us, sd_T1_us
+    return T1_results, this_t1_us
 
 if __name__ == "__main__":
     
 
     """ Fill in """
-    execution = True
+    execution:bool = True
+    chip_info_restore:bool = 1
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
         "q0":{"evoT":120e-6,"histo_counts":1}
     }
     couplers = ['c0']
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
-
-    """ Preparations """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    chip_info = cds.Chip_file(QD_agent=QD_agent)
     
-    """ Running """
-    T1_results = {}
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-    for qubit in ro_elements:
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        evoT = ro_elements[qubit]["evoT"]
-        histo_total = ro_elements[qubit]["histo_counts"]
+    
 
-        T1_results[qubit], mean_T1_us, std_T1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,histo_counts=histo_total,run=execution)
-        highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
+    """ Iterations """
+    for qubit in ro_elements:
+
+        t1_us_rec = []
+        for ith_histo in range(ro_elements[qubit]["histo_counts"]):
+            """ Preparations """
+            QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+            chip_info = cds.Chip_file(QD_agent=QD_agent)
+            
+            """ Running """
+            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+            evoT = ro_elements[qubit]["evoT"]
+
+            T1_results, this_t1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,run=execution,ith=ith_histo)
+            t1_us_rec.append(this_t1_us)
+            
+            """ Close """
+            print('T1 done!')
+            shut_down(cluster,Fctrl,Cctrl)
         
         
         """ Storing """
         if execution:
-            if histo_total >= 50:
+            mean_T1_us = round(mean(array(t1_us_rec)),2)
+            std_T1_us  = round(std(array(t1_us_rec)),2)
+
+            if ro_elements[qubit]["histo_counts"] == 1:
+                Fit_analysis_plot(T1_results[qubit],P_rescale=False,Dis=None)
+            else:
+                Data_manager().save_histo_pic(QD_agent,{str(qubit):t1_us_rec},qubit,mode="t1")
+            
+            highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
+            if ro_elements[qubit]["histo_counts"] >= 50:
                 QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
                 QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
                 QD_agent.QD_keeper()
@@ -168,6 +174,8 @@ if __name__ == "__main__":
                     chip_info.update_T1(qb=qubit, T1=f"{mean_T1_us} +- {std_T1_us}")
 
 
-    """ Close """
-    print('T1 done!')
-    shut_down(cluster,Fctrl,Cctrl)
+            
+       
+
+    
+        

@@ -1,3 +1,6 @@
+"""
+Use the results from m1 and a light attenuation (10 ~ 16 is recommended) to find the BARE cavity frequency.
+"""
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import NaN
@@ -80,8 +83,8 @@ def QD_RO_init(QD_agent:QDmanager, target_q:str):
     qubit.reset.duration(150e-6)
     qubit.measure.acq_delay(280e-9)
     qubit.measure.pulse_amp(0.15)
-    qubit.measure.pulse_duration(2e-6)
-    qubit.measure.integration_time(1.5e-6-4e-9)
+    qubit.measure.pulse_duration(1e-6)
+    qubit.measure.integration_time(0.5e-6-4e-9)
 
 
 # execution pack
@@ -116,7 +119,7 @@ if __name__ == "__main__":
     chip_info_restore = 1
     # RO attenuation
     # 0 ~ 60
-    init_RO_DigiAtte = 30
+    init_RO_DigiAtte = 10
 
     ro_bare=dict(
         q0=5.95388e9   

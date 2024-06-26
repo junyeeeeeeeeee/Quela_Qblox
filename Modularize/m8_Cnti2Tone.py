@@ -154,18 +154,17 @@ NOTE: If you find a XYF in a tuneaway z-bias which means the `tune_bias` != 0, p
 if __name__ == "__main__":
 
     """ Fill in """
-    execution = True
-    update = 1
+    execution:bool = True
+    chip_info_restore:bool = 1
+    update:bool = 1
     #
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.75e9],"xyl_guess":[0.03],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[4.7e9],"xyl_guess":[0.03],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = ["c0"]
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
+    
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])

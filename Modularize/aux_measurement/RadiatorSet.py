@@ -1,19 +1,18 @@
 import os, sys, json, time
 from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from qblox_instruments import Cluster
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.m13_T1  import T1_executor
 from Modularize.m12_T2  import ramsey_executor
 from Modularize.m14_SingleShot import SS_executor
-from Modularize.support import QDmanager, init_meas, shut_down, init_system_atte, coupler_zctrl
-from quantify_core.measurement.control import MeasurementControl
+from Modularize.support import init_meas, shut_down, init_system_atte, coupler_zctrl
 
 def create_set_folder(parent_dir:str,folder_idx:int):
     folder_name = f"Radiator({folder_idx})"
     new_folder_path = os.path.join(parent_dir,folder_name)
-    os.mkdir(new_folder_path)
-    print(f"dir '{folder_name}' had been created!")
+    if not os.path.exists(new_folder_path):
+        os.mkdir(new_folder_path)
+        print(f"dir '{folder_name}' had been created!")
     return new_folder_path
 
 def create_temperature_folder(temperature:str,within_specific_path:str="")->str:
@@ -25,16 +24,6 @@ def create_temperature_folder(temperature:str,within_specific_path:str="")->str:
 
     return temp_folder_path
 
-
-
-def radiation_test(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:dict,T2_detu:float=0e6,histo_counts:int=10,run:bool=True,new_folder:str=''):
-    # do T1
-    _, mean_T1_us, std_T1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubits,freeDura=freeDura["T1"],histo_counts=histo_counts,run=run,specific_folder=new_folder)
-    # do T2
-    _, mean_T2_us, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,specific_qubits,artificial_detune=T2_detu,freeDura=freeDura["T2"],histo_counts=histo_counts,run=run,plot=False,specific_folder=new_folder)
-    # do single shot
-    for ith in range(histo_counts):
-        SS_executor(QD_agent,cluster,Fctrl,specific_qubits,execution=run,data_folder=new_folder,exp_label=ith,plot=False)
 
 def time_monitor(monitoring_info:dict, other_info:dict, qubit:str, data_parent_dir:str, start_time):
     from Modularize.analysis.Radiator.RadiatorSetAna import a_set_analysis,live_time_monitoring_plot
@@ -55,6 +44,9 @@ if __name__ == "__main__":
     couplers = ['c0']
     tracking_time_min = "free"         # if you wanna interupt it manually, set 'free'
 
+    """ Optional paras """
+    doing_exp = ["T1","T2","OS"]
+
 
     """ Preparations """
     data_parent_dir = create_temperature_folder(Temp,within_specific_path=special_parent_dir)
@@ -71,28 +63,31 @@ if __name__ == "__main__":
   
     for qubit in ro_elements:
         set_idx = 0
-        monitoring_info = {}
         while (cut_time-start)/60 < tracking_time_min:
-            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-            Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-            if set_idx == 0:
-                other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
-            else:
-                with open(os.path.join(data_parent_dir,"otherInfo.json")) as JJ:
-                    other_info = json.load(JJ)
-            
             set_folder = create_set_folder(parent_dir=data_parent_dir,folder_idx=set_idx)
-            evoT = ro_elements[qubit]["freeTime"]
-            ramsey_detune = ro_elements[qubit]["T2detune"]
-            histo_count = ro_elements[qubit]["histo_counts"]
-
-            radiation_test(QD_agent, cluster, meas_ctrl, Fctrl, qubit, freeDura=evoT, T2_detu=ramsey_detune, histo_counts=histo_count, new_folder=set_folder)
-            # time_monitor(monitoring_info, other_info, qubit, data_parent_dir, start)
+            for exp_idx, exp in enumerate(doing_exp):
+                for ith_histo in range(ro_elements[qubit]["histo_counts"]):
+                    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+                    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+                    Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+                    if set_idx == 0 and exp_idx == 0 and ith_histo == 0:
+                        other_info[qubit]={"start_time":exp_start_time,"refIQ":QD_agent.refIQ[qubit],"time_past":[],"f01":QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()}
+                    
+                    if exp == "T1":
+                        _ = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["freeTime"]["T1"],ith=ith_histo,run=True,specific_folder=set_folder)
+                    elif exp == "T2":
+                        _ = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["T2detune"],freeDura=ro_elements[qubit]["freeTime"]["T2"],ith=ith_histo,run=True,specific_folder=set_folder)
+                    elif exp == "OS":
+                        SS_executor(QD_agent,cluster,Fctrl,qubit,execution=True,data_folder=set_folder,exp_label=ith_histo,plot=False)
+                    else:
+                        print(f"*** Can't support this exp called '{exp}' in Radiator test set !")
+                    
+                    """ Close """
+                    shut_down(cluster,Fctrl,Cctrl)
+            
+            
             cut_time = time.time()
             other_info[qubit]["time_past"].append(cut_time-start)
-            """ Close """
-            shut_down(cluster,Fctrl,Cctrl)
             set_idx += 1
 
             """ Storing """
