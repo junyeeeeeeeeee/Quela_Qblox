@@ -136,7 +136,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q1":{"evoT":100e-6,"histo_counts":1}
     }
-    couplers = ['c0', 'c1']
+    couplers = ['c0', 'c1', 'c2', 'c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1

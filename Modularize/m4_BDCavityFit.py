@@ -44,16 +44,16 @@ if __name__ == "__main__":
     sweetSpot:bool = 0
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":3e6}},
-        "q1":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":3e6}},
-        "q2":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":1e6}},
-        "q3":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":6e6}},
-        "q4":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.03,"ro_atte":30,"window_shift":0e6}},
+        "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
+        "q1":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
+        "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
+        "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
+        "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":2e6}},
 
     }
     # 1 = Store

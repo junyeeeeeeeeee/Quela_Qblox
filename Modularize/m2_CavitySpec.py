@@ -107,7 +107,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240605_AS139+AS1604', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8+AS1606', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
@@ -119,11 +119,11 @@ if __name__ == "__main__":
     init_RO_DigiAtte = 30
 
     ro_bare=dict(
-        q0=5.706e9,
-        q1=5.806e9,
-        q2=5.66e9,
-        q3=5.84e9,
-        q4=5.733e9        
+        q0=5.974e9,
+        q1=6.084e9,
+        q2=5.920e9,
+        q3=6.099e9,
+        q4=6.011e9        
     )
     """ Preparations """
     

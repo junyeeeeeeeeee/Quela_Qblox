@@ -44,9 +44,9 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":50e-6}
+        "q1":{"evoT":50e-6}
     }
-    couplers = ['c0', 'c1']
+    couplers = ['c0', 'c1', 'c2', 'c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1

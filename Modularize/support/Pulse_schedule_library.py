@@ -778,7 +778,7 @@ def Zgate_Ramsey_sche(
 
 def Zz_Interaction(
     q:str,
-    excite_q:str,
+    excite_qubit:str,
     pi_amp: dict,
     excite_pi_amp: dict,
     New_fxy:float,
@@ -804,13 +804,15 @@ def Zz_Interaction(
             SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
         
         sched.add(Reset(q))
+
+        sched.add(Reset(excite_qubit))
         
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
-        X_pi_p(sched,excite_pi_amp,excite_q,excite_pi_Du,spec_pulse,freeDu=freeDu+excite_pi_Du+pi_Du)
-        
+        X_pi_p(sched,excite_pi_amp,excite_qubit,excite_pi_Du,spec_pulse,freeDu=freeDu+pi_Du*2)
+
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)

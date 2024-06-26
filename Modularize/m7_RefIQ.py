@@ -87,8 +87,13 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = {'q1':{"ro_amp_factor":1}}
-    couplers = ["c0",'c1']
+    ro_elements = {#'q0':{"ro_amp_factor":1},
+                   'q1':{"ro_amp_factor":1},
+                   #'q2':{"ro_amp_factor":1},
+                   #'q3':{"ro_amp_factor":1},
+                   #'q4':{"ro_amp_factor":1},
+                   }
+    couplers = ["c0",'c1','c2','c3']
 
 
     """ Preparations """

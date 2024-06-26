@@ -17,7 +17,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
-    window_shift = -2e6
+    window_shift = 2e6
     ro_f_start = qubit_info.clock_freqs.readout()-window_shift
     # avoid frequency conflicts 
     from numpy import NaN
@@ -106,8 +106,9 @@ if __name__ == "__main__":
     sweetSpot_dispersive = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {    # measurement target q from this dict 
-        "q1": {"ro_atte":30},
-        "q2": {"ro_atte":30},
+        # "q0": {"ro_atte":30},
+        # "q1": {"ro_atte":30},
+        # "q2": {"ro_atte":30},
         "q3": {"ro_atte":30},
         "q4": {"ro_atte":30},
     }

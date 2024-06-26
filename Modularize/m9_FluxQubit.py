@@ -168,7 +168,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0']
-    couplers = ["c0",'c1']
+    couplers = ["c0",'c1','c2','c3']
     z_shifter = 0 # V
     # 1 = Store
     # 0 = not store

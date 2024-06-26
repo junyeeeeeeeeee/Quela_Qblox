@@ -142,7 +142,7 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q1']
-    couplers = ["c0",'c1']
+    couplers = ["c0",'c1','c2','c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=1e-6,XYamp_max=0.6)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=40e-9,XYamp_max=0.6)
         cluster.reset()
     
         """ Storing """

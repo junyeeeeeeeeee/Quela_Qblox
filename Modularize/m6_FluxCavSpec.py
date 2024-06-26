@@ -126,12 +126,12 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     
-    ro_elements = ['q0','q1','q2','q3','q4']
+    ro_elements = ['q1',]
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
     
-    cp_ctrl = {"c0":0, "c1":0}
+    cp_ctrl = {"c0":0.2, "c1":0.3,"c2":0.3,"c3":0.3,}
     
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     FD_results = {}
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.8,ro_span_Hz=15e6, zpts=40)
+        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=0.8,ro_span_Hz=10e6, zpts=40)
         cluster.reset()
         if execution:
             permission = mark_input("Update the QD with this result ? [y/n]") 
