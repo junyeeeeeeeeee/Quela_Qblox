@@ -8,14 +8,14 @@ from Modularize.analysis.Radiator.RadiatorSetAna import main_analysis, time_tren
 from Modularize.support.Path_Book import meas_raw_dir
 
 target_q:str = 'q0'
-exp_catas:list = ["effT"]
-sample_folder_name:str = "Radiator_wisconsinQ1"
-conditional_folder_name:str = "Radiator_WS" 
-log_info_dict:dict = {"10K":{}}
+exp_catas:list = ["3"]
+sample_folder_name:str = "Radiator"
+conditional_folder_name:str = "ScalinQ_Q4" 
+log_info_dict:dict = {"4K":{}}
 
 for temperature in log_info_dict:
     tempera_folder = os.path.join(meas_raw_dir,sample_folder_name,conditional_folder_name,temperature)
-    main_analysis(target_q, tempera_folder,mode='jump')
+    main_analysis(target_q, tempera_folder,mode='all')
     time_past_sec_array = get_time_axis(target_q,tempera_folder)
     # plot time trend with a given temperature (time as x-axis, in min)
 

@@ -1,3 +1,8 @@
+"""
+### This program focus on a readout freq. and tune the flux on the given coupler.\n
+We expects to see 2 rabi-splitting poles.\n
+Once you get the bias about these poles you calculate the max coupler freq bias and use it in m6 program.
+"""
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import array, linspace, pi
@@ -15,7 +20,7 @@ from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_previ
 
 
 
-def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
+def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',c:str="c0",Experi_info:dict={}):
 
     sche_func = One_tone_sche
         
@@ -53,7 +58,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         )
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
-        meas_ctrl.settables([freq,flux_ctrl[q]])
+        meas_ctrl.settables([freq,flux_ctrl[c]])
         meas_ctrl.setpoints_grid((ro_f_samples,flux_samples))
         
         
@@ -67,7 +72,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             show_args(Experi_info(q))
         
         # reset flux bias
-        flux_ctrl[q](0.0)
+        flux_ctrl[c](0.0)
         qubit_info.clock_freqs.readout(ro_f_center)
         
     else:
@@ -105,16 +110,16 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
 
-def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
+def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,specific_cp:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
     
     if run:
         print(f"{specific_qubits} are under the measurement ...")
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts)[specific_qubits]
+        FD_results = CpCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,c=specific_cp,flux_span=flux_span,flux_points=zpts,f_points=fpts)[specific_qubits]
         if FD_results == {}:
             print(f"Flux dependence error qubit: {specific_qubits}")
         
     else:
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,run=False,flux_points=zpts,f_points=fpts)
+        FD_results = CpCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,c=specific_cp,flux_span=flux_span,run=False,flux_points=zpts,f_points=fpts)
 
     return FD_results
 
@@ -126,14 +131,14 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = ['q0']
-    cp_ctrl = {"c0":-0.1}
+    ro_elements = {"q0":["c0"]}
 
+    
     """ Optional paras """
     freq_half_window_Hz = 8e6
     flux_half_window_V  = 0.4
-    freq_data_points = 30
-    flux_data_points = 40
+    freq_data_points = 20
+    flux_data_points = 80
     freq_center_shift = 0e6 # freq axis shift
 
     
@@ -145,36 +150,20 @@ if __name__ == "__main__":
         ro_elements = list(Fctrl.keys())
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 
-
     """ Running """
+    from Modularize.support.Experiment_setup import get_CouplerController, ip_register
     update = False
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
+    Cctrl = get_CouplerController(cluster, ip=ip_register[DRandIP["dr"]])
     FD_results = {}
     for qubit in ro_elements:
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        qu = QD_agent.quantum_device.get_element(qubit)
-        qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=flux_half_window_V,ro_span_Hz=freq_half_window_Hz, zpts=flux_data_points,fpts=freq_data_points)
-        cluster.reset()
-        if execution:
-            permission = mark_input("Update the QD with this result ? [y/n]") 
-            if permission.lower() in ['y','yes']:
-                update_flux_info_in_results_for(QD_agent,qubit,FD_results)
-                update_coupler_bias(QD_agent, cp_ctrl)
-                update = True
-        else:
-            break
-
-    
+        for coupler in ro_elements[qubit]:
+            init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,Cctrl,qubit,coupler,run=execution,flux_span=flux_half_window_V,ro_span_Hz=freq_half_window_Hz, zpts=flux_data_points,fpts=freq_data_points)
+            cluster.reset()
+        
         """ Storing """
-        if update and execution:
-            QD_agent.refresh_log("after FluxDep")
-            QD_agent.QD_keeper()
-            if chip_info_restore:
-                chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
-            update = False
-    
+        # empty
 
     """ Close """
-    print('Flux dependence done!')
+    print('Rabi-spliting done!')
     shut_down(cluster,Fctrl,Cctrl)

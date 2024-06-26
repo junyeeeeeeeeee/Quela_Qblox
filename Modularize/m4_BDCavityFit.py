@@ -1,3 +1,8 @@
+"""
+The RO-freq is located in bare cavity now, use different RO attenuation and RO-amp to fit the cavity freq.\n
+Because the RO-freq is the bare cavity, the 'window_shift' should be 0 when the conditions are fior a bare cavity.\n
+On the other hand, the 'window_shift' will be a rough dispersive shift for the dressed cavity conditions. 
+"""
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from Modularize.m2_CavitySpec import Cavity_spec
@@ -42,23 +47,17 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     sweetSpot:bool = 0
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    chip_info_restore:bool = 1
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
-        "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
-        "q1":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
-        "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
-        "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
-        "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":2e6}},
-
+        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":20,"window_shift":0},
+                "dress":{"ro_amp":0.35,"ro_atte":30,"window_shift":6e6}},
     }
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
+    
+
+    """ Optional paras"""
+    half_ro_freq_window_Hz = 3e6
+    freq_data_points = 200
 
     """ Preparations """ 
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -81,7 +80,7 @@ if __name__ == "__main__":
             else:
                 Fctrl[qubit](0)
             init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-            CS_results[qubit][state] = preciseCavity_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit][state]["ro_amp"],run = execution, f_shifter=ro_elements[qubit][state]["window_shift"],ro_span_Hz=3e6)
+            CS_results[qubit][state] = preciseCavity_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit][state]["ro_amp"],run = execution, f_shifter=ro_elements[qubit][state]["window_shift"],ro_span_Hz=half_ro_freq_window_Hz,fpts=freq_data_points)
             Fctrl[qubit](0)
             cluster.reset()
             if state == "bare":

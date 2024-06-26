@@ -8,7 +8,7 @@ from quantify_scheduler.backends.graph_compilation import SerialCompiler
 #%%
 # Please register the dr and its corresponding cluster ip here first!
 ip_register = {
-    "dr1":"192.168.1.11",
+    "dr1sca":"192.168.1.11",
     "dr2":"192.168.1.10",
     "dr3":"192.168.1.13"
 } # all keys in lower
@@ -22,14 +22,14 @@ port_register = {
 
 #%%
 # Hardware settings
-Hcfg_dr1 = {
+Hcfg_dr1sca = {
     "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
-    f"clusterdr1": {
+    f"clusterdr1sca": {
         "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
         "ref": "internal",  # Use shared clock reference of the cluster
         "instrument_type": "Cluster",
         # ============ DRIVE ============#
-        f"clusterdr1_module4": {
+        f"clusterdr1sca_module4": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -123,56 +123,26 @@ Hcfg_dr1 = {
         #     }
         # },
         # ============ FLUX ============#
-        f"clusterdr1_module2": {
+        f"clusterdr1sca_module2": {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
         },
         # ============ READOUT ============#
-        f"clusterdr1_module6": {
+        f"clusterdr1sca_module6": {
             "instrument_type": "QRM_RF",
             "complex_output_0": {
                 "output_att": 0,
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq": 5.52e9,       # *** Should be set as a parameter later on
+                "lo_freq": 5.9e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q0:res",
                         "clock": "q0.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q1:res",
-                        "clock": "q1.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q2:res",
-                        "clock": "q2.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q3:res",
-                        "clock": "q3.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q4:res",
-                        "clock": "q4.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q5:res",
-                        "clock": "q5.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
+                    }
                 ],
             },
         },
@@ -515,7 +485,7 @@ def get_FluxController(cluster, ip:str)->dict:
             "q3":cluster.module2.out3_offset,
             "q4":cluster.module4.out0_offset,
         }   
-    elif which_dr.lower() == 'dr1':
+    elif which_dr.lower() == 'dr1sca':
         Fctrl: callable = {
             "q0":cluster.module2.out0_offset,
         }
@@ -539,7 +509,10 @@ def get_CouplerController(cluster, ip:str)->dict:
             "c2":cluster.module6.out2_offset,
             "c3":cluster.module6.out3_offset
         }
-    
+    elif which_dr.lower() == 'dr1sca':
+        Cctrl = {
+            "c0":cluster.module2.out1_offset,
+        }
     return Cctrl
 
 # # Cluster registerations
@@ -549,6 +522,6 @@ def get_CouplerController(cluster, ip:str)->dict:
 # }
 
 # Hcfg map
-hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1,'dr3':Hcfg_dr3} # all keys in lower
+hcfg_map = {"dr2":Hcfg_dr2,'dr1sca':Hcfg_dr1sca,'dr3':Hcfg_dr3} # all keys in lower
 
 

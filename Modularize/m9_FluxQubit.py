@@ -165,14 +165,14 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
 if __name__ == "__main__":
     
     """ Fill in """
-    execution = True
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    execution:bool = True
+    chip_info_restore:bool = 1
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = ['q0']
-    couplers = ["c0",'c1','c2','c3']
+    couplers = ["c0"]
     z_shifter = 0 # V
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
+
+    
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
