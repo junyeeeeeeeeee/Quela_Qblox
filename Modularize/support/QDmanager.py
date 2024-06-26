@@ -60,7 +60,8 @@ class QDmanager():
         with open(self.path, 'rb') as inp:
             gift = pickle.load(inp) # refer to `merged_file` in QD_keeper()
         # string and int
-        self.chip_name:str = gift["chip_name"]
+        self.chip_name:str = gift["chip_info"]["name"]
+        self.chip_type:str = gift["chip_info"]["type"]
         self.Identity:str = gift["ID"]
         self.Log:str = gift["Log"]
         self.q_num:int = len(list(filter(ret_q,gift["Flux"])))
@@ -93,7 +94,7 @@ class QDmanager():
             self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is onlu for the hightlighs :)
-        merged_file = {"ID":self.Identity,"chip_name":self.chip_name,"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
