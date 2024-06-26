@@ -10,20 +10,20 @@ from numpy import std, arange, array, average, mean, sign
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot
+from Modularize.support.Pulse_schedule_library import Zz_Interaction, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot
 
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
+def excite_Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str='',excite_qubit:str=''):
     
     T2_us = {}
     analysis_result = {}
     Real_detune= {}
     
     qubit = QD_agent.quantum_device.get_element(q)
-
+    excite = QD_agent.quantum_device.get_element(excite_qubit)
     # Manually change f01
     # f01 = qubit.clock_freqs.f01()
-    # qubit.clock_freqs.f01(f01+1e6)
+    # qubit.clock_freqs.f01(f01-2.47e6)
     
     New_fxy= qubit.clock_freqs.f01()+arti_detune
     
@@ -35,13 +35,16 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     gap = (freeduration)*1e9 // points + (((freeduration)*1e9 // points) %4) # multiple by 4 ns
     samples = arange(4e-9,freeduration,gap*1e-9)
     
-    sche_func= Ramsey_sche
+    sche_func= Zz_Interaction
     sched_kwargs = dict(
         q=q,
+        excite_qubit=excite_qubit,
         pi_amp={str(q):qubit.rxy.amp180()},
+        excite_pi_amp={str(excite_qubit):excite.rxy.amp180()},
         New_fxy=New_fxy,
         freeduration=Para_free_Du,
         pi_dura=qubit.rxy.duration(),
+        excite_pi_dura=excite.rxy.duration(),
         R_amp={str(q):qubit.measure.pulse_amp()},
         R_duration={str(q):qubit.measure.pulse_duration()},
         R_integration={str(q):qubit.measure.integration_time()},
@@ -65,7 +68,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         meas_ctrl.setpoints(samples)
         
         
-        ramsey_ds = meas_ctrl.run('Ramsey')
+        ramsey_ds = meas_ctrl.run('ZzInteraction')
 
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb=q,exp_type='T2',specific_dataFolder=data_folder)
@@ -83,7 +86,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
 
         analysis_result[q] = data_fit
 
-        show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
+        show_args(exp_kwargs, title="ZzInteraction_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
     else:
@@ -93,14 +96,14 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
         
 
-        show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
+        show_args(exp_kwargs, title="ZzInteraction_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
         
     return analysis_result, T2_us, Real_detune
 
 
-def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,plot:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800):
+def excite_ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,histo_counts:int=1,run:bool=True,plot:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800,excite_qubit:str=''):
     if run:
         T2_us_rec = []
         detune_rec = []
@@ -109,7 +112,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
             start_time = time.time()
             slightly_print(f"The {ith+1}-th T2:")
             Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
-            Ramsey_results, T2_us, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder)
+            Ramsey_results, T2_us, average_actual_detune= excite_Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder,excite_qubit=excite_qubit)
             Fctrl[specific_qubits](0.0)
             cluster.reset()
             if T2_us[specific_qubits] != 0: T2_us_rec.append(T2_us[specific_qubits]) 
@@ -128,9 +131,8 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
             mean_T2_us = round(mean(T2_us_rec),1)
             sd_T2_us = round(std(T2_us_rec),1)
             Data_manager().save_histo_pic(QD_agent,{str(specific_qubits):T2_us_rec},specific_qubits,mode="t2",pic_folder=specific_folder)
-        print(f"measured detune = {round(average_actual_detune[specific_qubits]*1e-6,5)} MHz")
     else:
-        Ramsey_results, T2_hist, average_actual_detune= Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
+        Ramsey_results, T2_hist, average_actual_detune= excite_Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False,excite_qubit=excite_qubit)
         mean_T2_us = 0
 
     return Ramsey_results, mean_T2_us, sd_T2_us, average_actual_detune
@@ -144,9 +146,9 @@ if __name__ == "__main__":
     execution = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q1":{"detune":0e6,"evoT":50e-6,"histo_counts":1}
+        "q1":{"detune":0e6,"evoT":50e-6,"histo_counts":1, "excite_qubit": "q0"}
     }
-    couplers = ['c0', 'c1', 'c2', 'c3']
+    couplers = ['c0','c1', 'c2', 'c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
@@ -164,20 +166,23 @@ if __name__ == "__main__":
         freeTime = ro_elements[qubit]["evoT"]
         histo_total = ro_elements[qubit]["histo_counts"]
         detuning = ro_elements[qubit]["detune"]
+        excite_qubit = ro_elements[qubit]["excite_qubit"]
         plot_result = True
             
 
-        slightly_print(f"Ramsey with detuning = {round(detuning*1e-6,2)} MHz")
-        ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result)
+        slightly_print(f"ZzInteraction with detuning = {round(detuning*1e-6,2)} MHz")
+        ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = excite_ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,run=execution,plot=plot_result,excite_qubit=excite_qubit)
         highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
+            
         
+       
         """ Storing """
         if execution:
             if histo_total >= 50:
                 QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
                 QD_agent.QD_keeper()
-                if chip_info_restore:
-                    chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {sd_T2_us}')
+                # if chip_info_restore:
+                    # chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {sd_T2_us}')
         
         
     """ Close """

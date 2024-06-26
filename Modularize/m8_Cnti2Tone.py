@@ -160,9 +160,9 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr3","last_ip":"13"}
     #
     ro_elements = {
-        "q1":{"xyf_guess":[4.02e9],"xyl_guess":[0.03],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
+        "q0":{"xyf_guess":[4.5e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0} # g you can try a single value in  [42e6, 54e6, 62e6], higher g makes fq lower.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = ["c0", 'c1']
+    couplers = ["c0", 'c1', 'c2', 'c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1

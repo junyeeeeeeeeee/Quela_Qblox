@@ -17,7 +17,8 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
-    ro_f_start = qubit_info.clock_freqs.readout()-1e6
+    window_shift = 2e6
+    ro_f_start = qubit_info.clock_freqs.readout()-window_shift
     # avoid frequency conflicts 
     from numpy import NaN
     qubit_info.clock_freqs.readout(NaN)
@@ -79,7 +80,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         if Experi_info != {}:
             show_args(Experi_info(q))
     
-    qubit_info.clock_freqs.readout(ro_f_start+1e6)
+    qubit_info.clock_freqs.readout(ro_f_start+window_shift)
     return analysis_result
 
 
@@ -105,7 +106,11 @@ if __name__ == "__main__":
     sweetSpot_dispersive = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {    # measurement target q from this dict 
-        "q2": {"ro_atte":30},
+        # "q0": {"ro_atte":30},
+        # "q1": {"ro_atte":30},
+        # "q2": {"ro_atte":30},
+        "q3": {"ro_atte":30},
+        "q4": {"ro_atte":30},
     }
 
     """ preparations """

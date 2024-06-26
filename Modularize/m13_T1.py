@@ -134,9 +134,9 @@ if __name__ == "__main__":
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":5}
+        "q1":{"evoT":100e-6,"histo_counts":1}
     }
-    couplers = ['c0']
+    couplers = ['c0', 'c1', 'c2', 'c3']
     # 1 = Store
     # 0 = not store
     chip_info_restore = 1
