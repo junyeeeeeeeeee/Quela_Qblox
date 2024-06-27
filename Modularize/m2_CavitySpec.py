@@ -110,20 +110,20 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1sca', '11', 'n','20240611_ScalinQ', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1sca', '', 'n','20240611_ScalinQ', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
-    execution = 1
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
+    execution:bool = True
+    chip_info_restore:bool = 1
     # RO attenuation
-    # 0 ~ 60
-    init_RO_DigiAtte = 10
+    # 10 ~ 16
+    init_RO_DigiAtte = 10 # multiple of 2 
 
     ro_bare=dict(
         q0=5.95388e9   
     )
+
+
     """ Preparations """
     
     # Reload the QuantumDevice or build up a new one
