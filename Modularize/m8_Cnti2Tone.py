@@ -166,16 +166,17 @@ if __name__ == "__main__":
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = ["c0","c1","c2","c3",]
     
-
-    """ Preparations """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    chip_info = cds.Chip_file(QD_agent=QD_agent)
-
-    """ Running """
-    tt_results = {}
     for qubit in ro_elements:
+
+        """ Preparations """
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        chip_info = cds.Chip_file(QD_agent=QD_agent)
+
+        """ Running """
+        tt_results = {}
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         tune_bias = ro_elements[qubit]["tune_bias"]
@@ -188,14 +189,14 @@ if __name__ == "__main__":
                 print(f'update xyl={ro_elements[qubit]["xyl_guess"][0]}')
                 update_2toneResults_for(QD_agent,qubit,tt_results,ro_elements[qubit]["xyl_guess"][0])
             
-    """ Storing """
-    if update :
-        QD_agent.refresh_log("After continuous 2-tone!")
-        QD_agent.QD_keeper()
-    if chip_info_restore:
-        chip_info.update_Cnti2Tone(tt_results)
+        """ Storing """
+        if update :
+            QD_agent.refresh_log("After continuous 2-tone!")
+            QD_agent.QD_keeper()
+        if chip_info_restore:
+            chip_info.update_Cnti2Tone(tt_results)
 
-    """ Close """
-    print('2-tone done!')
-    shut_down(cluster,Fctrl,Cctrl)
+        """ Close """
+        print('2-tone done!')
+        shut_down(cluster,Fctrl,Cctrl)
     

@@ -93,15 +93,13 @@ if __name__ == "__main__":
     couplers = ["c0","c1","c2","c3",]
 
 
-    """ Preparations """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    if ro_elements == 'all':
-        ro_elements = list(Fctrl.keys())
-
-
-    """ Running """
     for qubit in ro_elements:
+        """ Preparations """
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        
+
+        """ Running """
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
@@ -111,6 +109,7 @@ if __name__ == "__main__":
         else:
             keep = 'y'
 
+
         """ Storing """
         if execution:
             if keep.lower() in ["y", "yes"]:
@@ -118,8 +117,7 @@ if __name__ == "__main__":
                 QD_agent.QD_keeper()
 
 
-
-    """ Close """
-    print('IQ ref checking done!')
-    shut_down(cluster,Fctrl,Cctrl)
+        """ Close """
+        print('IQ ref checking done!')
+        shut_down(cluster,Fctrl,Cctrl)
 

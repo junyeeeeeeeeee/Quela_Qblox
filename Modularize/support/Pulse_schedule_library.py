@@ -669,6 +669,7 @@ def XY_Z_timing_sche(
 def Zgate_T1_sche(
     q:str,
     pi_amp: dict,
+    pi_dura:dict,
     freeduration:any,
     Z_amp:any,
     R_amp: dict,
@@ -689,7 +690,7 @@ def Zgate_T1_sche(
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_p(sched,pi_amp,q,spec_pulse,freeDu)
+        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu)
         
         Z(sched,Z_amp,freeDu,q,spec_pulse,freeDu=0)
         
@@ -1007,12 +1008,14 @@ def Z_bias_error_bar_plot(q:str,data:dict,title:str):
     T1_array= np.array(data[q]).reshape(times, len(Z_bias))
     mean, sigma= T1_array.mean(axis=0),T1_array.std(axis=0)
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250) 
+    ax:plt.Axes
     ax.errorbar(Z_bias, mean, yerr=2*sigma, fmt='o', color='blue',
               ecolor='blue', elinewidth=2, capsize=5)
     ax.set_ylabel(title)
     ax.set_xlabel(r"$Z\ bias$")
     ax.set_title(r"$times= %.0f $" %(times))
     fig.tight_layout()
+    plt.show()
     return T1_array
 
 def Ramsey_F_Z_bias_error_bar_plot(q:str,data:dict):

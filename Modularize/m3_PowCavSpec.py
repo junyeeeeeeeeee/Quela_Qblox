@@ -108,8 +108,9 @@ if __name__ == "__main__":
     sweetSpot_dispersive:bool = 0
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":30},
+        "q0": {"ro_atte":20}
     }
+
 
     """ Optional paras"""
     maxima_power = 0.6
@@ -117,12 +118,13 @@ if __name__ == "__main__":
     freq_data_points = 60
     power_data_points = 30
 
-    """ preparations """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
 
-    """ Running """
     for qubit in ro_elements:
+        """ preparations """
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+
+        """ Running """
         QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit]["ro_atte"],qubit,'ro')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points)
@@ -130,14 +132,14 @@ if __name__ == "__main__":
         if not execution:
             break
     
-    QD_agent.refresh_log('after PowerDep')
+        QD_agent.refresh_log('after PowerDep')
     
-    """ Storing """
-    if execution: 
-        QD_agent.QD_keeper()
-    
-    """ Close """
-    print('Power dependence done!')
-    shut_down(cluster,Fctrl)
+        """ Storing """
+        if execution: 
+            QD_agent.QD_keeper()
+        
+        """ Close """
+        print('Power dependence done!')
+        shut_down(cluster,Fctrl)
 
     
