@@ -141,9 +141,9 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = ['q0']
-    couplers = ["c0"]
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q0', 'q1']
+    couplers = ["c0",'c1','c2','c3']
     
 
     """ Preparations """
@@ -153,8 +153,8 @@ if __name__ == "__main__":
 
     """Running """
     rabi_results = {}
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=40e-9,XYamp_max=0.6)
         cluster.reset()

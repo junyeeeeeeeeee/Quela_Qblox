@@ -25,7 +25,7 @@ class Chip_file():
         self.file = self.name+".json"   # chip 檔案名稱
         self.file_path = os.path.join(os.getcwd(),"chip_information")  # chip 檔案位置
         self.file_name = os.path.join(self.file_path, self.file)    # chip 檔案完整位置+名稱
-        self.path_today = self.file_path+"\Timestamp"+'\\'+time.strftime('%Y%m%d',time.localtime(time.time()))             # chip 當日檔案位置
+        self.path_today = os.path.join(self.file_path, "Timestamp", time.strftime('%Y%m%d',time.localtime(time.time())))     # chip 當日檔案位置
         self.file_today = os.path.join(self.path_today, time.strftime('%Y%m%d',time.localtime(time.time()))+'_'+self.file) # chip 當日檔案完整位置+名稱
         self.__chip_dict = {}
         self.init_chip_file()
@@ -144,9 +144,9 @@ class Chip_file():
     def update_BDCavityFit_sweet(self, result:dict = {}) -> None:
         # Data storing for m4_BDCavityFit with sweet bias
         for qb in result:
-            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result[qb].quantities_of_interest["fr"].nominal_value
-            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qi"] = result[qb].quantities_of_interest["Qi"].nominal_value
-            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qc"] = result[qb].quantities_of_interest["Qc"].nominal_value
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["dress_freq"] = result[qb]['dress'].quantities_of_interest["fr"].nominal_value
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qi"] = result[qb]['dress'].quantities_of_interest["Qi"].nominal_value
+            self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['res']["Qc"] = result[qb]['dress'].quantities_of_interest["Qc"].nominal_value
         
         self.update_to_json()
 

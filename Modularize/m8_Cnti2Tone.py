@@ -158,12 +158,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     update:bool = 1
     #
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.7e9],"xyl_guess":[0.03],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q0":{"xyf_guess":[4.47e9],"xyl_guess":[0.03],"g_guess":0e6, "tune_bias":0}, # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q1":{"xyf_guess":[4.05e9],"xyl_guess":[0.03],"g_guess":0e6, "tune_bias":0},
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = ["c0"]
+    couplers = ["c0","c1","c2","c3",]
     
 
     """ Preparations """
@@ -173,8 +174,8 @@ if __name__ == "__main__":
 
     """ Running """
     tt_results = {}
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         tune_bias = ro_elements[qubit]["tune_bias"]

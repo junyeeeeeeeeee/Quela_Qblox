@@ -86,9 +86,11 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = {'q0':{"ro_amp_factor":0.5}}
-    couplers = ["c0"]
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = {'q0':{"ro_amp_factor":1},
+                   'q1':{"ro_amp_factor":1},
+                   }
+    couplers = ["c0","c1","c2","c3",]
 
 
     """ Preparations """
@@ -99,8 +101,8 @@ if __name__ == "__main__":
 
 
     """ Running """
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         

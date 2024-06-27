@@ -167,12 +167,12 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = ['q0']
-    couplers = ["c0"]
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q0', 'q1']
+    couplers = ["c0",'c1','c2','c3']
     z_shifter = 0 # V
 
-    
+
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -185,8 +185,8 @@ if __name__ == "__main__":
     """ Running """
     FQ_results = {}
     check_again =[]
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             trustable, new_ans = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter)

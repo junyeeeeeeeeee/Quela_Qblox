@@ -110,7 +110,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr1sca', '11', 'n','20240611_ScalinQ', '5Q4C'
+    QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8+AS1606', '5Q4C'
     # 1 = Run the measurement
     # 0 = plot the output signal
     execution = 1
@@ -119,10 +119,14 @@ if __name__ == "__main__":
     chip_info_restore = 1
     # RO attenuation
     # 0 ~ 60
-    init_RO_DigiAtte = 10
+    init_RO_DigiAtte = 30
 
     ro_bare=dict(
-        q0=5.95388e9   
+        q0=5.973e9,
+        q1=6.083e9,
+        q2=5.920e9,
+        q3=6.100e9,
+        q4=6.011e9,
     )
     """ Preparations """
     
@@ -133,8 +137,8 @@ if __name__ == "__main__":
                                                         mode=mode,
                                                         chip_name=chip_name,
                                                         chip_type=chip_type,
-                                                        qubit_number=1,
-                                                        coupler_number=1)
+                                                        qubit_number=5,
+                                                        coupler_number=4)
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 

@@ -10,7 +10,7 @@ from Modularize.support import Data_manager, QDmanager, cds
 from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 
 def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
     # QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(5.92e9)
@@ -46,14 +46,22 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution:bool = True
-    sweetSpot:bool = 0
+    sweetSpot:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":20,"window_shift":0},
-                "dress":{"ro_amp":0.35,"ro_atte":30,"window_shift":6e6}},
+        # "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
+        "q1":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
+        # "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":2e6}},
+        # "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
+        # "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
     }
-    
+    cp_ctrl = {"c0":-0.05,"c1":-0.075,"c2":0,"c3":0.1,}
 
     """ Optional paras"""
     half_ro_freq_window_Hz = 3e6
@@ -64,12 +72,13 @@ if __name__ == "__main__":
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-
+    
 
     """ Running """
     CS_results = {}
     PDans = {}
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
         CS_results[qubit] = {}
         PDans[qubit] = {"dressF_Hz":0,"dressP":0,"bareF_Hz":0,"ro_atte":0}
         for state in ro_elements[qubit]:

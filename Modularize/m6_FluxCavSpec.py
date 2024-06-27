@@ -125,13 +125,13 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = ['q0']
-    cp_ctrl = {"c0":-0.1}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
+    ro_elements = ['q0', 'q1']
+    cp_ctrl = {"c0":-0.12,"c1":-0.25,"c2":0,"c3":0.1,}
 
     """ Optional paras """
     freq_half_window_Hz = 8e6
-    flux_half_window_V  = 0.4
+    flux_half_window_V  = 0.5
     freq_data_points = 30
     flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
@@ -148,9 +148,9 @@ if __name__ == "__main__":
 
     """ Running """
     update = False
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
     FD_results = {}
     for qubit in ro_elements:
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         qu = QD_agent.quantum_device.get_element(qubit)
         qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
