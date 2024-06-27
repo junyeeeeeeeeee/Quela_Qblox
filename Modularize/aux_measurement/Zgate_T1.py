@@ -140,7 +140,7 @@ if __name__ == "__main__":
     prepare_excited:bool = 1
     DRandIP = {"dr":"dr1sca","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":120e-6,"histo_counts":1}
+        "q0":{"evoT":120e-6,"histo_counts":2}
     }
     couplers = ['c0']
 
@@ -152,9 +152,10 @@ if __name__ == "__main__":
     
 
     """ Iterations """
+    t1_us_rec = {}
     for qubit in ro_elements:
 
-        t1_us_rec = []
+        t1_us_rec[qubit] = []
         for ith_histo in range(ro_elements[qubit]["histo_counts"]):
             """ Preparations """
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -165,17 +166,18 @@ if __name__ == "__main__":
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             T1_results, these_t1_us = zgateT1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["evoT"],z_span_period_factor=flux_span_period_factor,tpts=evotime_data_points,zpts=flux_data_points,run=execution,ith=ith_histo,pi_pulse=prepare_excited)
-            
+            t1_us_rec[qubit]+= these_t1_us[qubit]
+
             """ Close """
             print('Zgate T1 done!')
             shut_down(cluster,Fctrl,Cctrl)
         
-        
+        t1_us_rec['plot_parameters'] = [ro_elements[qubit]["histo_counts"],these_t1_us['plot_parameters'][1]]
         """ Storing """
         if execution:
             if ro_elements[qubit]["histo_counts"] == 1:
                 Fit_analysis_plot(T1_results[qubit][0],P_rescale=False,Dis=None)
-                Z_bias_error_bar_plot(qubit,these_t1_us,title=r"$T_{1}\  (\mu$s)")
+            Z_bias_error_bar_plot(qubit,t1_us_rec,title=r"$T_{1}\  (\mu$s)")
 
                 
 

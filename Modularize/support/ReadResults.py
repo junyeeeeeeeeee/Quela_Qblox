@@ -2,8 +2,10 @@ import xarray as xr
 import quantify_core.data.handling as dh
 from Modularize.support.QDmanager import QDmanager
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
-from numpy import sqrt, array
+from numpy import sqrt, array, moveaxis
+from xarray import open_dataset
 import matplotlib.pyplot as plt
+from Modularize.support.Pulse_schedule_library import dataset_to_array
 # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 # from quantify_core.analysis.base_analysis import Basic2DAnalysis
 
@@ -71,10 +73,20 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 # print("aprx fq=",aprx_fq(x,bare))
 
 if __name__ == '__main__':
-    QD_agent = QDmanager('Modularize/QD_backup/2024_6_11/DR1SCA#11_SumInfo.pkl')
-    QD_agent.QD_loader()
-    qubit = QD_agent.quantum_device.get_element("q0")
-    qubit.measure.acq_delay(280e-9)
-    qubit.measure.pulse_duration(1e-6)
-    qubit.measure.integration_time(500e-9)
-    QD_agent.QD_keeper()
+    # QD_agent = QDmanager('Modularize/QD_backup/2024_6_11/DR1SCA#11_SumInfo.pkl')
+    # QD_agent.QD_loader()
+    # qubit = QD_agent.quantum_device.get_element("q0")
+    # qubit.measure.acq_delay(280e-9)
+    # qubit.measure.pulse_duration(1e-6)
+    # qubit.measure.integration_time(500e-9)
+    # QD_agent.QD_keeper()
+
+
+    def zgateT1_Qblox2QM_adapter():
+        """
+        trnaslate the raw data form into the shape (IQ, Z, evoTime)sssssss
+        """
+        ds = open_dataset("Modularize/Meas_raw/2024_6_27/DR1SCAq0_zT1(1)_H14M8S35.nc")
+        i, Q = dataset_to_array(dataset=ds,dims=2)
+        new = moveaxis(i,0,-1)
+        print(new.shape)

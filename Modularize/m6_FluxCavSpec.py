@@ -136,21 +136,21 @@ if __name__ == "__main__":
     flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
 
-    
-    """ Preparations """
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    
-    if ro_elements == 'all':
-        ro_elements = list(Fctrl.keys())
-    chip_info = cds.Chip_file(QD_agent=QD_agent)
-
-
-    """ Running """
-    update = False
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
-    FD_results = {}
     for qubit in ro_elements:
+        """ Preparations """
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        
+        if ro_elements == 'all':
+            ro_elements = list(Fctrl.keys())
+        chip_info = cds.Chip_file(QD_agent=QD_agent)
+
+
+        """ Running """
+        update = False
+        FD_results = {}
+    
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         qu = QD_agent.quantum_device.get_element(qubit)
         qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
@@ -175,6 +175,6 @@ if __name__ == "__main__":
             update = False
     
 
-    """ Close """
-    print('Flux dependence done!')
-    shut_down(cluster,Fctrl,Cctrl)
+        """ Close """
+        print('Flux dependence done!')
+        shut_down(cluster,Fctrl,Cctrl)

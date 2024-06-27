@@ -59,17 +59,17 @@ if __name__ == "__main__":
     half_ro_freq_window_Hz = 3e6
     freq_data_points = 200
 
-    """ Preparations """ 
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-    # Create or Load chip information
-    chip_info = cds.Chip_file(QD_agent=QD_agent)
-
-
-    """ Running """
     CS_results = {}
     PDans = {}
     for qubit in ro_elements:
+        """ Preparations """ 
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        # Create or Load chip information
+        chip_info = cds.Chip_file(QD_agent=QD_agent)
+
+
+        """ Running """
         CS_results[qubit] = {}
         PDans[qubit] = {"dressF_Hz":0,"dressP":0,"bareF_Hz":0,"ro_atte":0}
         for state in ro_elements[qubit]:
@@ -91,19 +91,19 @@ if __name__ == "__main__":
                 PDans[qubit]["ro_atte"] = QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro')
 
 
-    """ Storing (future) """
-    fillin_PDans(QD_agent, PDans)
+        """ Storing (future) """
+        fillin_PDans(QD_agent, PDans)
 
-    if chip_info_restore:
-        chip_info.update_QD(CS_results)
-        if sweetSpot:
-            chip_info.update_BDCavityFit_sweet(CS_results)
-        else:
-            chip_info.update_BDCavityFit(CS_results)
+        if chip_info_restore:
+            chip_info.update_QD(CS_results)
+            if sweetSpot:
+                chip_info.update_BDCavityFit_sweet(CS_results)
+            else:
+                chip_info.update_BDCavityFit(CS_results)
 
-    """ Close """
-    print('Cavity quality fit done!')
-    shut_down(cluster,Fctrl)
+        """ Close """
+        print('Cavity quality fit done!')
+        shut_down(cluster,Fctrl)
 
 
 
