@@ -120,7 +120,11 @@ if __name__ == "__main__":
     init_RO_DigiAtte = 10 # multiple of 2 
 
     ro_bare=dict(
-        q0=5.95388e9   
+        q0=5.8568e9,
+        q1=5.91436e9,
+        q2=5.9539e9,
+        q3=6.02844e9,
+        q4=6.06999e9
     )
 
 
@@ -133,7 +137,7 @@ if __name__ == "__main__":
                                                         mode=mode,
                                                         chip_name=chip_name,
                                                         chip_type=chip_type,
-                                                        qubit_number=1,
+                                                        qubit_number=5,
                                                         coupler_number=1)
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)

@@ -39,8 +39,6 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
         R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
         powerDep=False,
     )
-    exp_kwargs= dict(sweep_F=['start '+'%E' %ro_f_samples[0],'end '+'%E' %ro_f_samples[-1]],
-                     )
     
     if run:
         gettable = ScheduleGettable(
@@ -61,7 +59,6 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS',specific_dataFolder=particular_folder)
 
         print(f"{q} Cavity:")
-        show_args(exp_kwargs, title="One_tone_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
         

@@ -1,15 +1,26 @@
+import os
 import xarray as xr
 import quantify_core.data.handling as dh
 from Modularize.support.QDmanager import QDmanager
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
-from numpy import sqrt, array, moveaxis
+from numpy import sqrt, array, moveaxis, ndarray
 from xarray import open_dataset
 import matplotlib.pyplot as plt
 from Modularize.support.Pulse_schedule_library import dataset_to_array
 # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 # from quantify_core.analysis.base_analysis import Basic2DAnalysis
 
-
+def zgateT1_Qblox2QM_adapter(zgateT1_nc_file_path:str)->ndarray:
+    """
+    trnaslate the given raw data form into the shape (IQ, Z, evoTime)
+    """
+    want = []
+    ds = open_dataset(zgateT1_nc_file_path)
+    i, Q = dataset_to_array(dataset=ds,dims=2)
+    for che in [i, Q]:
+        want.append(moveaxis(che,0,-1))
+    want = array(want)
+    return want
 
 def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
     ref = Qmanager.refIQ[target_q]
@@ -81,12 +92,35 @@ if __name__ == '__main__':
     # qubit.measure.integration_time(500e-9)
     # QD_agent.QD_keeper()
 
+    def plot_powerCavity_S21(PC_nc_file:str):
+        """
+        Plot |S21| from a given power cavity nc file and save it in the pic folder within the same day.
+        """
+        title = f"{os.path.split(PC_nc_file)[-1].split('.')[0]}"
+        # ds.x0 = freq. ; ds.x1 = power
+        ds = open_dataset(PC_nc_file)
+        freq, power, i, Q = convert_netCDF_2_arrays(PC_nc_file)
+        amp = array(sqrt(i**2+Q**2))
+        power = moveaxis(array(ds.x1).reshape(amp.shape),0,-1)[0]
+        s21 = []
+        for i in range(amp.shape[0]):
+            s21.append(list(array(amp[i])/power[i]))
+        s21 = array(s21)
+        freq = array(ds.x0).reshape(amp.shape)[0]
+        fig, ax = plt.subplots()
+        d = ax.pcolormesh(freq*1e-9, power, s21, shading='gouraud',cmap='RdBu')
+        fig.colorbar(d, ax=ax)
+        plt.xlabel("frequency (GHz)")
+        plt.ylabel("Power (V)")
+        plt.minorticks_on()
+        plt.title(title)
+        plt.grid()
+        plt.tight_layout()
+        pic_dir = os.path.join(os.path.split(PC_nc_file)[0],"pic")
+        if not os.path.exists(pic_dir):
+            os.mkdir(pic_dir)
+        plt.savefig(os.path.join(pic_dir,f"{title}.png"))
+        plt.close()
 
-    def zgateT1_Qblox2QM_adapter():
-        """
-        trnaslate the raw data form into the shape (IQ, Z, evoTime)sssssss
-        """
-        ds = open_dataset("Modularize/Meas_raw/2024_6_27/DR1SCAq0_zT1(1)_H14M8S35.nc")
-        i, Q = dataset_to_array(dataset=ds,dims=2)
-        new = moveaxis(i,0,-1)
-        print(new.shape)
+    
+    

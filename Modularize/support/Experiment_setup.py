@@ -142,7 +142,31 @@ Hcfg_dr1sca = {
                         "clock": "q0.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
-                    }
+                    },
+                    {
+                        "port": "q1:res",
+                        "clock": "q1.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q2:res",
+                        "clock": "q2.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q3:res",
+                        "clock": "q3.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q4:res",
+                        "clock": "q4.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
                 ],
             },
         },
