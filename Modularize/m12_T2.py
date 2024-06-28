@@ -153,29 +153,32 @@ if __name__ == "__main__":
             if this_t2_us != 0:
                 t2_us_rec.append(this_t2_us)
             
+            
+            """ Storing """
+            if ith_histo == int(ro_elements[qubit]["histo_counts"])-1:
+                if execution:
+                    mean_T2_us = round(mean(array(t2_us_rec)),2)
+                    std_T2_us  = round(std(array(t2_us_rec)),2)
+                    highlight_print(f"{qubit}: mean T2 = {mean_T2_us} 土 {std_T2_us} µs")
+
+                    if ro_elements[qubit]["histo_counts"] == 1:
+                        mean_T2_us = t2_us_rec[0]
+                        sd_T2_us = 0
+                        Fit_analysis_plot(ramsey_results[qubit],P_rescale=False,Dis=None)
+                    else:
+                        Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
+                        if ro_elements[qubit]["histo_counts"] >= 50:
+                            QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
+                            QD_agent.QD_keeper()
+                            if chip_info_restore:
+                                chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {std_T2_us}')
 
             """ Close """
             print('T2 done!')
             shut_down(cluster,Fctrl,Cctrl)
             
         
-        """ Storing """
-        if execution:
-            mean_T2_us = round(mean(array(t2_us_rec)),2)
-            std_T2_us  = round(std(array(t2_us_rec)),2)
-            highlight_print(f"{qubit}: mean T2 = {mean_T2_us} 土 {std_T2_us} µs")
-
-            if ro_elements[qubit]["histo_counts"] == 1:
-                mean_T2_us = t2_us_rec[0]
-                sd_T2_us = 0
-                Fit_analysis_plot(ramsey_results[qubit],P_rescale=False,Dis=None)
-            else:
-                Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
-                if ro_elements[qubit]["histo_counts"] >= 50:
-                    QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
-                    QD_agent.QD_keeper()
-                    if chip_info_restore:
-                        chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {std_T2_us}')
+        
             
             
         
