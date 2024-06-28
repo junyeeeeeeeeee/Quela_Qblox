@@ -328,6 +328,34 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     
     return Cctrl
 
+def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements:dict,mode:int)->dict:
+    """
+    Get the dict about the required values for all qubits in quantum_device.
+    The required value can be assigned by the arg `mode`.
+    ------
+    ### Args:\n
+    * ro_elements: a dict with the keyname in qubit name. ex: {"q0":[ ],"q1":[ ],...}\n
+    * mode: 1 for RO-amp, 2 for acq-delay, 3 for RO-duration, 4 for integration time.\n
+    ----
+    ### Returns:\n
+    A dict with the same keyname as the `ro_elements`, and also with the value about the required mode.  
+    """
+
+    qubits = list(ro_elements.keys())
+    ans = {}
+    for qubit in qubits:
+        if str(mode) == "1":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_amp()
+        elif str(mode) == "2":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.acq_delay()
+        elif str(mode) == "3":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
+        elif str(mode) == "4":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
+        else:
+            raise KeyError(f"Un-supported mode = {mode} was given !")
+    
+    return ans
 
 #TOO_OLD
 '''

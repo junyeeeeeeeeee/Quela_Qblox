@@ -71,23 +71,27 @@ Loren_func_model = Model(Loren_func)
 gauss2d_func_model = Model(gauss2d_func, independent_vars=['I', 'Q'])
 bigauss2d_func_model = Model(bigauss2d_func, independent_vars=['I', 'Q'])
 
-def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6):
+def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,return_error:bool=False):
     offset_guess= data[-1]
     result = T1_func_model.fit(data,D=freeDu,A=np.max(data)-offset_guess,T1=T1_guess,offset=offset_guess)
+    fit_error = float(result.covar[1][1])*1e6
     A_fit= result.best_values['A']
     T1_fit= result.best_values['T1']
     offset_fit= result.best_values['offset']
     para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
     fitting= T1_func(para_fit,A_fit,T1_fit,offset_fit)
-    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit))
-
-def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6):
+    if not return_error:
+        return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit))
+    else:
+        return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit)), fit_error
+def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,return_error:bool=False):
     print(f"T2 freeDu: {min(freeDu)}~{max(freeDu)}")
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=1e-6, max=5*T2_guess) 
     up_lim_f= 5*1e6
     f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
     result = Ramsey_func_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
+    fit_error = float(result.covar[1][1])*1e6
     A_fit= result.best_values['A']
     f_fit= result.best_values['f']
     phase_fit= result.best_values['phase']
@@ -95,8 +99,10 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6):
     offset_fit= result.best_values['offset']
     para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
     fitting= Ramsey_func(para_fit,A_fit,T2_fit,f_fit,phase_fit,offset_fit)
-    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit))
-
+    if not return_error:
+        return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit))
+    else:
+        return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit)), fit_error
 def QS_fit_analysis(data:np.ndarray,f:np.ndarray):
     fmin = f.min()
     fmax = f.max()
@@ -332,6 +338,15 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
         Du= R_duration[q]
     return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",t0=4e-9),)
 
+def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
+    if powerDep is True:
+        amp= R_amp
+        Du= R_duration[q]
+    else:    
+        amp= R_amp[q]
+        Du= R_duration[q]
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",),ref_pt="start",ref_op=ref_pulse_sche,)
+
 def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
     if single_shot== False:
         bin_mode=BinMode.AVERAGE
@@ -354,6 +369,32 @@ def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,sin
                 clock=q+".ro",
                 acq_index=acq_index,
                 acq_channel=0,
+                bin_mode=BinMode.AVERAGE,
+                ),rel_time=R_inte_delay
+                ,ref_op=ref_pulse_sche,ref_pt="start")
+    
+def multi_Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
+    if single_shot== False:
+        bin_mode=BinMode.AVERAGE
+    else: bin_mode=BinMode.APPEND
+    # Trace acquisition does not support APPEND bin mode !!!
+    if get_trace==False:
+        return sche.add(SSBIntegrationComplex(
+            duration=R_inte_duration[q],
+            port="q:res",
+            clock=q+".ro",
+            acq_index=acq_index,
+            acq_channel=acq_channel,
+            bin_mode=bin_mode,
+            ),rel_time=R_inte_delay
+            ,ref_op=ref_pulse_sche,ref_pt="start")
+    else:  
+        return sche.add(Trace(
+                duration=trace_recordlength,
+                port="q:res",
+                clock=q+".ro",
+                acq_index=acq_index,
+                acq_channel=acq_channel,
                 bin_mode=BinMode.AVERAGE,
                 ),rel_time=R_inte_delay
                 ,ref_op=ref_pulse_sche,ref_pt="start")
@@ -394,6 +435,41 @@ def One_tone_sche(
      
     return sched
 
+
+# ? Doing...
+def One_tone_multi_sche(
+    frequencies: dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    powerDep:bool,
+    repetitions:int=1,    
+) -> Schedule:
+
+    qubits2read = list(frequencies.keys())
+
+    for qubit_idx, q in enumerate(qubits2read):
+        freq = frequencies[q]
+        sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
+        sched.add_resource(ClockResource(name=q+ ".ro", freq=freq.flat[0]))
+        if qubit_idx == 0:
+            for acq_idx, frequen in enumerate(freq):
+                
+                sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=frequen))
+                sched.add(Reset(q))
+                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
+                multi_Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+        else:
+            for acq_idx, frequen in enumerate(freq):
+                sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=frequen))
+                sched.add(Reset(q))
+            
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)    
+                multi_Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+     
+    return sched
 
 def Two_tone_sche(
     frequencies: np.ndarray,
