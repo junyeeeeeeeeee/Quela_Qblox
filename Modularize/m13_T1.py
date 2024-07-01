@@ -149,29 +149,33 @@ if __name__ == "__main__":
 
             T1_results, this_t1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,run=execution,ith=ith_histo)
             t1_us_rec.append(this_t1_us)
-            
+
+
+            """ Storing """
+            if ith_histo == int(ro_elements[qubit]["histo_counts"])-1:
+                if execution:
+                    mean_T1_us = round(mean(array(t1_us_rec)),2)
+                    std_T1_us  = round(std(array(t1_us_rec)),2)
+
+                    if ro_elements[qubit]["histo_counts"] == 1:
+                        Fit_analysis_plot(T1_results[qubit],P_rescale=False,Dis=None)
+                    else:
+                        Data_manager().save_histo_pic(QD_agent,{str(qubit):t1_us_rec},qubit,mode="t1")
+                    
+                    highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
+                    if ro_elements[qubit]["histo_counts"] >= 50:
+                        QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
+                        QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
+                        QD_agent.QD_keeper()
+                        if chip_info_restore:
+                            chip_info.update_T1(qb=qubit, T1=f"{mean_T1_us} +- {std_T1_us}")
+                
             """ Close """
             print('T1 done!')
             shut_down(cluster,Fctrl,Cctrl)
         
         
-        """ Storing """
-        if execution:
-            mean_T1_us = round(mean(array(t1_us_rec)),2)
-            std_T1_us  = round(std(array(t1_us_rec)),2)
-
-            if ro_elements[qubit]["histo_counts"] == 1:
-                Fit_analysis_plot(T1_results[qubit],P_rescale=False,Dis=None)
-            else:
-                Data_manager().save_histo_pic(QD_agent,{str(qubit):t1_us_rec},qubit,mode="t1")
-            
-            highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
-            if ro_elements[qubit]["histo_counts"] >= 50:
-                QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
-                QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
-                QD_agent.QD_keeper()
-                if chip_info_restore:
-                    chip_info.update_T1(qb=qubit, T1=f"{mean_T1_us} +- {std_T1_us}")
+        
 
 
             

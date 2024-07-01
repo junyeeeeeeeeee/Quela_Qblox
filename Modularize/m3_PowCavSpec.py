@@ -3,7 +3,8 @@ Base on a BARE cavity observe a dispersive shift in RO-freq with the variable RO
 """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, linspace
+from numpy import array, linspace, sqrt, moveaxis
+from xarray import open_dataset
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support import Data_manager, QDmanager
@@ -12,6 +13,7 @@ from quantify_core.measurement.control import MeasurementControl
 from quantify_core.analysis.base_analysis import Basic2DAnalysis
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
 
 def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int=4e6,ro_p_min:float=0.01,ro_p_max:float=0.5,n_avg:int=100,f_points:int=10,p_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={})->dict:
@@ -63,12 +65,17 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
         
         rp_ds = meas_ctrl.run("One-tone-powerDep")
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rp_ds,qb=q,exp_type='PD')
+        nc_file = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rp_ds,qb=q,exp_type='PD',get_data_loc=True)
 
         analysis_result[q] = Basic2DAnalysis(tuid=rp_ds.attrs["tuid"], dataset=rp_ds).run()
         show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
+        try: 
+            plot_powerCavity_S21(nc_file)
+        except:
+            from Modularize.support.UserFriend import warning_print
+            warning_print("Beware! plot_powerCavity_S21 didn't work~")
         
     else:
         n_s = 2
@@ -84,6 +91,38 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:int
     
     qubit_info.clock_freqs.readout(ro_f_start+1e6)
     return analysis_result
+
+def plot_powerCavity_S21(PC_nc_file:str):
+    """
+    Plot |S21| from a given power cavity nc file and save it in the pic folder within the same day.
+    """
+    import matplotlib.pyplot as plt
+    title = f"{os.path.split(PC_nc_file)[-1].split('.')[0]}"
+    # ds.x0 = freq. ; ds.x1 = power
+    ds = open_dataset(PC_nc_file)
+    freq, power, i, Q = convert_netCDF_2_arrays(PC_nc_file)
+    amp = array(sqrt(i**2+Q**2))
+    power = moveaxis(array(ds.x1).reshape(amp.shape),0,-1)[0]
+    s21 = []
+    for i in range(amp.shape[0]):
+        s21.append(list(array(amp[i])/power[i]))
+    s21 = array(s21)
+    freq = array(ds.x0).reshape(amp.shape)[0]
+    fig, ax = plt.subplots()
+    ax:plt.Axes
+    d = ax.pcolormesh(freq*1e-9, power, s21, shading='gouraud',cmap='RdBu')
+    fig.colorbar(d, ax=ax)
+    plt.xlabel("frequency (GHz)")
+    plt.ylabel("Power (V)")
+    plt.minorticks_on()
+    plt.title(title)
+    plt.grid()
+    plt.tight_layout()
+    pic_dir = os.path.join(os.path.split(PC_nc_file)[0],"PowerCav_pic")
+    if not os.path.exists(pic_dir):
+        os.mkdir(pic_dir)
+    plt.savefig(os.path.join(pic_dir,f"{title}.png"))
+    plt.close()
 
 
 def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False,fpts:int=30,ppts:int=30,avg_n:int=100):
@@ -106,7 +145,7 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_elements = {    # measurement target q from this dict 
         "q0": {"ro_atte":20}
     }
