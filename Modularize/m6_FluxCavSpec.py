@@ -54,7 +54,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables([freq,flux_ctrl[q]])
-        meas_ctrl.setpoints_grid((ro_f_samples,flux_samples))
+        meas_ctrl.setpoints_grid((ro_f_samples,flux_samples)) # x0, x1
         
         
         

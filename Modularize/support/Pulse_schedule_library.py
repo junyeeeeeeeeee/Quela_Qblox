@@ -288,6 +288,12 @@ def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
         return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
     else: pass
 
+def Zc(sche,Z_amp,Du,qc,ref_pulse_sche,freeDu):
+    if Du!=0:
+        delay_z= -Du-freeDu
+        return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=qc+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt="start",)
+    else: pass
+
 def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]/2
     delay_c= -pi_Du-freeDu
@@ -347,33 +353,8 @@ def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
         Du= R_duration[q]
     return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",),ref_pt="start",ref_op=ref_pulse_sche,)
 
-def Integration(sche,q,R_inte_delay,R_inte_duration,ref_pulse_sche,acq_index,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
-    if single_shot== False:
-        bin_mode=BinMode.AVERAGE
-    else: bin_mode=BinMode.APPEND
-    # Trace acquisition does not support APPEND bin mode !!!
-    if get_trace==False:
-        return sche.add(SSBIntegrationComplex(
-            duration=R_inte_duration[q],
-            port=q+":res",
-            clock=q+".ro",
-            acq_index=acq_index,
-            acq_channel=0,
-            bin_mode=bin_mode,
-            ),rel_time=R_inte_delay
-            ,ref_op=ref_pulse_sche,ref_pt="start")
-    else:  
-        return sche.add(Trace(
-                duration=trace_recordlength,
-                port=q+":res",
-                clock=q+".ro",
-                acq_index=acq_index,
-                acq_channel=0,
-                bin_mode=BinMode.AVERAGE,
-                ),rel_time=R_inte_delay
-                ,ref_op=ref_pulse_sche,ref_pt="start")
     
-def multi_Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
+def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel:int=0,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
     if single_shot== False:
         bin_mode=BinMode.AVERAGE
     else: bin_mode=BinMode.APPEND
@@ -459,7 +440,7 @@ def One_tone_multi_sche(
                 sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=frequen))
                 sched.add(Reset(q))
                 spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-                multi_Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
         else:
             for acq_idx, frequen in enumerate(freq):
@@ -467,7 +448,7 @@ def One_tone_multi_sche(
                 sched.add(Reset(q))
             
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)    
-                multi_Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched
 
@@ -1012,6 +993,62 @@ def Trace_sche(
 
     return sched
 
+def iSwap_sche(
+    q:list,
+    pi_amp: dict,
+    pi_dura:dict,
+    target_pi:str,
+    freeduration:any,
+    target_Z1:str,
+    target_Z2:str,
+    target_Zc:str,
+    Z1_amp:any,
+    Z2_amp:any,
+    Zc_amp:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    Z_on_off:dict,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("iSwap", repetitions=repetitions)
+    
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(Reset(q[0]))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+
+    
+        spec_pulse = Readout(sched,q[0],R_amp,R_duration,powerDep=False)
+        
+        X_pi_p(sched,pi_amp,target_pi,pi_dura,spec_pulse,freeDu)
+        
+        for i in range(1,len(q)):
+            Multi_Readout(sched,q[i],spec_pulse,R_amp,R_duration,powerDep=False)    
+            Integration(sched,q[i],R_inte_delay,R_integration,spec_pulse,acq_index=acq_idx,acq_channel=i,single_shot=False,get_trace=False,trace_recordlength=0)
+            
+        if Z_on_off['Z1_on_off']== True:
+            Z(sched,Z1_amp,freeDu,target_Z1,spec_pulse,freeDu=0)
+        else:
+            None
+        if Z_on_off['Z2_on_off']== True:
+            Z(sched,Z2_amp,freeDu,target_Z2,spec_pulse,freeDu=0)
+        else:
+            None    
+        if Z_on_off['Zc_on_off']== True:
+            Zc(sched,Zc_amp,freeDu,target_Zc,spec_pulse,freeDu=0)
+        else:
+            None
+
+        
+        Integration(sched,q[0],R_inte_delay,R_integration,spec_pulse,acq_index=acq_idx,acq_channel=0,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+        
+    return sched
+
 #%% plot
 
 def Readout_F_opt_Plot(quantum_device:QuantumDevice, results:dict):
@@ -1118,6 +1155,23 @@ def dataset_to_array(dataset:xr.core.dataset.Dataset,dims:float):
     else: raise KeyError ('dims is not 1 or 2')  
     
     return I,Q
+
+def Multi_dataset_to_array(dataset:xr.core.dataset.Dataset,dims:float,Q:list):
+    I_data={}
+    Q_data={}
+    if dims==1:
+        for i in range(len(Q)):
+            I_data[Q[i]]= dataset['y'+str(i)].data
+            Q_data[Q[i]]= dataset['y'+str(1+i)].data
+    elif dims==2:
+        gridded_dataset = dh.to_gridded_dataset(dataset)
+        for i in range(len(Q)):
+            I_data[Q[i]]= gridded_dataset['y'+str(i)].data
+            Q_data[Q[i]]= gridded_dataset['y'+str(1+i)].data         
+        
+    else: raise KeyError ('dims is not 1 or 2')  
+    
+    return I_data,Q_data
 
 def plot_textbox(ax,text, **kw):
     box_props = dict(boxstyle="round", pad=0.4, facecolor="white", alpha=0.5)

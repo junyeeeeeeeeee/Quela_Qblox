@@ -87,7 +87,7 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
             break
     
     # extract the values by the filtered idx
-    extracted = []
+    extracted = [] # [z, xyf, mag]
     for i in range(len(f_idx)):
         extracted.append([raw_z[z_idx[i]],raw_XYF[f_idx[i]],XL_mag[i]])
     # filter out the freq when it's under the same bias

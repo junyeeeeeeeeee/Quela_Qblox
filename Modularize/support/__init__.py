@@ -328,7 +328,7 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     
     return Cctrl
 
-def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements:dict,mode:int)->dict:
+def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:int)->dict:
     """
     Get the dict about the required values for all qubits in quantum_device.
     The required value can be assigned by the arg `mode`.
@@ -340,8 +340,12 @@ def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements:dict,mode:int)-
     ### Returns:\n
     A dict with the same keyname as the `ro_elements`, and also with the value about the required mode.  
     """
-
-    qubits = list(ro_elements.keys())
+    if type(ro_elements) is dict:
+        qubits = list(ro_elements.keys())
+    elif type(ro_elements) is list:
+        qubits:list = ro_elements
+    else:
+        raise ValueError(f"The type of ro_elements should be list or dict but `{type(ro_elements)}` was recieved!")
     ans = {}
     for qubit in qubits:
         if str(mode) == "1":

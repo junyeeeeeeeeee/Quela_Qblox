@@ -301,6 +301,27 @@ class Data_manager:
         if get_data_loc:
             return path
     
+    def save_2Qraw_data(self,QD_agent:QDmanager,ds:Dataset,qubits:list,label:str=0,exp_type:str='iswap', specific_dataFolder:str='', get_data_loc:bool=False):
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        parent_dir = self.raw_folder if specific_dataFolder =='' else specific_dataFolder
+        dr_loc = QD_agent.Identity.split("#")[0]
+        
+        operators = ""
+        for qORc in qubits:
+            operators += qORc
+
+        if exp_type.lower() == 'iswap':
+            path = os.path.join(parent_dir,f"{dr_loc}{operators}_iSwap_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        else:
+            path = None
+            raise KeyError(f"irrecognizable 2Q gate exp = {exp_type}")
+        
+        if get_data_loc:
+            return path
+        
+    
     def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()

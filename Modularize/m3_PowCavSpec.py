@@ -168,13 +168,11 @@ if __name__ == "__main__":
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         powerCavity_executor(QD_agent,meas_ctrl,Fctrl,specific_qubits=qubit,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points)
         cluster.reset()
-        if not execution:
-            break
-    
-        QD_agent.refresh_log('after PowerDep')
+        
     
         """ Storing """
         if execution: 
+            QD_agent.refresh_log('after PowerDep')
             QD_agent.QD_keeper()
         
         """ Close """

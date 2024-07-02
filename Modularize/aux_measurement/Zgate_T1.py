@@ -100,20 +100,21 @@ def zgateT1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCon
     flux_guard_Volt = 0.4
 
     if run:
+        offset_flux = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
         ori_reset = qubit_info.reset.duration()
         qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
 
         span_period = float(QD_agent.Fluxmanager.get_PeriodFor(specific_qubits))/z_span_period_factor
-        z_from = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))-span_period/2
-        z_end = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))+span_period/2
+        z_from = -span_period/2
+        z_end = +span_period/2
 
-        if abs(z_from)>flux_guard_Volt or abs(z_end)>flux_guard_Volt :
+        if abs(offset_flux+z_from)>flux_guard_Volt or abs(offset_flux+z_end)>flux_guard_Volt :
             raise ValueError(f"Z span from {round(z_from,2)} to {round(z_end,2)} may not be an appropriate voltage !")
 
         every_start = time.time()
         slightly_print(f"The {ith}-th T1:")
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        Fctrl[specific_qubits](offset_flux)
         T1_results, this_t1_us = Zgate_T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,run=True,exp_idx=ith,data_folder=specific_folder,Z_points=zpts,freeDu_points=tpts,no_pi_pulse = not pi_pulse,Z_amp_max=z_end,Z_amp_min=z_from)
         Fctrl[specific_qubits](0.0)
         cluster.reset()

@@ -10,17 +10,7 @@ from Modularize.support.Pulse_schedule_library import dataset_to_array
 # from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 # from quantify_core.analysis.base_analysis import Basic2DAnalysis
 
-def zgateT1_Qblox2QM_adapter(zgateT1_nc_file_path:str)->ndarray:
-    """
-    trnaslate the given raw data form into the shape (IQ, Z, evoTime)
-    """
-    want = []
-    ds = open_dataset(zgateT1_nc_file_path)
-    i, Q = dataset_to_array(dataset=ds,dims=2)
-    for che in [i, Q]:
-        want.append(moveaxis(che,0,-1))
-    want = array(want)
-    return want
+
 
 def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
     ref = Qmanager.refIQ[target_q]
@@ -31,6 +21,9 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
     c = ax.pcolormesh(z, f, amp, cmap='RdBu')
     fig.colorbar(c, ax=ax)
     plt.show()
+
+
+    
 
 
 # from quantify_scheduler.helpers.collections import find_port_clock_path
@@ -91,36 +84,8 @@ if __name__ == '__main__':
     # qubit.measure.pulse_duration(1e-6)
     # qubit.measure.integration_time(500e-9)
     # QD_agent.QD_keeper()
-
-    def plot_powerCavity_S21(PC_nc_file:str):
-        """
-        Plot |S21| from a given power cavity nc file and save it in the pic folder within the same day.
-        """
-        title = f"{os.path.split(PC_nc_file)[-1].split('.')[0]}"
-        # ds.x0 = freq. ; ds.x1 = power
-        ds = open_dataset(PC_nc_file)
-        freq, power, i, Q = convert_netCDF_2_arrays(PC_nc_file)
-        amp = array(sqrt(i**2+Q**2))
-        power = moveaxis(array(ds.x1).reshape(amp.shape),0,-1)[0]
-        s21 = []
-        for i in range(amp.shape[0]):
-            s21.append(list(array(amp[i])/power[i]))
-        s21 = array(s21)
-        freq = array(ds.x0).reshape(amp.shape)[0]
-        fig, ax = plt.subplots()
-        d = ax.pcolormesh(freq*1e-9, power, s21, shading='gouraud',cmap='RdBu')
-        fig.colorbar(d, ax=ax)
-        plt.xlabel("frequency (GHz)")
-        plt.ylabel("Power (V)")
-        plt.minorticks_on()
-        plt.title(title)
-        plt.grid()
-        plt.tight_layout()
-        pic_dir = os.path.join(os.path.split(PC_nc_file)[0],"pic")
-        if not os.path.exists(pic_dir):
-            os.mkdir(pic_dir)
-        plt.savefig(os.path.join(pic_dir,f"{title}.png"))
-        plt.close()
-
-    
-    
+    x = ""
+    for i in ["q0","c0","q1"]:
+        x += i
+    print(x)
+   
