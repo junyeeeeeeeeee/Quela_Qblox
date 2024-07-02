@@ -15,16 +15,16 @@ def zgateT1_Qblox2QM_adapter(zgateT1_nc_file_path:str, ref_z_offset:float, save_
     The dataset with the coordinates: 'mixer', 'time', 'z_voltage'
 
     """
-    want = []
-    evo_time, fluxes, i, Q = convert_netCDF_2_arrays(zgateT1_nc_file_path)
-
-    for che in [i, Q]:
-        want.append(moveaxis(che,0,-1))  # make shape in [flux, free-time]
     
+    evo_time, fluxes, I, Q = convert_netCDF_2_arrays(zgateT1_nc_file_path)
     output_data = {}
     r_name = os.path.split(zgateT1_nc_file_path)[-1].split("_")[0][-2:]
+    print(I.shape)
+    print(Q.shape)
+    print(fluxes.shape)
+    print(evo_time.shape)
     
-    output_data[r_name] = ( ["mixer","z_voltage","time"],array([want[0], want[1], fluxes.tolist(), evo_time.tolist()]) )
+    output_data[r_name] = ( ["mixer","z_voltage","time"],[[I.reshape(-1).tolist(), Q.reshape(-1).tolist()], fluxes.tolist(), evo_time.tolist()] )
     dataset = xr.Dataset(
         output_data,
         coords={ "mixer":array(["I","Q"]), "time": evo_time, "z_voltage":fluxes }
@@ -36,3 +36,9 @@ def zgateT1_Qblox2QM_adapter(zgateT1_nc_file_path:str, ref_z_offset:float, save_
         dataset.to_netcdf(path)
     
     return dataset
+
+
+if __name__ == "__main__" :
+    ds = zgateT1_Qblox2QM_adapter("Modularize/Meas_raw/2024_6_27/DR1SCAq0_zT1(1)_H14M8S35.nc",0)
+    di = ds.to_dict()
+
