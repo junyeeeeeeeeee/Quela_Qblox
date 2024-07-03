@@ -167,15 +167,17 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = 1
+    chip_info_restore = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1, "excite_qubit": "q1"}
-    }
-    couplers = ['c0','c1', 'c2', 'c3']
-    # 1 = Store
-    # 0 = not store
-    chip_info_restore = 1
+        "q0":{"detune":-10.5e6,"evoT":4e-6,"histo_counts":1, "excite_qubit": "q1"}
 
+    }
+    target_coupler = 'c0'
+    target_bias = -0.1110
+    couplers = ['c1', 'c2', 'c3']
+    pts = 500
+    
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -184,7 +186,9 @@ if __name__ == "__main__":
     """ Running """
     ramsey_results = {}
     for qubit in ro_elements:
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        cp_ctrl = QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i')
+        cp_ctrl[target_coupler]= target_bias
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         
         freeTime = ro_elements[qubit]["evoT"]
@@ -195,7 +199,7 @@ if __name__ == "__main__":
             
 
         slightly_print(f"ZzInteraction with detuning = {round(detuning*1e-6,2)} MHz")
-        ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = excite_ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,pts=500,run=execution,plot=plot_result,excite_qubit=excite_qubit)
+        ramsey_results[qubit], mean_T2_us, sd_T2_us, average_actual_detune = excite_ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=detuning,freeDura=freeTime,histo_counts=histo_total,pts=pts,run=execution,plot=plot_result,excite_qubit=excite_qubit)
         highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             
         

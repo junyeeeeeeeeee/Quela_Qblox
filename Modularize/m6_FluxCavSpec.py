@@ -15,7 +15,17 @@ from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_previ
 
 
 
-def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',Experi_info:dict={}):
+def FluxCav_spec(QD_agent:QDmanager,
+                 meas_ctrl:MeasurementControl,
+                 flux_ctrl:dict,
+                 ro_span_Hz:int=3e6,
+                 flux_span:float=0.3,
+                 n_avg:int=300,
+                 f_points:int=20,
+                 flux_points:int=20,
+                 run:bool=True,
+                 q:str='q1',
+                 Experi_info:dict={}):
 
     sche_func = One_tone_sche
         
@@ -127,7 +137,7 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q0', 'q1']
-    cp_ctrl = {"c0":-0.12,"c1":-0.25,"c2":0,"c3":0.1,}
+    cp_ctrl = {"c0":-0.12,"c1":-0.13,"c2":0,"c3":0.1,}
 
     """ Optional paras """
     freq_half_window_Hz = 8e6

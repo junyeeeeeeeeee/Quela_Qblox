@@ -13,7 +13,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down, coupler_z
 from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot
 
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=100,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
+def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
     
     T2_us = {}
     analysis_result = {}
@@ -22,8 +22,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     qubit = QD_agent.quantum_device.get_element(q)
 
     # Manually change f01
-    # qubit.clock_freqs.f01(qubit.clock_freqs.f01()+0.128e6)
-    # QD_agent.QD_keeper()
+    # qubit.clock_freqs.f01(qubit.clock_freqs.f01()+1.343e6)
     
     New_fxy= qubit.clock_freqs.f01()+arti_detune
     
@@ -128,11 +127,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        # "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1},
-        "q1":{"detune":0e6,"evoT":40e-6,"histo_counts":1},
+        "q0":{"detune":-22e6,"evoT":4e-6,"histo_counts":1},
+        # "q1":{"detune":0.8e6,"evoT":50e-6,"histo_counts":1},
     }
-    couplers = ['c0','c1','c2','c3']
-
+    target_coupler = 'c0'
+    target_bias = 0.0800
+    couplers = ['c1','c2','c3']
+    pts =1000
 
     """ Iteration """
     for qubit in ro_elements:
@@ -142,15 +143,17 @@ if __name__ == "__main__":
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
             chip_info = cds.Chip_file(QD_agent=QD_agent)
-            chip_info.update_T2(qb=qubit,T2=0)
+
 
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            cp_ctrl = QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i')
+            cp_ctrl[target_coupler]= target_bias
+            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             
             slightly_print(f"Ramsey with detuning = {round(ro_elements[qubit]['detune']*1e-6,2)} MHz")
-            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,pts=1000,run=execution)
-            highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
+            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],pts=pts,ith=ith_histo,run=execution)
+            highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,7)} GHz")
             if this_t2_us != 0:
                 t2_us_rec.append(this_t2_us)
             
@@ -165,6 +168,7 @@ if __name__ == "__main__":
             mean_T2_us = round(mean(array(t2_us_rec)),2)
             std_T2_us  = round(std(array(t2_us_rec)),2)
             highlight_print(f"{qubit}: mean T2 = {mean_T2_us} 土 {std_T2_us} µs")
+            # QD_agent.QD_keeper()# Manual keep
             if ro_elements[qubit]["histo_counts"] == 1:
                 mean_T2_us = t2_us_rec[0]
                 sd_T2_us = 0
@@ -173,7 +177,7 @@ if __name__ == "__main__":
                 Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
                 if ro_elements[qubit]["histo_counts"] >= 50:
                     QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
-                    QD_agent.QD_keeper()
+                    # QD_agent.QD_keeper()
                     if chip_info_restore:
                         chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {std_T2_us}')
             

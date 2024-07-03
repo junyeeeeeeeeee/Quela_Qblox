@@ -186,6 +186,9 @@ class Chip_file():
 
     def update_T2(self, qb='', T2='') -> None:
         # Data storing for m12_T2
+        qubit = self.QD_agent.quantum_device.get_element(qb)
+        self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']["freq"] = qubit.clock_freqs.f01()
+        self.__chip_dict["1Q_information"][qb]["oper"]["x_gate"]['freq'] = qubit.clock_freqs.f01()
         self.__chip_dict["1Q_information"][qb]["char"]["Sweet"]['qubit']['T2'] = T2
 
         self.update_to_json()

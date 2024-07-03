@@ -142,9 +142,11 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0', 'q1']
+    ro_elements = ['q0']
     couplers = ["c0",'c1','c2','c3']
-    
+
+    pi_duration=20e-9
+    pi_amp_max=0.5
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -160,7 +162,7 @@ if __name__ == "__main__":
         cluster.reset()
     
         """ Storing """
-        if trustable:   
+        if trustable:
             QD_agent.refresh_log("after Rabi")
             QD_agent.QD_keeper()
             if chip_info_restore:

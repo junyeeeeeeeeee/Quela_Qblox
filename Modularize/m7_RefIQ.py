@@ -79,7 +79,7 @@ def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits
     else:
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=shots_num,run=False)
 
-    
+
 
 
 if __name__ == "__main__":
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = {'q0':{"ro_amp_factor":1},
+    ro_elements = {#'q0':{"ro_amp_factor":1},
                    'q1':{"ro_amp_factor":1},
                    }
     couplers = ["c0","c1","c2","c3",]

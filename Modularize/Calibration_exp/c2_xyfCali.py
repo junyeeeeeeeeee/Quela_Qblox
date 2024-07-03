@@ -16,8 +16,8 @@ if __name__ == "__main__":
     execution:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":30e-6},
-        "q1":{"evoT":30e-6},
+        "q0":{"evoT":50e-6},
+        # "q1":{"evoT":30e-6},
     }
     couplers = ['c0','c1','c2','c3']
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
                 _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=trying_detune,freeDura=ro_elements[qubit]["evoT"],run=execution,avg_n=800)
             
             if step > 0 and average_actual_detune[qubit] < abs_detuning:
-                highlight_print(f"XYF calibration done successfully! detuning = {round(average_actual_detune[qubit]*1e-6,2)} MHz")
+                highlight_print(f"XYF calibration done successfully! detuning = {round(average_actual_detune[qubit]*1e-6,4)} MHz")
                 """ Storing """
                 if execution:
                     original_xyf = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()

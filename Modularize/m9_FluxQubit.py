@@ -168,7 +168,7 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0', 'q1']
+    ro_elements = ['q0']
     couplers = ["c0",'c1','c2','c3']
     z_shifter = 0 # V
 

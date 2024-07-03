@@ -294,6 +294,9 @@ class Data_manager:
         elif exp_type.lower() == 'zt1':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_zT1({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
+        elif exp_type.lower() == 't2c': # under test
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_T2C({label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         else:
             path = ''
             raise KeyError("Wrong experience type!")
