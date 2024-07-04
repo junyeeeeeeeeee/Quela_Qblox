@@ -72,6 +72,7 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,
                 data= IQ_data_dis(I,Q,ref_I=QD_agent.refIQ[q][0],ref_Q=QD_agent.refIQ[q][1]).transpose()
                 if not no_pi_pulse:
                     data_fit= T1_fit_analysis(data=data[j],freeDu=freeDu_samples,T1_guess=8e-6)
+                    Fit_analysis_plot(data_fit,P_rescale=False,Dis=None)
                     analysis_result[q].append(data_fit)
                     T1_us[q].append(data_fit.attrs['T1_fit']*1e6)
                 else:
@@ -139,9 +140,9 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 0
     prepare_excited:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":120e-6,"histo_counts":2}
+        "q0":{"evoT":60e-6,"histo_counts":2}
     }
     couplers = ['c0']
 

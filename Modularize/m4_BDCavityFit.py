@@ -48,10 +48,10 @@ if __name__ == "__main__":
     execution:bool = True
     sweetSpot:bool = 0
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":20,"window_shift":0},
-                "dress":{"ro_amp":0.35,"ro_atte":30,"window_shift":6e6}},
+        "q0":{  "bare" :{"ro_amp":0.3,"ro_atte":20,"window_shift":0},
+                "dress":{"ro_amp":0.15,"ro_atte":30,"window_shift":4e6}},
     }
     
 
@@ -59,6 +59,8 @@ if __name__ == "__main__":
     half_ro_freq_window_Hz = 3e6
     freq_data_points = 200
 
+    
+    """ running  """
     CS_results = {}
     PDans = {}
     for qubit in ro_elements:

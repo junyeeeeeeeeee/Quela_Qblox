@@ -1,18 +1,20 @@
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import xarray as xr
-from numpy import array, std, average, round, max, min, transpose, abs, sqrt, cos, sin, pi, linspace, arange,ndarray, log10, ndarray, asarray
 import matplotlib.pyplot as plt 
 from matplotlib.ticker import FuncFormatter
+from Modularize.support.QDmanager import QDmanager
+from Modularize.support.Pulse_schedule_library import IQ_data_dis, T1_fit_analysis, Fit_analysis_plot
+from numpy import array, std, average, round, max, min, transpose, abs, sqrt, cos, sin, pi, linspace, arange,ndarray, log10, ndarray, asarray
 
-
-dir_path = "/Users/ratiswu/Downloads/ZgateT1" # This folder contains all the ZgateT1 nc files
-background_dir_path = "/Users/ratiswu/Downloads/ZgateT1_BK" # This folder contains all the ZgateT1 BACKGROUND nc files
-z_period = 0.175 
-z_fq_map = {"sweet":{"fq_GHz":5.3,"Z_v":0.165+0.0009}, "4.4GHz":{"fq_GHz":4.4,"Z_v":0.165+0.0009-0.0435}}
-f_bare_MHz =  5.76045e3
-g_rq_MHz = 52.57
-detuning = f_bare_MHz-z_fq_map["sweet"]["fq_GHz"]*1e3
-kappa = ((38)**(-1))*((g_rq_MHz/detuning)**(-2))
+#//================= Fill in here ========================
+target_q = 'q0'
+background_dir_path = "" # This folder contains all the ZgateT1 BACKGROUND nc files
+dir_path = "Modularize/Meas_raw/zgateT1_test2/ToQM" # This folder contains all the ZgateT1 nc files
+QD_file = "Modularize/QD_backup/2024_7_3/DR3#13_SumInfo.pkl"
+QD_agent = QDmanager(QD_file)
+QD_agent.QD_loader()
+z_fq_map = {"sweet":{"fq_GHz":QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()*1e-9,"Z_v":QD_agent.Fluxmanager.get_sweetBiasFor(target_q)}}
 
 def set_fit_paras(): # **** manually set
     d = 0.6
@@ -24,6 +26,15 @@ def set_fit_paras(): # **** manually set
 
     return init, lo_b, up_b
 
+#//===================================================================================
+
+ref_IQ = QD_agent.refIQ[target_q]
+z_period = QD_agent.Fluxmanager.get_PeriodFor(target_q)
+f_bare_MHz = QD_agent.Notewriter.get_bareFreqFor(target_q)*1e-6
+g_rq_MHz = QD_agent.Notewriter.get_sweetGFor(target_q)*1e-6
+detuning = f_bare_MHz-z_fq_map["sweet"]["fq_GHz"]*1e3
+kappa = ((38)**(-1))*((g_rq_MHz/detuning)**(-2))
+
 def FqEqn(x,Ec,coefA,d):
     """
     a ~ period, b ~ offset, 
@@ -32,7 +43,7 @@ def FqEqn(x,Ec,coefA,d):
     b = z_fq_map["sweet"]["Z_v"]
     return sqrt(8*coefA*Ec*sqrt(cos(a*(x-b))**2+d**2*sin(a*(x-b))**2))-Ec
 
-# ===================================================================================
+
 def find_nearest_idx(array, value):
     array = asarray(array)
     idx = (abs(array - value)).argmin()
@@ -51,21 +62,24 @@ def zgate_T1_fitting(dataset:xr.Dataset):
     flux = dataset.coords["z_voltage"].values
 
     T1s = []
+    signals = []
     
     for ro_name, data in dataset.data_vars.items():
-        signals = data.values[0]
+        I = data.values[0]
+        Q = data.values[1]
         
-        for zDepData in data.values[0]:
-            data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-            if data_folder == '':
-                data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=14e-6)
-                T1_us[q] = data_fit.attrs['T1_fit']*1e6
+        for z_idx in range(array(data.values[0]).shape[0]):
+            data = IQ_data_dis(I[z_idx],Q[z_idx],ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
+            signals.append(data)
             try:
-                T1s.append(round(fit_T1(time,zDepData)[0]*1e-3,1))
+                data_fit = T1_fit_analysis(data=data,freeDu=array(time),T1_guess=14e-6)
+                # Fit_analysis_plot(data_fit,P_rescale=False,Dis=None)
+                T1s.append(data_fit.attrs['T1_fit']*1e6)
             except:
                 T1s.append(1e-6)
-            
-    return time/1000, flux, T1s, signals
+
+    
+    return time*1e6, flux, T1s, signals
 
 def inver(lis:list):
     return 1/array(lis)
@@ -148,7 +162,8 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,other_bias:list=None, oth
     # Fit t1 with the whole averaging I signal
     T1_1 = []
     for zDepData in avg_I_data:
-        T1_1.append(round(fit_T1(time*1e3,zDepData)[0]*1e-3,1))
+        data_fit = T1_fit_analysis(data=zDepData,freeDu=array(time),T1_guess=14e-6)
+        T1_1.append(data_fit.attrs['T1_fit']*1e6)
 
 
     avg_T1 = average(array(T1),axis=0)
@@ -175,17 +190,18 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,other_bias:list=None, oth
     
     fig, ax = plt.subplots(plots_max_n,1,figsize=(12.5,22))
     # # plot T1 and the 2D color map in flux
-    im = ax[0].pcolormesh(z,time,transpose(avg_I_data),cmap='RdBu')
+    
+    im = ax[0].pcolormesh(z,time,transpose(avg_I_data),cmap='RdBu',shading="nearest")
     ax[0].scatter(z,avg_T1,s=3,label='$T_{1}$',c='#0000FF')
    
     if other_bias is not None:
         ax[0].vlines(other_bias,0,50,colors='black',linestyles="--",label=other_bias_label)
-    ax[0].vlines([sweet_bias],0,50,colors='orange',linestyles="--",label='Fq=5.3GHz')
+    # ax[0].vlines([sweet_bias],0,50,colors='orange',linestyles="--",label='Fq=5.3GHz')
     # ax[0].set_xlim(0.035,0.08) 
     # ax[0].set_ylim(0,50)
     ax[0].set_xlabel("bias (V)")
     ax[0].set_ylabel("Free Evolution time(µs)") 
-    ax[0].set_title("$T_{1}$ vs Z-bias, in 10 average")
+    ax[0].set_title(f"$T_{1}$ vs Z-bias, in {len(sets)} average")
     ax[0].legend(loc='lower left')
     fig.colorbar(im, ax=ax[0])
 
@@ -199,13 +215,13 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,other_bias:list=None, oth
     # ax[1].set_xlabel("bias (V)")
     ax[1].set_ylabel("$\Gamma_{1}$ (MHz)") 
     # ax[1].set_ylim(1/50,1/8)
-    ax[1].set_title("$\Gamma_{1}$ vs Z-bias, in 10 average")
+    ax[1].set_title(f"$\Gamma_{1}$ vs Z-bias, in {len(sets)} average")
 
     # # plot T1 std percentage in flux
     ax[2].plot(z,std_T1_percent)
     # ax[2].set_xlabel("bias (V)")
     ax[2].set_ylabel("STD Percentage (%)")
-    ax[2].set_title("STD vs Z-bias, in 10 average")
+    ax[2].set_title(f"STD vs Z-bias, in {len(sets)} average")
     if other_bias is not None:
         ax[2].vlines(other_bias,0,100,colors='black',linestyles="--")
     ax[2].vlines([sweet_bias],0,100,colors='orange',linestyles="--")
@@ -389,5 +405,5 @@ def give_Z_plotT1(z:list,flux_ary:ndarray,time:ndarray,Isignals:ndarray):
 
 
 if __name__ == "__main__":
-    fq, p, z, rate, std_T1_percent = plot_z_gateT1_poster(dir_path,z_fq_map["sweet"]["Z_v"],[z_fq_map["4.4GHz"]["Z_v"]],"4.4GHz")
-    plot_purcell_compa(fq, p, z, z_fq_map["sweet"]["Z_v"], rate, std_T1_percent, kappa)
+    fq, p, z, rate, std_T1_percent = plot_z_gateT1_poster(dir_path,z_fq_map["sweet"]["Z_v"])
+    # plot_purcell_compa(fq, p, z, z_fq_map["sweet"]["Z_v"], rate, std_T1_percent, kappa)

@@ -4,7 +4,8 @@ from Modularize.support.FluxBiasDict import FluxBiasDict
 from Modularize.support.Notebook import Notebook
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
-
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 def ret_q(dict_a):
     x = []
     for i in dict_a:
@@ -352,6 +353,21 @@ class Data_manager:
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         
+    def save_multiplex_pics(self, QD_agent:QDmanager, qb:str, exp_type:str, fig:Figure, specific_dataFolder:str=''):
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        multiplex_ro_dir = os.path.join(self.raw_folder, "MultiplexingRO")
+        if not os.path.exists(multiplex_ro_dir):
+            os.mkdir(multiplex_ro_dir)
+        parent_dir = multiplex_ro_dir if specific_dataFolder =='' else specific_dataFolder
+        dr_loc = QD_agent.Identity.split("#")[0]
+        if exp_type.lower() == 'cs':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_MultiplexCS_{exp_timeLabel}.png")
+        else:
+            raise KeyError(f"Un-supported exp-type was given = {exp_type}")
+        fig.savefig(path)
+        plt.close()
+    
     def save_dict2json(self,QD_agent:QDmanager,data_dict:dict,qb:str='q0',get_json:bool=False):
         """
         Save a dict into json file. Currently ONLY support z-gate 2tone fitting data.

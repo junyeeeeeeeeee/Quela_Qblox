@@ -448,31 +448,31 @@ Hcfg_dr3 = {
                 "lo_freq": 6.06e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
-                        "port": "q0:res",
+                        "port": "q:res",
                         "clock": "q0.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
                     {
-                        "port": "q1:res",
+                        "port": "q:res",
                         "clock": "q1.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
                     {
-                        "port": "q2:res",
+                        "port": "q:res",
                         "clock": "q2.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
                     {
-                        "port": "q3:res",
+                        "port": "q:res",
                         "clock": "q3.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
                     {
-                        "port": "q4:res",
+                        "port": "q:res",
                         "clock": "q4.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,

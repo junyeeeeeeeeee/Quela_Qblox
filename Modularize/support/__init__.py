@@ -355,7 +355,7 @@ def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:int)->dict
         elif str(mode) == "3":
             ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
         elif str(mode) == "4":
-            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.integration_time()
         else:
             raise KeyError(f"Un-supported mode = {mode} was given !")
     

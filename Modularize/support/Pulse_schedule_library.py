@@ -74,7 +74,7 @@ bigauss2d_func_model = Model(bigauss2d_func, independent_vars=['I', 'Q'])
 def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,return_error:bool=False):
     offset_guess= data[-1]
     result = T1_func_model.fit(data,D=freeDu,A=np.max(data)-offset_guess,T1=T1_guess,offset=offset_guess)
-    fit_error = float(result.covar[1][1])*1e6
+    
     A_fit= result.best_values['A']
     T1_fit= result.best_values['T1']
     offset_fit= result.best_values['offset']
@@ -83,6 +83,7 @@ def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,ret
     if not return_error:
         return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit))
     else:
+        fit_error = float(result.covar[1][1])*1e6
         return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit)), fit_error
 def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,return_error:bool=False):
     print(f"T2 freeDu: {min(freeDu)}~{max(freeDu)}")
@@ -342,7 +343,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port=q+":res",clock=q+".ro",t0=4e-9),)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),)
 
 def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     if powerDep is True:
@@ -351,11 +352,11 @@ def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",),ref_pt="start",ref_op=ref_pulse_sche,)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),ref_pt="start",ref_op=ref_pulse_sche,)
 
     
 def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel:int=0,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
-    if single_shot== False:
+    if single_shot== False:     
         bin_mode=BinMode.AVERAGE
     else: bin_mode=BinMode.APPEND
     # Trace acquisition does not support APPEND bin mode !!!
@@ -418,6 +419,7 @@ def One_tone_sche(
 
 
 # ? Doing...
+
 def One_tone_multi_sche(
     frequencies: dict,
     R_amp: dict,
@@ -427,29 +429,34 @@ def One_tone_multi_sche(
     powerDep:bool,
     repetitions:int=1,    
 ) -> Schedule:
-
+    
     qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+    sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
 
-    for qubit_idx, q in enumerate(qubits2read):
-        freq = frequencies[q]
-        sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
-        sched.add_resource(ClockResource(name=q+ ".ro", freq=freq.flat[0]))
-        if qubit_idx == 0:
-            for acq_idx, frequen in enumerate(freq):
-                
-                sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=frequen))
-                sched.add(Reset(q))
-                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+    for acq_idx in range(sameple_idx):    
 
-        else:
-            for acq_idx, frequen in enumerate(freq):
-                sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=frequen))
-                sched.add(Reset(q))
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
+
+            sched.add(Reset(q))
+            sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
+            sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {qubit_idx} {acq_idx}")
             
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)    
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-     
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
+                # Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+            
+    
+    # avoid error, the integration for the first qubit aligned at the last place
+    # for acq_idx, frequen in enumerate(frequencies[qubits2read[0]]):
+        # Integration(sched,qubits2read[0],R_inte_delay[qubits2read[0]],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=0,single_shot=False,get_trace=False,trace_recordlength=0) 
+    print("sche done")
     return sched
 
 def Two_tone_sche(

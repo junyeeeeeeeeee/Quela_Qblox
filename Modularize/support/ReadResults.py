@@ -3,7 +3,7 @@ import xarray as xr
 import quantify_core.data.handling as dh
 from Modularize.support.QDmanager import QDmanager
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
-from numpy import sqrt, array, moveaxis, ndarray
+from numpy import sqrt, array, moveaxis, ndarray, cos, sin ,deg2rad, real, imag, linspace
 from xarray import open_dataset
 import matplotlib.pyplot as plt
 from Modularize.support.Pulse_schedule_library import dataset_to_array
@@ -37,7 +37,6 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 # output_path = find_port_clock_path(
 #         hcfg, port=qubit.ports.readout(), clock=qubit.name + ".ro"
 #     )
-
 # cluster_key, module_key, output_key, _, _ = tuple(output_path)
 # readout_module = hcfg[cluster_key][module_key]
 # print(readout_module[output_key]["output_att"])
@@ -77,6 +76,7 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 # print("aprx fq=",aprx_fq(x,bare))
 
 if __name__ == '__main__':
+    import os
     # QD_agent = QDmanager('Modularize/QD_backup/2024_6_11/DR1SCA#11_SumInfo.pkl')
     # QD_agent.QD_loader()
     # qubit = QD_agent.quantum_device.get_element("q0")
@@ -84,8 +84,33 @@ if __name__ == '__main__':
     # qubit.measure.pulse_duration(1e-6)
     # qubit.measure.integration_time(500e-9)
     # QD_agent.QD_keeper()
-    x = ""
-    for i in ["q0","c0","q1"]:
-        x += i
-    print(x)
-   
+    from matplotlib.figure import Figure
+    def save_fig(fig:Figure, all_path:str):
+        fig.savefig(all_path)
+        plt.close()
+
+    file = "Modularize/Meas_raw/2024_7_4/DR3q4_CavitySpectro_H18M39S34.nc"
+    ds = open_dataset(file)
+
+    freq = dict(
+        q0=5973306404,
+        q1=6083525235,
+        q2=5920038579,
+        q3=6099702007,
+        q4=6010586222
+    )
+    ro_elements = {}
+    for qb in list(freq.keys()):
+        ro_elements[qb] = linspace(freq[qb]-10e6, freq[qb]+10e6, 101)
+    
+    for idx, q in enumerate(freq):
+
+        S21 = ds[f"y{2*idx}"] * cos(
+                deg2rad(ds[f"y{2*idx+1}"])
+            ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
+        I, Q = real(S21), imag(S21)
+        amp = sqrt(I**2+Q**2)
+        fig, ax = plt.subplots()
+        ax:plt.Axes
+        ax.plot(ro_elements[q],amp)
+        save_fig(fig,os.path.join("Modularize/under_test",f"test_{idx}.png"))
