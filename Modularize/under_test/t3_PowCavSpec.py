@@ -113,7 +113,7 @@ def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict):
                 deg2rad(ds[f"y{2*idx+1}"])
             ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
         I, Q = real(S21), imag(S21)
-        amp = array(sqrt(i**2+Q**2))
+        amp = array(sqrt(I**2+Q**2))
         power = moveaxis(array(ds.x1).reshape(amp.shape),0,-1)[0]
         s21 = []
         for i in range(amp.shape[0]):

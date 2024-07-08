@@ -4,22 +4,21 @@ Use the results from m1 and a light attenuation (10 ~ 16 is recommended) to find
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import NaN
-from Modularize.support import uw
-from numpy import array, linspace, arange, cos, sin, deg2rad, real, imag, sqrt
+from xarray import Dataset
+import matplotlib.pyplot as plt
 from Modularize.support import cds
-from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from Modularize.support import Data_manager, QDmanager, compose_para_for_multiplexing
 from quantify_scheduler.gettables import ScheduleGettable
+from numpy import array, linspace, arange, cos, sin, deg2rad
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.support import init_meas, init_system_atte, shut_down, QRM_nco_init
+from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
+from Modularize.support import init_meas, init_system_atte, shut_down
+from Modularize.support import Data_manager, QDmanager, compose_para_for_multiplexing
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
-import matplotlib.pyplot as plt
-from xarray import Dataset
 
-def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=10,run:bool=True,Experi_info:dict={},particular_folder:str="")->Dataset:
+
+def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=10,run:bool=True,Experi_info:dict={},particular_folder:str="",ro_amps:dict={})->Dataset:
     """
         Doing the multiplexing cavity search according to the arg `ro_elements`\n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay!\n
@@ -41,9 +40,19 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
 
+    amps = {}
+    if ro_amps != {}:
+        init = compose_para_for_multiplexing(QD_agent,ro_elements,1)
+        for q in ro_elements:
+            if q in list(ro_amps.keys()):
+                amps[q] = ro_amps[q]
+            else:
+                amps[q] = init[q]
+
+
     spec_sched_kwargs = dict(   
         frequencies=ro_elements,
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,1),
+        R_amp=amps,
         R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,3),
         R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,4),
         R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
@@ -66,8 +75,6 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
         
         rs_ds = meas_ctrl.run("One-tone")
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS',specific_dataFolder=particular_folder)
-        # analysis_result = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
-        # save the xarrry into netCDF
         
         print(f"{q} Cavity:")
         if Experi_info != {}:
@@ -84,6 +91,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
     
         if Experi_info != {}:
             show_args(Experi_info(q))
+
     return rs_ds
 
 def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
@@ -96,32 +104,51 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
         qubit.measure.integration_time(10e-6-4e-9)
 
 
-def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict):
+def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict)->dict:
+    """
+    # Return\n
+    A dict sorted by q_name with its fit results.\n
+    Ex. {'q0':{..}, ...}\n
+    ----------------------------
+    # fit results key names: \n
+    ['Qi_dia_corr', 'Qi_no_corr', 'absQc', 'Qc_dia_corr', 'Ql', 'fr', 'theta0', 'phi0', 'phi0_err', 'Ql_err', 'absQc_err', 'fr_err', 'chi_square', 'Qi_no_corr_err', 'Qi_dia_corr_err', 'A', 'alpha', 'delay', 'input_power']
+    """
+    fit_results = {}
     for idx, q in enumerate(ro_elements):
         S21 = ds[f"y{2*idx}"] * cos(
                 deg2rad(ds[f"y{2*idx+1}"])
             ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
-        I, Q = real(S21), imag(S21)
-        amp = sqrt(I**2+Q**2)
+        freq = ro_elements[q]
+        res_er = ResonatorData(freq=ro_elements[q],zdata=array(S21))
+        result, data2plot, fit2plot = res_er.fit()
         fig, ax = plt.subplots()
         ax:plt.Axes        
-        ax.plot(ro_elements[q],amp)
+        ax.plot(freq,data2plot)
+        ax.plot(freq,fit2plot,c="red",lavel='fitting')
+        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,3)} GHz")
+        ax.legend()
         Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
+        fit_results[q] = result
+
+    return fit_results
 
 # execution pack
-def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101):
+def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101)->dict:
     ro_elements = {}
     for qb in list(ro_bare_guess.keys()):
         ro_elements[qb] = linspace(ro_bare_guess[qb]-ro_span_Hz, ro_bare_guess[qb]+ro_span_Hz, fpts)
     if run:
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements)
-        multiplexing_CS_ana(QD_agent, cs_ds, ro_elements)
+        CS_results = multiplexing_CS_ana(QD_agent, cs_ds, ro_elements)
+        for qubit in CS_results:
+            QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(float(CS_results[qubit]['fr']))
 
     else:
         # For pulse preview
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=False)
+        CS_results = {}
         
-    return cs_ds
+    return CS_results
 
 
 if __name__ == "__main__":
@@ -171,7 +198,7 @@ if __name__ == "__main__":
     """ Storing """
     if execution:
         QD_agent.refresh_log("After cavity search")
-        # QD_agent.QD_keeper()
+        QD_agent.QD_keeper()
         print('CavitySpectro done!')
         
         # Chip info!

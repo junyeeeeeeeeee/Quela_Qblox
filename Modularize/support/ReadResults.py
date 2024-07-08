@@ -85,6 +85,7 @@ if __name__ == '__main__':
     # qubit.measure.integration_time(500e-9)
     # QD_agent.QD_keeper()
     from matplotlib.figure import Figure
+    from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
     def save_fig(fig:Figure, all_path:str):
         fig.savefig(all_path)
         plt.close()
@@ -104,13 +105,22 @@ if __name__ == '__main__':
         ro_elements[qb] = linspace(freq[qb]-10e6, freq[qb]+10e6, 101)
     
     for idx, q in enumerate(freq):
-
+        freq = ro_elements[q]
         S21 = ds[f"y{2*idx}"] * cos(
                 deg2rad(ds[f"y{2*idx+1}"])
             ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
-        I, Q = real(S21), imag(S21)
-        amp = sqrt(I**2+Q**2)
+        res_er = ResonatorData(freq=ro_elements[q],zdata=array(S21))
+        result, data, curve = res_er.fit()
+        print(result.keys())
         fig, ax = plt.subplots()
         ax:plt.Axes
-        ax.plot(ro_elements[q],amp)
-        save_fig(fig,os.path.join("Modularize/under_test",f"test_{idx}.png"))
+        ax.plot(freq, data)
+        ax.plot(freq, curve, c='red', label='fitting')
+        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,3)} GHz")
+        ax.legend()
+        plt.show()
+        
+        
+        # I, Q = real(S21), imag(S21)
+        # amp = sqrt(I**2+Q**2)
+        # save_fig(fig,os.path.join("Modularize/under_test",f"test_{idx}.png"))
