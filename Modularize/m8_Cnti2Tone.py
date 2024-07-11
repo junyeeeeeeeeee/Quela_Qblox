@@ -14,7 +14,7 @@ from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
 from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
 
-def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=200e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
     
     sche_func = Two_tone_sche   
     analysis_result = {}
@@ -163,12 +163,12 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     update:bool = 1
     #
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.5e9],"xyl_guess":[0.05],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q0":{"xyf_guess":[4.74e9],"xyl_guess":[0.1],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = ["c0"]
+    couplers = []
 
 
     """ Running """

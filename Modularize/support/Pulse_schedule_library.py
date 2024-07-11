@@ -452,11 +452,6 @@ def One_tone_multi_sche(
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
             
-    
-    # avoid error, the integration for the first qubit aligned at the last place
-    # for acq_idx, frequen in enumerate(frequencies[qubits2read[0]]):
-        # Integration(sched,qubits2read[0],R_inte_delay[qubits2read[0]],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=0,single_shot=False,get_trace=False,trace_recordlength=0) 
-    print("sche done")
     return sched
 
 def Two_tone_sche(
@@ -774,6 +769,7 @@ def Ramsey_sche(
     R_inte_delay:float,
     pi_dura:float=20e-9,
     repetitions:int=1,
+    spin_echo:bool=False
 ) -> Schedule:
 
     sched = Schedule("Ramsey", repetitions=repetitions)
@@ -793,8 +789,12 @@ def Ramsey_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
-        
+        if spin_echo:
+            X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+2*pi_Du)
+            X_pi_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu/2+pi_Du)
+        else:
+            X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
+
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
@@ -1350,7 +1350,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         Nor_f= Dis
         y_label= r"$P_{1}\ $"
     else: raise KeyError ('P_rescale is not bool') 
-    
+    plot_fit:bool = True
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
     text_msg = "Fit results\n"
     if results.attrs['exper'] == 'QS':
@@ -1380,24 +1380,31 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'Rabi': 
         title= results.attrs['Rabi_type']
+        
         if title=='PowerRabi':
             pi_2= results.attrs['pi_2']
             x_unit= r"$\ [V]$"
             x_label= r"$XY\ amp$"+x_unit
             x= results.coords['samples']
             x_fit= results.coords['para_fit']
+            
         elif title=='TimeRabi':
             pi_2= results.attrs['pi_2']*1e9
             x_unit= r"$\ [ns]$"
             x_label= r"$XY\ duration$"+x_unit
             x= results.coords['samples']*1e9
             x_fit= results.coords['para_fit']*1e9
-            
-        text_msg += r"$\pi= %.3f $"%(pi_2) +x_unit        
-        ax.axvline(x=pi_2, ymin=0, ymax= np.array(results.data_vars['data']/Nor_f).max(),color='r',linestyle='dashed', alpha=0.8,lw=1)
+
+        if abs(float(pi_2)) > max(x):
+            plot_fit = False
+
+        text_msg += r"$\pi= %.3f $"%(pi_2) +x_unit       
+        if plot_fit: 
+            ax.axvline(x=pi_2, ymin=0, ymax= np.array(results.data_vars['data']/Nor_f).max(),color='r',linestyle='dashed', alpha=0.8,lw=1)
         
     ax.plot(x,results.data_vars['data']/Nor_f,'-', color="blue",label=r"$data$", alpha=0.5, ms=4)
-    ax.plot(x_fit,results.data_vars['fitting']/Nor_f,'-', color="red",label=r"$fit$", alpha=0.8, lw=1)       
+    if plot_fit:
+        ax.plot(x_fit,results.data_vars['fitting']/Nor_f,'-', color="red",label=r"$fit$", alpha=0.8, lw=1)       
     ax.set_xlabel(x_label)
     ax.set_title(title)
     ax.set_ylabel(y_label)
@@ -1516,7 +1523,7 @@ def set_LO_frequency(quantum_device:QuantumDevice,q:str,module_type:str,LO_frequ
         
     elif module_type== 'readout':
         clock=qubit.name + ".ro"
-        port=qubit.ports.readout()
+        port= "q:res"#qubit.ports.readout()
         
     else: raise KeyError ('module_type is not drive or readout')  
     

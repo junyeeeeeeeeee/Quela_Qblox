@@ -13,7 +13,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down, coupler_z
 from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot
 
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str=''):
+def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str='',spin:bool=False):
     
     T2_us = {}
     analysis_result = {}
@@ -32,8 +32,12 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
     Para_free_Du.batched = True
-    gap = (freeduration)*1e9 // points + (((freeduration)*1e9 // points) %4) # multiple by 4 ns
-    samples = arange(4e-9,freeduration,gap*1e-9)
+    if spin:
+        gap = (freeduration)*1e9 // points + (((freeduration)*1e9 // points) %8) # multiple by 8 ns
+        samples = arange(8e-9,freeduration,gap*1e-9)
+    else:
+        gap = (freeduration)*1e9 // points + (((freeduration)*1e9 // points) %4) # multiple by 4 ns
+        samples = arange(0e-9,freeduration,gap*1e-9)
     
     sche_func= Ramsey_sche
     sched_kwargs = dict(
@@ -46,6 +50,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         R_duration={str(q):qubit.measure.pulse_duration()},
         R_integration={str(q):qubit.measure.integration_time()},
         R_inte_delay=qubit.measure.acq_delay(),
+        spin_echo=spin
         )
     exp_kwargs= dict(sweep_freeDu=['start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                      f_xy='%E' %sched_kwargs['New_fxy'],
@@ -100,12 +105,12 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     return analysis_result, T2_us, Real_detune
 
 
-def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,ith:int=1,run:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800):
+def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,ith:int=1,run:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800, spin_echo:bool=False):
     if run:
         start_time = time.time()
         slightly_print(f"The {ith}-th T2:")
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
-        Ramsey_results, T2_us, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder)
+        Ramsey_results, T2_us, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder,spin=spin_echo)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
         this_t2_us = T2_us[specific_qubits]
@@ -113,7 +118,7 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
         slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
         
     else:
-        Ramsey_results, _, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False)
+        Ramsey_results, _, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False,spin=spin_echo)
         this_t2_us = 0
 
     return Ramsey_results, this_t2_us, average_actual_detune
@@ -126,11 +131,22 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":30e-6,"histo_counts":1}
+        # "q2":{"detune":0e6,"evoT":20e-6,"histo_counts":1},
+        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1},
     }
-    couplers = ['c0']
+    couplers = []
+
+    # q0 18.5 +/- 1.1
+    # q1 4 +/- 0.4
+
+    
+    # q4 5.1 +/- 1.
+
+    """ Optional paras """
+    spin_echo:bool = 0
+    time_data_points = 100
 
 
     """ Iteration """
@@ -148,7 +164,7 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             
             slightly_print(f"Ramsey with detuning = {round(ro_elements[qubit]['detune']*1e-6,2)} MHz")
-            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,run=execution)
+            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,run=execution,pts=time_data_points,spin_echo=spin_echo)
             highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             if this_t2_us != 0:
                 t2_us_rec.append(this_t2_us)

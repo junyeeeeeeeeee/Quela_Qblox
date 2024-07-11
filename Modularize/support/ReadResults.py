@@ -77,50 +77,23 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 
 if __name__ == '__main__':
     import os
-    # QD_agent = QDmanager('Modularize/QD_backup/2024_6_11/DR1SCA#11_SumInfo.pkl')
+    from numpy import moveaxis
+    # QD_agent = QDmanager('Modularize/QD_backup/2024_7_10/SumInfo_q4_dr1_11.pkl')
     # QD_agent.QD_loader()
-    # qubit = QD_agent.quantum_device.get_element("q0")
-    # qubit.measure.acq_delay(280e-9)
-    # qubit.measure.pulse_duration(1e-6)
-    # qubit.measure.integration_time(500e-9)
-    # QD_agent.QD_keeper()
-    from matplotlib.figure import Figure
-    from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
-    def save_fig(fig:Figure, all_path:str):
-        fig.savefig(all_path)
-        plt.close()
+    # qs = ['q4']
+    # for q in qs:
+    #     print(q,":")
+    #     qubit = QD_agent.quantum_device.get_element(q)
+    #     print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
+    #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
+    #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
+    #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
+    ds =  dh.to_gridded_dataset(open_dataset("Modularize/Meas_raw/2024_7_11/DR1MultiQ_PowerCavity_H15M20S44.nc"))
+    S21 = ds.y0 * cos(
+                deg2rad(ds.y1)
+            ) + 1j * ds.y0 * sin(deg2rad(ds.y1))
+    I, Q = real(S21), imag(S21)
+    amp = array(sqrt(I**2+Q**2))
+    print(amp.shape)
 
-    file = "Modularize/Meas_raw/2024_7_4/DR3q4_CavitySpectro_H18M39S34.nc"
-    ds = open_dataset(file)
-
-    freq = dict(
-        q0=5973306404,
-        q1=6083525235,
-        q2=5920038579,
-        q3=6099702007,
-        q4=6010586222
-    )
-    ro_elements = {}
-    for qb in list(freq.keys()):
-        ro_elements[qb] = linspace(freq[qb]-10e6, freq[qb]+10e6, 101)
     
-    for idx, q in enumerate(freq):
-        freq = ro_elements[q]
-        S21 = ds[f"y{2*idx}"] * cos(
-                deg2rad(ds[f"y{2*idx+1}"])
-            ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
-        res_er = ResonatorData(freq=ro_elements[q],zdata=array(S21))
-        result, data, curve = res_er.fit()
-        print(result.keys())
-        fig, ax = plt.subplots()
-        ax:plt.Axes
-        ax.plot(freq, data)
-        ax.plot(freq, curve, c='red', label='fitting')
-        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,3)} GHz")
-        ax.legend()
-        plt.show()
-        
-        
-        # I, Q = real(S21), imag(S21)
-        # amp = sqrt(I**2+Q**2)
-        # save_fig(fig,os.path.join("Modularize/under_test",f"test_{idx}.png"))

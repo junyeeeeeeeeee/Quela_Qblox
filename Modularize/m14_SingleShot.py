@@ -15,7 +15,7 @@ from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, set_LO_freq
 
 
 try:
-    from qcat.state_discrimination.discriminator import train_GMModel # type: ignore
+    from qcat.analysis.state_discrimination.discriminator import train_GMModel # type: ignore
     from qcat.visualization.readout_fidelity import plot_readout_fidelity
     from Modularize.analysis.OneShotAna import a_OSdata_analPlot
     mode = "AS"
@@ -123,12 +123,12 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     repeat:int = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = {'q0':{"roAmp_factor":0.7}}
-    couplers = ['c0']
+    DRandIP = {"dr":"dr1","last_ip":"11"}
+    ro_elements = {'q0':{"roAmp_factor":1}}
+    couplers = []
 
 
-    """ Optional paras (don't use is better)"""
+    """ Optional paras (don't use is better) """
     ro_atte_degrade_dB:int = 0 # multiple of 2 
     
 
@@ -149,7 +149,7 @@ if __name__ == '__main__':
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             if i == 0:
                 snr_rec[qubit], effT_rec[qubit] = [], []
-            init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            init_system_atte(QD_agent.quantum_device,list([qubit]),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
             if ro_amp_scaling != 1 and repeat > 1 : raise ValueError("Check the RO_amp_factor should be 1 when you want to repeat it!")
             info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling,plot=True if repeat ==1 else False,exp_label=i)

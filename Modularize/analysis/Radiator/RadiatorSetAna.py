@@ -11,7 +11,7 @@ from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros
 import matplotlib.pyplot as plt
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.analysis.DRtemp import Kelvin_collector
-from qcat.state_discrimination.discriminator import train_GMModel  # type: ignore
+from qcat.analysis.state_discrimination.discriminator import train_GMModel  # type: ignore
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 
 exp_items = {"1":"T1","2":"T2","3":"effT","4":"gamma1","5":"gamma2","6":"thermalPop","7":"gammaPhi"}

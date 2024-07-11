@@ -26,7 +26,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
     Para_free_Du.batched = True
     gap = (freeduration*1e9 // points) + ((freeduration*1e9 // points)%4)
-    samples = arange(4e-9,freeduration,gap*1e-9)
+    samples = arange(0,freeduration,gap*1e-9)
     
     sched_kwargs = dict(
         q=q,
@@ -124,12 +124,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr3","last_ip":"13"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":1}
+        "q0":{"evoT":150e-6,"histo_counts":1},
     }
-    couplers = ['c0']
-    
+    couplers = []
+    # q0 22.3 +/- 2.2
+    # q1 22.9 +/- 1.2 
+    # q2 23.4 +/- 2.1 ## z line broken
+    # q3 24.2 +/- 1.5
+    # q4 21.6 +/- 1.5 ## large flux quanta
     
 
     """ Iterations """
