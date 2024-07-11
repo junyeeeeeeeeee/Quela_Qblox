@@ -57,7 +57,6 @@ def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,couple
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
-        cluster_ip 
         cfg, pth = {}, QuantumDevice_path 
         dr_loc = get_dr_loca(QuantumDevice_path)
         cluster_ip = ip_register[dr_loc.lower()]
@@ -67,12 +66,15 @@ def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,couple
     if cluster_ip in list(ip_register.values()):
         # try maximum 3 connections to prevent connect timeout error 
         try:
-            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=port_register[cluster_ip])
+            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
         except:
+            from Modularize.support.UserFriend import warning_print
             try:
-                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=port_register[cluster_ip])
+                warning_print("First cluster connection trying")
+                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
             except:
-                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=port_register[cluster_ip])
+                warning_print("Second cluster connection trying")
+                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
     else:
         raise KeyError("Check your cluster ip had been log into Experiment_setup.py with its connected DR, and also is its ip-port")
     

@@ -305,10 +305,10 @@ def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
 
 def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
@@ -769,15 +769,13 @@ def Ramsey_sche(
     R_inte_delay:float,
     pi_dura:float=20e-9,
     repetitions:int=1,
-    spin_echo:bool=False
+    echo_pi_num:int = 0
 ) -> Schedule:
 
     sched = Schedule("Ramsey", repetitions=repetitions)
     
     pi_Du= pi_dura
-
     
-   
     for acq_idx, freeDu in enumerate(freeduration):
         
         sched.add(
@@ -786,16 +784,21 @@ def Ramsey_sche(
         sched.add(Reset(q))
         
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
-        
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        
-        if spin_echo:
-            X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+2*pi_Du)
-            X_pi_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu/2+pi_Du)
-        else:
-            X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
 
-        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+        # we start construction from readout
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+        a_separate_free_Du = freeDu / echo_pi_num
+        if echo_pi_num != 0:
+            for pi_idx in range(echo_pi_num):
+                if pi_idx == 0 :
+                    pi = X_pi_p(sched,pi_amp,q,pi_Du,first_half_pi,0.5*a_separate_free_Du)
+                else:
+                    pi = X_pi_p(sched,pi_amp,q,pi_Du,pi,1*a_separate_free_Du)
+            X_pi_2_p(sched,pi_amp,q,pi_Du,pi,0.5*a_separate_free_Du)
+        else:
+            X_pi_2_p(sched,pi_amp,q,pi_Du,first_half_pi,freeDu)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
