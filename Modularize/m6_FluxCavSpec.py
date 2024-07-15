@@ -115,7 +115,14 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
 
-def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
+def fluxCavity_executor(QD_agent:QDmanager,
+                        meas_ctrl:MeasurementControl,
+                        specific_qubits:str,
+                        run:bool=True,
+                        flux_span:float=0.4,
+                        ro_span_Hz=3e6,
+                        zpts=20,
+                        fpts=30):
     
     if run:
         print(f"{specific_qubits} are under the measurement ...")
@@ -136,7 +143,7 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0', 'q1']
+    ro_elements = ['q0']
     cp_ctrl = {"c0":-0.12,"c1":-0.13,"c2":0,"c3":0.1,}
 
     """ Optional paras """

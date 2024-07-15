@@ -170,12 +170,12 @@ if __name__ == "__main__":
     chip_info_restore = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"detune":-10.5e6,"evoT":4e-6,"histo_counts":1, "excite_qubit": "q1"}
-
+        "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1, "excite_qubit": "q1"},
+        # "q0":{"detune":0e6,"evoT":40e-6,"histo_counts":1, "excite_qubit": "q1"}
     }
     target_coupler = 'c0'
-    target_bias = -0.1110
-    couplers = ['c1', 'c2', 'c3']
+    target_bias = 0.0200
+    couplers = ['c1','c2', 'c3']
     pts = 500
     
     """ Preparations """
