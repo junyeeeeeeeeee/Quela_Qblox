@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
 
     """ Storing """
-    with open(os.path.join(this_qubit_exp_folder,"Quality_results.json"), "w") as json_file:
+    with open(os.path.join(this_qubit_exp_folder,f"Quality_results_RT{RT_real_atte}db.json"), "w") as json_file:
         json.dump(qubit_rec, json_file)
 
 
