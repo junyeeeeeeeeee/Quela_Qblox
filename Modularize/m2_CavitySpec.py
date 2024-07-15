@@ -106,7 +106,7 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
         qubit.measure.integration_time(10e-6-4e-9)
 
 
-def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict)->dict:
+def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
     """
     # Return\n
     A dict sorted by q_name with its fit results.\n
@@ -129,7 +129,10 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict)->dict:
         ax.plot(freq,fit2plot,c="red",label='fitting')
         ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,3)} GHz")
         ax.legend()
-        Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
+        if save_pic:
+            Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
+        else:
+            plt.close()
         fit_results[q] = result
 
     return fit_results

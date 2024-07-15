@@ -252,6 +252,9 @@ class Data_manager:
 
     
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
+        """
+        If the arg `specific_dataFolder` was given, the raw nc will be saved into that given path. 
+        """
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
         parent_dir = self.raw_folder if specific_dataFolder =='' else specific_dataFolder

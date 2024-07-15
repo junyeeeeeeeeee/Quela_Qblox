@@ -150,6 +150,7 @@ if __name__ == '__main__':
 
 
     """ Preparation """
+    re_find_ground = []
     for qubit in ro_elements:
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -172,12 +173,12 @@ if __name__ == '__main__':
         if execute:
             if keep:
                 QD_agent.QD_keeper()
-                keep = False 
+                re_find_ground.append(qubit)
 
         """ Close """    
         shut_down(cluster,Fctrl,Cctrl)
     
-    for qubit in ro_elements:
+    for qubit in re_find_ground:
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))

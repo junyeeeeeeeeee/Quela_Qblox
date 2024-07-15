@@ -88,12 +88,16 @@ if __name__ == '__main__':
     #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
     #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
     #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
-    ds =  dh.to_gridded_dataset(open_dataset("Modularize/Meas_raw/2024_7_11/DR1MultiQ_PowerCavity_H15M20S44.nc"))
-    S21 = ds.y0 * cos(
-                deg2rad(ds.y1)
-            ) + 1j * ds.y0 * sin(deg2rad(ds.y1))
-    I, Q = real(S21), imag(S21)
-    amp = array(sqrt(I**2+Q**2))
-    print(amp.shape)
+    # ds =  dh.to_gridded_dataset(open_dataset("Modularize/Meas_raw/2024_7_11/DR1MultiQ_PowerCavity_H15M20S44.nc"))
+    # S21 = ds.y0 * cos(
+    #             deg2rad(ds.y1)
+    #         ) + 1j * ds.y0 * sin(deg2rad(ds.y1))
+    # I, Q = real(S21), imag(S21)
+    # amp = array(sqrt(I**2+Q**2))
+    # print(amp.shape)
+
+    x = {"a":{"x":1}}
+    y = {"b":{"y":2}}
+    print(y|x)
 
     
