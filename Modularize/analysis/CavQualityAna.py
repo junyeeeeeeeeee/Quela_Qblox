@@ -2,22 +2,9 @@ import os, json
 import matplotlib.pyplot as plt
 from numpy import array, ndarray, cos, sin, deg2rad, imag, real, pi, abs
 from xarray import Dataset, open_dataset
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
 
-
-    
-def official_cavfit(ds_path:str, new_folder_additional_name:str=""):
-    
-    from quantify_core.data.handling import set_datadir
-    ds_folder = os.path.split(ds_path)[0]
-    new_folder_path = os.path.join(ds_folder,f"officialfit_results_{new_folder_additional_name}")
-    if not os.path.isdir(new_folder_path):
-        os.mkdir(new_folder_path)
-    set_datadir(new_folder_path)
-    rs_ds = open_dataset(ds_path)
-    x = ResonatorSpectroscopyAnalysis(tuid=rs_ds.attrs["tuid"], dataset=rs_ds).run()
-    
-
+def dBm2photons():
+    pass
 
 def timelabel_sort(file_name_list:list)->list:
     import datetime as dt
@@ -35,82 +22,64 @@ def find_nearest(ary:ndarray, value:float):
     idx = (abs(ary - value)).argmin()
     return idx, ary[idx]
 
-def get_S21_andX(ds:Dataset)->dict:
-    S21 = ds.y0 * cos(deg2rad(ds.y1)) + 1j * ds.y0 * sin(deg2rad(ds.y1))
-    return {"x":array(ds.x0),"S21":S21,"mag":array(ds.y0),"pha":array(ds.y1)}
-
-
-def officallyPlot_a_givenAtte_cav(CavQua_nc_folder_path:str, which_dBm:int=0):
-    target_q = os.path.split(CavQua_nc_folder_path)[-1].split("_")[0]
-    RT_atte_dB = os.path.split(CavQua_nc_folder_path)[-1].split("_")[-2].split("e")[-1].split("d")[0]
-    quality_rec_json = [os.path.join(CavQua_nc_folder_path,name) for name in os.listdir(CavQua_nc_folder_path) if (os.path.isfile(os.path.join(CavQua_nc_folder_path,name)) and name.split(".")[0]=='Quality_results')][0]
-    raw_ncs = [name for name in os.listdir(CavQua_nc_folder_path) if (os.path.isfile(os.path.join(CavQua_nc_folder_path,name)) and name.split("_")[1]=='CavitySpectro')]
-    sorted_raw_ncs = timelabel_sort(raw_ncs)
-    quality_rec_dict = {}
-    with open(quality_rec_json) as JJ:
-        quality_rec_dict = json.load(JJ)
-    all_dBm = quality_rec_dict[target_q]["dBm"]
+def plot_all_cav(result_js_path:str,specific_qs:list=[],allCavInOneFig:bool=False):
+    """
+    plot all the cavity along dBm axis. plot item includes 'qi', 'qc' and 'ql'.
+    """
+    parent = os.path.split(result_js_path)[0]
+    results = {}
+    with open(os.path.join(result_js_path)) as J:
+        results = json.load(J)
+    ro_attes = list(results.keys())
+    if len(specific_qs) == 0:
+        specific_qs = list(results[ro_attes[0]]["output_dBm"].keys())
     
-    idx, nearest_dBm = find_nearest(array(all_dBm), which_dBm)
-    target_nc_path = os.path.join(CavQua_nc_folder_path,sorted_raw_ncs[idx])
-    data = get_S21_andX(open_dataset(target_nc_path)) # {"x","S21","mag","pha"}
-    official_cavfit(target_nc_path, f"power{nearest_dBm}dB")
+    # collects values
+    collections = {}
+    for q in specific_qs:
+        collections[q] = {'Qi_dia_corr':[], 'Qi_dia_corr_err':[], 'Qc_dia_corr':[], 'absQc_err':[], 'Ql':[], 'Ql_err':[], "output_dBm":[]}
+        for atte in ro_attes:
+            for item in collections[q]:
+                collections[q][item].append(results[atte][q][item])
     
-def plot_quality_results_for_aQ(CavQua_nc_folder_path:str, sep_qua:bool=False):
-    colors = ["#0000FF","#FF0000","#008000"]
-    markers = ["o", "D", "X"]
-    target_q = os.path.split(CavQua_nc_folder_path)[-1].split("_")[0]
-    RT_atte_dB = os.path.split(CavQua_nc_folder_path)[-1].split("_")[-2].split("e")[-1].split("d")[0]
-    quality_rec_json = [os.path.join(CavQua_nc_folder_path,name) for name in os.listdir(CavQua_nc_folder_path) if (os.path.isfile(os.path.join(CavQua_nc_folder_path,name)) and name.split(".")[0]=='Quality_results')][0]
-    
-    quality_rec_dict = {}
-    with open(quality_rec_json) as JJ:
-        quality_rec_dict = json.load(JJ)
-    
-    x_axis_dBm = quality_rec_dict[target_q]["dBm"]
-    if not sep_qua:
-        fig, ax = plt.subplots(1,1,figsize=(15,10))
-        ax:plt.Axes
-    n = 0
-    for qualities_name in quality_rec_dict[target_q]:
-        if qualities_name != "dBm" and qualities_name.split("_")[-1] != "sd":
-            if not sep_qua:
-                ax.errorbar(x_axis_dBm,quality_rec_dict[target_q][qualities_name],yerr=quality_rec_dict[target_q][f"{qualities_name}_sd"],fmt=markers[n],c=colors[n],label=qualities_name)
-                ax.scatter(x_axis_dBm,quality_rec_dict[target_q][qualities_name],s=60,c=colors[n],marker=markers[n])
-               
-            else:
-                fig, ax = plt.subplots(1,1,figsize=(15,10))
+    # plotting
+    plot_item = {"Qi_dia_corr":"Internal Q (Qi)", "Ql":"Loaded Q (Ql)", "Qc_dia_corr":"Coupling Q (Qc)"}
+    if allCavInOneFig:
+        for topic in plot_item:
+            fig, ax = plt.subplots(dpi=720)
+            ax:plt.Axes
+            for q in collections.keys():
+                if f"{topic}_err" in collections[q]:
+                    ax.errorbar(x=collections[q]["output_dBm"], y=collections[q][topic], yerr=collections[q][f"{topic}_err"],label=q)
+                else:
+                    ax.errorbar(x=collections[q]["output_dBm"], y=collections[q][topic], yerr=collections[q]["absQc_err"],label=q)
+            ax.set_ylabel(plot_item[topic],fontsize=26)
+            ax.set_xlabel("Power (dBm)",fontsize=26)
+            ax.xaxis.set_tick_params(labelsize=26)
+            ax.yaxis.set_tick_params(labelsize=26)
+            plt.savefig(os.path.join(parent, f"AllCav_{topic.split("_")[0]}.png"))
+            plt.close()
+    else:
+        for topic in plot_item:
+            for q in collections.keys():
+                fig, ax = plt.subplots(dpi=720)
                 ax:plt.Axes
-                ax.errorbar(x_axis_dBm,quality_rec_dict[target_q][qualities_name],yerr=quality_rec_dict[target_q][f"{qualities_name}_sd"],fmt=markers[n],c=colors[n])
-                ax.scatter(x_axis_dBm,quality_rec_dict[target_q][qualities_name],s=60,c=colors[n],marker=markers[n])
-                ax.set_xlabel("Input power (dBm)",fontsize=26)
-                ax.set_ylabel(qualities_name,fontsize=26)
+                if f"{topic}_err" in collections[q]:
+                    ax.errorbar(x=collections[q]["output_dBm"], y=collections[q][topic], yerr=collections[q][f"{topic}_err"],label=q)
+                else:
+                    ax.errorbar(x=collections[q]["output_dBm"], y=collections[q][topic], yerr=collections[q]["absQc_err"],label=q)
+                ax.set_ylabel(plot_item[topic],fontsize=26)
+                ax.set_xlabel("Power (dBm)",fontsize=26)
                 ax.xaxis.set_tick_params(labelsize=26)
                 ax.yaxis.set_tick_params(labelsize=26)
-                ax.set_yscale("log")
-                plt.grid()
-                plt.title(f"{qualities_name} for {target_q}, RTatte= {RT_atte_dB} dB",fontsize=30)
-                plt.tight_layout()
-                plt.savefig(os.path.join(CavQua_nc_folder_path, f"{target_q}_{qualities_name}_RTatte{RT_atte_dB}dB.png"))
+                plt.savefig(os.path.join(parent, f"{q}_{topic.split("_")[0]}.png"))
                 plt.close()
-            n += 1 
 
-    if not sep_qua:
-        ax.set_yscale("log")
-        ax.set_xlabel("Input power (dBm)",fontsize=26)
-        ax.set_ylabel("Qualities",fontsize=26)
-        ax.xaxis.set_tick_params(labelsize=26)
-        ax.yaxis.set_tick_params(labelsize=26)
-        plt.grid()
-        plt.legend(fontsize=30,ncol=3)
-        plt.title(f"Qualities for {target_q}, RTatte= {RT_atte_dB} dB",fontsize=30)
-        plt.tight_layout()
-        plt.savefig(os.path.join(CavQua_nc_folder_path, f"{target_q}_qualities_RTatte{RT_atte_dB}dB.png"))
-        plt.close()
+    
+    
 
 
-def plot_allCav_quality():
-    pass
+
 
 
 if __name__ == "__main__":

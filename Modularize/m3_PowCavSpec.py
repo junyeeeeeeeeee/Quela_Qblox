@@ -165,10 +165,10 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0   # if true, only one qubit should be in the ro_elements 
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":40},
-        "q3": {"ro_atte":36}
+        "q0": {"ro_atte":36},
+        "q1": {"ro_atte":36}
     }
 
 

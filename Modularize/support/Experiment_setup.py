@@ -488,6 +488,79 @@ Hcfg_dr3 = {
 }
 
 
+Hcfg_drke = {
+    "backend": "quantify_scheduler.backends.qblox_backend.hardware_compile",
+    f"clusterdrke": {
+        "sequence_to_file": False,  # Boolean flag which dumps waveforms and program dict to JSON file
+        "ref": "internal",  # Use shared clock reference of the cluster
+        "instrument_type": "Cluster",
+        # ============ DRIVE ============#
+        f"clusterdrke_module4": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q0:mw",
+                        "clock": "q0.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q1:mw",
+                        "clock": "q1.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            }
+        },
+
+        # ============ FLUX ============#
+        f"clusterdrke_module2": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
+        },
+        # ============ READOUT ============#
+        f"clusterdrke_module6": {
+            "instrument_type": "QRM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "input_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq":6.5e9,       # *** Should be set as a parameter later on
+                "portclock_configs": [
+                    {
+                        "port": "q:res",
+                        "clock": "q0.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q:res",
+                        "clock": "q1.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                ],
+            },
+        },
+    },
+}
+
 def get_FluxController(cluster, ip:str)->dict:
     which_dr = ''
     for dr in ip_register:
@@ -518,6 +591,11 @@ def get_FluxController(cluster, ip:str)->dict:
             "q0":cluster.module2.out0_offset,
             "q2":cluster.module2.out2_offset,
             "q3":cluster.module2.out3_offset,
+        }
+    elif which_dr.lower() == 'drke':
+        Fctrl: callable = {
+            "q0":cluster.module2.out0_offset,
+            "q1":cluster.module2.out1_offset,
         }
     else:
         raise KeyError ("please input ip label like '170' or '171'!")
@@ -552,6 +630,6 @@ def get_CouplerController(cluster, ip:str)->dict:
 # }
 
 # Hcfg map
-hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1,'dr3':Hcfg_dr3} # all keys in lower
+hcfg_map = {"dr2":Hcfg_dr2,'dr1':Hcfg_dr1,'dr3':Hcfg_dr3,'drke':Hcfg_drke} # all keys in lower
 
 

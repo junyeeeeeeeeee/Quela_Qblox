@@ -141,13 +141,13 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_elements = ['q0']
     couplers = []
 
 
     """ Optional paras """
-    pi_duration = 40e-9
+    pi_duration = 200e-9
     pi_amp_max = 0.6
     
 

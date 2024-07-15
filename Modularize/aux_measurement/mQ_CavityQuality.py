@@ -107,11 +107,12 @@ def cavQuality_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:Measurement
             CS_results, ro_info = qualityFiter(QD_agent,meas_ctrl,ro_amps,run = execution,ro_span_Hz=ro_span_Hzs,data_folder=this_qubit_exp_folder,fpts=window_ratio*100)
             cluster.reset()
             qua = get_quality_for(QD_agent, CS_results, ro_info)
-            dBm_output = {}
+            
             for q in qua:
-                dBm_output[q] = SA_dBm[q]-RT_real_atte-ro_atte
+                output_dBm = SA_dBm[q]-RT_real_atte-ro_atte
+                qua[q]["output_dBm"] = output_dBm
 
-            rec[ro_atte] = {"output_dBm":dBm_output}|qua
+            rec[ro_atte] = qua
         
         return this_qubit_exp_folder, rec
     else:

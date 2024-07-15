@@ -63,12 +63,12 @@ if __name__ == "__main__":
     execution:bool = True 
     sweetSpot:bool = 0      # If true, only support one one qubit
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_element = {
         "q0":{  "bare" :{"ro_amp":0.15,"ro_atte":10,"window_shift":0},
-                "dress":{"ro_amp":0.15,"ro_atte":40,"window_shift":9e6}},
-        "q3":{  "bare" :{"ro_amp":0.15,"ro_atte":10,"window_shift":0},
-                "dress":{"ro_amp":0.2,"ro_atte":36,"window_shift":4e6}},
+                "dress":{"ro_amp":0.1,"ro_atte":40,"window_shift":0e6}},
+        "q1":{  "bare" :{"ro_amp":0.15,"ro_atte":10,"window_shift":0},
+                "dress":{"ro_amp":0.1,"ro_atte":40,"window_shift":0e6}},
     }
     
 

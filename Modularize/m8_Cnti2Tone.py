@@ -135,7 +135,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
             QD_agent.Fluxmanager.save_tuneawayBias_for('manual',specific_qubits,want_bias)
         Fctrl[specific_qubits](want_bias) 
-        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=100,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
         Fctrl[specific_qubits](0.0)
         cluster.reset() # *** important
         if XYL != 0:
@@ -160,13 +160,13 @@ if __name__ == "__main__":
 
     """ Fill in """
     execution:bool = True
-    chip_info_restore:bool = 1
+    chip_info_restore:bool = 0
     update:bool = 1
     #
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.74e9],"xyl_guess":[0.1],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q0":{"xyf_guess":[3.4e9],"xyl_guess":[0.1],"g_guess":27e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = []
 
