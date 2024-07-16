@@ -96,8 +96,25 @@ if __name__ == '__main__':
     # amp = array(sqrt(I**2+Q**2))
     # print(amp.shape)
 
-    x = {"a":{"x":1}}
-    y = {"b":{"y":2}}
-    print(y|x)
+    # x = {"a":{"x":1}}
+    # y = {"b":{"y":2}}
+    # print(y|x)
+    from qcat.analysis.resonator.photon_dep.res_data import *
+    file = '/Users/ratiswu/Downloads/power_dependence_data1.mat'
+    from scipy.io import loadmat
+    RT_atte = 0
 
+    a = loadmat(file)
+    I, Q = array(a['ZZI']), array(a['ZZQ'])
+    power = array(a['x']).reshape(-1)
+    freq = array(a['y']).reshape(-1)
+    resonator = PhotonDepResonator('q_test')
+    for power_idx, amp in enumerate(power):
+        resonator.import_array(freq, I[power_idx]+1j*Q[power_idx], amp-RT_atte)
+    result = resonator.refined_analysis(os.path.split(file)[0])
+    
+    
+    
+    
+    
     
