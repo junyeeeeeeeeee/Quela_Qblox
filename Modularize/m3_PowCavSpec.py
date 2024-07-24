@@ -106,9 +106,9 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":20}
+        "q4": {"ro_atte":20},
     }
 
 

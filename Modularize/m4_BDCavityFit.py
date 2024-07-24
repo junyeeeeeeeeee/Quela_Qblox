@@ -51,17 +51,17 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
         # "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":5e6}},
+        # "q1":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
                 # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
-        "q1":{  #"bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
         # "q2":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":2e6}},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
         # "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":0e6}},
-        # "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":3e6}},
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
+        "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
+                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
     }
-    cp_ctrl = {"c0":-0.05,"c1":-0.075,"c2":0,"c3":0.1,}
+    cp_ctrl = {"c0":0,"c1":0,"c2":0,"c3":0,}
 
     """ Optional paras"""
     half_ro_freq_window_Hz = 3e6

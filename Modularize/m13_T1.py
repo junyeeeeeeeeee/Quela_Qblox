@@ -100,9 +100,11 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         
         every_start = time.time()
         slightly_print(f"The {ith}-th T1:")
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        for i in Fctrl:
+            Fctrl[i](QD_agent.Fluxmanager.get_proper_zbiasFor(i)) 
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
-        Fctrl[specific_qubits](0.0)
+        for i in Fctrl:
+            Fctrl[specific_qubits](0.0)
         cluster.reset()
         this_t1_us = T1_hist[specific_qubits]
         slightly_print(f"T1: {this_t1_us} µs")
@@ -126,9 +128,10 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q1":{"evoT":120e-6,"histo_counts":1}
+        "q3":{"evoT":40e-6,"histo_counts":1}
     }
     couplers = ['c0','c1','c2','c3']
+    pts = 1000
 
     """ Iterations """
     for qubit in ro_elements:
@@ -145,7 +148,7 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             evoT = ro_elements[qubit]["evoT"]
 
-            T1_results, this_t1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,run=execution,ith=ith_histo)
+            T1_results, this_t1_us = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=evoT,pts=pts,run=execution,ith=ith_histo)
             t1_us_rec.append(this_t1_us)
             
             """ Close """

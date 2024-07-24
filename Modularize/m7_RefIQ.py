@@ -9,12 +9,17 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview, Single_shot_fit_plot
 
+from numpy import array
+
 def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',Experi_info:dict={},want_state:str='g',ro_amp_scaling:float=1):
     print("Single shot start")
     sche_func = Qubit_SS_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     qubit_info.measure.pulse_amp(ro_amp_scaling*float(qubit_info.measure.pulse_amp()))
+    
+    rof = QD_agent.Fluxmanager.sin_for_cav(q,array([QD_agent.Fluxmanager.get_proper_zbiasFor(q)]))[0]
+    QD_agent.quantum_device.get_element(q).clock_freqs.readout(rof)
 
     # qubit_info.clock_freqs.readout(5.7225e9)
     if want_state == 'g':
@@ -62,11 +67,12 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
 def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=7000):
 
     if run:
-
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)))
+        for i in Fctrl:
+            Fctrl[i](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=i)))
 
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=shots_num,ro_amp_scaling=ro_amp_adj)
-        Fctrl[specific_qubits](0.0)
+        for i in Fctrl:
+            Fctrl[i](0.0)
         cluster.reset()
         try :
             I_ref, Q_ref= analysis_result[specific_qubits]['fit_pack'][0],analysis_result[specific_qubits]['fit_pack'][1]
@@ -87,17 +93,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = {#'q0':{"ro_amp_factor":1},
-                   'q1':{"ro_amp_factor":1},
+    ro_elements = {'q4':{"ro_amp_factor":1},
                    }
     couplers = ["c0","c1","c2","c3",]
-
 
     for qubit in ro_elements:
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-        
+        QD_agent.Fluxmanager.press_offsweetspot_button('q2',True)
+        QD_agent.Fluxmanager.save_tuneawayBias_for('manual','q2',0.3)
 
         """ Running """
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))

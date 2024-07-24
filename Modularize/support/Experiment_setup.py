@@ -405,14 +405,13 @@ Hcfg_dr3 = {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
         },
-        # "clusterdr3_module6": {
-        #     "instrument_type": "QCM",
-        #     "real_output_0": {"portclock_configs": [{"port": "q5:fl", "clock": "cl0.baseband"}]},
-        #     "real_output_1": {"portclock_configs": [{"port": "q6:fl", "clock": "cl0.baseband"}]},
-        #     "real_output_2": {"portclock_configs": [{"port": "q7:fl", "clock": "cl0.baseband"}]},
-        #     "real_output_3": {"portclock_configs": [{"port": "q8:fl", "clock": "cl0.baseband"}]},
-
-        # },
+        "clusterdr3_module6": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "c0:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "c1:fl", "clock": "cl0.baseband"}]},
+            "real_output_2": {"portclock_configs": [{"port": "c2:fl", "clock": "cl0.baseband"}]},
+            "real_output_3": {"portclock_configs": [{"port": "c3:fl", "clock": "cl0.baseband"}]},
+        },
         # ============ READOUT ============#
         "clusterdr3_module18": {
             "instrument_type": "QRM_RF",

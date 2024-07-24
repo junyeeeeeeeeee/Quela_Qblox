@@ -1,5 +1,5 @@
 import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from qblox_instruments import Cluster
 from numpy import mean, array, arange, std, linspace
 from utils.tutorial_utils import show_args
@@ -138,15 +138,15 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 0
     prepare_excited:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":120e-6,"histo_counts":2}
+        "q4":{"evoT":40e-6,"histo_counts":2}
     }
-    couplers = ['c0']
+    couplers = ['c0','c1','c2','c3']
 
     """ Optional paras """
     flux_span_period_factor = 2 # flux axis = [sweet-period/flux_span_period_factor, sweet+period/flux_span_period_factor]
-    flux_data_points = 20
+    flux_data_points = 10
     evotime_data_points = 101
     
     

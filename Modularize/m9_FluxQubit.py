@@ -143,7 +143,8 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
     partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/span_priod_factor
 
     if run:
-        Fctrl[specific_qubits](center)
+        for i in Fctrl:
+            Fctrl[i](QD_agent.Fluxmanager.get_proper_zbiasFor(i)) 
         results, nc_path, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=-partial_period+z_shifter,Z_points=zpts,f_points=fpts,Z_amp_end=partial_period+z_shifter,q=specific_qubits,run=True,get_data_path=True,xyf_span_Hz=f_sapn_Hz)
         reset_offset(Fctrl)
         if trustable:
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0']
+    ro_elements = ['q4']
     couplers = ["c0",'c1','c2','c3']
     z_shifter = 0 # V
 

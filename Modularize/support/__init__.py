@@ -59,8 +59,9 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
         cluster_ip 
-        cfg, pth = {}, QuantumDevice_path 
+        from Modularize.support.Experiment_setup import hcfg_map
         dr_loc = get_dr_loca(QuantumDevice_path)
+        cfg, pth = hcfg_map[dr_loc.lower()], QuantumDevice_path 
         cluster_ip = ip_register[dr_loc.lower()]
     else:
         raise KeyError("The given mode can not be recognized!")
@@ -90,6 +91,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         Qmanager.refresh_log("new-born!")
     else:
         Qmanager.QD_loader()
+        Qmanager.quantum_device.hardware_config(cfg)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     bias_controller = get_FluxController(cluster,ip)

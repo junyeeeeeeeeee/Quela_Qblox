@@ -122,14 +122,22 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
         for XYF in guess_fq:
             ori_data = []
             for XYL in xyAmp_guess:
-                want_bias = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)-V_away_from
+                for i in Fctrl:
+                    Fctrl[i](QD_agent.Fluxmanager.get_proper_zbiasFor(i)) 
+                
+                rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)]))[0]
+                QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
+                
                 if V_away_from != 0:
+                    want_bias = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)-V_away_from
                     rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
                     QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
                     QD_agent.Fluxmanager.save_tuneawayBias_for('manual',specific_qubits,want_bias)
-                Fctrl[specific_qubits](want_bias) 
-                QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=50,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
-                Fctrl[specific_qubits](0.0)
+                    Fctrl[specific_qubits](want_bias)
+
+                QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=1000,n_avg=500,run=True,ref_IQ=QD_agent.refIQ[specific_qubits]) # 
+                for i in Fctrl:
+                    Fctrl[i](0.0)
                 cluster.reset() # *** important
                 if XYL != 0:
                     twotone_comp_plot(QS_results[specific_qubits], ori_data, True)
@@ -161,8 +169,11 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr3","last_ip":"13"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[4.47e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0}, # g you can try a single value about 90e6 for a 5Q4C chip.
-        "q1":{"xyf_guess":[4.05e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0},
+        # "q0":{"xyf_guess":[4.47e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0}, # g you can try a single value about 90e6 for a 5Q4C chip.
+        # "q1":{"xyf_guess":[4.2e9],"xyl_guess":[0.02],"g_guess":0e6, "tune_bias":0},
+        # "q2":{"xyf_guess":[3.6e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0},
+        # "q3":{"xyf_guess":[4.3e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0},
+        "q4":{"xyf_guess":[4.3e9],"xyl_guess":[0.01],"g_guess":0e6, "tune_bias":0},
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = ["c0","c1","c2","c3",]
     
@@ -172,6 +183,8 @@ if __name__ == "__main__":
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         chip_info = cds.Chip_file(QD_agent=QD_agent)
+        QD_agent.Fluxmanager.press_offsweetspot_button('q2',True)
+        QD_agent.Fluxmanager.save_tuneawayBias_for('manual','q2',0.3)
 
         """ Running """
         tt_results = {}
@@ -183,7 +196,17 @@ if __name__ == "__main__":
         for xyf in ro_elements[qubit]["xyf_guess"]:
             g = 48e6 if ro_elements[qubit]["g_guess"] == 0 else ro_elements[qubit]["g_guess"]
 
-            tt_results[qubit] = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,xyf_guess=xyf,xyAmp_guess=ro_elements[qubit]["xyl_guess"],run=execution,guess_g=g,xy_if=100e6,xyf_span=500e6,V_away_from=tune_bias)
+            tt_results[qubit] = conti2tone_executor(QD_agent,
+                                                    meas_ctrl,
+                                                    cluster,
+                                                    specific_qubits=qubit,
+                                                    xyf_guess=xyf,
+                                                    xyAmp_guess=ro_elements[qubit]["xyl_guess"],
+                                                    run=execution,
+                                                    guess_g=g,
+                                                    xy_if=100e6,
+                                                    xyf_span=500e6,
+                                                    V_away_from=tune_bias)
 
             if execution and ro_elements[qubit]["xyl_guess"][0] != 0:
                 print(f'update xyl={ro_elements[qubit]["xyl_guess"][0]}')

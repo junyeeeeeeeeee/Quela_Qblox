@@ -117,9 +117,11 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        for i in Fctrl:
+            Fctrl[i](QD_agent.Fluxmanager.get_proper_zbiasFor(i)) 
         Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts)
-        Fctrl[specific_qubits](0.0)
+        for i in Fctrl:
+            Fctrl[i](0.0) 
         cluster.reset()
         if Rabi_results == {}:
             print(f"Rabi Osci error qubit: {specific_qubits}")
@@ -142,11 +144,12 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0']
+    ro_elements = ['q4']
     couplers = ["c0",'c1','c2','c3']
 
     pi_duration=20e-9
     pi_amp_max=0.5
+    pts=1000
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -158,7 +161,7 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,pts=pts)
         cluster.reset()
     
         """ Storing """

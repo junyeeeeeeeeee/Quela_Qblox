@@ -698,7 +698,6 @@ def Zgate_T1_sche(
         
     return sched
 
-
 def Ramsey_sche(
     q:str,
     pi_amp: dict,
@@ -715,8 +714,6 @@ def Ramsey_sche(
     sched = Schedule("Ramsey", repetitions=repetitions)
     
     pi_Du= pi_dura
-
-    
    
     for acq_idx, freeDu in enumerate(freeduration):
         
@@ -732,6 +729,50 @@ def Ramsey_sche(
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def Ramsey_echo_sche(
+    q:str,
+    excite_q:str,
+    pi_amp: dict,
+    excite_pi_amp: dict,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    zz:int=0,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+   
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        first_pi_2 = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        pi = X_pi_p(sched,pi_amp,q,pi_Du,first_pi_2,freeDu=freeDu*0.5)
+
+        if zz==1:
+            X_pi_p(sched,excite_pi_amp,excite_q,pi_Du,first_pi_2,freeDu=freeDu*0.5)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,pi,freeDu=freeDu*0.5)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
@@ -849,6 +890,103 @@ def Qubit_SS_sche(
     
     Integration(sched,q,R_inte_delay,R_integration,spec_pulse,0,single_shot=True,get_trace=False,trace_recordlength=0)
 
+    return sched
+
+def Ramsey_echo_coupler_sche(
+    q:str,
+    excite_q:str,
+    coupler:str,
+    flux_amp:any,
+    z_delay:float,
+    pi_amp: dict,
+    excite_pi_amp: dict,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    zz:int=0,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+   
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        first_pi_2 = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        first_z = Z(sched,flux_amp,freeDu*0.5,coupler,first_pi_2,freeDu=z_delay)
+        
+        pi = X_pi_p(sched,pi_amp,q,pi_Du,first_z,freeDu=z_delay)
+        
+        if zz==1:
+            X_pi_p(sched,excite_pi_amp,excite_q,pi_Du,first_z,freeDu=z_delay)
+
+        second_z = Z(sched,flux_amp,freeDu*0.5,coupler,pi,freeDu=z_delay)  
+        
+        second_pi_2 = X_pi_2_p(sched,pi_amp,q,pi_Du,second_z,freeDu=z_delay)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def Zz_Interaction_coupler(
+    q:str,
+    excite_qubit:str,
+    coupler:str,
+    pi_amp: dict,
+    excite_pi_amp: dict,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    excite_pi_dura:float=20e-9,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+
+    excite_pi_Du= excite_pi_dura
+   
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+
+        sched.add(Reset(excite_qubit))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        X_pi_p(sched,excite_pi_amp,excite_qubit,excite_pi_Du,spec_pulse,freeDu=freeDu+pi_Du*2)
+
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
     return sched
 
 # TODO:

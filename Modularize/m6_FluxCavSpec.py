@@ -143,8 +143,8 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q0']
-    cp_ctrl = {"c0":-0.12,"c1":-0.13,"c2":0,"c3":0.1,}
+    ro_elements = ['q4']
+    cp_ctrl = {"c0":-0.03,"c1":-0.03,"c2":-0.07,"c3":-0.06,}
 
     """ Optional paras """
     freq_half_window_Hz = 8e6
