@@ -120,8 +120,8 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         S21 = ds[f"y{2*idx}"] * cos(
                 deg2rad(ds[f"y{2*idx+1}"])
             ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
-        freq = ro_elements[q]
-        res_er = ResonatorData(freq=ro_elements[q],zdata=array(S21))
+        freq = array(ro_elements[q])
+        res_er = ResonatorData(freq=array(ro_elements[q]),zdata=array(S21))
         result, data2plot, fit2plot = res_er.fit()
         fig, ax = plt.subplots()
         ax:plt.Axes        
@@ -163,15 +163,16 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'drke', 'n','20240715_Ke', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240716_dr4CavScalinQ', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 10 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 18 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=6.64e9,
-        q1=6.7218e9,
+        q0=5.2176e9,
+        q1=5.3159e9,
+        q2=5.4023e9
     )
 
     """ Optional paras """
@@ -185,14 +186,14 @@ if __name__ == "__main__":
                                                         mode=mode,
                                                         chip_name=chip_name,
                                                         chip_type=chip_type,
-                                                        qubit_number=2,
+                                                        qubit_number=3,
                                                         coupler_number=0)
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     # Set the system attenuations
     if QD_path == '': QD_RO_init(QD_agent,ro_bare)
-    init_system_atte(QD_agent.quantum_device,list(['q0','q1']),ro_out_att=init_RO_DigiAtte)
+    init_system_atte(QD_agent.quantum_device,list(ro_bare.keys()),ro_out_att=init_RO_DigiAtte)
     
     """ Measurements """
     CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points)

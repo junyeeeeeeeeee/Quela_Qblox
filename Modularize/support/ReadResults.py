@@ -100,7 +100,7 @@ if __name__ == '__main__':
     # y = {"b":{"y":2}}
     # print(y|x)
     from qcat.analysis.resonator.photon_dep.res_data import *
-    file = '/Users/ratiswu/Downloads/power_dependence_data1.mat'
+    file = 'Modularize/Meas_raw/2024_7_16/Multiplex_CavityQuality_RTatte80dB_H17M8S0/DR4q2_CavitySpectro_H17M9S1.nc'
     from scipy.io import loadmat
     RT_atte = 0
 
@@ -112,6 +112,31 @@ if __name__ == '__main__':
     for power_idx, amp in enumerate(power):
         resonator.import_array(freq, I[power_idx]+1j*Q[power_idx], amp-RT_atte)
     result = resonator.refined_analysis(os.path.split(file)[0])
+    
+    # csv = "/Users/ratiswu/Downloads/meas_res.csv"
+    # import pandas as pd
+
+    # ary = array(pd.read_csv(csv,sep=' '))
+    # x = ["q0", "q1", "q2", "q3", "q4"]
+    # dic = {}
+    # for item in ary:
+    #     val = item[0].split(",")
+    #     dic[val[0]] = []
+    #     for a_item in val[1:]:
+    #         dic[val[0]].append(a_item)
+    # fig, ax = plt.subplots(figsize=(8,5),dpi=120)
+    # ax:plt.Axes
+    # ax.errorbar(x, array(dic['T2']).astype(float), array(dic['T2_err']).astype(float),fmt='+-')
+    # ax.set_ylim(0,20)
+    # ax.xaxis.set_tick_params(labelsize=26)
+    # ax.yaxis.set_tick_params(labelsize=26)
+    # ax.set_ylabel("µs",fontsize=26)
+    # ax.set_title("T2",fontsize=26)
+    # plt.grid()
+    # plt.tight_layout()
+    # # plt.show()
+    # plt.savefig("/Users/ratiswu/Downloads/T2_distri.png")
+    # plt.close()
     
     
     

@@ -363,7 +363,10 @@ class Data_manager:
         if not os.path.exists(multiplex_ro_dir):
             os.mkdir(multiplex_ro_dir)
         parent_dir = multiplex_ro_dir if specific_dataFolder =='' else specific_dataFolder
-        dr_loc = QD_agent.Identity.split("#")[0]
+        if QD_agent != None:
+            dr_loc = QD_agent.Identity.split("#")[0]
+        else:
+            dr_loc = "ARBi"
         if exp_type.lower() == 'cs':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_MultiplexCS_{exp_timeLabel}.png")
         else:
