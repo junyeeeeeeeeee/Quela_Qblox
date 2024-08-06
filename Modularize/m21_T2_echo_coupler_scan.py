@@ -222,21 +222,23 @@ def ramsey_coupler_executor(QD_agent:QDmanager,
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = 1
+    execution:bool = 0
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
         "q4":{"detune":0e6,"evoT":16e-6,"histo_counts":1},
         # "q1":{"detune":0.8e6,"evoT":50e-6,"histo_counts":1},
     }
-    target_coupler = 'q4'
-    target_bias_span = 0.2
-    target_center = 0
-    target_pts = 40
     couplers = ['c0','c1','c2','c3']
     pts = 100
-    zz_on = 0
+    
+    target_coupler = 'q4'
+    target_z_amp = 0.2
+    target_center = 0
+    target_pts = 40
     z_delay = 100e-9
+
+    zz_on = 0
     excite_qubit = 'q3'
 
 
@@ -263,7 +265,7 @@ if __name__ == "__main__":
                                                                                         meas_ctrl,
                                                                                         target_coupler=target_coupler,
                                                                                         flux_center=target_center,
-                                                                                        flux_span=target_bias_span,
+                                                                                        flux_span=target_z_amp,
                                                                                         flux_pts=target_pts,
                                                                                         z_delay=z_delay,
                                                                                         Fctrl=Fctrl,

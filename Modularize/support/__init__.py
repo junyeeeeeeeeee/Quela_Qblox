@@ -20,7 +20,6 @@ from utils.tutorial_utils import (
 )
 
 from Modularize.support.QDmanager import QDmanager, Data_manager
-import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
 
 from numpy import asarray, ndarray, real

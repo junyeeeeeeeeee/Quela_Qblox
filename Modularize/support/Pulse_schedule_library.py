@@ -1,4 +1,5 @@
-
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 import quantify_core.data.handling as dh
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -146,6 +147,11 @@ def Single_shot_ref_fit_analysis(data:tuple):
     fitting= gauss2d_func(X,Y,c_I_fit,c_Q_fit,sigma_fit,A_fit)
     #print ('Total prob. =',np.sum(hist)*((max(xedges)-min(xedges))/bins*(max(yedges)-min(yedges))/bins))
     return dict(data=[I,Q],data_hist=hist,coords=[X,Y],fitting=fitting,fit_pack=fit_pack)
+
+def Cryoscope_data(data:np.ndarray,Z_Du:np.ndarray):
+    print(f"T2 Z_Du: {min(Z_Du)}~{max(Z_Du)}")
+    return xr.Dataset(data_vars=dict(data=(['Z_Du'],data)),coords=dict(Z_Du=(['Z_Du'],Z_Du)),attrs=dict(exper="Cryoscope"))
+
 
 def Qubit_state_single_shot_fit_analysis(data:dict, T1:float,tau:float):
     Ig_data,Qg_data,Ie_data,Qe_data= np.array(data['g'][0]), np.array(data['g'][1]) ,np.array(data['e'][0]), np.array(data['e'][1]) 
@@ -322,6 +328,11 @@ def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
+from Modularize.support.custumized_pulse_library import SinPulse
+def X_sin(sche,amp,q,Du,ref_pulse_sche,freeDu):
+    delay_c= -Du-freeDu
+    return sche.add(SinPulse(amp=amp, duration= Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+
 
 def Readout(sche,q,R_amp,R_duration,powerDep=False):
     if powerDep is True:
@@ -366,7 +377,6 @@ def pulse_preview(quantum_device:QuantumDevice,sche_func:Schedule, sche_kwargs:d
         sche_func(**sche_kwargs)
     )
     comp_sched.plot_pulse_diagram(plot_backend="plotly",**kwargs).show() 
-    
 #%% schedule function
 
 def One_tone_sche(
@@ -527,6 +537,53 @@ def Rabi_sche(
     
     return sched
 
+def Rabi_sche_sin(
+    q:str,
+    XY_amp: any,
+    XY_duration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    XY_theta:str,
+    Rabi_type:str,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule(Rabi_type,repetitions=repetitions)
+    amps = np.asarray(XY_amp)
+    amps = amps.reshape(amps.shape or (1,))
+    durations = np.asarray(XY_duration)
+    durations = durations.reshape(durations.shape or (1,))
+    
+    if Rabi_type=='TimeRabi':
+       Para_XY_amp= amps*np.ones(np.shape(durations))
+       Para_XY_Du= durations
+       
+    elif Rabi_type=='PowerRabi':
+        Para_XY_amp =amps
+        Para_XY_Du = XY_duration*np.ones(np.shape(amps))   
+    else: raise KeyError ('Typing error: Rabi_type')
+    
+    
+    
+    for acq_idx, (amp, duration) in enumerate(zip(Para_XY_amp,Para_XY_Du)):
+        
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        if XY_theta== 'X_theta':
+            X_sin(sched,amp,q,duration,spec_pulse,freeDu=0)
+        elif XY_theta== 'Y_theta':
+            Y_theta(sched,amp,duration,q,spec_pulse,freeDu=0)
+        else: raise KeyError ('Typing error: XY_theta')
+       
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+    
+    return sched
 
 def Zgate_Rabi_sche(
     q:str,
@@ -725,6 +782,47 @@ def Ramsey_sche(
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def z_test_Ramsey_sche(
+    q:str,
+    pi_amp: dict,
+    target_z:str,
+    target_z_amp:float,
+    target_z_time:float,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+   
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        
+        Z(sched,target_z_amp,target_z_time,target_z,spec_pulse,freeDu=freeDu+pi_Du*2+500e-9)
         
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
@@ -984,6 +1082,48 @@ def Zz_Interaction_coupler(
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=freeDu+pi_Du)
         
         X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def Cryoscope_ramsey_sche(
+    q:str,
+    pi_amp: dict,
+    target_z:str,
+    target_z_amp:float,
+    set_T2_time:float,
+    z_gap:float,
+    New_fxy:float,
+    z_time:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+   
+    for acq_idx, Z_Du in enumerate(z_time):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        first_x_2 = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+
+        first_z = Z(sched,target_z_amp,Z_Du,target_z,first_x_2,freeDu=set_T2_time-Z_Du+z_gap)
+        
+        X_pi_2_p(sched,pi_amp,q,pi_Du,first_z,freeDu=z_gap)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
@@ -1467,6 +1607,28 @@ def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
     ax.set_title(title)
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
+    fig.tight_layout()
+    plt.show()
+
+def Just_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any):
+    if P_rescale is not True:
+        Nor_f=1/1000
+        y_label= 'Contrast'+' [mV]'
+    elif P_rescale is True:
+        Nor_f= Dis
+        y_label= r"$P_{1}\ $"
+    else: raise KeyError ('P_rescale is not bool') 
+
+    title= 'Cryoscope'
+    x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+    x= results.coords['Z_Du']*1e6
+    
+    fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
+
+    ax.plot(x,results.data_vars['data']/Nor_f,'-', color="blue",label=r"$data$", alpha=0.5, ms=4)   
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    ax.set_ylabel(y_label)
     fig.tight_layout()
     plt.show()
 

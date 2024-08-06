@@ -10,11 +10,24 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from Modularize.support.Pulse_schedule_library import Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
+from Modularize.support.Pulse_schedule_library import Rabi_sche_sin, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
 
-def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_duration:float=20e-9, IF:int=150e6,n_avg:int=300,points:int=100,run:bool=True,XY_theta:str='X_theta',Rabi_type:str='PowerRabi',q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+def Rabi(QD_agent:QDmanager,
+         meas_ctrl:MeasurementControl,
+         XY_amp:float=0.5, 
+         XY_duration:float=20e-9, 
+         IF:int=150e6,
+         n_avg:int=300,
+         points:int=100,
+         run:bool=True,
+         XY_theta:str='X_theta',
+         Rabi_type:str='PowerRabi',
+         q:str='q1',
+         Experi_info:dict={},
+         ref_IQ:list=[0,0]):
+    
     analysis_result = {}
-    sche_func= Rabi_sche
+    sche_func= Rabi_sche_sin
     qubit_info = QD_agent.quantum_device.get_element(q)
     LO= qubit_info.clock_freqs.f01()+IF
 
