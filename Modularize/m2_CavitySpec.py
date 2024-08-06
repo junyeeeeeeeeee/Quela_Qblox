@@ -99,11 +99,11 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
 def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
         qubit = QD_agent.quantum_device.get_element(target_q)
-        qubit.reset.duration(150e-6)
+        qubit.reset.duration(250e-6)
         qubit.measure.acq_delay(280e-9)
         qubit.measure.pulse_amp(0.15)
-        qubit.measure.pulse_duration(10e-6)
-        qubit.measure.integration_time(10e-6-4e-9)
+        qubit.measure.pulse_duration(100e-6)
+        qubit.measure.integration_time(100e-6-4e-9)
 
 
 def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
@@ -127,7 +127,7 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         ax:plt.Axes        
         ax.plot(freq,data2plot)
         ax.plot(freq,fit2plot,c="red",label='fitting')
-        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,3)} GHz")
+        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
         ax.legend()
         if save_pic:
             Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
@@ -163,16 +163,19 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240716_dr4CavScalinQ', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240730_WJcircumon', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 18 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 10 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=5.2176e9,
-        q1=5.3159e9,
-        q2=5.4023e9
+        # q0=5.5113e9,
+        # q1=6.0047e9,
+        # q2=6.0587e9,
+        q0=5.9136e9,
+        q1=5.9577e9,
+        q2=6.1088e9
     )
 
     """ Optional paras """
@@ -186,7 +189,7 @@ if __name__ == "__main__":
                                                         mode=mode,
                                                         chip_name=chip_name,
                                                         chip_type=chip_type,
-                                                        qubit_number=3,
+                                                        qubit_number=len(list(ro_bare.keys())),
                                                         coupler_number=0)
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)

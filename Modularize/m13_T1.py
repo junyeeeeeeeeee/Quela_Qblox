@@ -60,7 +60,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         I,Q= dataset_to_array(dataset=T1_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         if data_folder == '':
-            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=14e-6)
+            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=1e-6)
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
         else:
             data_fit=[]
@@ -100,9 +100,9 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         
         every_start = time.time()
         slightly_print(f"The {ith}-th T1:")
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        # Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts)
-        Fctrl[specific_qubits](0.0)
+        # Fctrl[specific_qubits](0.0)
         cluster.reset()
         this_t1_us = T1_hist[specific_qubits]
         slightly_print(f"T1: {this_t1_us} µs")
@@ -124,17 +124,12 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"evoT":150e-6,"histo_counts":1},
+        "q0":{"evoT":25e-6,"histo_counts":1},
     }
     couplers = []
-    # q0 22.3 +/- 2.2
-    # q1 22.9 +/- 1.2 
-    # q2 23.4 +/- 2.1 ## z line broken
-    # q3 24.2 +/- 1.5
-    # q4 21.6 +/- 1.5 ## large flux quanta
-    
+  
 
     """ Iterations """
     for qubit in ro_elements:

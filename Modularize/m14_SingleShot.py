@@ -25,6 +25,7 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
+    
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
     if ro_amp_factor != 1:
@@ -90,9 +91,9 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     return analysis_result, nc_path
 
 
-def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=5000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False):
+def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=100000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False):
 
-    Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
+    # Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
 
     SS_result, nc= Qubit_state_single_shot(QD_agent,
                 shots=shots,
@@ -102,7 +103,7 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
                 ro_amp_factor=roAmp_modifier,
                 exp_idx=exp_label,
                 plot=plot)
-    Fctrl[target_q](0.0)
+    # Fctrl[target_q](0.0)
     cluster.reset()
     
     
@@ -113,17 +114,17 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
         else:
             effT_mk, snr_dB = 0 , 0
     else:
-        effT_mk, snr_dB = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
+        thermal_p, effT_mk, snr_dB = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
 
-    return effT_mk, snr_dB
+    return thermal_p, effT_mk, snr_dB
 
 if __name__ == '__main__':
     
 
     """ Fill in """
     execute:bool = True
-    repeat:int = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    repeat:int = 50
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {'q0':{"roAmp_factor":1}}
     couplers = []
 
@@ -133,7 +134,7 @@ if __name__ == '__main__':
     
 
     """ Iteration """
-    snr_rec, effT_rec = {}, {}
+    snr_rec, effT_rec, thermal_pop = {}, {}, {}
     for qubit in ro_elements:
         for i in range(repeat):
             start_time = time.time()
@@ -148,13 +149,14 @@ if __name__ == '__main__':
             """ Running """
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             if i == 0:
-                snr_rec[qubit], effT_rec[qubit] = [], []
+                snr_rec[qubit], effT_rec[qubit], thermal_pop[qubit] = [], [], []
             init_system_atte(QD_agent.quantum_device,list([qubit]),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
             if ro_amp_scaling != 1 and repeat > 1 : raise ValueError("Check the RO_amp_factor should be 1 when you want to repeat it!")
             info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling,plot=True if repeat ==1 else False,exp_label=i)
-            snr_rec[qubit].append(info[1])
-            effT_rec[qubit].append(info[0])
+            snr_rec[qubit].append(info[2])
+            effT_rec[qubit].append(info[1])
+            thermal_pop[qubit].append(info[0]*100)
             if ro_amp_scaling !=1 or ro_atte_degrade_dB != 0:
                 keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")
             else:
@@ -174,5 +176,9 @@ if __name__ == '__main__':
     for qubit in effT_rec:
         highlight_print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
         Data_manager().save_histo_pic(QD_agent,effT_rec,qubit,mode="ss")
+        Data_manager().save_histo_pic(QD_agent,thermal_pop,qubit,mode="pop")
+        
+        
+
         
     

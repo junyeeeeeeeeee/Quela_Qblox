@@ -39,7 +39,7 @@ def fillin_PDans(QD_agent:QDmanager,ans:dict):
     QD_agent.refresh_log("PD answer stored!")
     QD_agent.QD_keeper()
 
-def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_span_Hz:float, fpts:int):
+def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span_Hz:float, fpts:int):
     amps = {}
     ro_elements = {}
     PD_ans = {}
@@ -47,13 +47,13 @@ def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_span_Hz:float, fpt
     for q in qubits:
         if state in list(qubits[q].keys()):
             amps[q] = qubits[q][state]['ro_amp']
-            QD_agent.Notewriter.save_DigiAtte_For(qubits[q][state]["ro_atte"],q,'ro')
+            
             rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             original_rof[q] = rof
             ro_elements[q] = linspace(rof+qubits[q][state]["window_shift"]-ro_span_Hz, rof+qubits[q][state]["window_shift"]+ro_span_Hz, fpts)
-            init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'))
+            
         PD_ans[q] = {"dressF_Hz":"","dressP":"","bareF_Hz":"","ro_atte":""}
-
+    init_system_atte(QD_agent.quantum_device,list(qubits.keys()),ro_out_att=ro_atte[state])
     return ro_elements, amps, PD_ans, original_rof
 
 
@@ -63,18 +63,19 @@ if __name__ == "__main__":
     execution:bool = True 
     sweetSpot:bool = 0      # If true, only support one one qubit
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"drke","last_ip":"242"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_element = {
-        "q0":{  "bare" :{"ro_amp":0.15,"ro_atte":10,"window_shift":0},
-                "dress":{"ro_amp":0.1,"ro_atte":40,"window_shift":0e6}},
-        "q1":{  "bare" :{"ro_amp":0.15,"ro_atte":10,"window_shift":0},
-                "dress":{"ro_amp":0.1,"ro_atte":40,"window_shift":0e6}},
+        "q2":{  "bare" :{"ro_amp":0.3,"window_shift":0},
+                "dress":{"ro_amp":0.1,"window_shift":0e6}}, #12
+        # "q1":{  "bare" :{"ro_amp":0.15,"window_shift":0},
+        #         "dress":{"ro_amp":0.05,"window_shift":0e6}}, #42
     }
-    
+    ro_attes = {"dress":12, "bare":12}
 
     """ Optional paras"""
     half_ro_freq_window_Hz = 5e6
     freq_data_points = 200
+
 
     
    
@@ -84,7 +85,7 @@ if __name__ == "__main__":
         """ Preparations """ 
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-        ro_elements, amps, PD_ans, original_rof = BDC_waiter(QD_agent, state, ro_element, half_ro_freq_window_Hz, freq_data_points)
+        ro_elements, amps, PD_ans, original_rof = BDC_waiter(QD_agent, state, ro_element, ro_attes, half_ro_freq_window_Hz, freq_data_points)
         # Create or Load chip information
         chip_info = cds.Chip_file(QD_agent=QD_agent)
 
@@ -106,7 +107,7 @@ if __name__ == "__main__":
             else:
                 PD_ans[qubit]["dressF_Hz"] = CS_results[state][qubit]['fr']
                 PD_ans[qubit]["dressP"] = ro_element[qubit][state]["ro_amp"]
-                PD_ans[qubit]["ro_atte"] = ro_element[qubit][state]["ro_atte"]
+                PD_ans[qubit]["ro_atte"] = ro_attes[state]
 
 
         """ Storing """

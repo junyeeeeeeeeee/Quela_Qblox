@@ -14,6 +14,9 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
     sche_func = Qubit_SS_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    qubit_info.measure.pulse_duration(2e-6)
+    qubit_info.measure.integration_time(1.5e-6-4e-9)
+    qubit_info.reset.duration(150e-6)
     qubit_info.measure.pulse_amp(ro_amp_scaling*float(qubit_info.measure.pulse_amp()))
 
     # qubit_info.clock_freqs.readout(5.7225e9)
@@ -59,7 +62,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             show_args(Experi_info(q))
     return analysis_result
 
-def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=7000):
+def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=10000):
 
     if run:
 
@@ -86,8 +89,8 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"drke","last_ip":"242"}
-    ro_elements = {'q0':{"ro_amp_factor":0.7}}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = {'q1':{"ro_amp_factor":1}}
     couplers = []
 
 

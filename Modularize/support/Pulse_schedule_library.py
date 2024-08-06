@@ -789,8 +789,9 @@ def Ramsey_sche(
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
         first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
-        a_separate_free_Du = freeDu / echo_pi_num
+        
         if echo_pi_num != 0:
+            a_separate_free_Du = freeDu / echo_pi_num
             for pi_idx in range(echo_pi_num):
                 if pi_idx == 0 :
                     pi = X_pi_p(sched,pi_amp,q,pi_Du,first_half_pi,0.5*a_separate_free_Du)
@@ -1116,8 +1117,13 @@ def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
         ax.set_xlabel(f"{title} (µs)")
         plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} µs")
     else:
-        ax.set_xlabel(f"{title} (mK)")
-        plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} mK")
+        if title.lower() in ["thermalpop"]:
+            ax.set_xlabel(f"{title} (%)")
+            plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} %")
+        else:
+            ax.set_xlabel(f"{title} (mK)")
+            plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} mK")
+        
     plt.tight_layout()
     if save_path != '':
         fig.savefig(save_path)

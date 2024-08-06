@@ -353,6 +353,12 @@ class Data_manager:
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"eff_T",save_path=fig_path, show=show_fig)
+        elif mode.lower() in ["pop"] :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_thermalPOPhisto_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"ThermalPop",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         

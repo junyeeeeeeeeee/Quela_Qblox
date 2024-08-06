@@ -78,16 +78,17 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 if __name__ == '__main__':
     import os
     from numpy import moveaxis
-    # QD_agent = QDmanager('Modularize/QD_backup/2024_7_10/SumInfo_q4_dr1_11.pkl')
-    # QD_agent.QD_loader()
-    # qs = ['q4']
-    # for q in qs:
-    #     print(q,":")
-    #     qubit = QD_agent.quantum_device.get_element(q)
-    #     print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
-    #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
-    #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
-    #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
+    QD_agent = QDmanager('Modularize/QD_backup/2024_7_30/DR4_81_q1toq3_SumInfo.pkl')
+    QD_agent.QD_loader()
+    qs = ['q3']
+    for q in qs:
+        print(q,":")
+        qubit = QD_agent.quantum_device.get_element(q)
+        print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
+        print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
+        print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
+        print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
+        print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
     # ds =  dh.to_gridded_dataset(open_dataset("Modularize/Meas_raw/2024_7_11/DR1MultiQ_PowerCavity_H15M20S44.nc"))
     # S21 = ds.y0 * cos(
     #             deg2rad(ds.y1)
@@ -99,19 +100,19 @@ if __name__ == '__main__':
     # x = {"a":{"x":1}}
     # y = {"b":{"y":2}}
     # print(y|x)
-    from qcat.analysis.resonator.photon_dep.res_data import *
-    file = 'Modularize/Meas_raw/2024_7_16/Multiplex_CavityQuality_RTatte80dB_H17M8S0/DR4q2_CavitySpectro_H17M9S1.nc'
-    from scipy.io import loadmat
-    RT_atte = 0
+    # from qcat.analysis.resonator.photon_dep.res_data import *
+    # file = 'Modularize/Meas_raw/2024_7_16/Multiplex_CavityQuality_RTatte80dB_H17M8S0/DR4q2_CavitySpectro_H17M9S1.nc'
+    # from scipy.io import loadmat
+    # RT_atte = 0
 
-    a = loadmat(file)
-    I, Q = array(a['ZZI']), array(a['ZZQ'])
-    power = array(a['x']).reshape(-1)
-    freq = array(a['y']).reshape(-1)
-    resonator = PhotonDepResonator('q_test')
-    for power_idx, amp in enumerate(power):
-        resonator.import_array(freq, I[power_idx]+1j*Q[power_idx], amp-RT_atte)
-    result = resonator.refined_analysis(os.path.split(file)[0])
+    # a = loadmat(file)
+    # I, Q = array(a['ZZI']), array(a['ZZQ'])
+    # power = array(a['x']).reshape(-1)
+    # freq = array(a['y']).reshape(-1)
+    # resonator = PhotonDepResonator('q_test')
+    # for power_idx, amp in enumerate(power):
+    #     resonator.import_array(freq, I[power_idx]+1j*Q[power_idx], amp-RT_atte)
+    # result = resonator.refined_analysis(os.path.split(file)[0])
     
     # csv = "/Users/ratiswu/Downloads/meas_res.csv"
     # import pandas as pd

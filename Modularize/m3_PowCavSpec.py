@@ -125,8 +125,7 @@ def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict, rof_pos:dict={}):
         fig, ax = plt.subplots()
         ax:plt.Axes
         d = ax.pcolormesh(freq*1e-9, power, s21, shading='gouraud',cmap='RdBu')
-        if q in rof_pos:
-            ax.vlines(rof_pos[q]*1e-9,ymin=min(power),ymax=max(power),linestyles='--',colors='#FF00FF',label='window_shift_baseline')
+        ax.vlines(rof_pos[q]*1e-9,ymin=min(power),ymax=max(power),linestyles='--',colors='#FF00FF',label='window_shift_baseline')
         fig.colorbar(d, ax=ax)
         plt.xlabel("frequency (GHz)")
         plt.ylabel("Power (V)")
@@ -139,22 +138,26 @@ def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict, rof_pos:dict={}):
         plt.close()
 
 
-def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,qubits:dict,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False,fpts:int=30,ppts:int=30,avg_n:int=100):
+def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:dict,qubits:list,ro_atte:int,ro_span_Hz:float=3e6,max_power:float=0.7,run:bool=True,sweet_spot:bool=False,fpts:int=30,ppts:int=30,avg_n:int=10,dressHbare:bool=True):
     ro_elements = {}
     rof_baselines = {}
     for qb in qubits:
-        QD_agent.Notewriter.save_DigiAtte_For(qubits[qb]["ro_atte"],qb,'ro')
+        QD_agent.Notewriter.save_DigiAtte_For(ro_atte,qb,'ro')
         rof_baselines[qb] = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()
-        rof = rof_baselines[qb]-1e6
-        ro_elements[qb] = linspace(rof, rof+2*ro_span_Hz, fpts)
-        init_system_atte(QD_agent.quantum_device,list([qb]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qb,'ro'))
+        if dressHbare:
+            rof = rof_baselines[qb]-1e6
+            ro_elements[qb] = linspace(rof, rof+2*ro_span_Hz, fpts)
+        else:
+            rof = rof_baselines[qb]
+            ro_elements[qb] = linspace(rof-ro_span_Hz, rof+ro_span_Hz, fpts)
+    init_system_atte(QD_agent.quantum_device,qubits,ro_out_att=ro_atte)
+    
     if run:
         if sweet_spot:
             Fctrl[list(ro_elements.keys())[0]](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=list(ro_elements.keys())[0]))
         PD_ds = PowerDep_spec(QD_agent,meas_ctrl,ro_elements, ro_p_max=max_power, p_points=ppts, n_avg=avg_n, rof_marks=rof_baselines)
         if sweet_spot:
             Fctrl[list(ro_elements.keys())[0]](0.0)
-     
     else:
         PD_ds = PowerDep_spec(QD_agent,meas_ctrl,ro_elements,run=False,ro_p_max=max_power)
 
@@ -165,19 +168,18 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0   # if true, only one qubit should be in the ro_elements 
-    DRandIP = {"dr":"drke","last_ip":"242"}
-    ro_elements = {    # measurement target q from this dict 
-        "q0": {"ro_atte":36},
-        "q1": {"ro_atte":36}
-    }
-
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements =["q0","q1","q2"]     # measurement target q from this dict 
+    ro_atte_for_all:int= 10
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 5e6
+    half_ro_freq_window_Hz = 2e6
     freq_data_points = 60
     power_data_points = 30
 
+    """ in Case paras """
+    dress_higher_bare:bool = 0
 
 
     """ preparations """
@@ -186,7 +188,7 @@ if __name__ == "__main__":
 
 
     """ Running """
-    powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points)
+    powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare)
     cluster.reset()
     
 

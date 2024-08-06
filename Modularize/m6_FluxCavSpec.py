@@ -21,6 +21,12 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    qubit_info.measure.pulse_duration(100e-6)
+    qubit_info.measure.integration_time(100e-6-4e-9)
+    qubit_info.reset.duration(250e-6)
+
+    
+    # qubit_info.measure.pulse_amp(0.05)
     ro_f_center = qubit_info.clock_freqs.readout()
     # avoid frequency conflicts 
     from numpy import NaN
@@ -105,11 +111,11 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
 
-def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
+def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30,avg_n=20):
     
     if run:
         print(f"{specific_qubits} are under the measurement ...")
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts)[specific_qubits]
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts,n_avg=avg_n)[specific_qubits]
         if FD_results == {}:
             print(f"Flux dependence error qubit: {specific_qubits}")
         
@@ -125,16 +131,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"drke","last_ip":"242"}
-    ro_elements = ['q0']
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = ['q2']
     cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 1e6
-    flux_half_window_V  = 0.5
+    freq_half_window_Hz = 1.5e6
+    flux_half_window_V  = 0.1
     freq_data_points = 30
     flux_data_points = 40
-    freq_center_shift = 0e6 # freq axis shift
+    freq_center_shift = 0.5 # freq axis shift
 
     for qubit in ro_elements:
         """ Preparations """
