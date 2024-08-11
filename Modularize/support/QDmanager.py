@@ -4,7 +4,8 @@ from Modularize.support.FluxBiasDict import FluxBiasDict
 from Modularize.support.Notebook import Notebook
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
-
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 def ret_q(dict_a):
     x = []
     for i in dict_a:
@@ -251,6 +252,9 @@ class Data_manager:
 
     
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
+        """
+        If the arg `specific_dataFolder` was given, the raw nc will be saved into that given path. 
+        """
         exp_timeLabel = self.get_time_now()
         self.build_folder_today(self.raw_data_dir)
         parent_dir = self.raw_folder if specific_dataFolder =='' else specific_dataFolder
@@ -304,6 +308,27 @@ class Data_manager:
         if get_data_loc:
             return path
     
+    def save_2Qraw_data(self,QD_agent:QDmanager,ds:Dataset,qubits:list,label:str=0,exp_type:str='iswap', specific_dataFolder:str='', get_data_loc:bool=False):
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        parent_dir = self.raw_folder if specific_dataFolder =='' else specific_dataFolder
+        dr_loc = QD_agent.Identity.split("#")[0]
+        
+        operators = ""
+        for qORc in qubits:
+            operators += qORc
+
+        if exp_type.lower() == 'iswap':
+            path = os.path.join(parent_dir,f"{dr_loc}{operators}_iSwap_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        else:
+            path = None
+            raise KeyError(f"irrecognizable 2Q gate exp = {exp_type}")
+        
+        if get_data_loc:
+            return path
+        
+    
     def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
         exp_timeLabel = self.get_time_now()
@@ -319,9 +344,15 @@ class Data_manager:
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T1",save_path=fig_path, show=show_fig)
-        elif mode.lower() =="t2" :
+        elif mode.lower() =="t2*" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"T2*",save_path=fig_path, show=show_fig)
+        elif mode.lower() =="t2" :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2ehisto_{exp_timeLabel}.png")
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T2",save_path=fig_path, show=show_fig)
@@ -331,9 +362,33 @@ class Data_manager:
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"eff_T",save_path=fig_path, show=show_fig)
+        elif mode.lower() in ["pop"] :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_thermalPOPhisto_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"ThermalPop",save_path=fig_path, show=show_fig)
         else:
             raise KeyError("mode should be 'T1' or 'T2'!")
         
+    def save_multiplex_pics(self, QD_agent:QDmanager, qb:str, exp_type:str, fig:Figure, specific_dataFolder:str=''):
+        exp_timeLabel = self.get_time_now()
+        self.build_folder_today(self.raw_data_dir)
+        multiplex_ro_dir = os.path.join(self.raw_folder, "MultiplexingRO")
+        if not os.path.exists(multiplex_ro_dir):
+            os.mkdir(multiplex_ro_dir)
+        parent_dir = multiplex_ro_dir if specific_dataFolder =='' else specific_dataFolder
+        if QD_agent != None:
+            dr_loc = QD_agent.Identity.split("#")[0]
+        else:
+            dr_loc = "ARBi"
+        if exp_type.lower() == 'cs':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_MultiplexCS_{exp_timeLabel}.png")
+        else:
+            raise KeyError(f"Un-supported exp-type was given = {exp_type}")
+        fig.savefig(path)
+        plt.close()
+    
     def save_dict2json(self,QD_agent:QDmanager,data_dict:dict,qb:str='q0',get_json:bool=False):
         """
         Save a dict into json file. Currently ONLY support z-gate 2tone fitting data.

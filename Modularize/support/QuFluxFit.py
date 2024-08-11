@@ -87,7 +87,7 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
             break
     
     # extract the values by the filtered idx
-    extracted = []
+    extracted = [] # [z, xyf, mag]
     for i in range(len(f_idx)):
         extracted.append([raw_z[z_idx[i]],raw_XYF[f_idx[i]],XL_mag[i]])
     # filter out the freq when it's under the same bias
@@ -113,7 +113,7 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
 def convert_netCDF_2_arrays(CDF_path:str):
     """
     For Qblox system, give a netCDF file path to return some ndarrays.
-    ## Return: XYF, z, I, Q
+    ## Return: XYF (x0), z (x1), I, Q 
     """
     dataset_processed = dh.to_gridded_dataset(xr.open_dataset(CDF_path))
     XYF = dataset_processed["x0"].to_numpy()

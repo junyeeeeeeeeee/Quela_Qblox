@@ -114,7 +114,7 @@ def set_readout_attenuation(quantum_device, qubit, /, *, out_att: int, in_att: i
     hw_config = quantum_device.hardware_config()
 
     output_path = find_port_clock_path(
-        hw_config, port=qubit.ports.readout(), clock=qubit.name + ".ro"
+        hw_config, port='q:res', clock=qubit.name + ".ro"  #qubit.ports.readout()
     )
 
     cluster_key, module_key, output_key, _, _ = tuple(output_path)

@@ -2,6 +2,7 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
+from Modularize.support.UserFriend import eyeson_print
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from numpy import linspace, array, arange, NaN
@@ -19,6 +20,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     LO= qubit_info.clock_freqs.f01()+IF
 
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
+    eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
     
     if Rabi_type.lower() in ['timerabi', 'tr']:
         osci_type = "TimeRabi"
@@ -106,7 +108,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     return analysis_result
     
 
-def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True,pts:int=100):
+def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_max:float=0.5,XYdura_max:float=20e-9,which_rabi:str='power',run:bool=True,pts:int=100,avg_times:int=500):
     if which_rabi.lower() in ['p','power']:
         exp_type = 'powerRabi'
     elif which_rabi.lower() in ['t','time']:
@@ -117,17 +119,15 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
-        for i in Fctrl:
-            Fctrl[i](QD_agent.Fluxmanager.get_proper_zbiasFor(i)) 
-        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts)
-        for i in Fctrl:
-            Fctrl[i](0.0) 
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts,n_avg=avg_times)
+        Fctrl[specific_qubits](0.0)
         cluster.reset()
         if Rabi_results == {}:
             print(f"Rabi Osci error qubit: {specific_qubits}")
         else:
             Fit_analysis_plot(Rabi_results[specific_qubits],P_rescale=False,Dis=None)
-            if abs(Rabi_results[specific_qubits].attrs['pi_2']) <= 0.5:
+            if abs(Rabi_results[specific_qubits].attrs['pi_2']) <= 0.8:
                 qubit = QD_agent.quantum_device.get_element(specific_qubits)
                 qubit.rxy.amp180(Rabi_results[specific_qubits].attrs['pi_2'])
                 qubit.rxy.duration(XYdura_max)
@@ -142,14 +142,16 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution:bool = True
-    chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr3","last_ip":"13"}
-    ro_elements = ['q4']
-    couplers = ["c0",'c1','c2','c3']
+    chip_info_restore:bool = 1
+    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    ro_elements = ['q0']
+    couplers = ["c0"]
 
-    pi_duration=20e-9
-    pi_amp_max=0.5
-    pts=1000
+
+    """ Optional paras """
+    pi_duration = 40e-9
+    pi_amp_max = 0.6
+    
 
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,pts=pts)
+        rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max)
         cluster.reset()
     
         """ Storing """

@@ -6,12 +6,12 @@ from pandas import DataFrame as DF
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "..", ".."))
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T1_fit_analysis, T2_fit_analysis, plot_textbox, Fit_analysis_plot
 from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
-from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros, delete
+from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros, delete, average, sqrt
 # from Modularize.support.Pulse_schedule_library import hist_plot
 import matplotlib.pyplot as plt
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.analysis.DRtemp import Kelvin_collector
-from qcat.state_discrimination.discriminator import train_GMModel  # type: ignore
+from qcat.analysis.state_discrimination.discriminator import train_GMModel  # type: ignore
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 
 exp_items = {"1":"T1","2":"T2","3":"effT","4":"gamma1","5":"gamma2","6":"thermalPop","7":"gammaPhi"}
@@ -22,6 +22,13 @@ fig_size = (15,10)
 label_font_size = 26
 tick_num_size = 26
 legend_font_size = 30
+
+def ret_error_bound(errors:list,threshold:float=1)->tuple[float, float]:
+    all_err = array(errors).reshape(-1)
+    err_mean = mean(all_err)
+    up_lim = err_mean + threshold*std(all_err)
+    bt_lim = err_mean - threshold*std(all_err)
+    return up_lim, bt_lim
 
 def ax_set_y_label(ax:plt.Axes,exp:str, font_size:int=26)->plt.Axes:
     if exp.lower() == 't1':
@@ -45,6 +52,7 @@ def ax_set_y_label(ax:plt.Axes,exp:str, font_size:int=26)->plt.Axes:
     else:
         ax.set_ylabel("Thermal populations "+f"({units[exp]})",fontsize=font_size)
     return ax
+
 # ================================ Functional =========================================================================================
 def exp_item_translator(options:list)->list:
     x = []
@@ -80,6 +88,7 @@ def delet_incomplete_set(temp_folder_path)->list:
     for folder in set_folders:
         file_number.append(len([name for name in os.listdir(folder) if (os.path.isfile(os.path.join(folder,name)) and name.split(".")[-1] == "nc")]))
     complete_file_number = max(set(file_number), key=file_number.count)
+    print("***",file_number,":",complete_file_number)
     idx_to_delete = []
     for idx in range(len(file_number)):
         if file_number[idx] < complete_file_number:
@@ -128,6 +137,7 @@ def save_ref(ref_dict:dict, target_q:str, sample_name:str="",conditional_name:st
             else:
                 dict_name = 'ref_before' if ref_type.lower() == 'before' else 'ref_recove'
                 if ref_type.lower() not in ['before', 'recover']: raise KeyError("Unsupported ref_type was given!")
+                old_ref[ref_name] = {}
                 old_ref[ref_name][dict_name] = ref_dict
                     
             with open(ref_path,'w') as record_file: 
@@ -139,8 +149,6 @@ def save_ref(ref_dict:dict, target_q:str, sample_name:str="",conditional_name:st
             with open(ref_path,'w') as record_file: 
                 json.dump(new_ref,record_file)
     
-
-
 def timelabelfolder_creator(folder_path:str,additional_folder_name:str='')->str:
     import datetime
     current_time = datetime.datetime.now()
@@ -207,9 +215,6 @@ def pic_values_saver(folder_path:str,mode:str,*args)->str:
 
     return folder_path
     
-        
-
-
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(2.5,2),dpi =250) 
     m, bins, patches = ax.hist(array(data[q]))
@@ -317,7 +322,6 @@ def sort_set(name_list:list, by_which_num_idx:str):
     import re
     name_list.sort(key=lambda l: int(re.findall('\d+',l)[by_which_num_idx]))
     
-
 def sort_files(file_name_list:list):
     T1_file, T2_file, SS_file = [], [], []
     for file_name in file_name_list:
@@ -333,7 +337,6 @@ def sort_files(file_name_list:list):
     sort_set(SS_file,2)
     
     return T1_file+T2_file+SS_file
-
 
 def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
     """
@@ -361,24 +364,26 @@ def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
     
     return array(train_set), array(total_sets)
 
-def collect_allSets_inTempera(temperature_folder_path:str)->dict:
+def collect_allSets_inTempera(temperature_folder_path:str, refresh:bool=False)->dict:
     """ 
     ## Return \n
     info_dict = {"T1":{"avg","std"},"gamma1":{...},"T2":{...},"gamma2":{...},"gammaPhi":{...},"effT":{...},"thermalPop":{...}}
     """
     json_path = os.path.join(f"{temperature_folder_path}","results","jsons")
     info_dict = {}
-    if os.path.exists(os.path.join(json_path,"temperatureInfo.json")):
-        print("read old json")
-        with open(os.path.join(json_path,"temperatureInfo.json")) as J:
-            info_dict = json.load(J)
-    else:
+    if not refresh:
+        if os.path.exists(os.path.join(json_path,"temperatureInfo.json")):
+            print("read old json")
+            with open(os.path.join(json_path,"temperatureInfo.json")) as J:
+                info_dict = json.load(J)
+    if refresh or not os.path.exists(os.path.join(json_path,"temperatureInfo.json")):
         avg_t1, std_t1 = [], []
         avg_gamma1, std_gamma1 = [], []
         avg_t2, std_t2 = [], []
         avg_gamma2, std_gamma2 = [], []
         avg_eff_T, std_eff_T = [], []
         avg_thermalPop, std_thermalPop = [], []
+        avg_gammaPhi, std_gammaPhi = [], []
         json_files = [name for name in os.listdir(json_path) if (os.path.isfile(os.path.join(json_path,name)) and name.split(".")[-1]=='json' and name.split("(")[0]=='setInfo')]
         sort_set(json_files,0)
         j_paths = []
@@ -398,16 +403,17 @@ def collect_allSets_inTempera(temperature_folder_path:str)->dict:
                     std_gamma1.append(float(set_dict["gamma1"]["std"]))
                     avg_gamma2.append(float(set_dict["gamma2"]["avg"]))
                     std_gamma2.append(float(set_dict["gamma2"]["std"]))
+                    avg_gammaPhi.append(float(set_dict["gammaPhi"]["avg"]))
+                    std_gammaPhi.append(float(set_dict["gammaPhi"]["std"]))
                     avg_thermalPop.append(float(set_dict["thermalPop"]["avg"]))
                     std_thermalPop.append(float(set_dict["thermalPop"]["std"]))
                 except:
                     pass
-        info_dict = {"T1":{"avg":avg_t1,"std":std_t1},"gamma1":{"avg":avg_gamma1,"std":std_gamma1},"T2":{"avg":avg_t2,"std":std_t2},"gamma2":{"avg":avg_gamma2,"std":std_gamma2},"effT":{"avg":avg_eff_T,"std":std_eff_T},"thermalPop":{"avg":avg_thermalPop,"std":std_thermalPop}}  # contains the AVG and SG for every set
+        info_dict = {"T1":{"avg":avg_t1,"std":std_t1},"gamma1":{"avg":avg_gamma1,"std":std_gamma1},"T2":{"avg":avg_t2,"std":std_t2},"gamma2":{"avg":avg_gamma2,"std":std_gamma2},"effT":{"avg":avg_eff_T,"std":std_eff_T},"thermalPop":{"avg":avg_thermalPop,"std":std_thermalPop},"gammaPhi":{"avg":avg_gammaPhi,"std":std_gammaPhi}}  # contains the AVG and SG for every set
         with open(os.path.join(json_path,"temperatureInfo.json"), "w") as record_file:
             json.dump(info_dict,record_file)
     
     return info_dict
-
 
 def get_time_axis(target_q:str, folder_path:str)->ndarray:
     other_info_dict = {}
@@ -417,29 +423,57 @@ def get_time_axis(target_q:str, folder_path:str)->ndarray:
     # extract every set time
     return array(other_info_dict[target_q]["time_past"]) # shold be the same length with sets, units in min
 
+def filter_zero(exp_values:ndarray, time_axis:ndarray, exp_stds:ndarray=[])->tuple[ndarray, ndarray, ndarray]:
+    del_idx = []
+    for idx, value in enumerate(exp_values):
+        if value == 0:
+            del_idx.append(idx)
+    
+    new_time_axis = delete(array(time_axis), del_idx)
+    new_exp_values = delete(array(exp_values), del_idx)
+    if array(exp_stds).shape[0] != 0:
+        new_std_values = delete(array(exp_stds), del_idx)
+    else:
+        new_std_values = array([])
+    return new_time_axis, new_exp_values, new_std_values
+
 # ============================================ Analysis ================================================================================
-def get_references_from_ResultJson(temperature_folder_path:str):
+def get_references_from_ResultJson(temperature_folder_path:str,minute_from_the_end:int=0,target_q:str=""):
     json_file = os.path.join(temperature_folder_path,"results","jsons","every_values.json")
+    if minute_from_the_end != 0 and target_q != "":
+        time_past_min_array = get_time_axis(target_q,temperature_folder_path)/60
+        slice_from_this_min = int(time_past_min_array[-1]-minute_from_the_end)
+        set_number = time_past_min_array.shape[0]
     ref_dict = {}
     every_values_dict = {}
     with open(json_file) as JJ:
         every_values_dict = json.load(JJ)
+    
     for keyname in every_values_dict: # "T1s", "T2s", ...
-        values = every_values_dict[keyname]
+        values = array(every_values_dict[keyname])
+        if minute_from_the_end != 0 and target_q != "":
+            histo_count_in_set = int(values.shape[0]/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
+            this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
+            histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set 
+            values = values[histo_idx_this_min:]
         if keyname[:-1] in ["T1", "T2", "effT"]:
-            ref_dict[f"{keyname[:-1]}"] = round(mean(array(values)[values != 0]),1)
-            ref_dict[f"{keyname[:-1]}_sd"] = round(std(array(values)[values != 0]),1)
-        elif keyname[:-1] in ["gamma1", "gamma2", "gammaPhis"]:
-            ref_dict[f"{keyname[:-1]}"] = round(mean(array(values)[values != 0]),3)
-            ref_dict[f"{keyname[:-1]}_sd"] = round(std(array(values)[values != 0]),3)
+            if  keyname[:-1] == "effT":
+                ref_dict[f"{keyname[:-1]}"] = round(mean(values[values != 0]),1)
+            else:
+                errors = array(every_values_dict[keyname[:-1]+"ers"])[histo_idx_this_min:]
+                ref_dict[f"{keyname[:-1]}"] = round(average(values[values != 0], weights=1/(errors[errors!=0])),1)
+            ref_dict[f"{keyname[:-1]}_sd"] = round(std(values[values != 0]),1)
+        elif keyname[:-1] in ["gamma1", "gamma2", "gammaPhi"]:
+            errors = array(every_values_dict[keyname[:-1]+"ers"])[histo_idx_this_min:]
+            ref_dict[f"{keyname[:-1]}"] = round(average(values[values != 0], weights=1/(errors[errors!=0])),3)
+            ref_dict[f"{keyname[:-1]}_sd"] = round(std(values[values != 0]),3)
         elif keyname[:-1] in ["thermalPop"]:
-            ref_dict[f"{keyname[:-1]}"] = round(mean(array(values)[values != 0]),2)
-            ref_dict[f"{keyname[:-1]}_sd"] = round(std(array(values)[values != 0]),2)
+            ref_dict[f"{keyname[:-1]}"] = round(mean(values[values != 0]),2)
+            ref_dict[f"{keyname[:-1]}_sd"] = round(std(values[values != 0]),2)
         else:
             pass
     
     return ref_dict
-
 
 def a_set_analysis(set_folder_path:str, old_monitor_dict:dict, ref_iq:list, transi_freq:float)->dict:
     """ old_monitor_dict = {"x_minutes":[],"T1":[],"T1_sd":[],"T2":[],"T2_sd":[],"effT":[],"effT_sd":[],"thermalPop":[],"thermalPop_sd":[]} """
@@ -558,6 +592,7 @@ def main_analysis(target_q:str, temperature_folder_path:str, mode:str='all' ):
     parent_path = temperature_folder_path
 
     sub_folders = delet_incomplete_set(temperature_folder_path)
+    print(sub_folders)
     other_info_ = [name for name in os.listdir(temperature_folder_path) if (os.path.isfile(os.path.join(temperature_folder_path,name)) and name.split(".")[0]=='otherInfo')]
     with open(os.path.join(temperature_folder_path,other_info_[0])) as JJ:
         other_info_dict = json.load(JJ)
@@ -571,13 +606,18 @@ def main_analysis(target_q:str, temperature_folder_path:str, mode:str='all' ):
     T1_pic_folder = create_T1T2_folder(result_folder,"t1")
     T2_pic_folder = create_T1T2_folder(result_folder,"t2")
     start = time.time()
-    T1s = []
-    gamma1s = []
-    T2s = []
-    gamma2s = []
-    effTs = []
-    thermalpops = []
-    gammaphis = []
+    T1s = {}
+    T1ers = {}
+    gamma1s = {}
+    gamma1ers = {}
+    T2s = {}
+    T2ers = {}
+    gamma2ers = {}
+    gamma2s = {}
+    effTs = {}
+    thermalpops = {}
+    gammaphis = {}
+    gammaphiers = {}
 
     if mode.lower() == 'jump':
         set_idx_done = [int(name.split("(")[-1].split(")")[0]) for name in os.listdir(json_folder) if (os.path.isfile(os.path.join(json_folder,name)) and name.split(".")[0].split("(")[0]=='setInfo')]
@@ -586,16 +626,19 @@ def main_analysis(target_q:str, temperature_folder_path:str, mode:str='all' ):
         sub_folders = sub_folders[final_complete_setidx+1:]
 
     for folder_name in sub_folders:
-        info_dict = create_results_dict()
         set_idx = folder_name.split("(")[-1].split(")")[0]
         folder_path = os.path.join(temperature_folder_path,folder_name)
         print(f"==================================================== Set-{set_idx} start")
         files = [name for name in os.listdir(folder_path) if (os.path.isfile(os.path.join(folder_path,name)) and name.split(".")[-1] == "nc")] # DR1q0_{T1/T2/SingleShot}(exp_idx)_H17M23S19.nc
         files = sort_files(files) # sort files start from 0 
         T1_us = []
+        T1_err = []
         gamma1_MHz = []
+        gamm1_err = []
         T2_us = []
+        T2_err = []
         gamma2_MHz = []
+        gamma2_err = []
         effT_mK = []
         therm_pop = []
 
@@ -615,30 +658,50 @@ def main_analysis(target_q:str, temperature_folder_path:str, mode:str='all' ):
                 I,Q= dataset_to_array(dataset=T1_ds,dims=1)
                 data= array(IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[-1]))
                 try:
-                    data_fit= T1_fit_analysis(data=data,freeDu=times,T1_guess=8e-6)
-                    T1_us.append(data_fit.attrs['T1_fit']*1e6)
-                    gamma1_MHz.append(1/(data_fit.attrs['T1_fit']*1e6))
-                    if data_fit.attrs['T1_fit']*1e6 > 50: 
+                    data_fit, fit_error = T1_fit_analysis(data=data,freeDu=times,T1_guess=8e-6, return_error=True)
+                    t1 = data_fit.attrs['T1_fit']*1e6
+                    print(f"T1={t1}, error={fit_error}, ~ {round(fit_error*100/t1,1)} %")
+                    if t1 < 50 and t1 > 0: 
+                        T1_us.append(t1)
+                        T1_err.append(fit_error)
+                        gamma1_MHz.append(1/t1)
+                        if fit_error*100/t1 > 50:
+                            save_weired_data_pic(times, data, "T1", exp_idx, set_idx, temperature_folder_path,data_fit) 
+                    else: 
+                        T1_us.append(0)
+                        gamma1_MHz.append(0)
+                        T1_err.append(0)
                         save_weired_data_pic(times, data, "T1", exp_idx, set_idx, temperature_folder_path,data_fit)   
                 except:
                     save_weired_data_pic(times, data, "T1", exp_idx, set_idx, temperature_folder_path)
                     T1_us.append(0)
                     gamma1_MHz.append(0)
+                    T1_err.append(0)
             elif exp_type == "T2":
                 T2_ds = open_dataset(file_path)
                 times = array(Dataset.to_dict(T2_ds)["coords"]['x0']['data']) # s
                 I,Q= dataset_to_array(dataset=T2_ds,dims=1)
                 data= (IQ_data_dis(I,Q,ref_I=ref_iq[0],ref_Q=ref_iq[1]))
                 try:
-                    data_fit= T2_fit_analysis(data=data,freeDu=times,T2_guess=8e-6)
-                    T2_us.append(data_fit.attrs['T2_fit']*1e6)
-                    gamma2_MHz.append(1/(data_fit.attrs['T2_fit']*1e6))
-                    if data_fit.attrs['T2_fit']*1e6 > 30:
+                    data_fit, fit_error = T2_fit_analysis(data=data,freeDu=times,T2_guess=8e-6, return_error=True)
+                    t2 = data_fit.attrs['T2_fit']*1e6
+                    print(f"T2={t2}, error={fit_error}, ~ {round(fit_error*100/t2,1)} %")
+                    if t2 < 50 and t2 > 0: 
+                        T2_us.append(t2)
+                        gamma2_MHz.append(1/t2)
+                        T2_err.append(fit_error)
+                        if fit_error*100/t2 > 50 :
+                            save_weired_data_pic(times, data, "T2", exp_idx, set_idx, temperature_folder_path, data_fit)
+                    else:
+                        T2_us.append(0)
+                        gamma2_MHz.append(0)
+                        T2_err.append(0)
                         save_weired_data_pic(times, data, "T2", exp_idx, set_idx, temperature_folder_path, data_fit)
                 except:
                     save_weired_data_pic(times, data, "T2", exp_idx, set_idx, temperature_folder_path)
                     T2_us.append(0)
                     gamma2_MHz.append(0)
+                    T2_err.append(0)
                 
                 
             elif exp_type == "SingleShot":
@@ -675,64 +738,147 @@ def main_analysis(target_q:str, temperature_folder_path:str, mode:str='all' ):
             p0_pop = dist_model.get_state_population(new_data[0].transpose()) # [p0in0, p0in1]
             p1_pop = dist_model.get_state_population(new_data[1].transpose()) # [p1in0, p1in1]
             OneShot_pic_path = os.path.join(SS_folder,f"SingleShot-S{set_idx}-{histo_i}")
-            fig , eff_t, snr = plot_readout_fidelity(analysis_data, transi_freq, OneShot_pic_path, False)
-            therm_pop.append(p0_pop[0]*100/(p0_pop[0]+p0_pop[1]))
+            fig , eff_t, snr = plot_readout_fidelity(analysis_data, transi_freq, None, False)
+            therm_pop.append(100-(p0_pop[0]*100/(p0_pop[0]+p0_pop[1])))
             effT_mK.append(eff_t)
             plt.close()
         
-        # calc T1
-        T1s.append(T1_us)
-        
-        gamma1s.append(gamma1_MHz)
-        T1_us = array(T1_us)
-        gamma1_MHz = array(gamma1_MHz)
-        mean_T1_us = round(mean(T1_us[T1_us != 0]),1)
-        sd_T1_us = round(std(T1_us[T1_us != 0]),1)
-        info_dict["T1"]["avg"], info_dict["T1"]["std"] = mean_T1_us, sd_T1_us
-        info_dict["gamma1"]["avg"], info_dict["gamma1"]["std"] = round(mean(gamma1_MHz[gamma1_MHz != 0]),2), round(std(gamma1_MHz[gamma1_MHz != 0]),2)
-        histo_path = os.path.join(result_folder,f"T1-histo-S{set_idx}.png")
-        hist_plot("nobu",{"nobu":T1_us},f"S{set_idx}, T1={mean_T1_us}+/-{sd_T1_us} us",histo_path, False)
-        # calc T2
-        T2s.append(T2_us)
-        gamma2s.append(gamma2_MHz)
-        T2_us = array(T2_us)
-        gamma2_MHz = array(gamma2_MHz)
-        mean_T2_us = round(mean(T2_us[T2_us != 0]),1)
-        sd_T2_us = round(std(T2_us[T2_us != 0]),1)
-        info_dict["T2"]["avg"], info_dict["T2"]["std"] = mean_T2_us, sd_T2_us
-        info_dict["gamma2"]["avg"], info_dict["gamma2"]["std"] = round(mean(gamma2_MHz[gamma2_MHz != 0]),2), round(std(gamma2_MHz[gamma2_MHz != 0]),2)
-        histo_path = os.path.join(result_folder,f"T2-histo-S{set_idx}.png")
-        hist_plot("nobu",{"nobu":T2_us[T2_us != 0]},f"S{set_idx}, T2={mean_T2_us}+/-{sd_T2_us} us",histo_path, False)
+        # T1
+        T1s[set_idx] = T1_us
+        T1ers[set_idx] = T1_err 
+        gamma1s[set_idx] = gamma1_MHz
+    
+        # T2
+        T2s[set_idx] = T2_us
+        T2ers[set_idx] = T2_err 
+        gamma2s[set_idx] = gamma2_MHz
+
         # calc OnsShot
-        effTs.append(effT_mK)
-        thermalpops.append(therm_pop)
-        effT_mK = array(effT_mK)
-        therm_pop = array(therm_pop)
+        effTs[set_idx] = effT_mK
+        thermalpops[set_idx] = therm_pop
+
+    T1_err_up_lim, T1_err_bt_lim = ret_error_bound([ T1ers[set_id] for set_id in T1ers],2)
+    T2_err_up_lim, T2_err_bt_lim = ret_error_bound([ T2ers[set_id] for set_id in T2ers],2)
+
+    # # Filter outlier
+    for set_idx in T1s:
+        info_dict = create_results_dict()
+        # # cala T1
+        gamma1ers[set_idx] = []
+        for histo_idx in range(len(T1ers[set_idx])):
+            error_value = T1ers[set_idx][histo_idx]
+            if T1s[set_idx][histo_idx] != 0:
+                if error_value > T1_err_up_lim or error_value < T1_err_bt_lim:
+                    T1s[set_idx][histo_idx] = 0
+                    T1ers[set_idx][histo_idx] = 0
+                    gamma1s[set_idx][histo_idx] = 0
+                    gamma1ers[set_idx].append(0)
+                else:
+                    err_ratio = T1ers[set_idx][histo_idx]/T1s[set_idx][histo_idx]
+                    gamma1ers[set_idx].append(gamma1s[set_idx][histo_idx]*err_ratio)
+            else:
+                gamma1ers[set_idx].append(0)
+        
+        t1_aray, t1_err_aray, g1_aray, g1_err_aray = array(T1s[set_idx]), array(T1ers[set_idx]), array(gamma1s[set_idx]), array(gamma1ers[set_idx])
+        if sum(t1_err_aray) == 0:
+            mean_T1_us = 0
+            sd_T1_us = 0
+        else:
+            mean_T1_us = round(average(t1_aray[t1_aray != 0],weights=1/(t1_err_aray[t1_err_aray != 0])),1)
+            sd_T1_us = round(std(t1_aray[t1_aray != 0]),1)
+        if sum(g1_err_aray[g1_err_aray != 0]) != 0:
+            mean_gamma1_MHz = round(average(g1_aray[g1_aray != 0],weights=1/(g1_err_aray[g1_err_aray != 0])),2)
+        else:
+            mean_gamma1_MHz = round(mean(g1_aray[g1_aray != 0]),2)
+        sd_gamma1_MHz = round(std(g1_aray[g1_aray != 0]),2)
+        info_dict["T1"]["avg"], info_dict["T1"]["std"] = mean_T1_us, sd_T1_us
+        info_dict["gamma1"]["avg"], info_dict["gamma1"]["std"] = mean_gamma1_MHz, sd_gamma1_MHz
+        # histo_path = os.path.join(result_folder,f"T1-histo-S{set_idx}.png")
+        # hist_plot("nobu",{"nobu":t1_aray},f"S{set_idx}, T1={mean_T1_us}+/-{sd_T1_us} us",histo_path, False)
+
+        # # cala T2
+        gamma2ers[set_idx] = []
+        for histo_idx in range(len(T2ers[set_idx])):
+            error_value = T2ers[set_idx][histo_idx]
+            if T2s[set_idx][histo_idx] != 0:
+                if error_value > T2_err_up_lim or error_value < T2_err_bt_lim:
+                    T2s[set_idx][histo_idx] = 0
+                    T2ers[set_idx][histo_idx] = 0
+                    gamma2s[set_idx][histo_idx] = 0
+                    gamma2ers[set_idx].append(0)
+                else:
+                    err_ratio = T2ers[set_idx][histo_idx]/T2s[set_idx][histo_idx]
+                    gamma2ers[set_idx].append(gamma2s[set_idx][histo_idx]*err_ratio)
+            else:
+                gamma2ers[set_idx].append(0)
+        
+        t2_aray, t2_err_aray, g2_aray, g2_err_aray = array(T2s[set_idx]), array(T2ers[set_idx]), array(gamma2s[set_idx]), array(gamma2ers[set_idx])
+        if sum(t2_err_aray) == 0:
+            mean_T2_us = 0
+            sd_T2_us = 0
+        else:
+            mean_T2_us = round(average(t2_aray[t2_aray != 0],weights=1/(t2_err_aray[t2_err_aray != 0])),1)
+            sd_T2_us = round(std(t2_aray[t2_aray != 0]),1)
+        if sum(g2_err_aray) != 0:
+            mean_gamma2_MHz = round(average(g2_aray[g2_aray != 0],weights=1/(g2_err_aray[g2_err_aray != 0])),2)
+        else:
+            mean_gamma2_MHz = round(mean(g2_aray[g2_aray != 0]),2)
+        sd_gamma2_MHz = round(std(g2_aray[g2_aray != 0]),2)
+        info_dict["T2"]["avg"], info_dict["T2"]["std"] = mean_T2_us, sd_T2_us
+        info_dict["gamma2"]["avg"], info_dict["gamma2"]["std"] = mean_gamma2_MHz, sd_gamma2_MHz
+        # histo_path = os.path.join(result_folder,f"T2-histo-S{set_idx}.png")
+        # hist_plot("nobu",{"nobu":t2_aray},f"S{set_idx}, T2={mean_T2_us}+/-{sd_T2_us} us",histo_path, False)
+
+        # # calc T-phi
+        gammaphis[set_idx] = []
+        gammaphiers[set_idx] = []
+        for histo_idx in range(len(T1s[set_idx])):
+            if gamma1s[set_idx][histo_idx] != 0 and gamma2s[set_idx][histo_idx] != 0:
+                gammaphis[set_idx].append(gamma2s[set_idx][histo_idx] - 0.5*(gamma1s[set_idx][histo_idx]))
+                error_gamma_phi = sqrt((gamma2ers[set_idx][histo_idx])**2 + (0.5*(gamma1ers[set_idx][histo_idx]))**2)
+                gammaphiers[set_idx].append(error_gamma_phi)
+            else:
+                gammaphis[set_idx].append(0)
+                gammaphiers[set_idx].append(0)
+
+        gphi_aray, aphi_err_aray = array(gammaphis[set_idx]), array(gammaphiers[set_idx])
+        if sum(aphi_err_aray) == 0 :
+            mean_gammaphi_MHz = 0
+            sd_gammaphi_MHz = 0
+        else:
+            mean_gammaphi_MHz = round(average(gphi_aray[gphi_aray != 0],weights=1/(aphi_err_aray[aphi_err_aray != 0])),2)
+            sd_gammaphi_MHz = round(std(gphi_aray[gphi_aray != 0]),2)
+        info_dict["gammaPhi"]["avg"], info_dict["gammaPhi"]["std"] = mean_gammaphi_MHz, sd_gammaphi_MHz
+
+        # # calc effT (no filters now)
+        effT_mK = array(effTs[set_idx])
+        therm_pop = array(thermalpops[set_idx])
         mean_effT_mK = round(mean(effT_mK),1)
         sd_effT_mK = round(std(effT_mK),1)
         info_dict["effT"]["avg"], info_dict["effT"]["std"] = mean_effT_mK, sd_effT_mK
         info_dict["thermalPop"]["avg"], info_dict["thermalPop"]["std"] = round(mean(therm_pop),2), round(std(therm_pop),2)
 
-        # calc T_phi
-        gamma_phi = gamma2_MHz - 0.5*gamma1_MHz
-        gammaphis.append(gamma_phi.tolist())
-        info_dict["gammaPhi"]["avg"], info_dict["gammaPhi"]["std"] = round(mean(gamma_phi[gamma_phi != 0]),2), round(std(gamma_phi[gamma_phi != 0]),2)
         # save the info to plt scatter
         with open(f"{json_folder}/setInfo({set_idx}).json", "w") as record_file: 
             json.dump(info_dict,record_file)
-
-    every_value = {"T1s":list(array(T1s).reshape(-1)),"gamma1s":list(array(gamma1s).reshape(-1)),"T2s":list(array(T2s).reshape(-1)),"gamma2s":list(array(gamma2s).reshape(-1)),"effTs":list(array(effTs).reshape(-1)),"thermalPops":list(array(thermalpops).reshape(-1)), "gammaPhis":list(array(gammaphis).reshape(-1))} # This contains all the data point to calc a AVG and SD in a temp
     
+    every_value = {}
+    parts = {"T1s":T1s,"T1ers":T1ers,"gamma1s":gamma1s,"gamma1ers":gamma1ers,"T2s":T2s,"T2ers":T2ers,"gamma2ers":gamma2ers,"gamma2s":gamma2s,"effTs":effTs,"thermalPops":thermalpops,"gammaPhis":gammaphis,"gammaPhiers":gammaphiers}
+    for part in parts:
+        infos = parts[part]
+        myKeys = list(infos.keys())
+        myKeys.sort()
+        sorted_infos = {i: infos[i] for i in myKeys}
+        every_value[part] = array([sorted_infos[set_idx] for set_idx in sorted_infos]).reshape(-1).tolist()
+    
+
     with open(f"{json_folder}/every_values.json", "w") as record_file:   
         json.dump(every_value,record_file)
 
     end = time.time()
     print(f"Analysis time cost: {round((end-start)/60,1)} mins")
 
-
-
 # ============================================ Plot ================================================================================
-
 def live_time_monitoring_plot(monitor_dict:dict,pic_save_folder_path:str):
     plot_catas = ["T1", "T2"]
     if len(monitor_dict["effT"]) != 0:
@@ -786,12 +932,12 @@ def plot_temp_compa_timeMonitor(temp_name_list:list, target_q:str, sample_folder
     
     return ax
 
-def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=array([]), radiator_act:str="ON")->plt.Axes:
+def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=array([]), radiator_act:str="ON", refresh_tempera_info:bool=False)->plt.Axes:
     """
     Plot T1/T2/eff_T trend along time axis.\n
     arg `mode` assign which value to plot : 'T1', 'T2', 'effT',  'gamma1', 'gamma2', 'gammaPhi', 'thermalPop'
     """
-    tempera_into = collect_allSets_inTempera(temperature_folder)
+    tempera_into = collect_allSets_inTempera(temperature_folder,refresh_tempera_info)
     a_set_time = 7 # mins
     time_axis_min = arange(1,len(tempera_into["T1"]["avg"]))*a_set_time if time_axis.shape[0]==0 else round(time_axis/60,1)  
     
@@ -800,7 +946,8 @@ def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=a
     fig, ax = plt.subplots(1,1,figsize=fig_size)
     ax:plt.Axes
     if mode in list(exp_items.values()):
-        ax.errorbar(time_axis_min,tempera_into[mode]["avg"],yerr=tempera_into[mode]["std"],fmt="o-",color='red')
+        times, ys, yerrs = filter_zero(array(tempera_into[mode]["avg"]), array(time_axis_min), array(tempera_into[mode]["std"]))
+        ax.errorbar(times,ys,yerr=yerrs,fmt="o-",color='red')
         ax_info["y"], ax_info["yerr"] = tempera_into[mode]["avg"], tempera_into[mode]["std"]
         ax.yaxis.label.set_color('red')
 
@@ -811,8 +958,6 @@ def plot_time_behavior_sep(temperature_folder:str, mode:str, time_axis:ndarray=a
     ax.set_xlabel(f"time after radiator {radiator_act} (min)", fontsize=label_font_size)
     
     return ax, ax_info
-
-    
 
 def plot_ref_onAxes(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, which:str="T1")->tuple[plt.Axes,dict]:
     """ #### ref_dict keys should follow the form which return from get_ref_from_json in a given condition\n
@@ -838,7 +983,6 @@ def plot_ref_onAxes(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, wh
     
     return ax, ax_info
     
-
 def plot_DR_tempera(start_date:str="",start_time:str="",temp_chennel:int=6,DR_log_folder_path:str="",ax:plt.Axes=None,time_axis:ndarray=array([]))-> plt.Axes:
     """
     ## Plot only when start_date, start_time, and DR_log_folder_path are ALL given.
@@ -952,7 +1096,6 @@ def scat_DR_avg_temp(need_log_info:dict,sample_folder_name:str="",conditional_fo
         axDR.yaxis.set_tick_params(labelsize=tick_num_size)    
     return axDR, dr_info
 
-
 def plot_stable_temp_dep(temp_folder_names:list, exp_type:str, slice_min_from_the_end:list=[0], sameple_folder:str="", conditional_folder:str="")->tuple[plt.Axes, dict, str, dict]:
     """exp_type should be one of the exp_items"""
     keep_time = {}
@@ -974,9 +1117,14 @@ def plot_stable_temp_dep(temp_folder_names:list, exp_type:str, slice_min_from_th
             histo_count_in_set = int(len(every_value_dict[f"{exp_type}s"])/set_number) # data number of a exp in every_value_dict = set_number * histo_count_in_set
             this_min_idx_in_set, _ = find_nearest(time_past_min_array, slice_from_this_min) # this index is equal to the set index
             histo_idx_this_min = (this_min_idx_in_set+1)*histo_count_in_set 
-            target_data = array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:])         
-            exp_value["avgs"].append(mean(target_data[target_data != 0]))
-            exp_value["stds"].append( std(target_data[target_data != 0]))
+            target_data = array(every_value_dict[f"{exp_type}s"][histo_idx_this_min:]) 
+            this_std = std(target_data[target_data != 0])
+            if exp_type in ["effT","thermalPop"]:
+                exp_value["avgs"].append(average(target_data[target_data != 0]))
+            else:
+                target_erro = array(every_value_dict[f"{exp_type}ers"][histo_idx_this_min:]) 
+                exp_value["avgs"].append(average(target_data[target_data != 0], weights=1/(target_erro[target_erro != 0])))
+            exp_value["stds"].append(this_std)
     else:
         raise ValueError (f" The given exp_type={exp_type} can't be recognized!")
 
@@ -1025,15 +1173,12 @@ def scat_ref_temp_dep(ax:plt.Axes,ref_dict_b4:dict={},ref_dict_recover:dict={}, 
     handles, labels = ax.get_legend_handles_labels()
     return ax, handles, labels, {"exp":f"ref-{which}","x":x,"y":y,"yerr":yerr}
     
-
-
 #                         ==============
 #                         =            =
 # ========================= user layer ================================
 #                         =            =
 #                         ==============
-
-def time_trend_artist(tempera_folder:str, target_q:str, exp_catas:list, time_past_sec_array:ndarray, ref_before:dict, ref_recove:dict, DR_time_info:dict, log_folder:str, DRtemp_che:int=6, show:bool=0):
+def time_trend_artist(tempera_folder:str, target_q:str, exp_catas:list, time_past_sec_array:ndarray, ref_before:dict, ref_recove:dict, DR_time_info:dict, log_folder:str, DRtemp_che:int=6, show:bool=0, refresh_tempera_info:bool=False):
     try:
         other_info = {}
         with open(os.path.join(tempera_folder,"otherInfo.json")) as JJ:
@@ -1054,7 +1199,7 @@ def time_trend_artist(tempera_folder:str, target_q:str, exp_catas:list, time_pas
     else:
         action = "ON"
     for exp in exp_item_translator(exp_catas):
-        ax, trend_info = plot_time_behavior_sep(tempera_folder,exp,time_axis=time_past_sec_array,radiator_act=action)
+        ax, trend_info = plot_time_behavior_sep(tempera_folder,exp,time_axis=time_past_sec_array,radiator_act=action,refresh_tempera_info=refresh_tempera_info)
         ax, ref_info = plot_ref_onAxes(ax,ref_before,ref_recove,exp)
         handles, labels = ax.get_legend_handles_labels()
         plt.grid(axis='both')
@@ -1106,54 +1251,40 @@ def TimeMonitor_tempCompa(temp_name_list:list, target_q, exp_catas, sample_folde
 if __name__ == '__main__':
     # // If you wanna plot DR temperature, "start_date" and "start_time" in log_info_dict and also log_folder ALL should be given !
     # *********** Manully settings ***********
-    analysis:bool = 0         # analysis or not. Once u had analyzed, u won't need it again
-    plot_time_trend:bool = 0          # If there is only one element in `log_info_dict`, polt the time monitoring, which is time as the x-axis.
-    always_plot_timeTrend:bool = 0    # if there are more than one element in `log_info_dict`, turn on this will plot time monitoring for all elements. 
-    plot_temp_dependence: bool = 0      # if there are more than one element in `log_info_dict`, plot the radiator-temp dependence, radiator_temp as x-asix. 
-    plot_tempComp_alongTime:bool = 1   # plot data of different radiator temp along time as x-axis.
+    analysis:bool = 1   # analysis or not. Once u had analyzed, u won't need it again
+    plot_time_trend:bool = 1   # If there is only one element in `log_info_dict`, polt the time monitoring, which is time as the x-axis.
+    always_plot_timeTrend:bool = 1  # if there are more than one element in `log_info_dict`, turn on this will plot time monitoring for all elements. 
+    plot_temp_dependence: bool = 0 # if there are more than one element in `log_info_dict`, plot the radiator-temp dependence, radiator_temp as x-asix. 
+    plot_tempComp_alongTime:bool = 0   # plot data of different radiator temp along time as x-axis.
     
     target_q = 'q0'
-    exp_catas = [1,3]       # {"1":"T1","2":"T2","3":"effT","4":"gamma1","5":"gamma2","6":"thermal_Pop","7":"gammaPhi"}
-    conditional_folder = "Radiator_WS"          # the previous folder from temperature folder     
-    sample_folder = "Radiator_wisconsinQ1"     # the previous folder from conditional_folder
+    exp_catas = [1,2,6]       # {"1":"T1","2":"T2","3":"effT","4":"gamma1","5":"gamma2","6":"thermal_Pop","7":"gammaPhi"}
+    conditional_folder = "ScalinQ_q4"          # the previous folder from temperature folder     
+    sample_folder = "MXC_heater"     # the previous folder from conditional_folder
     
-    # ?  log_info_dict at least should have the temperature with its 'avg_min_from_the_end'
-    # // If there is only one temperature in `log_info_dict`, it will plot time trend. Or u can set 'always_plot_timeTrend = True` to enforce it plot no matter how many temperatures are there.
-    # log_info_dict = {"20K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},   
-    #                  "30K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
-    #                  "40K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60},
-    #                  "60K-2":{"start_date":"", "start_time":"", "avg_min_from_the_end":60}
-    #                 }
-    log_info_dict = {"10K":{"start_date":"2024-05-13", "start_time":"17:25", "avg_min_from_the_end":60},   # if keyname 'avg_min_from_the_end' is not inside, the default is 60 minutes
-                     "20K":{"start_date":"2024-05-14", "start_time":"10:45", "avg_min_from_the_end":60},   # 'start_date' and 'start_time' are not neccessary if otherInfo have them.
-                     "40K":{"start_date":"2024-05-14", "start_time":"16:15", "avg_min_from_the_end":60},
-                     "60K":{"start_date":"2024-05-15", "start_time":"09:15", "avg_min_from_the_end":60},
-                    #"re0K":{"start_date":"2024-05-15", "start_time":"15:43", "avg_min_from_the_end":60}
-                    }
+    log_info_dict = {"re0K":{}} # if keyname 'avg_min_from_the_end' is not inside, the default is 60 minutes
     
+    # C:\Users\ASQUM\Documents\GitHub\Quela_Qblox\Modularize\Meas_raw\MXC_heater\ScalinQ_q4\20K
     # ? For references.
     ref_before = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_before"] if "ref_before" in get_ref_from_json(target_q,sample_folder,conditional_folder).keys() else {}
     ref_recove = get_ref_from_json(target_q,sample_folder,conditional_folder)["ref_recove"] if "ref_recove" in get_ref_from_json(target_q,sample_folder,conditional_folder).keys() else {}
 
 
     # ? If this folder is "", it won't plot the MXC temperature. 
-    log_folder = "/Users/ratiswu/Downloads/DR_temperature_log"
-
-    # ? Save the references from a mK set
-    ref_info = {"before":{"save_ref_to_json":False, "mK_folder_path":""},"recover":{"save_ref_to_json":False, "mK_folder_path":""}}
-
+    log_folder = ""
 
     # # ! Don't touch below !
     temperature_list = list(log_info_dict.keys())
-    if len(temperature_list) == 1 or always_plot_timeTrend :
+    if always_plot_timeTrend :
         for tempera in temperature_list:
             tempera_folder = os.path.join(meas_raw_dir,sample_folder,conditional_folder,tempera)
             if analysis:
+                print("y")
                 main_analysis(target_q, tempera_folder)
             time_past_sec_array = get_time_axis(target_q,tempera_folder)
             # plot time trend with a given temperature (time as x-axis, in min)
             if plot_time_trend:
-                time_trend_artist(tempera_folder, target_q, exp_catas, time_past_sec_array, ref_before, ref_recove, log_info_dict[tempera], log_folder, DRtemp_che=6)
+                time_trend_artist(tempera_folder, target_q, exp_catas, time_past_sec_array, ref_before, ref_recove, log_info_dict[tempera], log_folder, DRtemp_che=6,refresh_tempera_info=True)
     else:
         if plot_temp_dependence:
             temp_depen_artist(temperature_list, target_q, sample_folder, conditional_folder, log_info_dict, exp_catas, ref_before, ref_recove, log_folder, tempera_che=6)
@@ -1161,15 +1292,7 @@ if __name__ == '__main__':
     if plot_tempComp_alongTime:
         TimeMonitor_tempCompa(temperature_list, target_q, exp_catas, sample_folder, conditional_folder)
 
-    # save reference
-    for ref_type in ref_info:
-        if ref_info[ref_type]["save_ref_to_json"]:
-            if ref_info[ref_type]["mK_folder_path"] != "":
-                main_analysis(target_q, ref_info[ref_type]["mK_folder_path"])
-                ref_dict = get_references_from_ResultJson(ref_info[ref_type]["mK_folder_path"])
-                save_ref(ref_dict,target_q,sample_name=sample_folder,conditional_name=conditional_folder,ref_type=ref_type)
 
-                
                 
 
 

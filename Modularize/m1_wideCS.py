@@ -151,7 +151,6 @@ if __name__ == "__main__":
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
                                                         dr_loc=dr,
-                                                        cluster_ip=ip,
                                                         mode=mode,
                                                         qubit_number=5,coupler_number=4)
     # Set the system attenuations
