@@ -424,7 +424,7 @@ def Two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0, ref_point=ref_pt)
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,280e-9, ref_point=ref_pt)
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
     return sched
@@ -441,7 +441,8 @@ def Z_gate_two_tone_sche(
     R_integration:dict,
     R_inte_delay:float,
     repetitions:int=1,   
-    Z_ro_amp:float =0 
+    Z_ro_amp:float =0,
+    ref_pt:str='end',
 ) -> Schedule:
     sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -450,13 +451,13 @@ def Z_gate_two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
-        Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,280e-9,ref_point=ref_pt)
+        Z(sched,Z_amp,spec_Du,q,spec_pulse,280e-9,ref_position=ref_pt)
         if Z_ro_amp != 0:
-            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
+            Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,280e-9,ref_position=ref_pt)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-     
+    
     return sched
 
 

@@ -154,7 +154,7 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = True
+    execution:bool = 1
     chip_info_restore:bool = 0
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q4']

@@ -45,9 +45,9 @@ def fillin_PDans(QD_agent:QDmanager,ans:dict):
 if __name__ == "__main__":
 
     """ Fill in """
-    execution:bool = True
-    sweetSpot:bool = 1
-    chip_info_restore:bool = 1
+    execution:bool = 1
+    sweetSpot:bool = 0
+    chip_info_restore:bool = 0
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
         # "q0":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
@@ -58,14 +58,15 @@ if __name__ == "__main__":
                 # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
         # "q3":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
                 # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
-        "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},
-                "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
+        "q4":{  "bare" :{"ro_amp":1,"ro_atte":30,"window_shift":0},}
+                # "dress":{"ro_amp":0.02,"ro_atte":30,"window_shift":4e6}},
     }
     cp_ctrl = {"c0":0,"c1":0,"c2":0,"c3":0,}
+    reset=1000000e-6
 
     """ Optional paras"""
     half_ro_freq_window_Hz = 3e6
-    freq_data_points = 200
+    freq_data_points = 5
 
     CS_results = {}
     PDans = {}
@@ -75,6 +76,8 @@ if __name__ == "__main__":
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         # Create or Load chip information
         chip_info = cds.Chip_file(QD_agent=QD_agent)
+        q= QD_agent.quantum_device.get_element(qubit)
+        q.reset.duration(reset)
 
 
         """ Running """
@@ -100,9 +103,10 @@ if __name__ == "__main__":
 
 
         """ Storing (future) """
-        fillin_PDans(QD_agent, PDans)
+        
 
         if chip_info_restore:
+            fillin_PDans(QD_agent, PDans)
             chip_info.update_QD(CS_results)
             if sweetSpot:
                 chip_info.update_BDCavityFit_sweet(CS_results)

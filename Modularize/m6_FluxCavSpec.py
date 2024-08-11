@@ -140,7 +140,7 @@ def fluxCavity_executor(QD_agent:QDmanager,
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = True
+    execution:bool = 0
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = ['q4']
