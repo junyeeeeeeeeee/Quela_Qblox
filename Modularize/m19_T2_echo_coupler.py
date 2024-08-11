@@ -201,18 +201,19 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q3":{"detune":0.6e6,"evoT":40e-6,"histo_counts":1},
+        "q4":{"detune":0.6e6,"evoT":40e-6,"histo_counts":1},
         # "q2":{"detune":0e6,"evoT":40e-6,"histo_counts":1},
     }
-    pts = 500
     couplers = ['c0','c1','c2','c3']
+    pts = 500
 
-    target_coupler = 'q3'
+    target_coupler = 'q4'
     target_z_amp = 0
     z_delay = 100e-9
 
-    excite_qubit = 'q4'
     zz = 0
+    excite_qubit = 'q3'
+    
 
 
     """ Iteration """
