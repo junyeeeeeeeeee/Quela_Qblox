@@ -100,10 +100,10 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
         qubit = QD_agent.quantum_device.get_element(target_q)
         qubit.reset.duration(250e-6)
-        qubit.measure.acq_delay(280e-9)
+        qubit.measure.acq_delay(0)
         qubit.measure.pulse_amp(0.15)
         qubit.measure.pulse_duration(100e-6)
-        qubit.measure.integration_time(100e-6-280e-9-4e-9)
+        qubit.measure.integration_time(100e-6-4e-9)
 
 
 def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
