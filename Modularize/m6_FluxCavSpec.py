@@ -21,6 +21,12 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    qubit_info.measure.pulse_duration(100e-6)
+    qubit_info.measure.integration_time(100e-6-4e-9)
+    qubit_info.reset.duration(250e-6)
+
+    
+    # qubit_info.measure.pulse_amp(0.05)
     ro_f_center = qubit_info.clock_freqs.readout()
     # avoid frequency conflicts 
     from numpy import NaN
@@ -54,14 +60,14 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables([freq,flux_ctrl[q]])
-        meas_ctrl.setpoints_grid((ro_f_samples,flux_samples))
+        meas_ctrl.setpoints_grid((ro_f_samples,flux_samples)) # x0, x1
         
         
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD')
-        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run()
+        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=0)
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -105,11 +111,11 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
 
-def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30):
+def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,flux_span:float=0.4,ro_span_Hz=3e6,zpts=20,fpts=30,avg_n=20):
     
     if run:
         print(f"{specific_qubits} are under the measurement ...")
-        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts)[specific_qubits]
+        FD_results = FluxCav_spec(QD_agent,meas_ctrl,Fctrl,ro_span_Hz=ro_span_Hz,q=specific_qubits,flux_span=flux_span,flux_points=zpts,f_points=fpts,n_avg=avg_n)[specific_qubits]
         if FD_results == {}:
             print(f"Flux dependence error qubit: {specific_qubits}")
         
@@ -124,22 +130,22 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution:bool = True
-    chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = ['q0']
-    cp_ctrl = {"c0":-0.1}
+    chip_info_restore:bool = 0
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = ['q2']
+    cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 8e6
+    freq_half_window_Hz = 1e6
     flux_half_window_V  = 0.4
-    freq_data_points = 30
+    freq_data_points = 60
     flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
 
     for qubit in ro_elements:
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',)
         
         if ro_elements == 'all':
             ro_elements = list(Fctrl.keys())

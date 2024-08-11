@@ -5,25 +5,23 @@ On the other hand, the 'window_shift' will be a rough dispersive shift for the d
 """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from Modularize.m2_CavitySpec import Cavity_spec
+from Modularize.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
 from Modularize.support import Data_manager, QDmanager, cds
 from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
-
-def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,f_shifter:float=0,fpts=200):
-    # QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(5.92e9)
-    rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()+f_shifter}
+from numpy import linspace
+def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,run:bool=True, ro_amps:dict={})->dict:
     
     if run:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=True,points=fpts)[specific_qubits]
+        cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=True,ro_amps=ro_amps)
+        CS_results = multiplexing_CS_ana(QD_agent, cs_ds, ro_elements)
     else:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=False)[specific_qubits]
+        _ = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=False,ro_amps=ro_amps)
+        CS_results = {}
     
-    QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof[specific_qubits]-f_shifter)
-
-    return qb_CSresults
+    return CS_results
 
 def fillin_PDans(QD_agent:QDmanager,ans:dict):
     """
@@ -41,58 +39,81 @@ def fillin_PDans(QD_agent:QDmanager,ans:dict):
     QD_agent.refresh_log("PD answer stored!")
     QD_agent.QD_keeper()
 
+def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span_Hz:float, fpts:int):
+    amps = {}
+    ro_elements = {}
+    PD_ans = {}
+    original_rof = {}
+    for q in qubits:
+        if state in list(qubits[q].keys()):
+            amps[q] = qubits[q][state]['ro_amp']
+            
+            rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
+            original_rof[q] = rof
+            ro_elements[q] = linspace(rof+qubits[q][state]["window_shift"]-ro_span_Hz, rof+qubits[q][state]["window_shift"]+ro_span_Hz, fpts)
+            
+        PD_ans[q] = {"dressF_Hz":"","dressP":"","bareF_Hz":"","ro_atte":""}
+    init_system_atte(QD_agent.quantum_device,list(qubits.keys()),ro_out_att=ro_atte[state])
+    return ro_elements, amps, PD_ans, original_rof
+
 
 if __name__ == "__main__":
 
     """ Fill in """
-    execution:bool = True
-    sweetSpot:bool = 0
-    chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = {
-        "q0":{  "bare" :{"ro_amp":0.5,"ro_atte":20,"window_shift":0},
-                "dress":{"ro_amp":0.35,"ro_atte":30,"window_shift":6e6}},
+    execution:bool = True 
+    sweetSpot:bool = 0     # If true, only support one one qubit
+    chip_info_restore:bool = 0
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_element = {
+        "q0":{  "bare" :{"ro_amp":0.2,"window_shift":0},
+                "dress":{"ro_amp":0.15,"window_shift":-2e6}},
+        "q1":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
+                "dress":{"ro_amp":0.2,"window_shift":1e6}},
+        "q2":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
+                "dress":{"ro_amp":0.2,"window_shift":1.5e6}}
     }
-    
+    ro_attes = {"dress":44, "bare":12} # all ro_elements shared
 
     """ Optional paras"""
-    half_ro_freq_window_Hz = 3e6
+    half_ro_freq_window_Hz = 5e6
     freq_data_points = 200
 
+
+    
+   
     CS_results = {}
-    PDans = {}
-    for qubit in ro_elements:
+    for state in ["bare", "dress"]: # bare is always the first !!
+        eyeson_print(f"{state} cavities: ")
         """ Preparations """ 
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        ro_elements, amps, PD_ans, original_rof = BDC_waiter(QD_agent, state, ro_element, ro_attes, half_ro_freq_window_Hz, freq_data_points)
         # Create or Load chip information
         chip_info = cds.Chip_file(QD_agent=QD_agent)
 
 
         """ Running """
-        CS_results[qubit] = {}
-        PDans[qubit] = {"dressF_Hz":0,"dressP":0,"bareF_Hz":0,"ro_atte":0}
-        for state in ro_elements[qubit]:
-            if ro_elements[qubit][state]["ro_atte"] != '':
-                QD_agent.Notewriter.save_DigiAtte_For(ro_elements[qubit][state]["ro_atte"],qubit,'ro')
-            if sweetSpot:
-                Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
-            else:
-                Fctrl[qubit](0)
-            init_system_atte(QD_agent.quantum_device,[qubit],ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-            CS_results[qubit][state] = preciseCavity_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=qubit,ro_amp=ro_elements[qubit][state]["ro_amp"],run = execution, f_shifter=ro_elements[qubit][state]["window_shift"],ro_span_Hz=half_ro_freq_window_Hz,fpts=freq_data_points)
-            Fctrl[qubit](0)
-            cluster.reset()
+        if sweetSpot:
+            Fctrl[list(ro_element.keys())[0]](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=list(ro_element.keys())[0]))
+        
+        CS_results[state] = preciseCavity_executor(QD_agent,meas_ctrl,ro_elements,run=execution,ro_amps=amps)
+        if sweetSpot:
+            Fctrl[list(ro_element.keys())[0]](0)
+        cluster.reset()
+        for q in ro_elements:
+            QD_agent.quantum_device.get_element(q).clock_freqs.readout(original_rof[q])
+        
+        for qubit in CS_results[state]:
             if state == "bare":
-                PDans[qubit]["bareF_Hz"] = CS_results[qubit][state].quantities_of_interest['fr'].nominal_value
+                PD_ans[qubit]["bareF_Hz"] = CS_results[state][qubit]['fr']
             else:
-                PDans[qubit]["dressF_Hz"] = CS_results[qubit][state].quantities_of_interest['fr'].nominal_value
-                PDans[qubit]["dressP"] = ro_elements[qubit][state]["ro_amp"]
-                PDans[qubit]["ro_atte"] = QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro')
+                PD_ans[qubit]["dressF_Hz"] = CS_results[state][qubit]['fr']
+                PD_ans[qubit]["dressP"] = ro_element[qubit][state]["ro_amp"]
+                PD_ans[qubit]["ro_atte"] = ro_attes[state]
 
 
-        """ Storing (future) """
-        fillin_PDans(QD_agent, PDans)
+        """ Storing """
+        fillin_PDans(QD_agent, PD_ans)
 
         if chip_info_restore:
             chip_info.update_QD(CS_results)
@@ -100,6 +121,7 @@ if __name__ == "__main__":
                 chip_info.update_BDCavityFit_sweet(CS_results)
             else:
                 chip_info.update_BDCavityFit(CS_results)
+
 
         """ Close """
         print('Cavity quality fit done!')

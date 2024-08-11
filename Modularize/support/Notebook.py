@@ -63,6 +63,7 @@ class Notebook():
     def save_sweetG_for(self,g_Hz:float,target_q:str='q0'):
         self.__InfoDict[target_q]["sweetG"] = g_Hz
     def get_sweetGFor(self,target_q:str):
+        """ Return the g_rq in Hz for target_q"""
         return self.__InfoDict[target_q]["sweetG"]
     
     # for attenuation

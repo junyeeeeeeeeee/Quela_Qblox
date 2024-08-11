@@ -1,7 +1,7 @@
 import pickle, os
 from typing import Callable
 from Modularize.support.Experiment_setup import get_FluxController, get_CouplerController
-from Modularize.support.Experiment_setup import ip_register
+from Modularize.support.Experiment_setup import ip_register, port_register
 from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
 import ipywidgets as widgets
@@ -39,15 +39,15 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_number:int=5,coupler_number:int=4,mode:str='new',chip_name:str='',chip_type:str='')->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,coupler_number:int=4,mode:str='new',chip_name:str='',chip_type:str='', new_HCFG:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
     ### Case 2: QD_path is given, load the QD with that given path.\n
     args:\n
-    cluster_ip: '192.168.1.10'
     mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
+    from Modularize.support.UserFriend import warning_print
     import quantify_core.data.handling as dh
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
@@ -58,28 +58,32 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         if dr_loc == '':
             raise ValueError ("arg 'dr_loc' should not be ''!")
     elif mode.lower() in ['load', 'l']:
-        cluster_ip 
         cfg, pth = {}, QuantumDevice_path 
         dr_loc = get_dr_loca(QuantumDevice_path)
         cluster_ip = ip_register[dr_loc.lower()]
     else:
         raise KeyError("The given mode can not be recognized!")
     
-    # Connect to the Qblox cluster
-    # connect, ip = connect_clusters() ## Single cluster online
-    # cluster = Cluster(name = "cluster0", identifier = ip.get(connect.value))
-    # ip, ser = connect_clusters_withinMulti(dr_loc,cluster_ip)
-    # cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = ip)
-    if cluster_ip == '192.168.1.11':
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5011)
-    elif cluster_ip == '192.168.1.10':
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5010)
-    elif cluster_ip == '192.168.1.13':
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5013)
-    elif cluster_ip == '192.168.1.242':
-        cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=5242)
+    if cluster_ip in list(port_register.keys()):
+        # try maximum 3 connections to prevent connect timeout error 
+        try:
+            cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
+        except:
+            
+            try:
+                warning_print("First cluster connection trying")
+                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
+            except:
+                warning_print("Second cluster connection trying")
+                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
+                
     else:
-        raise KeyError("args 'cluster_ip' should be assigned with '10' or '11' or '13', check it!")
+        try:
+            warning_print("cluster IP connection trying")
+            cluster = Cluster(name = f"cluster{dr_loc.lower()}", identifier = cluster_ip)
+        except:
+            raise KeyError("Check your cluster ip had been log into Experiment_setup.py with its connected DR, and also is its ip-port")
+    
     ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
@@ -89,7 +93,7 @@ def init_meas(QuantumDevice_path:str='',dr_loc:str='',cluster_ip:str='10',qubit_
         Qmanager.build_new_QD(qubit_number,coupler_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
         Qmanager.refresh_log("new-born!")
     else:
-        Qmanager.QD_loader()
+        Qmanager.QD_loader(new_Hcfg=new_HCFG)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     bias_controller = get_FluxController(cluster,ip)
@@ -328,6 +332,38 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     
     return Cctrl
 
+def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:int)->dict:
+    """
+    Get the dict about the required values for all qubits in quantum_device.
+    The required value can be assigned by the arg `mode`.
+    ------
+    ### Args:\n
+    * ro_elements: a dict with the keyname in qubit name. ex: {"q0":[ ],"q1":[ ],...}\n
+    * mode: 1 for RO-amp, 2 for acq-delay, 3 for RO-duration, 4 for integration time.\n
+    ----
+    ### Returns:\n
+    A dict with the same keyname as the `ro_elements`, and also with the value about the required mode.  
+    """
+    if type(ro_elements) is dict:
+        qubits = list(ro_elements.keys())
+    elif type(ro_elements) is list:
+        qubits:list = ro_elements
+    else:
+        raise ValueError(f"The type of ro_elements should be list or dict but `{type(ro_elements)}` was recieved!")
+    ans = {}
+    for qubit in qubits:
+        if str(mode) == "1":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_amp()
+        elif str(mode) == "2":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.acq_delay()
+        elif str(mode) == "3":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
+        elif str(mode) == "4":
+            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.integration_time()
+        else:
+            raise KeyError(f"Un-supported mode = {mode} was given !")
+    
+    return ans
 
 #TOO_OLD
 '''

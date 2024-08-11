@@ -1,40 +1,43 @@
-""" 600 fpoints, 100 avg ~ 0.6 min"""
+""" 600 fpoints, 100 avg ~ 0.6 min, Multiplexing"""
+""" Do this after m2 """
 
 import json, os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from numpy import arange, pi, mean, array
-from Modularize.m2_CavitySpec import Cavity_spec
+from numpy import arange, pi, mean, array, linspace
+from Modularize.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
 from Modularize.support.Experiment_setup import ip_register
 from qblox_instruments import Cluster
 from Modularize.support import Data_manager, QDmanager
 from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl
-from quantify_core.analysis.spectroscopy_analysis import ResonatorSpectroscopyAnalysis
+from xarray import Dataset
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, set_atte_for, shut_down
 from Modularize.aux_measurement.CW_generator import CW_executor, turn_off_sequencer
 from quantify_scheduler.helpers.collections import find_port_clock_path
 
 
-def qualityFiter(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:float,specific_qubits:str,ro_span_Hz:float=10e6,run:bool=True,fpts=600,n_avg:int=100, data_folder:str=""):
-    rof = {str(specific_qubits):QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout()}
-    
-    if run:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=True,points=fpts,n_avg=n_avg,particular_folder=data_folder)[specific_qubits]
-    else:
-        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_bare_guess=rof,ro_amp=ro_amp,q=specific_qubits,ro_span_Hz=ro_span_Hz,run=False)[specific_qubits]
-    QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof[specific_qubits])
-    return qb_CSresults
+def qualityFiter(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_amp:dict,ro_span_Hz:dict,run:bool=True,fpts=600,n_avg:int=100, data_folder:str="")->tuple[Dataset, dict]:
+    rof_origin = {}
+    ro_elements = {}
+    for qb in list(ro_amp.keys()):
+        rof = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()
+        rof_origin[qb] = rof
+        ro_elements[qb] = linspace(rof-ro_span_Hz[qb], rof+ro_span_Hz[qb], fpts)
 
-def get_quality_for(CS_result:ResonatorSpectroscopyAnalysis, target_q:str, mark_label:str="")->dict:
-    qi = round(CS_result.quantities_of_interest['Qi'].nominal_value*1e-3,2) # in k
-    qi_sd = round(CS_result.quantities_of_interest['Qi'].std_dev*1e-3,2)
-    ql = round(CS_result.quantities_of_interest['Ql'].nominal_value*1e-3,2)
-    ql_sd = round(CS_result.quantities_of_interest['Ql'].std_dev*1e-3,2)
-    qc = round(CS_result.quantities_of_interest['Qc'].nominal_value*1e-3,2)
-    qc_sd = round(CS_result.quantities_of_interest['Qc'].std_dev*1e-3,2)
-    eyeson_print(f"{target_q}{mark_label}: Qi= {qi}k, Qc= {qc}k, Ql= {ql}k")
-    return {"QI":qi*1e3,"QI_sd":qi_sd*1e3,"QC":qc*1e3,"QC_sd":qc_sd*1e3,"QL":ql*1e3,"QL_sd":ql_sd*1e3}
+    if run:
+        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=True,n_avg=n_avg,particular_folder=data_folder,ro_amps=ro_amp)
+    else:
+        qb_CSresults = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=False,ro_amps=ro_amp)
+
+    for qb in list(ro_amp.keys()):
+        QD_agent.quantum_device.get_element(qb).clock_freqs.readout(rof_origin[qb])
+    
+    return qb_CSresults, ro_elements
+
+def get_quality_for(QD_agent:QDmanager, CS_result:Dataset, ro_elements:dict, pic_save:bool=False)->dict:
+    fit_results = multiplexing_CS_ana(QD_agent, CS_result, ro_elements, save_pic=pic_save)
+    return fit_results
 
 def generate_data_folder(target_q:str, additional_name:str="")->str:
     DaTar = Data_manager()
@@ -47,17 +50,18 @@ def generate_data_folder(target_q:str, additional_name:str="")->str:
 
 
 def QD_RO_init_qualityCase(QD_agent:QDmanager, target_q:str, ro_amp:float=0.3):
+    ro_pulse_length:float = 100e-6
     qubit = QD_agent.quantum_device.get_element(target_q)
-    qubit.reset.duration(300e-6)
-    qubit.measure.acq_delay(100e-9)
+    qubit.reset.duration(ro_pulse_length+300e-6)
+    qubit.measure.acq_delay(280e-9)
     qubit.measure.pulse_amp(ro_amp) # readout amp set here
-    qubit.measure.pulse_duration(100e-6)
-    qubit.measure.integration_time(100e-6-100e-9-4e-9)
+    qubit.measure.pulse_duration(ro_pulse_length)
+    qubit.measure.integration_time(ro_pulse_length-280e-9-4e-9)
 
 def get_LO_freq(QD_agent:QDmanager,q:str)->float:
     qubit= QD_agent.quantum_device.get_element(q)
     clock=qubit.name + ".ro"
-    port=qubit.ports.readout()
+    port='q:res'
     hw_config = QD_agent.quantum_device.hardware_config()
     
     output_path = find_port_clock_path(
@@ -67,42 +71,58 @@ def get_LO_freq(QD_agent:QDmanager,q:str)->float:
     
     return float(hw_config[cluster_key][module_key][output_key]["lo_freq"])
 
-def cavQuality_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,target_q:str,qrm_slot_idx:int,RT_real_atte:int,ro_elements:dict,execution:bool=True,ro_amp=0.3,window_ratio:int=6):
-    qubit_rec = {target_q:{}}
-    this_qubit_exp_folder = generate_data_folder(target_q,additional_name=f"RTatte{RT_real_atte}dB")
-    if ro_elements[target_q]["assigned_rof_Hz"] == 0:
-        desired_rof = QD_agent.quantum_device.get_element(target_q).clock_freqs.readout()
-    else:
-        desired_rof = ro_elements[target_q]["assigned_rof_Hz"]
+def cavQuality_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,qrm_slot_idx:int,RT_real_atte:int,ro_elements:dict,atte_settings:dict,execution:bool=True,ro_amp=0.3,window_ratio:int=6):
+    this_qubit_exp_folder = generate_data_folder('Multiplex',additional_name=f"RTatte{RT_real_atte}dB")
+    atte_to_apply = arange(atte_settings["atte_start"], atte_settings['atte_end']+atte_settings["step"], atte_settings["step"])
+    SA_dBm = {"q0":5.3,"q1":5.6,"q2":3.7}
+    ro_amps = {}
+    ro_span_Hzs = {}
+    avg_n = 100
+    if RT_real_atte >= 100:
+        avg_n *= 10
+
+
     # # Connect SA get power in dBm
     mark_input("Connect your RO to the SA now! press ENTER to start...")
-    cluster, connected_module = CW_executor(cluster, qrm_slot_idx, port_idx=0, ro_atte=0, amp=ro_amp, RF_freq=QD_agent.quantum_device.get_element(target_q).clock_freqs.readout(), LO_freq=get_LO_freq(QD_agent,target_q))
-    dBm_bySA = float(mark_input(f"input the power (dBm) which is at freq = {round(desired_rof*1e-9,3)} GHz: "))
-    turn_off_sequencer(cluster, connected_module)
-    conti = mark_input("Once you have connected the RO cable bact to DR, press ENTER to continue...")
-    QD_RO_init_qualityCase(QD_agent, target_q, ro_amp)
-    # # align window
-    set_atte_for(QD_agent.quantum_device,mean(ro_elements[target_q]["ro_atte_dB"]),'ro',[target_q])
-    positional_result = qualityFiter(QD_agent,meas_ctrl,ro_amp=ro_amp,specific_qubits=target_q,ro_span_Hz=10e6,run=execution)
-    peak_width = round((positional_result.quantities_of_interest["fr"].nominal_value*2*pi/positional_result.quantities_of_interest["Ql"].nominal_value)/(2*pi*1e6),2)*1e6
+    for q_idx, q in enumerate(list(ro_elements.keys())):
+        if ro_elements[q]["assigned_rof_Hz"] != 0:
+            QD_agent.quantum_device.get_element(q).clock_freqs.readout(ro_elements[q]["assigned_rof_Hz"])
+        desired_rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
+        # cluster, connected_module = CW_executor(cluster, qrm_slot_idx, port_idx=0, ro_atte=0, amp=ro_amp, RF_freq=desired_rof, LO_freq=get_LO_freq(QD_agent,q))
+        # SA_dBm[q] = float(mark_input(f"input the power (dBm) which is at freq = {round(desired_rof*1e-9,3)} GHz for {q}: "))
+        # turn_off_sequencer(cluster, connected_module)
 
-    dBm_output = list(dBm_bySA - ro_elements[target_q]["ro_atte_dB"] - RT_real_atte)
-    qualities = {"dBm":dBm_output,"Qi":[],"Qi_sd":[],"Qc":[],"Qc_sd":[],"Ql":[],"Ql_sd":[]}
+        # if q_idx != len(list(ro_elements.keys())) -1:
+        #     conti = mark_input("press ENTER to continue measure the next qubit...")
+        # else:
+        #     conti = mark_input("Once the cable connected back to DR, press ENTER to continue measure the next qubit...")
+
+        QD_RO_init_qualityCase(QD_agent, q, ro_amp)
+        ro_amps[q] = ro_amp
+        ro_span_Hzs[q]=7e6
+        set_atte_for(QD_agent.quantum_device,min(atte_to_apply),'ro',[q]) # only for the first scan to align the cavity window
+
+    # first multiplexing scan for window align
+    eyeson_print("Window align... ")
+    positional_result, elements  = qualityFiter(QD_agent,meas_ctrl,ro_amp=ro_amps,ro_span_Hz=ro_span_Hzs,run=execution,n_avg=avg_n)
+    align_results = get_quality_for(QD_agent, positional_result, elements)
+    for q in ro_elements.keys():
+        peak_width = round((align_results[q]["fr"]*2*pi/align_results[q]["Ql"])/(2*pi*1e6),2)*1e6
+        ro_span_Hzs[q] = (window_ratio/2)*peak_width
+
+    # start changing atte 
+    freqs = {}
     if execution:
-        for ro_atte in ro_elements[target_q]["ro_atte_dB"]:
+        for ro_atte in atte_to_apply:
             highlight_print(f"Now atte = {ro_atte} dB")
-            set_atte_for(QD_agent.quantum_device,ro_atte,'ro',[target_q])
-            CS_results = qualityFiter(QD_agent=QD_agent,meas_ctrl=meas_ctrl,specific_qubits=target_q,ro_amp=ro_amp,run = execution,ro_span_Hz=(window_ratio/2)*peak_width,data_folder=this_qubit_exp_folder,fpts=window_ratio*100)
+            set_atte_for(QD_agent.quantum_device,ro_atte,'ro',list(ro_amps.keys()))
+            CS_results, ro_info = qualityFiter(QD_agent,meas_ctrl,ro_amps,run = execution,ro_span_Hz=ro_span_Hzs,data_folder=this_qubit_exp_folder,fpts=window_ratio*100,n_avg=avg_n)
             cluster.reset()
-            qua = get_quality_for(CS_results,target_q,f", ro_atte_{ro_atte}dB")
-            qualities["Qi"].append(qua["QI"])
-            qualities["Qc"].append(qua["QC"])
-            qualities["Ql"].append(qua["QL"])
-            qualities["Qi_sd"].append(qua["QI_sd"])
-            qualities["Qc_sd"].append(qua["QC_sd"])
-            qualities["Ql_sd"].append(qua["QL_sd"])
-        qubit_rec[target_q] = qualities
-        return this_qubit_exp_folder, qubit_rec
+        
+        for q in ro_info:
+            freqs[q] = array(ro_info[q]).tolist()
+        
+        return this_qubit_exp_folder, SA_dBm, freqs, list(array(atte_to_apply).astype(float))
     else:
         print(f"Cavity width = {peak_width*1e-6} MHz")
         raise RuntimeError(f"No worries, This execution is set as False ~ ")
@@ -113,11 +133,14 @@ if __name__ == "__main__":
     # we fix the readout amp = 0.3, change the ro_atte from 0 to 60 dB
     """ Fill in """
     execution = True
-    RT_real_atte = 0
-    qrm_slot_idx = 6
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    RT_real_atte = 120
+    qrm_slot_idx = 18
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    atte_settings:dict = {"atte_start":0, "atte_end":60, "step":10} # atte should be multiples of 2
     ro_elements = {
-        "q2":{"ro_atte_dB":arange(start=0,stop=60+4,step=4),"assigned_rof_Hz":0} # if assigned_rof in Hz was given, the following exp will use this RO frequency. 
+        "q0":{"assigned_rof_Hz":0}, # if assigned_rof in Hz was given, the following exp will use this RO frequency. 
+        "q1":{"assigned_rof_Hz":0},
+        "q2":{"assigned_rof_Hz":0},
     }
     
 
@@ -132,12 +155,13 @@ if __name__ == "__main__":
 
 
     """ Running """
-    for qubit in ro_elements:
-        this_qubit_exp_folder, qubit_rec = cavQuality_executor(QD_agent,cluster,meas_ctrl,qubit,qrm_slot_idx,RT_real_atte,ro_elements,execution,ro_amp,window_ratio=window_over_peakwidth)
+    this_qubit_exp_folder, SA_dBm, ro_elements, applied_atte = cavQuality_executor(QD_agent,cluster,meas_ctrl,qrm_slot_idx,RT_real_atte,ro_elements,atte_settings,execution,ro_amp,window_ratio=window_over_peakwidth)
 
-        """ Storing """
-        with open(os.path.join(this_qubit_exp_folder,"Quality_results.json"), "w") as json_file:
-            json.dump(qubit_rec, json_file)
+    additional_info = {"RT_atte_dB":float(RT_real_atte),"ro_elements":ro_elements, "SA_dBm":SA_dBm, "applied_atte":applied_atte}
+
+    """ Storing """
+    with open(os.path.join(this_qubit_exp_folder,f"Additional_info.json"), "w") as json_file:
+        json.dump(additional_info, json_file)
 
 
     """ Close """

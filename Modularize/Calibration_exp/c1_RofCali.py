@@ -144,12 +144,13 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute:bool = True
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
-    ro_elements = {'q0':{"span_Hz":8e6}}
-    couplers = ['c0']
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = {'q0':{"span_Hz":3e6}}
+    couplers = []
 
 
     """ Preparation """
+    re_find_ground = []
     for qubit in ro_elements:
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -172,17 +173,17 @@ if __name__ == '__main__':
         if execute:
             if keep:
                 QD_agent.QD_keeper()
-                keep = False 
+                re_find_ground.append(qubit)
 
         """ Close """    
         shut_down(cluster,Fctrl,Cctrl)
     
-    for qubit in ro_elements:
+    for qubit in re_find_ground:
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        refIQ_executor(QD_agent,cluster,Fctrl,qubit)
+        refIQ_executor(QD_agent,cluster,Fctrl,qubit,want_see_p01=True)
 
         """ Close """ 
         QD_agent.QD_keeper()   

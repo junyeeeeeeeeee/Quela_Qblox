@@ -130,13 +130,14 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    sweet_spot:bool = 0
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {"q0":["c0"]}
 
     
     """ Optional paras """
-    freq_half_window_Hz = 8e6
-    flux_half_window_V  = 0.4
+    freq_half_window_Hz = 2e6
+    flux_half_window_V  = 0.3
     freq_data_points = 20
     flux_data_points = 80
     freq_center_shift = 0e6 # freq axis shift
@@ -155,7 +156,11 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         for coupler in ro_elements[qubit]:
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            if sweet_spot:
+                Fctrl[qubit](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=qubit))
             FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,Cctrl,qubit,coupler,run=execution,flux_span=flux_half_window_V,ro_span_Hz=freq_half_window_Hz, zpts=flux_data_points,fpts=freq_data_points)
+            if sweet_spot:
+                Fctrl[qubit](0)
             cluster.reset()
         
         """ Storing """

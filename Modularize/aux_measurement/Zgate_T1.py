@@ -72,6 +72,7 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,
                 data= IQ_data_dis(I,Q,ref_I=QD_agent.refIQ[q][0],ref_Q=QD_agent.refIQ[q][1]).transpose()
                 if not no_pi_pulse:
                     data_fit= T1_fit_analysis(data=data[j],freeDu=freeDu_samples,T1_guess=8e-6)
+                    Fit_analysis_plot(data_fit,P_rescale=False,Dis=None)
                     analysis_result[q].append(data_fit)
                     T1_us[q].append(data_fit.attrs['T1_fit']*1e6)
                 else:
@@ -100,20 +101,21 @@ def zgateT1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCon
     flux_guard_Volt = 0.4
 
     if run:
+        offset_flux = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
         ori_reset = qubit_info.reset.duration()
         qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
 
         span_period = float(QD_agent.Fluxmanager.get_PeriodFor(specific_qubits))/z_span_period_factor
-        z_from = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))-span_period/2
-        z_end = float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits))+span_period/2
+        z_from = -span_period/2
+        z_end = +span_period/2
 
-        if abs(z_from)>flux_guard_Volt or abs(z_end)>flux_guard_Volt :
+        if abs(offset_flux+z_from)>flux_guard_Volt or abs(offset_flux+z_end)>flux_guard_Volt :
             raise ValueError(f"Z span from {round(z_from,2)} to {round(z_end,2)} may not be an appropriate voltage !")
 
         every_start = time.time()
         slightly_print(f"The {ith}-th T1:")
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        Fctrl[specific_qubits](offset_flux)
         T1_results, this_t1_us = Zgate_T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,run=True,exp_idx=ith,data_folder=specific_folder,Z_points=zpts,freeDu_points=tpts,no_pi_pulse = not pi_pulse,Z_amp_max=z_end,Z_amp_min=z_from)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -138,9 +140,9 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 0
     prepare_excited:bool = 1
-    DRandIP = {"dr":"dr1sca","last_ip":"11"}
+    DRandIP = {"dr":"dr3","last_ip":"13"}
     ro_elements = {
-        "q0":{"evoT":120e-6,"histo_counts":2}
+        "q0":{"evoT":60e-6,"histo_counts":2}
     }
     couplers = ['c0']
 
