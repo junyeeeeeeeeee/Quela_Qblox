@@ -559,7 +559,7 @@ Hcfg_dr4 = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq":6e9,       # *** Should be set as a parameter later on
+                "lo_freq":5.8e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q:res",

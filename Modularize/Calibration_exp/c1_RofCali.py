@@ -129,9 +129,9 @@ def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarr
 
 def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,execution:bool=True,ro_f_span:float=2e6,fpts:int=100):
     if execution:
-        # Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
-        # Fctrl[specific_qubits](0.0)
+        Fctrl[specific_qubits](0.0)
         cluster.reset()
     else:
         optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
@@ -183,7 +183,7 @@ if __name__ == '__main__':
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        refIQ_executor(QD_agent,cluster,Fctrl,qubit)
+        refIQ_executor(QD_agent,cluster,Fctrl,qubit,want_see_p01=True)
 
         """ Close """ 
         QD_agent.QD_keeper()   

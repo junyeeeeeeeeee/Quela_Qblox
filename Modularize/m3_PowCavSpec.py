@@ -28,6 +28,9 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         original_rof[q] = qubit_info.clock_freqs.readout()
         # avoid frequency conflicts
         qubit_info.clock_freqs.readout(NaN)
+        qubit_info.measure.pulse_duration(100e-6)
+        qubit_info.measure.integration_time(100e-6)
+        qubit_info.reset.duration(250e-6)
 
     ro_p_samples = linspace(ro_p_min,ro_p_max,p_points)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
@@ -167,14 +170,14 @@ if __name__ == "__main__":
     
     """ fill in """
     execution:bool = True
-    sweetSpot_dispersive:bool = 0   # if true, only one qubit should be in the ro_elements 
+    sweetSpot_dispersive:bool = 1 # if true, only one qubit should be in the ro_elements 
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements =["q0","q1","q2"]     # measurement target q from this dict 
-    ro_atte_for_all:int= 10
+    ro_elements =["q0"]     # measurement target q from this dict # q1, q2 44dB 0.2
+    ro_atte_for_all:int= 44
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 2e6
+    half_ro_freq_window_Hz = 3e6
     freq_data_points = 60
     power_data_points = 30
 
@@ -188,7 +191,7 @@ if __name__ == "__main__":
 
 
     """ Running """
-    powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare)
+    powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare,avg_n=10)
     cluster.reset()
     
 

@@ -341,9 +341,15 @@ class Data_manager:
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T1",save_path=fig_path, show=show_fig)
-        elif mode.lower() =="t2" :
+        elif mode.lower() =="t2*" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2histo_{exp_timeLabel}.png")
+            else:
+                fig_path = ''
+            hist_plot(qb,hist_dict ,title=f"T2*",save_path=fig_path, show=show_fig)
+        elif mode.lower() =="t2" :
+            if save_fig:
+                fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T2ehisto_{exp_timeLabel}.png")
             else:
                 fig_path = ''
             hist_plot(qb,hist_dict ,title=f"T2",save_path=fig_path, show=show_fig)

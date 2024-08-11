@@ -19,6 +19,7 @@ from quantify_scheduler.operations.gate_library import Reset, Measure
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
 
+electrical_delay:float = 280e-9
 
 #%% IQ displacement
 
@@ -73,6 +74,7 @@ bigauss2d_func_model = Model(bigauss2d_func, independent_vars=['I', 'Q'])
 
 def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,return_error:bool=False):
     offset_guess= data[-1]
+    a_guess = np.max(data)-offset_guess if data[-1] > offset_guess else np.min(data)-offset_guess
     result = T1_func_model.fit(data,D=freeDu,A=np.max(data)-offset_guess,T1=T1_guess,offset=offset_guess)
     
     A_fit= result.best_values['A']
@@ -335,7 +337,6 @@ def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     delay_c= -pi_Du-freeDu
     return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
-
 def Readout(sche,q,R_amp,R_duration,powerDep=False):
     if powerDep is True:
         amp= R_amp
@@ -464,7 +465,8 @@ def Two_tone_sche(
     R_integration:dict,
     R_inte_delay:float,
     repetitions:int=1,   
-    ref_pt:str='end' 
+    ref_pt:str='end'
+    
 ) -> Schedule:
     sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
@@ -473,8 +475,10 @@ def Two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0, ref_point=ref_pt)
+
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
      
     return sched
 
@@ -499,8 +503,8 @@ def Z_gate_two_tone_sche(
         sched.add(Reset(q))
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,0)
-        Z(sched,Z_amp,spec_Du,q,spec_pulse,0)
+        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
+        Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)
         if Z_ro_amp != 0:
             Z(sched,Z_ro_amp,R_integration[q],q,spec_pulse,0,'end')
 
@@ -577,9 +581,9 @@ def Rabi_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         if XY_theta== 'X_theta':
-            X_theta(sched,amp,duration,q,spec_pulse,freeDu=0)
+            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
         elif XY_theta== 'Y_theta':
-            Y_theta(sched,amp,duration,q,spec_pulse,freeDu=0)
+            Y_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
         else: raise KeyError ('Typing error: XY_theta')
        
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
@@ -659,7 +663,8 @@ def T1_sche(
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_p(sched,pi_amp,q,pi_dura,spec_pulse,freeDu)
+        
+        X_pi_p(sched,pi_amp,q,pi_dura,spec_pulse,freeDu+electrical_delay)
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
@@ -749,9 +754,9 @@ def Zgate_T1_sche(
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu)
+        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu+electrical_delay)
         
-        Z(sched,Z_amp,freeDu,q,spec_pulse,freeDu=0)
+        Z(sched,Z_amp,freeDu,q,spec_pulse,freeDu=electrical_delay)
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
@@ -787,8 +792,7 @@ def Ramsey_sche(
 
         # we start construction from readout
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-
-        first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=0)
+        first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
         
         if echo_pi_num != 0:
             a_separate_free_Du = freeDu / echo_pi_num
@@ -835,11 +839,11 @@ def Zgate_Ramsey_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=freeDu_+pi_Du)
+        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=freeDu_+pi_Du+electrical_delay)
         
-        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=0)
+        X_pi_2_p(sched,pi_amp,q,spec_pulse,freeDu=0+electrical_delay)
         
-        Z(sched,Z_amp,freeDu_,q,spec_pulse,freeDu=pi_Du)   
+        Z(sched,Z_amp,freeDu_,q,spec_pulse,freeDu=pi_Du+electrical_delay)   
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
@@ -911,7 +915,7 @@ def Qubit_SS_sche(
     spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
     
     if ini_state=='e': 
-        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
+        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
         
     else: None
     
@@ -941,7 +945,7 @@ def ROF_Cali_sche(
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
         if ini_state=='e': 
-            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=0)
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
             
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
@@ -1113,7 +1117,7 @@ def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
     ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_ylabel('Counts')
-    if title.lower() in ['t1', 't2']:
+    if title.lower() in ['t1','t2','t2*']:
         ax.set_xlabel(f"{title} (µs)")
         plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} µs")
     else:
@@ -1376,7 +1380,10 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
         text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
-        ans = np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f+np.array(results.data_vars['fitting']).min()/Nor_f
+        if np.array(results.data_vars['fitting'])[-1] < np.array(results.data_vars['fitting'])[0]:
+            ans = np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f+np.array(results.data_vars['fitting']).min()/Nor_f
+        else:
+            ans = np.array(results.data_vars['fitting']).max()/Nor_f-np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey'

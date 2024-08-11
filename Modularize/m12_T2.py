@@ -19,13 +19,13 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     analysis_result = {}
     Real_detune= {}
     
-    qubit = QD_agent.quantum_device.get_element(q)
+    qubit_info = QD_agent.quantum_device.get_element(q)
 
     # Manually change f01
     # f01 = qubit.clock_freqs.f01()
     # qubit.clock_freqs.f01(f01-2.47e6)
     
-    New_fxy= qubit.clock_freqs.f01()+arti_detune
+    New_fxy= qubit_info.clock_freqs.f01()+arti_detune
     
     LO= New_fxy+IF
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
@@ -45,14 +45,14 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     sche_func= Ramsey_sche
     sched_kwargs = dict(
         q=q,
-        pi_amp={str(q):qubit.rxy.amp180()},
+        pi_amp={str(q):qubit_info.rxy.amp180()},
         New_fxy=New_fxy,
         freeduration=Para_free_Du,
-        pi_dura=qubit.rxy.duration(),
-        R_amp={str(q):qubit.measure.pulse_amp()},
-        R_duration={str(q):qubit.measure.pulse_duration()},
-        R_integration={str(q):qubit.measure.integration_time()},
-        R_inte_delay=qubit.measure.acq_delay(),
+        pi_dura=qubit_info.rxy.duration(),
+        R_amp={str(q):qubit_info.measure.pulse_amp()},
+        R_duration={str(q):qubit_info.measure.pulse_duration()},
+        R_integration={str(q):qubit_info.measure.integration_time()},
+        R_inte_delay=qubit_info.measure.acq_delay(),
         echo_pi_num=spin
         )
     exp_kwargs= dict(sweep_freeDu=['start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
@@ -82,12 +82,12 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[1])
         try:
             if spin == 0:
-                data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=5e-6)
+                data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=15e-6)
                 T2_us[q] = data_fit.attrs['T2_fit']*1e6
                 Real_detune[q] = data_fit.attrs['f']
             else:
-                data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=5e-6)
-                T2_us[q] = data_fit.attrs['T1_fit']*1e6 if  data_fit.attrs['T1_fit']*1e6 < 20 else 0
+                data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=15e-6)
+                T2_us[q] = data_fit.attrs['T1_fit']*1e6
                 Real_detune[q] = 0
         except:
             data_fit=[]
@@ -149,9 +149,9 @@ def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCont
     if run:
         start_time = time.time()
         slightly_print(f"The {ith}-th T2:")
-        # Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         Ramsey_results, T2_us, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder,spin=spin_echo)
-        # Fctrl[specific_qubits](0.0)
+        Fctrl[specific_qubits](0.0)
         cluster.reset()
         this_t2_us = T2_us[specific_qubits]
         end_time = time.time()
@@ -173,14 +173,14 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        # "q2":{"detune":0e6,"evoT":20e-6,"histo_counts":1},
-        "q0":{"detune":0e6,"evoT":25e-6,"histo_counts":1},
+        "q0":{"detune":0.3e6,"evoT":15e-6,"histo_counts":10},
     }
     couplers = []
 
     """ Optional paras """
     spin_echo_pi_num:int = 0
     time_data_points = 100
+    avg_n = 800
 
 
     """ Iteration """
@@ -198,11 +198,11 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             
             slightly_print(f"Ramsey with detuning = {round(ro_elements[qubit]['detune']*1e-6,2)} MHz")
-            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,run=execution,pts=time_data_points,spin_echo=spin_echo_pi_num)
+            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,run=execution,pts=time_data_points,spin_echo=spin_echo_pi_num,avg_n=avg_n)
             highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             if this_t2_us > 0:
                 t2_us_rec.append(this_t2_us)
-            
+            print(this_t2_us)
             
             """ Storing """
             if ith_histo == int(ro_elements[qubit]["histo_counts"])-1:
@@ -216,7 +216,11 @@ if __name__ == "__main__":
                         sd_T2_us = 0
                         Fit_analysis_plot(ramsey_results[qubit],P_rescale=False,Dis=None)
                     else:
-                        Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
+                        if spin_echo_pi_num == 0:
+                            Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2*")
+                        else:
+                            Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
+                        
                         if ro_elements[qubit]["histo_counts"] >= 50:
                             QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
                             QD_agent.QD_keeper()

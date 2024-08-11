@@ -78,9 +78,9 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 if __name__ == '__main__':
     import os
     from numpy import moveaxis
-    QD_agent = QDmanager('Modularize/QD_backup/2024_7_30/DR4_81_q1toq3_SumInfo.pkl')
+    QD_agent = QDmanager('Modularize/QD_backup/2024_8_7/DR4#81_SumInfo.pkl')
     QD_agent.QD_loader()
-    qs = ['q3']
+    qs = ['q2']
     for q in qs:
         print(q,":")
         qubit = QD_agent.quantum_device.get_element(q)

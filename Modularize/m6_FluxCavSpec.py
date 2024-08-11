@@ -136,11 +136,11 @@ if __name__ == "__main__":
     cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 1.5e6
-    flux_half_window_V  = 0.1
-    freq_data_points = 30
+    freq_half_window_Hz = 1e6
+    flux_half_window_V  = 0.4
+    freq_data_points = 60
     flux_data_points = 40
-    freq_center_shift = 0.5 # freq axis shift
+    freq_center_shift = 0e6 # freq axis shift
 
     for qubit in ro_elements:
         """ Preparations """

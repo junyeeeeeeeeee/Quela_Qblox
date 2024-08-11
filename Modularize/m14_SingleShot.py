@@ -25,7 +25,7 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=150e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
-    
+    # qubit_info.measure.integration_time(0.8e-6)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
     if ro_amp_factor != 1:
@@ -91,9 +91,9 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     return analysis_result, nc_path
 
 
-def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=100000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False):
+def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=10000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False):
 
-    # Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
+    Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
 
     SS_result, nc= Qubit_state_single_shot(QD_agent,
                 shots=shots,
@@ -103,18 +103,19 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
                 ro_amp_factor=roAmp_modifier,
                 exp_idx=exp_label,
                 plot=plot)
-    # Fctrl[target_q](0.0)
+    Fctrl[target_q](0.0)
     cluster.reset()
     
     
     if mode == "WeiEn":
         if plot:
             Qubit_state_single_shot_plot(SS_result[target_q],Plot_type='both',y_scale='log')
-            effT_mk, snr_dB = 0 , 0
+            effT_mk, snr_dB, thermal_p = 0, 0, 0
         else:
-            effT_mk, snr_dB = 0 , 0
+            effT_mk, snr_dB, thermal_p = 0, 0, 0
     else:
         thermal_p, effT_mk, snr_dB = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
+
 
     return thermal_p, effT_mk, snr_dB
 
@@ -123,7 +124,7 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute:bool = True
-    repeat:int = 50
+    repeat:int = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {'q0':{"roAmp_factor":1}}
     couplers = []

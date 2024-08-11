@@ -103,7 +103,7 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
         qubit.measure.acq_delay(280e-9)
         qubit.measure.pulse_amp(0.15)
         qubit.measure.pulse_duration(100e-6)
-        qubit.measure.integration_time(100e-6-4e-9)
+        qubit.measure.integration_time(100e-6-280e-9-4e-9)
 
 
 def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
@@ -125,8 +125,9 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         result, data2plot, fit2plot = res_er.fit()
         fig, ax = plt.subplots()
         ax:plt.Axes        
-        ax.plot(freq,data2plot)
-        ax.plot(freq,fit2plot,c="red",label='fitting')
+        ax.plot(freq,abs(data2plot))
+        ax.plot(freq,abs(fit2plot),c="red",label='fitting')
+        ax.vlines(float(result['fr']),min(data2plot),max(data2plot),linestyles="--")
         ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
         ax.legend()
         if save_pic:
@@ -163,19 +164,17 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240730_WJcircumon', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240811_WJ3XQ_q0', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 10 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 12 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        # q0=5.5113e9,
-        # q1=6.0047e9,
-        # q2=6.0587e9,
-        q0=5.9136e9,
-        q1=5.9577e9,
-        q2=6.1088e9
+        q0=5.727e9,
+        q1=6.0907e9,
+        q2=6.1478e9,
+        
     )
 
     """ Optional paras """
