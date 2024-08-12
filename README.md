@@ -56,6 +56,7 @@ This program will calibrate the IQ plane of the readout automaticly, so don't he
  * numpy==1.26.2
  * xarray==2023.12.0
  * QCAT from shiau109
+ * scikit-learn
  * pip install git+https://github.com/sebastianprobst/resonator_tools
  * firmware == v0.7.0
 
