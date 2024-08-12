@@ -67,10 +67,10 @@ if __name__ == "__main__":
     ro_element = {
         "q0":{  "bare" :{"ro_amp":0.2,"window_shift":0},
                 "dress":{"ro_amp":0.15,"window_shift":-2e6}},
-        "q1":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
-                "dress":{"ro_amp":0.2,"window_shift":1e6}},
-        "q2":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
-                "dress":{"ro_amp":0.2,"window_shift":1.5e6}}
+        # "q1":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
+        #         "dress":{"ro_amp":0.2,"window_shift":1e6}},
+        # "q2":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
+        #         "dress":{"ro_amp":0.2,"window_shift":1.5e6}}
     }
     ro_attes = {"dress":44, "bare":12} # all ro_elements shared
 

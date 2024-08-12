@@ -1,4 +1,5 @@
-import os
+import os, json, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 import xarray as xr
 import quantify_core.data.handling as dh
 from Modularize.support.QDmanager import QDmanager
@@ -12,12 +13,16 @@ from Modularize.support.Pulse_schedule_library import dataset_to_array
 
 
 
-def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
-    ref = Qmanager.refIQ[target_q]
+def plot_QbFlux(nc_path:str, target_q:str):
+    ref = [0,0] #Qmanager.refIQ[target_q]
     # plot flux-qubit 
     f,z,i,q = convert_netCDF_2_arrays(nc_path)
     amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
+    print(z)
+    print(f)
+    print(amp)
     fig, ax = plt.subplots()
+    ax:plt.Axes
     c = ax.pcolormesh(z, f, amp, cmap='RdBu')
     fig.colorbar(c, ax=ax)
     plt.show()
@@ -76,68 +81,22 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 # print("aprx fq=",aprx_fq(x,bare))
 
 if __name__ == '__main__':
-    import os
-    from numpy import moveaxis
-    QD_agent = QDmanager('Modularize/QD_backup/2024_8_7/DR4#81_SumInfo.pkl')
-    QD_agent.QD_loader()
-    qs = ['q2']
-    for q in qs:
-        print(q,":")
-        qubit = QD_agent.quantum_device.get_element(q)
-        print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
-        print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
-        print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
-        print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
-        print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
-    # ds =  dh.to_gridded_dataset(open_dataset("Modularize/Meas_raw/2024_7_11/DR1MultiQ_PowerCavity_H15M20S44.nc"))
-    # S21 = ds.y0 * cos(
-    #             deg2rad(ds.y1)
-    #         ) + 1j * ds.y0 * sin(deg2rad(ds.y1))
-    # I, Q = real(S21), imag(S21)
-    # amp = array(sqrt(I**2+Q**2))
-    # print(amp.shape)
+    # import os
+    # from numpy import moveaxis
+    # QD_agent = QDmanager('Modularize/QD_backup/2024_8_7/DR4#81_SumInfo.pkl')
+    # QD_agent.QD_loader()
+    # qs = ['q2']
+    # for q in qs:
+    #     print(q,":")
+    #     qubit = QD_agent.quantum_device.get_element(q)
+    #     print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
+    #     print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
+    #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
+    #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
+    #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
 
-    # x = {"a":{"x":1}}
-    # y = {"b":{"y":2}}
-    # print(y|x)
-    # from qcat.analysis.resonator.photon_dep.res_data import *
-    # file = 'Modularize/Meas_raw/2024_7_16/Multiplex_CavityQuality_RTatte80dB_H17M8S0/DR4q2_CavitySpectro_H17M9S1.nc'
-    # from scipy.io import loadmat
-    # RT_atte = 0
 
-    # a = loadmat(file)
-    # I, Q = array(a['ZZI']), array(a['ZZQ'])
-    # power = array(a['x']).reshape(-1)
-    # freq = array(a['y']).reshape(-1)
-    # resonator = PhotonDepResonator('q_test')
-    # for power_idx, amp in enumerate(power):
-    #     resonator.import_array(freq, I[power_idx]+1j*Q[power_idx], amp-RT_atte)
-    # result = resonator.refined_analysis(os.path.split(file)[0])
-    
-    # csv = "/Users/ratiswu/Downloads/meas_res.csv"
-    # import pandas as pd
-
-    # ary = array(pd.read_csv(csv,sep=' '))
-    # x = ["q0", "q1", "q2", "q3", "q4"]
-    # dic = {}
-    # for item in ary:
-    #     val = item[0].split(",")
-    #     dic[val[0]] = []
-    #     for a_item in val[1:]:
-    #         dic[val[0]].append(a_item)
-    # fig, ax = plt.subplots(figsize=(8,5),dpi=120)
-    # ax:plt.Axes
-    # ax.errorbar(x, array(dic['T2']).astype(float), array(dic['T2_err']).astype(float),fmt='+-')
-    # ax.set_ylim(0,20)
-    # ax.xaxis.set_tick_params(labelsize=26)
-    # ax.yaxis.set_tick_params(labelsize=26)
-    # ax.set_ylabel("µs",fontsize=26)
-    # ax.set_title("T2",fontsize=26)
-    # plt.grid()
-    # plt.tight_layout()
-    # # plt.show()
-    # plt.savefig("/Users/ratiswu/Downloads/T2_distri.png")
-    # plt.close()
+    plot_QbFlux("Modularize/Meas_raw/2024_8_12/DR4q0_Flux2tone_H13M27S29.nc",'q0')
     
     
     
