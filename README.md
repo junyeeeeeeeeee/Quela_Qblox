@@ -47,7 +47,8 @@ This program will calibrate the IQ plane of the readout automaticly, so don't he
 --------------------------------------
 ## Update
 
-#### 2024-08-12
+#### 2024-08-12 
+ * python==3.10
  * qblox-instruments==0.12.0  
  * quantify-core==0.7.4  
  * quantify-scheduler==0.20.0  
