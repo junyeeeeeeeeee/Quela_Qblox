@@ -138,7 +138,7 @@ def update_by_fluxQubit(QD_agent:QDmanager,correct_results:dict,target_q:str):
 
 
 
-def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=20,fpts:int=30,span_priod_factor:int=12,f_sapn_Hz=400e6):
+def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=5,fpts:int=40,span_priod_factor:int=12,f_sapn_Hz=400e6):
     center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)
     partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/span_priod_factor
 
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q1']
+    ro_elements = ['q0']
     couplers = []
     z_shifter = 0 # V
 
@@ -206,6 +206,8 @@ if __name__ == "__main__":
     if len(check_again) != 0:
         warning_print(f"qubits to check again: {check_again}")
     shut_down(cluster,Fctrl,Cctrl)
+
+  
     
 
 

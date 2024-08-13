@@ -127,7 +127,7 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         ax:plt.Axes        
         ax.plot(freq,abs(data2plot))
         ax.plot(freq,abs(fit2plot),c="red",label='fitting')
-        ax.vlines(float(result['fr']),min(data2plot),max(data2plot),linestyles="--")
+        # ax.vlines(float(result['fr']),min(data2plot),max(data2plot),linestyles="--")
         ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
         ax.legend()
         if save_pic:
@@ -136,20 +136,32 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
             plt.close()
         fit_results[q] = result
 
+        # plot S21
+        # plt.scatter(real(data2plot),imag(data2plot))
+        # plt.scatter(real(fit2plot),imag(fit2plot))
+        # plt.show()
+
     return fit_results
 
 # execution pack
-def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101)->dict:
+def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101,avg_times:int=10)->dict:
     ro_elements = {}
+    Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
+    Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
     for qb in list(ro_bare_guess.keys()):
         ro_elements[qb] = linspace(ro_bare_guess[qb]-ro_span_Hz, ro_bare_guess[qb]+ro_span_Hz, fpts)
     if run:
-        cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements)
+        cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,n_avg=avg_times)
         CS_results = multiplexing_CS_ana(QD_agent, cs_ds, ro_elements)
         for qubit in CS_results:
             qu = QD_agent.quantum_device.get_element(qubit)
             qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
-            print(qu.clock_freqs.readout()*1e-9)
+            print(f"{qubit}:")
+            print("Res @ ",round(qu.clock_freqs.readout()*1e-9,4)," GHz")
+            for Qua_idx, Qua in enumerate(Quality_values):
+                print(f"{Qua[:2]} = {round(float(CS_results[qubit][Qua])/1000,2)} 土 {round(float(CS_results[qubit][Quality_errors[Qua_idx]])/1000,2)} k")
+            
+            
 
     else:
         # For pulse preview
@@ -164,22 +176,26 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240811_WJ3XQ_q0', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr1', 'n','20240813_WJ3FQ3CQ_180_3', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 12 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 20 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=5.727e9,
-        q1=6.0907e9,
-        q2=6.1478e9,
-        
+        q0=5.50526e9,
+        q1=6.0545e9,
+        q2=6.1048e9,
+        q3=5.9495e9,
+        q4=5.90675e9,
+        q5=5.99974e9,
+    # dummy cavity 5.049e9
     )
 
     """ Optional paras """
     freq_data_points = 101
-    half_freq_window_Hz = 7e6
+    half_freq_window_Hz = 5e6
+    n_avg: int = 100
 
 
     """ Preparations """
@@ -198,7 +214,7 @@ if __name__ == "__main__":
     init_system_atte(QD_agent.quantum_device,list(ro_bare.keys()),ro_out_att=init_RO_DigiAtte)
     
     """ Measurements """
-    CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points)
+    CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points,avg_times=n_avg)
     
     
     """ Storing """

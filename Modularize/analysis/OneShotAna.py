@@ -40,9 +40,9 @@ def a_OSdata_analPlot(QD_agent:QDmanager,target_q:str,nc_path:str, plot:bool=Tru
     p0_pop = dist_model.get_state_population(new_data[0].transpose())
     p1_pop = dist_model.get_state_population(new_data[1].transpose())
     if save_pic:
-        fig , p01,effT_mK, snr_dB = plot_readout_fidelity(analysis_data, transi_freq, output=pic_save_path,plot=plot)
+        fig , p01,effT_mK, snr_dB = plot_readout_fidelity(analysis_data, transi_freq, output=pic_save_path,plot=plot,detail_output=True)
     else:
-        fig , p01, effT_mK, snr_dB = plot_readout_fidelity(analysis_data, transi_freq, plot=plot)
+        fig , p01, effT_mK, snr_dB = plot_readout_fidelity(analysis_data, transi_freq, plot=plot, detail_output=True)
     
     plt.close()
     return p01, effT_mK, snr_dB

@@ -1,7 +1,8 @@
 """
 This py support you to measure at a different bias, the detail info is recorded in Notebook in QD file.
 """
-import os, sys
+import os, json, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import QDmanager
 from Modularize.support.UserFriend import *
@@ -63,9 +64,9 @@ def switch_a_meas_point(dr:str,last_ip:str,target_q:str):
 if __name__ == "__main__":
 
     """ fill in """
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        'q0':{"mode_idx":1,"z_bias_forSave":'sweet'}   #["save","switch"] # save sweet spot bias with z_bias
+        'q0':{"mode_idx":0,"z_bias_forSave":'sweet'}   #["save","switch"] # save sweet spot bias with z_bias
     }                                                      #["sweet","off-sweet"] or a float number
  
     """ Running and Storing"""

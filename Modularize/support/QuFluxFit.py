@@ -1,4 +1,5 @@
-import os, json
+import os, json, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 import xarray as xr
 import quantify_core.data.handling as dh
 import matplotlib.pyplot as plt
@@ -319,14 +320,16 @@ def fq_fit(QD:QDmanager,data2fit_path:str,target_q:str,plot:bool=True,savefig_pa
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from numpy import array, pi, linspace
-    qd_path = 'Modularize/QD_backup/2024_5_15/DR3#13_SumInfo.pkl'
-    json_path = 'Modularize/Meas_raw/2024_5_15/DR3q0_FluxFqFIT_H17M21S59.json'
+    # qd_path = 'Modularize/QD_backup/2024_5_15/DR3#13_SumInfo.pkl'
+    # json_path = 'Modularize/Meas_raw/2024_5_15/DR3q0_FluxFqFIT_H17M21S59.json'
     
-    q = os.path.split(json_path)[-1].split("_")[0][-2:]
-    QD_agent = QDmanager(qd_path)
-    QD_agent.QD_loader()
-    print(QD_agent.Fluxmanager.get_bias_dict()["q1"])
-    pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
-    fq_fit(QD=QD_agent,data2fit_path=json_path,target_q=q,plot=True,savefig_path='',saveParas=False,FitFilter_threshold=2.5)
-
+    # q = os.path.split(json_path)[-1].split("_")[0][-2:]
+    # QD_agent = QDmanager(qd_path)
+    # QD_agent.QD_loader()
+    # print(QD_agent.Fluxmanager.get_bias_dict()["q1"])
+    # pic_parentpath = os.path.join(Data_manager().get_today_picFolder())
+    # fq_fit(QD=QD_agent,data2fit_path=json_path,target_q=q,plot=True,savefig_path='',saveParas=False,FitFilter_threshold=2.5)
+    file = 'Modularize/Meas_raw/2024_8_12/DR4q0_Flux2tone_H12M32S5.nc'
+    f, z, i, q = convert_netCDF_2_arrays(file)
+    data2plot(f,z,i,q,[0,0],q='q0',qblox=True,plot_scatter = True)
 
