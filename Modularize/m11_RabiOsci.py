@@ -19,6 +19,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     qubit_info = QD_agent.quantum_device.get_element(q)
     LO= qubit_info.clock_freqs.f01()+IF
 
+
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
     
@@ -143,8 +144,8 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
+    DRandIP = {"dr":"dr1","last_ip":"11"}
+    ro_elements = ['q3']
     couplers = []
 
 

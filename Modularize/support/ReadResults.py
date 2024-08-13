@@ -81,22 +81,22 @@ def plot_QbFlux(nc_path:str, target_q:str):
 # print("aprx fq=",aprx_fq(x,bare))
 
 if __name__ == '__main__':
-    # import os
-    # from numpy import moveaxis
-    # QD_agent = QDmanager('Modularize/QD_backup/2024_8_7/DR4#81_SumInfo.pkl')
-    # QD_agent.QD_loader()
-    # qs = ['q2']
-    # for q in qs:
-    #     print(q,":")
-    #     qubit = QD_agent.quantum_device.get_element(q)
-    #     print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
-    #     print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
-    #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
-    #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
-    #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
+    import os
+    from numpy import moveaxis
+    QD_agent = QDmanager('Modularize/QD_backup/2024_8_13/DR1#11_SumInfo.pkl')
+    QD_agent.QD_loader()
+    qs = ['q4']
+    for q in qs:
+        print(q,":")
+        qubit = QD_agent.quantum_device.get_element(q)
+        print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
+        print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
+        print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
+        print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
+        print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
 
 
-    plot_QbFlux("Modularize/Meas_raw/2024_8_12/DR4q0_Flux2tone_H13M27S29.nc",'q0')
+    # plot_QbFlux("Modularize/Meas_raw/2024_8_12/DR4q0_Flux2tone_H13M27S29.nc",'q0')
     
     
     

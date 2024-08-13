@@ -145,7 +145,7 @@ def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float)
 
 
 
-def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,XYF:float,XYL:float,xyf_span:float=500e6,xy_if:float=200e6,run:bool=True,V_away_from:float=0,drive_read_overlap:bool=False,avg_times:int=500):
+def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,XYF:float,XYL:float,xyf_span:float=500e6,xy_if:float=200e6,run:bool=True,V_away_from:float=0,drive_read_overlap:bool=False,avg_times:int=500,fpts:int=100):
     
     if run:
         ori_data = []
@@ -155,7 +155,7 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
             QD_agent.Fluxmanager.save_tuneawayBias_for('manual',specific_qubits,want_bias)
         Fctrl[specific_qubits](want_bias) 
-        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=200,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],drive_read_overlap=drive_read_overlap) # 
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],drive_read_overlap=drive_read_overlap) # 
         Fctrl[specific_qubits](0.0)
         cluster.reset() # *** important
         if XYL != 0:
@@ -183,17 +183,18 @@ if __name__ == "__main__":
     chip_info_restore:bool = 0
     update:bool = 1
     #
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[6.9e9],"xyl_guess":[0.01],"g_guess":40e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q3":{"xyf_guess":[0e9],"xyl_guess":[0],"g_guess":35e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = []
 
     """ Optional paras """
-    drive_read_overlap:bool = 0
+    drive_read_overlap:bool = 1
     xyf_range = 500e6
-    avg_n = 500
+    fpts:int = 200
+    avg_n:int = 500
 
 
     """ Running """
@@ -216,7 +217,7 @@ if __name__ == "__main__":
                 init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
                 tune_bias = ro_elements[qubit]["tune_bias"]
                 print(xyf)
-                tt_results = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,XYF=xyf,XYL=xyl,run=execution,xy_if=100e6,xyf_span=xyf_range,V_away_from=tune_bias,drive_read_overlap=drive_read_overlap,avg_times=avg_n)
+                tt_results = conti2tone_executor(QD_agent,meas_ctrl,cluster,specific_qubits=qubit,XYF=xyf,XYL=xyl,run=execution,xy_if=100e6,xyf_span=xyf_range,V_away_from=tune_bias,drive_read_overlap=drive_read_overlap,avg_times=avg_n,fpts=fpts)
 
                 if xyl == 0: 
                     background = tt_results

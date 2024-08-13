@@ -94,11 +94,9 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
 def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,run:bool=True,specific_folder:str='',pts:int=100,ith:int=0,avg_times:int=500):
     if run:
         qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
-
         ori_reset = qubit_info.reset.duration()
         qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
         
-        every_start = time.time()
         slightly_print(f"The {ith}-th T1:")
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         T1_results, T1_hist = T1(QD_agent,meas_ctrl,q=specific_qubits,freeduration=freeDura,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,exp_idx=ith,data_folder=specific_folder,points=pts,n_avg=avg_times)
@@ -106,8 +104,6 @@ def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,
         cluster.reset()
         this_t1_us = T1_hist[specific_qubits]
         slightly_print(f"T1: {this_t1_us} µs")
-        every_end = time.time()
-        slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
         
         qubit_info.reset.duration(ori_reset)
         
@@ -126,13 +122,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"evoT":40e-6,"histo_counts":1},
+        "q2":{"evoT":60e-6,"histo_counts":100},
     }
     couplers = []
 
     """ Optional paras """
-    time_data_points = 100
-    avg_n = 500
+    time_data_points = 50
+    avg_n = 200
   
 
     """ Iterations """
@@ -140,6 +136,7 @@ if __name__ == "__main__":
 
         t1_us_rec = []
         for ith_histo in range(ro_elements[qubit]["histo_counts"]):
+            every_start = time.time()
             """ Preparations """
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -176,6 +173,8 @@ if __name__ == "__main__":
             """ Close """
             print('T1 done!')
             shut_down(cluster,Fctrl,Cctrl)
+            every_end = time.time()
+            slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
         
         
         

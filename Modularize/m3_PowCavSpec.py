@@ -170,19 +170,19 @@ if __name__ == "__main__":
     
     """ fill in """
     execution:bool = True
-    sweetSpot_dispersive:bool = 1 # if true, only one qubit should be in the ro_elements 
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements =["q0"]     # measurement target q from this dict # q1, q2 44dB 0.2
-    ro_atte_for_all:int= 44
+    sweetSpot_dispersive:bool = 0 # if true, only one qubit should be in the ro_elements 
+    DRandIP = {"dr":"dr1","last_ip":"11"}
+    ro_elements =["q3","q4"]     # measurement target q from this dict # q1, q2 44dB 0.2
+    ro_atte_for_all:int= 42
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 3e6
-    freq_data_points = 60
+    half_ro_freq_window_Hz = 7e6
+    freq_data_points = 100
     power_data_points = 30
 
     """ in Case paras """
-    dress_higher_bare:bool = 0
+    dress_higher_bare:bool = 1
 
 
     """ preparations """

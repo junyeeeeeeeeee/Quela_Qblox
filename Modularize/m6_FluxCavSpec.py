@@ -131,15 +131,15 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
+    DRandIP = {"dr":"dr1","last_ip":"11"}
+    ro_elements = ['q3']
     cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 1e6
+    freq_half_window_Hz = 1.5e6
     flux_half_window_V  = 0.4
-    freq_data_points = 20
-    flux_data_points = 20
+    freq_data_points = 40
+    flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
 
     for qubit in ro_elements:

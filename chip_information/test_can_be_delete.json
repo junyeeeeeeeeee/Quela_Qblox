@@ -1,9 +1,9 @@
 {
     "basic_information": {
-        "chip_name": "20240811_WJ3XQ",
+        "chip_name": "test_can_be_delete",
         "chip_type": "5Q4C",
-        "create_time": "20240811",
-        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/20240811_WJ3XQ.json"
+        "create_time": "20240813",
+        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/test_can_be_delete.json"
     },
     "1Q_information": {
         "ro_att": -1,
@@ -91,8 +91,8 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0.10288997660934546,
-                    "dura_time": 4e-08,
+                    "amp": 0,
+                    "dura_time": 0,
                     "AC_stark": 0,
                     "freq": 0
                 },
@@ -142,8 +142,8 @@
                     },
                     "qubit": {
                         "freq": 0,
-                        "T1": "11.3 +- 1.99",
-                        "T2": "4.58 +- 1.19"
+                        "T1": 0,
+                        "T2": 0
                     },
                     "flux": 0,
                     "g": 0
@@ -194,8 +194,8 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0.1092093133732978,
-                    "dura_time": 4e-08,
+                    "amp": 0,
+                    "dura_time": 0,
                     "AC_stark": 0,
                     "freq": 0
                 },
@@ -245,8 +245,8 @@
                     },
                     "qubit": {
                         "freq": 0,
-                        "T1": "10.68 +- 1.29",
-                        "T2": "4.33 +- 1.17"
+                        "T1": 0,
+                        "T2": 0
                     },
                     "flux": 0,
                     "g": 0
@@ -297,8 +297,8 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0.14984868934662163,
-                    "dura_time": 4e-08,
+                    "amp": 0,
+                    "dura_time": 0,
                     "AC_stark": 0,
                     "freq": 0
                 },

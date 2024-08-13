@@ -147,15 +147,17 @@ def modify_time_point(ary:ndarray,factor1:int, factor2:int=0):
 
 def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,ith:int=1,run:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800, spin_echo:int=0):
     if run:
-        start_time = time.time()
+        qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
+        ori_reset = qubit_info.reset.duration()
+        qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
+    
         slightly_print(f"The {ith}-th T2:")
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         Ramsey_results, T2_us, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder,spin=spin_echo)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
         this_t2_us = T2_us[specific_qubits]
-        end_time = time.time()
-        slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
+        qubit_info.reset.duration(ori_reset)
         
     else:
         Ramsey_results, _, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False,spin=spin_echo)
@@ -173,20 +175,21 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":15e-6,"histo_counts":1},
+        "q2":{"detune":0.3e6,"evoT":20e-6,"histo_counts":100},
     }
     couplers = []
 
     """ Optional paras """
     spin_echo_pi_num:int = 0
-    time_data_points = 100
-    avg_n = 800
+    time_data_points = 70
+    avg_n = 200
 
 
     """ Iteration """
     for qubit in ro_elements:
         t2_us_rec = []
         for ith_histo in range(ro_elements[qubit]["histo_counts"]):
+            start_time = time.time()
             """ Preparations """
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
@@ -230,6 +233,8 @@ if __name__ == "__main__":
             """ Close """
             print('T2 done!')
             shut_down(cluster,Fctrl,Cctrl)
+            end_time = time.time()
+            slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
             
         
         
