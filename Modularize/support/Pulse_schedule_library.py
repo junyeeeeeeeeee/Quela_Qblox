@@ -13,21 +13,43 @@ from quantify_scheduler.enums import BinMode
 from quantify_scheduler.backends.graph_compilation import SerialCompiler
 from quantify_scheduler.schedules.schedule import Schedule
 from quantify_scheduler.operations.acquisition_library import SSBIntegrationComplex,Trace
-from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse)
+from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse,GaussPulse)
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.operations.gate_library import Reset, Measure
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
 
+""" Global pulse settings """
 electrical_delay:float = 280e-9
+XY_waveform:str = 'drag'
+s_factor = 4                     # sigma = puse duration / s_factor
+half_pi_ratio:float = 0.5              # pi/2 pulse amp is pi-pulse amp * half_pi_ratio, should be less than 1
+
+ 
 
 #%% IQ displacement
-
 def IQ_data_dis(I_data:np.ndarray,Q_data:np.ndarray,ref_I:float,ref_Q:float):
     Dis= np.sqrt((I_data-ref_I)**2+(Q_data-ref_Q)**2)
     return Dis    
  
-
+def XY_waveform_controller(pulse_sche:Schedule, amp:float, duration:float, phase:float, q:str, rel_time:float, ref_op:Schedule, waveform:str, ref_pt:str="start", sigma_factor:float=4,**kwargs):
+    """
+    waveform switch\n
+    sigma_factor determines the relations between pulse sigma and pulse duration is `sigma = duration/sigma_factor`.
+    ### * kwargs: *
+    1. if use DRAG, there should ne a argument named 'drag_amp'. It specifies the derivative part amplitude in DRAG as default is the same as amp.
+    """
+    match waveform.lower():
+        case 'drag':
+            if 'drag_amp' in list(kwargs.keys()):
+                diff_amp = kwargs['drag_amp']
+            else:
+                diff_amp = amp
+            return pulse_sche.add(DRAGPulse(G_amp=amp, D_amp=diff_amp, duration= duration, phase=phase, port=q+":mw", clock=q+".01",sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+        case 'gauss':
+            return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+        case _:
+            pass
 
 #%% fit function
 def fft_oscillation_guess(data: np.ndarray, t: np.ndarray):
@@ -274,16 +296,57 @@ def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu, ref_point:str="start"):
     return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
 
 def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
+
     if Du!=0:
         delay_c= -Du-freeDu
-        return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+        XY_waveform_controller(sche,amp,Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
     else: pass
 
 def Y_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
     if Du!=0:
         delay_c= -Du-freeDu
-        return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
+        XY_waveform_controller(sche,amp,Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
     else: pass
+
+def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]*half_pi_ratio
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+
+def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]*half_pi_ratio
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+
+def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
+    amp= pi_amp[q]
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
+
+def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
+    amp= pi_amp[q]
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
+
+def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]*half_pi_ratio
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+
+def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]*half_pi_ratio
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+
+def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+
+def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+    amp= pi_amp[q]
+    delay_c= -pi_Du-freeDu
+    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
@@ -296,46 +359,6 @@ def Zc(sche,Z_amp,Du,qc,ref_pulse_sche,freeDu):
         delay_z= -Du-freeDu
         return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=qc+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt="start",)
     else: pass
-
-def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]/2
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]/2
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
-    amp= pi_amp[q]
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
-
-def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]/2
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]/2
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=0, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
-
-def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]
-    delay_c= -pi_Du-freeDu
-    return sche.add(DRAGPulse(G_amp=amp, D_amp=amp, duration= pi_Du, phase=90, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt="start",)
 
 def Readout(sche,q,R_amp,R_duration,powerDep=False):
     if powerDep is True:
@@ -577,11 +600,11 @@ def Rabi_sche(
         
         sched.add(Reset(q))
         
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         if XY_theta== 'X_theta':
-            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
+            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay,pulse_shape='Gauss')
         elif XY_theta== 'Y_theta':
             Y_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
         else: raise KeyError ('Typing error: XY_theta')
@@ -589,6 +612,54 @@ def Rabi_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
     
     return sched
+
+def rabi_chev(
+    q:str,
+    frequencies:any,
+    XY_amp: any,
+    XY_duration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    XY_theta:str,
+    Rabi_type:str,
+    repetitions:int=1,):
+    
+    sched = Schedule(Rabi_type,repetitions=repetitions)
+    sched.add_resource(ClockResource(name=q+ ".01", freq=frequencies))
+    sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=frequencies))
+    
+    amps = np.asarray(XY_amp)
+    amps = amps.reshape(amps.shape or (1,))
+    durations = np.asarray(XY_duration)
+    durations = durations.reshape(durations.shape or (1,))
+    
+    if Rabi_type=='TimeRabi':
+       Para_XY_amp= amps*np.ones(np.shape(durations))
+       Para_XY_Du= durations
+       
+    elif Rabi_type=='PowerRabi':
+        Para_XY_amp =amps
+        Para_XY_Du = XY_duration*np.ones(np.shape(amps))   
+    else: raise KeyError ('Typing error: Rabi_type')
+        
+    for acq_idx, (amp, duration) in enumerate(zip(Para_XY_amp,Para_XY_Du)):
+        
+        sched.add(Reset(q))
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+            
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        if XY_theta== 'X_theta':
+            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
+        elif XY_theta== 'Y_theta':
+            Y_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
+        else: raise KeyError ('Typing error: XY_theta')
+    
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 
 
 def Zgate_Rabi_sche(

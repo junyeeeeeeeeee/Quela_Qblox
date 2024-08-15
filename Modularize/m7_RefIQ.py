@@ -94,13 +94,13 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q4':{"ro_amp_factor":1}}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = {'q2':{"ro_amp_factor":1}}
     couplers = []
 
 
     """ Optional paras """
-    want_see_thermal_pops:bool= 1
+    want_see_thermal_pops:bool= 1 # this should be True
 
 
     for qubit in ro_elements:

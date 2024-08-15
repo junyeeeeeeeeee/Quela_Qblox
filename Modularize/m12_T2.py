@@ -13,7 +13,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down, coupler_z
 from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot, T1_fit_analysis
 
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=150e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str='',spin:int=0):
+def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=250e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str='',spin:int=0):
     
     T2_us = {}
     analysis_result = {}
@@ -173,16 +173,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q2":{"detune":0.3e6,"evoT":20e-6,"histo_counts":100},
+        "q3":{"detune":3.281e6,"evoT":5e-6,"histo_counts":1},
     }
     couplers = []
 
     """ Optional paras """
     spin_echo_pi_num:int = 0
-    time_data_points = 70
-    avg_n = 200
+    time_data_points = 100
+    avg_n = 5000
 
 
     """ Iteration """

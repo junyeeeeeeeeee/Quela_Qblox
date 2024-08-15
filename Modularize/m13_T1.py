@@ -120,15 +120,15 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr1","last_ip":"11"}
     ro_elements = {
-        "q2":{"evoT":60e-6,"histo_counts":100},
+        "q3":{"evoT":15e-6,"histo_counts":30},
     }
     couplers = []
 
     """ Optional paras """
-    time_data_points = 50
-    avg_n = 200
+    time_data_points = 70
+    avg_n = 500
   
 
     """ Iterations """
