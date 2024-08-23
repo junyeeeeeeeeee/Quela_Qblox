@@ -23,7 +23,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
         qubit_info.measure.integration_time(100e-6-1e-6)
         qubit_info.reset.duration(250e-6)
     qubit_info.measure.pulse_amp(ro_amp_scaling*float(qubit_info.measure.pulse_amp()))
-
+    qubit_info.measure.acq_delay(280e-9)
     # qubit_info.clock_freqs.readout(5.7225e9)
     if want_state == 'g':
         XYL = 0
@@ -67,7 +67,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             show_args(Experi_info(q))
     return analysis_result
 
-def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=10000,want_see_p01:bool=False):
+def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=10000,want_see_p01:bool=True):
 
     if run:
 
@@ -95,12 +95,11 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q2':{"ro_amp_factor":1}}
-    couplers = []
-
-
-    """ Optional paras """
-    want_see_thermal_pops:bool= 1 # this should be True
+    ro_elements = {'q0':{"ro_amp_factor":1},}
+                #    'q1':{"ro_amp_factor":1.2},
+                #    'q2':{"ro_amp_factor":1},
+                #    'q3':{"ro_amp_factor":1},}
+    couplers = ['c0']
 
 
     for qubit in ro_elements:
@@ -112,7 +111,7 @@ if __name__ == "__main__":
         """ Running """
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"],want_see_p01=want_see_thermal_pops)
+        refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         
         if ro_elements[qubit]["ro_amp_factor"] !=1:
             keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")

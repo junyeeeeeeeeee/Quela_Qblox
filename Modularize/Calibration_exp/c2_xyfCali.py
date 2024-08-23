@@ -14,11 +14,11 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution:bool = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q3":{"evoT":2e-6}
+        "q0":{"evoT":10e-6}
     }
-    couplers = []
+    couplers = ["c0"]
 
 
     """ Iteration (Do NOT touch!)"""

@@ -21,9 +21,9 @@ from quantify_scheduler.helpers.collections import find_port_clock_path
 
 """ Global pulse settings """
 electrical_delay:float = 280e-9
-XY_waveform:str = 'drag'
+XY_waveform:str = 'gauss'
 s_factor = 4                     # sigma = puse duration / s_factor
-half_pi_ratio:float = 0.5              # pi/2 pulse amp is pi-pulse amp * half_pi_ratio, should be less than 1
+half_pi_ratio:float = 0.5*1.005              # pi/2 pulse amp is pi-pulse amp * half_pi_ratio, should be less than 1
 
  
 
@@ -112,7 +112,7 @@ def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,ret
 def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,return_error:bool=False):
     print(f"T2 freeDu: {min(freeDu)}~{max(freeDu)}")
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
-    T2=Parameter(name='T2', value= T2_guess, min=1e-6, max=5*T2_guess) 
+    T2=Parameter(name='T2', value= T2_guess, min=0.1e-6, max=5*T2_guess) 
     up_lim_f= 5*1e6
     f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
     result = Ramsey_func_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
@@ -299,54 +299,54 @@ def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
 
     if Du!=0:
         delay_c= -Du-freeDu
-        XY_waveform_controller(sche,amp,Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+        return XY_waveform_controller(sche,amp,Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
     else: pass
 
 def Y_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
     if Du!=0:
         delay_c= -Du-freeDu
-        XY_waveform_controller(sche,amp,Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+        return XY_waveform_controller(sche,amp,Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
     else: pass
 
 def X_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]*half_pi_ratio
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def Y_pi_2_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]*half_pi_ratio
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def X_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
+    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
 
 def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
+    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
 
 def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]*half_pi_ratio
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]*half_pi_ratio
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
 
 def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
@@ -604,7 +604,7 @@ def Rabi_sche(
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         if XY_theta== 'X_theta':
-            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay,pulse_shape='Gauss')
+            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
         elif XY_theta== 'Y_theta':
             Y_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
         else: raise KeyError ('Typing error: XY_theta')
@@ -845,13 +845,14 @@ def Ramsey_sche(
     R_inte_delay:float,
     pi_dura:float=20e-9,
     repetitions:int=1,
-    echo_pi_num:int = 0
+    echo_pi_num:int = 0,
+    second_pulse_phase:str='x',
 ) -> Schedule:
 
     sched = Schedule("Ramsey", repetitions=repetitions)
     
     pi_Du= pi_dura
-    
+    print(f"phase: {second_pulse_phase}")
     for acq_idx, freeDu in enumerate(freeduration):
         
         sched.add(
@@ -860,10 +861,13 @@ def Ramsey_sche(
         sched.add(Reset(q))
         
         sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
-
+        
         # we start construction from readout
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
+        if second_pulse_phase.lower() == 'x':
+            first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
+        else:
+            first_half_pi = Y_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
         
         if echo_pi_num != 0:
             a_separate_free_Du = freeDu / echo_pi_num
@@ -994,7 +998,7 @@ def Qubit_SS_sche(
 
     return sched
 
-# TODO:
+#? Calibrations :
 def ROF_Cali_sche(
     q:str,
     ro_freq:np.ndarray,
@@ -1021,6 +1025,67 @@ def ROF_Cali_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
     return sched
+
+def PI_amp_cali_sche(
+    q:str,
+    XY_amp: dict,
+    pi_amp_coefs: np.ndarray,
+    pi_pair_num:int,
+    XY_duration:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+    )-> Schedule:
+
+
+    sched = Schedule("Pi amp modification", repetitions=repetitions)
+    for acq_idx, amp_coef in enumerate(np.asarray(pi_amp_coefs)):
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+    
+        read_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        
+        for pi_num in range(pi_pair_num):
+            for pi_idx in range(2):
+                spec_pulse = X_pi_p(sched,{str(q):float(XY_amp[q])*amp_coef},q,XY_duration,read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                
+        Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
+
+def pi_half_cali_sche(
+    q:str,
+    pi_amp: dict,
+    pi_half_coefs: np.ndarray,
+    half_pi_quadruple_num:int,
+    XY_duration:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+    )-> Schedule:
+    
+    sched = Schedule("Pi amp modification", repetitions=repetitions)
+    for acq_idx, amp_coef in enumerate(np.asarray(pi_half_coefs)):
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+    
+        read_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        for pi_num in range(half_pi_quadruple_num):
+            for pi_idx in range(4):
+                spec_pulse = X_pi_p(sched,{str(q):float(pi_amp[q])*amp_coef},q,XY_duration,read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse,freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                
+        Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
+
+
 
 def Qubit_amp_SS_sche(
     q:str,

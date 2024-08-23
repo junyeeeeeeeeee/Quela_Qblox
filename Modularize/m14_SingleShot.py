@@ -25,7 +25,10 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=250e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
-    # qubit_info.measure.integration_time(0.8e-6)
+    qubit_info.measure.integration_time(0.65e-6)
+    qubit_info.reset.duration(250e-6)
+    
+    print(qubit_info.clock_freqs.readout()*1e-9)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
     if ro_amp_factor != 1:
@@ -36,13 +39,13 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     analysis_result = {}
     exp_kwargs= dict(shots=shots,
                      )
-    
+    print(qubit_info.rxy.amp180())
     def state_dep_sched(ini_state:str):
         slightly_print(f"Shotting for |{ini_state}>")
         sched_kwargs = dict(   
             q=q,
             ini_state=ini_state,
-            pi_amp={str(q):qubit_info.rxy.amp180()},
+            pi_amp={str(q):qubit_info.rxy.amp180()*10},
             pi_dura={str(q):qubit_info.rxy.duration()},
             R_amp={str(q):qubit_info.measure.pulse_amp()},
             R_duration={str(q):qubit_info.measure.pulse_duration()},
@@ -91,7 +94,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     return analysis_result, nc_path
 
 
-def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=10000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False):
+def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots:int=10000,execution:bool=True,data_folder='',plot:bool=True,roAmp_modifier:float=1,exp_label:int=0,save_every_pic:bool=False,IF:float=250e6):
 
     Fctrl[target_q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q)))
 
@@ -102,7 +105,8 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
                 parent_datafolder=data_folder,
                 ro_amp_factor=roAmp_modifier,
                 exp_idx=exp_label,
-                plot=plot)
+                plot=plot,
+                IF=IF)
     Fctrl[target_q](0.0)
     cluster.reset()
     
@@ -125,14 +129,15 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     repeat:int = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {'q3':{"roAmp_factor":1.5}}
-    couplers = []
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = {'q0':{"roAmp_factor":1}}
+    couplers = ['c0']
 
 
     """ Optional paras (don't use is better) """
     ro_atte_degrade_dB:int = 0 # multiple of 2 
-    
+    shot_num:int = 100000
+    xy_IF = 250e6
 
     """ Iteration """
     snr_rec, effT_rec, thermal_pop = {}, {}, {}
@@ -144,6 +149,7 @@ if __name__ == '__main__':
             slightly_print(f"The {i}th OS:")
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+            QD_agent.Notewriter.save_DigiAtte_For(20,'q0','xy')
             QD_agent.Notewriter.modify_DigiAtte_For(-ro_atte_degrade_dB, qubit, 'ro')
 
 
@@ -154,7 +160,7 @@ if __name__ == '__main__':
             init_system_atte(QD_agent.quantum_device,list([qubit]),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             ro_amp_scaling = ro_elements[qubit]["roAmp_factor"]
             if ro_amp_scaling != 1 and repeat > 1 : raise ValueError("Check the RO_amp_factor should be 1 when you want to repeat it!")
-            info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,roAmp_modifier=ro_amp_scaling,plot=True if repeat ==1 else False,exp_label=i)
+            info = SS_executor(QD_agent,cluster,Fctrl,qubit,execution=execute,shots=shot_num,roAmp_modifier=ro_amp_scaling,plot=True if repeat ==1 else False,exp_label=i,IF=xy_IF)
             snr_rec[qubit].append(info[2])
             effT_rec[qubit].append(info[1])
             thermal_pop[qubit].append(info[0]*100)
@@ -164,9 +170,9 @@ if __name__ == '__main__':
                 keep = 'y'
 
             """ Storing """ 
-            if execute and repeat == 1:
-                if keep.lower() in ['y', 'yes']:
-                    QD_agent.QD_keeper() 
+            # if execute and repeat == 1:
+            #     if keep.lower() in ['y', 'yes']:
+            #         QD_agent.QD_keeper() 
                     
                 
             """ Close """    

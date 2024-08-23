@@ -67,7 +67,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD')
-        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=0)
+        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=-2)
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -132,15 +132,15 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 0
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q2']
-    cp_ctrl = {}
+    ro_elements = ['q0']
+    cp_ctrl = {'c0':-0.066}
 
     """ Optional paras """
-    freq_half_window_Hz = 1.5e6
+    freq_half_window_Hz = 6e6
     flux_half_window_V  = 0.4
-    freq_data_points = 80
-    flux_data_points = 80
-    freq_center_shift = 0e6 # freq axis shift
+    freq_data_points = 40
+    flux_data_points = 40
+    freq_center_shift = 4e6 # freq axis shift
 
     for qubit in ro_elements:
         """ Preparations """

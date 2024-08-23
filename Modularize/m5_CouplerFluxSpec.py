@@ -131,15 +131,15 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     sweet_spot:bool = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {"q0":["c0"]}
 
     
     """ Optional paras """
-    freq_half_window_Hz = 2e6
+    freq_half_window_Hz = 3e6
     flux_half_window_V  = 0.3
     freq_data_points = 20
-    flux_data_points = 80
+    flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
 
     

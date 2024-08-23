@@ -17,9 +17,10 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     analysis_result = {}
     sche_func= Rabi_sche
     qubit_info = QD_agent.quantum_device.get_element(q)
+    
     LO= qubit_info.clock_freqs.f01()+IF
     qubit_info.measure.pulse_duration(2e-6)
-    qubit_info.measure.integration_time(1e-6)
+    qubit_info.measure.integration_time(0.7e-6)
     qubit_info.reset.duration(250e-6)
 
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
@@ -50,7 +51,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
         str_Rabi= 'XY_amp'
         Para_XY_amp.batched = True
         Para_XY_Du = XY_duration
-        samples = linspace(-XY_amp,XY_amp,points) 
+        samples = linspace(0,XY_amp,points) 
         exp_kwargs= dict(sweep_amp=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                          Duration='%E' %XY_duration,
                          )
@@ -99,7 +100,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
             show_args(Experi_info(q))
     else:
         n_s = -2
-        sweep_para= array(samples[n_s:])
+        sweep_para= array([samples[0],samples[-1]])
         sched_kwargs[str_Rabi]= sweep_para.reshape(sweep_para.shape or (1,))
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
        
@@ -148,26 +149,26 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = ['q3']
-    couplers = []
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = ['q0']
+    couplers = ['c0']
 
 
     """ Optional paras """
-    pi_duration:float = 200e-9
-    pi_amp_max:float = 0.4*1.5
-    rabi_type:str = 'time'  # 'time' or 'power'
-    data_pts = 100
-    avg_n:int = 5000
+    pi_duration:float = 40e-9
+    pi_amp_max:float = 0.3
+    rabi_type:str = 'power'  # 'time' or 'power'
+    data_pts = 150
+    avg_n:int = 500
     ## If detune_Hz != 0 it will perform a chevron exp
     detune_Hz = 0e6
-    freq_pts = 100
+    freq_pts = 180
     adj_freq = 0e6
     
     """ Operations """
     freqs = linspace(-detune_Hz, detune_Hz, freq_pts) if detune_Hz != 0 else array([0])
     for qubit in ro_elements:
-        if freqs.shap[0] != 1:
+        if freqs.shape[0] != 1:
             specific_folder = Data_manager().creat_datafolder_today(f"RabiChevron_{qubit}_{Data_manager().get_time_now()}")
         else:
             specific_folder = ''
@@ -178,14 +179,15 @@ if __name__ == "__main__":
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
             chip_info = cds.Chip_file(QD_agent=QD_agent)
-            QD_agent.Notewriter.save_DigiAtte_For(6,ro_elements[0],'xy')
+            QD_agent.Notewriter.save_DigiAtte_For(0,ro_elements[0],'xy')
+            # QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01(5.08e9)
             QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01(QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01()+freq+adj_freq)
             """Running """
             rabi_results = {}
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-            rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,which_rabi=rabi_type,avg_times=avg_n,pts=data_pts,chevron=0 if freqs.shape[0] == 1 else True)
+            rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,which_rabi=rabi_type,avg_times=avg_n,pts=data_pts,data_folder=specific_folder)
             cluster.reset()
         
             """ Storing """
@@ -195,7 +197,7 @@ if __name__ == "__main__":
                 if chip_info_restore:
                     chip_info.update_RabiOsci(qb=qubit)
 
-            if specific_folder != '' and idx == freqs.shap[0]-1:
+            if specific_folder != '' and idx == freqs.shape[0]-1:
                 plot_chevron(QD_agent,qubit,detune_Hz,specific_folder)
 
             """ Close """

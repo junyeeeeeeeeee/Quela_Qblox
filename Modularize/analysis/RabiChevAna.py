@@ -51,14 +51,14 @@ def plot_chevron(QD_agent:QDmanager, target_q:str, freq_spn_Hz:float, data_folde
 
 
 if __name__ == "__main__": 
-    QD_file = "Modularize/QD_backup/2024_8_14/DR1#11_SumInfo.pkl"
-    data_folder = 'Modularize/Meas_raw/2024_8_14/Rabi_chev_best'
-    target_q = 'q3'
-    freq_span = 50e6
+    QD_file = "Modularize/QD_backup/2024_8_23/DR4#81_SumInfo.pkl"
+    data_folder = 'Modularize/Meas_raw/2024_8_23/RabiChevron_q0_H0M42S22'
+    target_q = 'q0'
+    freq_span = 30e6
 
 
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    plot_chevron(QD_agent,target_q,freq_span,data_folder,False)
+    plot_chevron(QD_agent,target_q,freq_span,data_folder,True)
 
