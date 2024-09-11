@@ -20,8 +20,8 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     sche_func= T1_sche
 
     qubit_info = QD_agent.quantum_device.get_element(q)
-    qubit_info.measure.integration_time(0.5e-6)
-    qubit_info.reset.duration(250e-6)
+    print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
+    print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
     LO= qubit_info.clock_freqs.f01()+IF
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
@@ -31,7 +31,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     
     sched_kwargs = dict(
         q=q,
-        pi_amp={str(q):qubit_info.rxy.amp180()*10},
+        pi_amp={str(q):qubit_info.rxy.amp180()},
         pi_dura=qubit_info.rxy.duration(),
         freeduration=Para_free_Du,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
@@ -61,7 +61,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         I,Q= dataset_to_array(dataset=T1_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         if data_folder == '':
-            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=1e-6)
+            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=20e-6)
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
         else:
             data_fit=[]
@@ -123,13 +123,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"histo_counts":100},
+        "q4":{"evoT":120e-6,"histo_counts":1},
     }
-    couplers = ["c0"]
+    couplers = []
 
     """ Optional paras """
-    time_data_points = 60
-    avg_n = 300
+    time_data_points = 100
+    avg_n = 600
     xy_IF = 250e6
   
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
             chip_info = cds.Chip_file(QD_agent=QD_agent)
-            QD_agent.Notewriter.save_DigiAtte_For(20,'q0','xy')
+            
             """ Running """
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))

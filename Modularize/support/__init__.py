@@ -24,7 +24,7 @@ import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
 
 from numpy import asarray, ndarray, real
-
+from Modularize.support.UserFriend import *
 
 
 def multiples_of_x(raw_number:float, x:float):
@@ -328,6 +328,7 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     ip = ip_register[dr.lower()]
     Cctrl = get_CouplerController(cluster, ip)
     for cp in cp_elements:
+        slightly_print(f"{cp} biased @ {round(cp_elements[cp],2)} V")
         Cctrl[cp](cp_elements[cp])
     
     return Cctrl

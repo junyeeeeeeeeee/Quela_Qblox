@@ -154,7 +154,7 @@ def cryoscope_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementC
     else:
         Ramsey_results, I, Q = cryoscope(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False,second_phase=second_phase)
         
-    return Ramsey_results[specific_qubits], I, Q
+    return Ramsey_results[specific_qubits]
 
 def plot_cryoscope(data:dict):
     x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
@@ -188,20 +188,19 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"detune":0.1e6,"evoT":50e-6},
+        "q1":{"detune":0.4e6,"evoT":40e-6},
     }
-    couplers = ["c0"]
+    couplers = ["c0","c1"]
 
     """ Optional paras """
     time_data_points = 100
-    avg_n = 100
+    avg_n = 1500
 
 
     """ Iteration """
     for qubit in ro_elements:
         data = {'x':[], 'y':[]}
-        i = []
-        q = []
+
         for idx, phase in enumerate(list(data.keys())):
             start_time = time.time()
             """ Preparations """
@@ -214,10 +213,9 @@ if __name__ == "__main__":
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             
-            data[phase], I , Q = cryoscope_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],run=execution,pts=time_data_points,avg_n=avg_n,second_phase=phase)
+            data[phase] = cryoscope_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],run=execution,pts=time_data_points,avg_n=avg_n,second_phase=phase)
             highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
-            i.append(I)
-            q.append(Q)
+            
             """ Storing """
             if idx == len(list(data.keys())) - 1 and execution:
                 plot_cryoscope(data)
@@ -229,12 +227,6 @@ if __name__ == "__main__":
             end_time = time.time()
             slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
 
-        angle = []
-        for j in range(2):
-            angle.append(arctan2(array(q[j]),array(i[j]))*180/pi)
-        
-        for idx in range(angle[0].shape[0]):
-            print("x: ",round(angle[0][idx],1)," y: ",round(angle[1][idx],1))
 
                 
         

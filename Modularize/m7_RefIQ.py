@@ -23,7 +23,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
         qubit_info.measure.integration_time(100e-6-1e-6)
         qubit_info.reset.duration(250e-6)
     qubit_info.measure.pulse_amp(ro_amp_scaling*float(qubit_info.measure.pulse_amp()))
-    qubit_info.measure.acq_delay(280e-9)
+    
     # qubit_info.clock_freqs.readout(5.7225e9)
     if want_state == 'g':
         XYL = 0
@@ -67,12 +67,13 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
             show_args(Experi_info(q))
     return analysis_result
 
-def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=10000,want_see_p01:bool=True):
+def refIQ_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,specific_qubits:str,run:bool=True,ro_amp_adj:float=1,shots_num:int=50000,want_see_p01:bool=True,specify_bias=0):
 
     if run:
-
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)))
-
+        if specify_bias == 0:
+            Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)))
+        else:
+            Fctrl[specific_qubits](specify_bias)
         analysis_result = Single_shot_ref_spec(QD_agent,q=specific_qubits,want_state='g',shots=shots_num,ro_amp_scaling=ro_amp_adj,thermal_pop_mode=want_see_p01)
         Fctrl[specific_qubits](0.0)
         cluster.reset()
@@ -95,11 +96,9 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q0':{"ro_amp_factor":1},}
-                #    'q1':{"ro_amp_factor":1.2},
-                #    'q2':{"ro_amp_factor":1},
-                #    'q3':{"ro_amp_factor":1},}
-    couplers = ['c0']
+    ro_elements = {'q4':{"ro_amp_factor":1},}
+                
+    couplers = []
 
 
     for qubit in ro_elements:
@@ -110,6 +109,7 @@ if __name__ == "__main__":
 
         """ Running """
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        print(QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         

@@ -20,8 +20,10 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
     
     LO= qubit_info.clock_freqs.f01()+IF
     qubit_info.measure.pulse_duration(2e-6)
-    qubit_info.measure.integration_time(0.7e-6)
+    qubit_info.measure.integration_time(1e-6)
     qubit_info.reset.duration(250e-6)
+    print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
+    print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
 
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
     eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
@@ -51,7 +53,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XY_amp:float=0.5, XY_du
         str_Rabi= 'XY_amp'
         Para_XY_amp.batched = True
         Para_XY_Du = XY_duration
-        samples = linspace(0,XY_amp,points) 
+        samples = linspace(-XY_amp,XY_amp,points) 
         exp_kwargs= dict(sweep_amp=[osci_type,'start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
                          Duration='%E' %XY_duration,
                          )
@@ -123,9 +125,11 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
     print(f"{specific_qubits} are under the measurement ...")
     trustable = False
     if run:
+        
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         Rabi_results = Rabi(QD_agent,meas_ctrl,Rabi_type=exp_type,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,XY_amp=XYamp_max,XY_duration=XYdura_max,points=pts,n_avg=avg_times,specific_data_folder=data_folder)
         Fctrl[specific_qubits](0.0)
+        
         cluster.reset()
         if Rabi_results == {}:
             print(f"Rabi Osci error qubit: {specific_qubits}")
@@ -150,19 +154,20 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
-    couplers = ['c0']
+    ro_elements = ['q4']
+    couplers = []
 
 
     """ Optional paras """
     pi_duration:float = 40e-9
-    pi_amp_max:float = 0.3
+    pi_amp_max:float = 0.4
     rabi_type:str = 'power'  # 'time' or 'power'
-    data_pts = 150
-    avg_n:int = 500
+    data_pts = 100
+    avg_n:int = 300
+    xy_atte:int = 10
     ## If detune_Hz != 0 it will perform a chevron exp
     detune_Hz = 0e6
-    freq_pts = 180
+    freq_pts = 20
     adj_freq = 0e6
     
     """ Operations """
@@ -179,13 +184,12 @@ if __name__ == "__main__":
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
             chip_info = cds.Chip_file(QD_agent=QD_agent)
-            QD_agent.Notewriter.save_DigiAtte_For(0,ro_elements[0],'xy')
-            # QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01(5.08e9)
+            QD_agent.Notewriter.save_DigiAtte_For(xy_atte,qubit,'xy')
+            
             QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01(QD_agent.quantum_device.get_element(ro_elements[0]).clock_freqs.f01()+freq+adj_freq)
             """Running """
             rabi_results = {}
             Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-            
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,which_rabi=rabi_type,avg_times=avg_n,pts=data_pts,data_folder=specific_folder)
             cluster.reset()

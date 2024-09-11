@@ -25,10 +25,12 @@ def plot_chevron(QD_agent:QDmanager, target_q:str, freq_spn_Hz:float, data_folde
         z.append(IQ_data_dis(I,Q,ref_I=QD_agent.refIQ[target_q][0],ref_Q=QD_agent.refIQ[target_q][-1]))
 
     if max(abs(x)) < 0.01:
+        title = ' Time Rabi Chevron'
         x_text = "Driving pulse length (ns)"
         x *= 1e9 
     else:
         x_text = "Driving pulse amplitude (V)"
+        title = ' Power Rabi Chevron'
 
     if y_is_detune:
         y = fres_adj*1e-6
@@ -46,15 +48,16 @@ def plot_chevron(QD_agent:QDmanager, target_q:str, freq_spn_Hz:float, data_folde
     ax.xaxis.set_tick_params(labelsize=18)
     ax.yaxis.set_tick_params(labelsize=18)
     fig.colorbar(c, ax=ax, label="Contrast (V)")
+    plt.title(title,fontsize=20)
     plt.tight_layout()
     plt.show()
 
 
 if __name__ == "__main__": 
-    QD_file = "Modularize/QD_backup/2024_8_23/DR4#81_SumInfo.pkl"
-    data_folder = 'Modularize/Meas_raw/2024_8_23/RabiChevron_q0_H0M42S22'
+    QD_file = "Modularize/QD_backup/2024_8_27/DR4#81_SumInfo.pkl"
+    data_folder = 'Modularize/Meas_raw/2024_8_27/RabiChevron_q0_H11M50S56'
     target_q = 'q0'
-    freq_span = 30e6
+    freq_span = 20e6
 
 
     QD_agent = QDmanager(QD_file)

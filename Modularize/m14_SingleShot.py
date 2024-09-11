@@ -25,9 +25,11 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=250e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
-    qubit_info.measure.integration_time(0.65e-6)
-    qubit_info.reset.duration(250e-6)
-    
+    print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
+    print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+    # qubit_info.measure.integration_time(0.65e-6)
+    # qubit_info.reset.duration(250e-6)
+    # qubit_info.clock_freqs.readout(5.863e9-0.4e6)
     print(qubit_info.clock_freqs.readout()*1e-9)
     sche_func = Qubit_SS_sche  
     LO= qubit_info.clock_freqs.f01()+IF
@@ -45,7 +47,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
         sched_kwargs = dict(   
             q=q,
             ini_state=ini_state,
-            pi_amp={str(q):qubit_info.rxy.amp180()*10},
+            pi_amp={str(q):qubit_info.rxy.amp180()*1},
             pi_dura={str(q):qubit_info.rxy.duration()},
             R_amp={str(q):qubit_info.measure.pulse_amp()},
             R_duration={str(q):qubit_info.measure.pulse_duration()},
@@ -130,14 +132,16 @@ if __name__ == '__main__':
     execute:bool = True
     repeat:int = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q0':{"roAmp_factor":1}}
-    couplers = ['c0']
+    ro_elements = {'q4':{"roAmp_factor":0.8}}
+    couplers = []
 
 
     """ Optional paras (don't use is better) """
     ro_atte_degrade_dB:int = 0 # multiple of 2 
-    shot_num:int = 100000
+    shot_num:int = 10000
     xy_IF = 250e6
+
+
 
     """ Iteration """
     snr_rec, effT_rec, thermal_pop = {}, {}, {}
@@ -149,7 +153,6 @@ if __name__ == '__main__':
             slightly_print(f"The {i}th OS:")
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
             QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-            QD_agent.Notewriter.save_DigiAtte_For(20,'q0','xy')
             QD_agent.Notewriter.modify_DigiAtte_For(-ro_atte_degrade_dB, qubit, 'ro')
 
 
@@ -170,9 +173,10 @@ if __name__ == '__main__':
                 keep = 'y'
 
             """ Storing """ 
-            # if execute and repeat == 1:
-            #     if keep.lower() in ['y', 'yes']:
-            #         QD_agent.QD_keeper() 
+            if execute and repeat == 1:
+                if keep.lower() in ['y', 'yes']:
+                    QD_agent.QD_keeper() 
+                    
                     
                 
             """ Close """    

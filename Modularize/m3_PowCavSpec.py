@@ -28,9 +28,6 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         original_rof[q] = qubit_info.clock_freqs.readout()
         # avoid frequency conflicts
         qubit_info.clock_freqs.readout(NaN)
-        qubit_info.measure.pulse_duration(100e-6)
-        qubit_info.measure.integration_time(100e-6)
-        qubit_info.reset.duration(250e-6)
 
     ro_p_samples = linspace(ro_p_min,ro_p_max,p_points)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
@@ -172,12 +169,12 @@ if __name__ == "__main__":
     execution:bool = True
     sweetSpot_dispersive:bool = 0 # if true, only one qubit should be in the ro_elements 
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements =["q0","q1","q2","q3"]     # measurement target q from this dict # q1, q2 44dB 0.2
-    ro_atte_for_all:int=40
+    ro_elements =["q0",'q1']     # measurement target q from this dict # q1, q2 44dB 0.2
+    ro_atte_for_all:int=40 
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 7e6
+    half_ro_freq_window_Hz = 10e6
     freq_data_points = 100
     power_data_points = 30
 

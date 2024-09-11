@@ -25,7 +25,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_amp_st
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     original_f01 = qubit_info.clock_freqs.f01()
-    
+    print(original_f01)
 
     if xyf == 0:
         xyf_highest = original_f01+IF
@@ -139,10 +139,11 @@ def update_by_fluxQubit(QD_agent:QDmanager,correct_results:dict,target_q:str):
 
 
 def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=5,fpts:int=40,span_priod_factor:int=12,f_sapn_Hz=400e6,avg_times:int=1000,xy_IF:float=200e6):
-    center = QD_agent.Fluxmanager.get_sweetBiasFor(target_q=specific_qubits)
+    center = QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)
     partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/span_priod_factor
 
     if run:
+        
         Fctrl[specific_qubits](center)
         results, nc_path, trustable= Zgate_two_tone_spec(QD_agent,meas_ctrl,Z_amp_start=-partial_period+z_shifter,Z_points=zpts,f_points=fpts,Z_amp_end=partial_period+z_shifter,q=specific_qubits,run=True,get_data_path=True,xyf_span_Hz=f_sapn_Hz,IF=xy_IF,n_avg=avg_times)
         reset_offset(Fctrl)
@@ -169,18 +170,18 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q2']
+    ro_elements = ['q4']
     couplers = []
-    z_shifter = 0 # V
+    z_shifter = 0.0 # V
 
     
     """ Optional paras """
     span_period_factor:float = 10 # range in [sweet - period/span_period_factor, sweet + period/span_period_factor]
-    flux_pts:int = 20
-    freq_pts:int = 60
+    flux_pts:int = 30
+    freq_pts:int = 40
     freq_span_Hz:float = 500e6
     sweet_flux_shifter:float = 0
-    xy_IF = 200e6
+    xy_IF = 100e6
     avg_n:int = 500
 
 

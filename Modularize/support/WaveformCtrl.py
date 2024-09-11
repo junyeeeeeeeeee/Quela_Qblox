@@ -2,6 +2,14 @@
 from quantify_scheduler.operations.pulse_library import DRAGPulse, GaussPulse
 from quantify_scheduler.schedules.schedule import Schedule
 
+
+XY_waveform:str = 'gauss'
+RO_waveform:str = "gaussian_edge"
+s_factor = 4                     # sigma = puse duration / s_factor
+half_pi_ratio:float = 0.5             # pi/2 pulse amp is pi-pulse amp * half_pi_ratio, should be less than 1
+
+
+
 class Waveformer():
     """ 
     2024/8/16 start building up for xy-control \n

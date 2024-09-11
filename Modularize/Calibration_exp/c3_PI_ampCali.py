@@ -2,10 +2,10 @@
 import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from qblox_instruments import Cluster
-from Modularize.support.UserFriend import eyeson_print, slightly_print
+from Modularize.support.UserFriend import *
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import linspace, array, arange, NaN, ndarray
+from numpy import linspace, array, arange, NaN, ndarray, sin, mean, cos
 from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -13,6 +13,10 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import PI_amp_cali_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+def sin_wave(x,A,k,phi,B):
+    return A*sin(k*x+phi)+B
 
 def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, pi_pair_num:int=3, amp_coef_span:float=0.4, IF:int=250e6,n_avg:int=300,points:int=100,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0],specific_data_folder:str=''):
     analysis_result = {}
@@ -81,11 +85,29 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, pi_pair_num:int
 
     return analysis_result
 
+def cali_fit(x:ndarray,y:ndarray):
+    
+    init_guess = [max(y)-min(y),1/(max(x)-min(x)),max(x),mean(y)]
+    bound = [[0.8*init_guess[0],0.3*init_guess[1],min(x),min(y)],[1.2*init_guess[0],3*init_guess[1],1.5*init_guess[2],max(y)]]
+    p, e = curve_fit(sin_wave,x,y,p0=init_guess,bounds=bound)
+    return x, p, sin_wave(x,*p)
+
 def plot_cali_results(data:dict, samples:ndarray):
-    for pi_num in data:
-        plt.plot(samples,data[pi_num],label=f"{pi_num}*2 pi-pulses")
-    plt.legend()
+    colors = [["orange","red"],["cyan","blue"]]
+    ans = {}
+    for idx, pi_num in enumerate(list(data.keys())):
+        x, p, y = cali_fit(samples,data[pi_num])
+        plt.plot(samples,data[pi_num],c=colors[idx][0])
+        # plt.plot(x,y,label=f"{pi_num}*2 pi-pulses",c=colors[idx][1])
+        # plt.scatter(1,sin_wave(array([1]),*p),marker='*')
+        # plt.scatter(p[2],sin_wave(array([p[2]]),*p),marker="x")
+        # ans[f"pi_num={pi_num}"] = round(sin_wave(array([1]),*p)[0],5)
+
+    # plt.legend()
     plt.show()
+    # print(ans)
+    # print(f"Avg coef = {round(mean(array(list(ans.values()))),4)} ")
+    return ans
     
 
 def pi_amp_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,XYamp_coef_span:float=0.5,pi_pair_num:int=3,run:bool=True,pts:int=100,avg_times:int=500,data_folder:str='',IF:float=250e6):
@@ -95,6 +117,7 @@ def pi_amp_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCo
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
         Rabi_results = pi_amp_cali(QD_agent,meas_ctrl,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,pi_pair_num=pi_pair_num,amp_coef_span=XYamp_coef_span,points=pts,n_avg=avg_times,specific_data_folder=data_folder,IF=IF)
         Fctrl[specific_qubits](0.0)
+    
         cluster.reset()
         
         return Rabi_results[specific_qubits]
@@ -106,17 +129,17 @@ def pi_amp_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementCo
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = 1
+    execution:bool = 1 
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
-    couplers = ['c0']
+    ro_elements = ['q4']
+    couplers = []
 
 
     """ Optional paras """
     pi_pair_num:list = [3,4]
-    pi_amp_coef_span:float = 0.1
-    avg_n:int = 500
+    pi_amp_coef_span:float = 0.3
+    avg_n:int = 200
     data_pts:int = 80
     xy_IF = 250e6
     
@@ -143,8 +166,8 @@ if __name__ == "__main__":
         
             """ Storing """
             if idx == len(pi_pair_num)-1:
-                plot_cali_results(data,linspace(1-pi_amp_coef_span,1+pi_amp_coef_span,data_pts))
-                coef = input("Input the modified coef, n to cancel: ")
+                ans = plot_cali_results(data,linspace(1-pi_amp_coef_span,1+pi_amp_coef_span,data_pts))
+                coef = mark_input("Input the modified coef, n to cancel: ")
                 if str(coef).lower() not in ['n', 'no', '']:
                     qubit_info = QD_agent.quantum_device.get_element(qubit)
                     qubit_info.rxy.amp180(qubit_info.rxy.amp180()*float(coef))

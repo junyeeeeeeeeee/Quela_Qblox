@@ -1,9 +1,9 @@
 {
     "basic_information": {
-        "chip_name": "20240819_Qcage5Q4C",
+        "chip_name": "20240911_bandage5Q4C",
         "chip_type": "5Q4C",
-        "create_time": "20240822",
-        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/20240819_Qcage5Q4C.json"
+        "create_time": "20240911",
+        "chip_file": "/Users/ratiswu/Documents/GitHub/Quela_Qblox/chip_information/20240911_bandage5Q4C.json"
     },
     "1Q_information": {
         "ro_att": -1,
@@ -38,11 +38,11 @@
                         "Ql": 0
                     },
                     "qubit": {
-                        "freq": 4675407672.644652,
-                        "T1": "14.92 +- 0.94",
-                        "T2": "1.89 +- 0.42"
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
                     },
-                    "flux": 0.21968916501060137,
+                    "flux": 0,
                     "g": 0
                 },
                 "min": {
@@ -83,7 +83,7 @@
                     "dura_time": 0,
                     "acq_delay": 0,
                     "integ_time": 0,
-                    "flux": 0.21968916501060137,
+                    "flux": 0,
                     "freq": 0
                 },
                 "x_gate": {
@@ -91,10 +91,10 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0.24247676869498822,
-                    "dura_time": 4e-08,
+                    "amp": 0,
+                    "dura_time": 0,
                     "AC_stark": 0,
-                    "freq": 4675407672.644652
+                    "freq": 0
                 },
                 "tune_away": {
                     "q0_flux": 0,
@@ -141,11 +141,11 @@
                         "Ql": 0
                     },
                     "qubit": {
-                        "freq": 4822836688.40366,
-                        "T1": "26.85 +- 1.93",
-                        "T2": "28.73 +- 4.9"
+                        "freq": 0,
+                        "T1": 0,
+                        "T2": 0
                     },
-                    "flux": 0.19863862254174264,
+                    "flux": 0,
                     "g": 0
                 },
                 "min": {
@@ -186,7 +186,7 @@
                     "dura_time": 0,
                     "acq_delay": 0,
                     "integ_time": 0,
-                    "flux": 0.19863862254174264,
+                    "flux": 0,
                     "freq": 0
                 },
                 "x_gate": {
@@ -194,10 +194,10 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0.2714689302892389,
-                    "dura_time": 4e-08,
+                    "amp": 0,
+                    "dura_time": 0,
                     "AC_stark": 0,
-                    "freq": 4822836688.40366
+                    "freq": 0
                 },
                 "tune_away": {
                     "q0_flux": 0,
@@ -450,11 +450,11 @@
                         "Ql": 0
                     },
                     "qubit": {
-                        "freq": 0,
+                        "freq": 2788380000.3377576,
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": 0.021755421080469975,
                     "g": 0
                 },
                 "min": {
@@ -495,7 +495,7 @@
                     "dura_time": 0,
                     "acq_delay": 0,
                     "integ_time": 0,
-                    "flux": 0,
+                    "flux": 0.021755421080469975,
                     "freq": 0
                 },
                 "x_gate": {
@@ -503,10 +503,10 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0,
-                    "dura_time": 0,
+                    "amp": 0.12157140644952229,
+                    "dura_time": 4e-08,
                     "AC_stark": 0,
-                    "freq": 0
+                    "freq": 2788380000.3377576
                 },
                 "tune_away": {
                     "q0_flux": 0,

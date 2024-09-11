@@ -13,18 +13,31 @@ from quantify_scheduler.enums import BinMode
 from quantify_scheduler.backends.graph_compilation import SerialCompiler
 from quantify_scheduler.schedules.schedule import Schedule
 from quantify_scheduler.operations.acquisition_library import SSBIntegrationComplex,Trace
-from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse,GaussPulse)
+from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse,GaussPulse,SoftSquarePulse,NumericalPulse)
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.operations.gate_library import Reset, Measure
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
+from Modularize.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio
 
 """ Global pulse settings """
 electrical_delay:float = 280e-9
-XY_waveform:str = 'gauss'
-s_factor = 4                     # sigma = puse duration / s_factor
-half_pi_ratio:float = 0.5*1.005              # pi/2 pulse amp is pi-pulse amp * half_pi_ratio, should be less than 1
 
+
+def FlatTopGaussianPulse(Du:float,amp:float,s_factor:int=8,sampling_rate:float=4e-9):
+    t_samples = np.arange(0,Du,sampling_rate)
+    g_u_t = np.arange(0,Du/s_factor,sampling_rate)
+    g_d_t = np.arange((s_factor-1)*Du/s_factor,Du,sampling_rate)
+    flat_t= np.arange(0,Du,sampling_rate)[int(t_samples.shape[0]/s_factor):int(t_samples.shape[0]*(s_factor-1)/s_factor)]
+    gaussian_up =  gauss_func(g_u_t,np.mean(g_u_t),np.max(g_u_t)/s_factor,amp)[:int(g_u_t.shape[0]/2)]
+    gaussian_dn =  gauss_func(g_d_t,np.mean(g_d_t),(np.max(g_d_t)-np.min(g_d_t))/s_factor,amp)[int(g_u_t.shape[0]/2):]
+    flatten = np.array([amp for i in range(flat_t.shape[0])])
+
+    env_sample = np.hstack([gaussian_up,flatten,gaussian_dn])
+    time_sample = np.hstack([g_u_t[:int(g_u_t.shape[0]/2)],flat_t,g_d_t[int(g_u_t.shape[0]/2):]])
+
+    return time_sample, env_sample
+    
  
 
 #%% IQ displacement
@@ -32,7 +45,7 @@ def IQ_data_dis(I_data:np.ndarray,Q_data:np.ndarray,ref_I:float,ref_Q:float):
     Dis= np.sqrt((I_data-ref_I)**2+(Q_data-ref_Q)**2)
     return Dis    
  
-def XY_waveform_controller(pulse_sche:Schedule, amp:float, duration:float, phase:float, q:str, rel_time:float, ref_op:Schedule, waveform:str, ref_pt:str="start", sigma_factor:float=4,**kwargs):
+def XY_waveform_controller(pulse_sche:Schedule, amp:float, duration:float, phase:float, q:str, rel_time:float, ref_op:Schedule, waveform:str, ref_pt:str="start", sigma_factor:float=4,transition:str='.01',**kwargs):
     """
     waveform switch\n
     sigma_factor determines the relations between pulse sigma and pulse duration is `sigma = duration/sigma_factor`.
@@ -41,13 +54,15 @@ def XY_waveform_controller(pulse_sche:Schedule, amp:float, duration:float, phase
     """
     match waveform.lower():
         case 'drag':
+    
             if 'drag_amp' in list(kwargs.keys()):
                 diff_amp = kwargs['drag_amp']
             else:
                 diff_amp = amp
-            return pulse_sche.add(DRAGPulse(G_amp=amp, D_amp=diff_amp, duration= duration, phase=phase, port=q+":mw", clock=q+".01",sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+            return pulse_sche.add(DRAGPulse(G_amp=amp, D_amp=diff_amp, duration= duration, phase=phase, port=q+":mw", clock=q+transition,sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
         case 'gauss':
-            return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+            
+            return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+transition,sigma=duration/sigma_factor),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
         case _:
             pass
 
@@ -120,6 +135,7 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,ret
     A_fit= result.best_values['A']
     f_fit= result.best_values['f']
     phase_fit= result.best_values['phase']
+    print(f"** phase = {round(phase_fit*180/np.pi,1)}")
     T2_fit= result.best_values['T2']
     offset_fit= result.best_values['offset']
     para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
@@ -328,25 +344,10 @@ def Y_pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start
     delay_c= -pi_Du-freeDu
     return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
 
-def X_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]*half_pi_ratio
-    delay_c= -pi_Du-freeDu
-    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
-
-def Y_pi_2_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]*half_pi_ratio
-    delay_c= -pi_Du-freeDu
-    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
-
-def X_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
+def X_12pi_p(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
     amp= pi_amp[q]
     delay_c= -pi_Du-freeDu
-    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
-
-def Y_pi_m(sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
-    amp= pi_amp[q]
-    delay_c= -pi_Du-freeDu
-    return XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt='start')
+    return XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,XY_waveform,ref_pt=ref_point)
 
 def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
@@ -367,7 +368,10 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
-    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),)
+
+    # tim_sample, env_sample = FlatTopGaussianPulse(Du,amp)
+    # return sche.add(NumericalPulse(samples=env_sample,t_samples=tim_sample,port="q:res",clock=q+".ro",t0=0e-9),)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9))
 
 def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     if powerDep is True:
@@ -376,6 +380,10 @@ def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     else:    
         amp= R_amp[q]
         Du= R_duration[q]
+
+    # tim_sample, env_sample = FlatTopGaussianPulse(Du,amp)
+
+    # return sche.add(NumericalPulse(samples=env_sample,t_samples=tim_sample,port="q:res",clock=q+".ro",t0=0),ref_pt="start",ref_op=ref_pulse_sche,)
     return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),ref_pt="start",ref_op=ref_pulse_sche,)
 
     
@@ -613,26 +621,25 @@ def Rabi_sche(
     
     return sched
 
-def rabi_chev(
+def Rabi_12_sche(
     q:str,
-    frequencies:any,
-    XY_amp: any,
-    XY_duration:any,
+    XY_12_amp: any,
+    XY_12_duration:any,
+    pi_amp: dict,
+    pi_dura:float,
     R_amp: dict,
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
     XY_theta:str,
     Rabi_type:str,
-    repetitions:int=1,):
-    
+    repetitions:int=1,
+) -> Schedule:
+
     sched = Schedule(Rabi_type,repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+ ".01", freq=frequencies))
-    sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=frequencies))
-    
-    amps = np.asarray(XY_amp)
+    amps = np.asarray(XY_12_amp)
     amps = amps.reshape(amps.shape or (1,))
-    durations = np.asarray(XY_duration)
+    durations = np.asarray(XY_12_duration)
     durations = durations.reshape(durations.shape or (1,))
     
     if Rabi_type=='TimeRabi':
@@ -641,24 +648,30 @@ def rabi_chev(
        
     elif Rabi_type=='PowerRabi':
         Para_XY_amp =amps
-        Para_XY_Du = XY_duration*np.ones(np.shape(amps))   
+        Para_XY_Du = XY_12_duration*np.ones(np.shape(amps))   
     else: raise KeyError ('Typing error: Rabi_type')
-        
+    
+    
+    
     for acq_idx, (amp, duration) in enumerate(zip(Para_XY_amp,Para_XY_Du)):
         
-        sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
-            
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        if XY_theta== 'X_theta':
-            X_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
-        elif XY_theta== 'Y_theta':
-            Y_theta(sched,amp,duration,q,spec_pulse,freeDu=electrical_delay)
-        else: raise KeyError ('Typing error: XY_theta')
-    
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
+        sched.add(Reset(q))
+        
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+
+        if XY_theta== 'X_theta':
+            X_theta(sched,pi_amp[q],pi_dura,q,spec_pulse,freeDu=electrical_delay)
+        elif XY_theta== 'Y_theta':
+            Y_theta(sched,pi_amp[q],pi_dura,q,spec_pulse,freeDu=electrical_delay)
+        else: raise KeyError ('Typing error: XY_theta')
+       
+        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+    
     return sched
+
 
 
 
@@ -852,7 +865,7 @@ def Ramsey_sche(
     sched = Schedule("Ramsey", repetitions=repetitions)
     
     pi_Du= pi_dura
-    print(f"phase: {second_pulse_phase}")
+    print(f"second pulse phase: {second_pulse_phase}")
     for acq_idx, freeDu in enumerate(freeduration):
         
         sched.add(
@@ -881,6 +894,57 @@ def Ramsey_sche(
             X_pi_2_p(sched,pi_amp,q,pi_Du,first_half_pi,freeDu)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def Ramsey_readOther_sche(
+    q:str,
+    read_q:str,
+    pi_amp: dict,
+    New_fxy:float,
+    freeduration:any,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    pi_dura:float=20e-9,
+    repetitions:int=1,
+    echo_pi_num:int = 0,
+    second_pulse_phase:str='x',
+) -> Schedule:
+
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    pi_Du= pi_dura
+    print(f"second pulse phase: {second_pulse_phase}")
+    for acq_idx, freeDu in enumerate(freeduration):
+        
+        sched.add(
+            SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
+        
+        sched.add(Reset(q))
+        
+        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        
+        # we start construction from readout
+        spec_pulse = Readout(sched,read_q,R_amp,R_duration,powerDep=False)
+        if second_pulse_phase.lower() == 'x':
+            first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
+        else:
+            first_half_pi = Y_pi_2_p(sched,pi_amp,q,pi_Du,spec_pulse,freeDu=electrical_delay)
+        
+        if echo_pi_num != 0:
+            a_separate_free_Du = freeDu / echo_pi_num
+            for pi_idx in range(echo_pi_num):
+                if pi_idx == 0 :
+                    pi = X_pi_p(sched,pi_amp,q,pi_Du,first_half_pi,0.5*a_separate_free_Du)
+                else:
+                    pi = X_pi_p(sched,pi_amp,q,pi_Du,pi,1*a_separate_free_Du)
+            X_pi_2_p(sched,pi_amp,q,pi_Du,pi,0.5*a_separate_free_Du)
+        else:
+            X_pi_2_p(sched,pi_amp,q,pi_Du,first_half_pi,freeDu)
+
+        Integration(sched,read_q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
 
@@ -1491,7 +1555,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str=''):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1510,12 +1574,17 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         text_msg += r"$f_{01}= %.4f $"%(results.attrs['f01_fit']*1e-9) +' GHz\n'
         text_msg += r"$BW= %.2f $"%(results.attrs['bandwidth']*1e-6) +' MHz\n'
         
-    elif results.attrs['exper'] == 'T1':  
-        title= 'T1 relaxation'
+    elif results.attrs['exper'] == 'T1': 
+        if spin_echo:
+            title = "Spin echo" 
+            text_msg += r"$T_{2}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
+        else:
+            title= 'T1 relaxation'
+            text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
-        text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
+        
         if np.array(results.data_vars['fitting'])[-1] < np.array(results.data_vars['fitting'])[0]:
             ans = np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f+np.array(results.data_vars['fitting']).min()/Nor_f
         else:
@@ -1526,7 +1595,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
-        text_msg += r"$T_{2}= %.3f $"%(results.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
+        text_msg += r"$T_{2}^{*}= %.3f $"%(results.attrs['T2_fit']*1e6) +r"$\ [\mu$s]"+'\n'        
         text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
         ans = np.exp(-1)*(np.array(results.data_vars['fitting'])[0]-np.array(results.data_vars['fitting'])[-1])/Nor_f+np.array(results.data_vars['fitting'])[-1]/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")

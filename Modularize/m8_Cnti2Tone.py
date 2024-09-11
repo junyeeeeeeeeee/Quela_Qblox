@@ -154,8 +154,10 @@ def conti2tone_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,cluster:
             QD_agent.Fluxmanager.save_tuneawayBias_for('manual',specific_qubits,want_bias)
             warning_print(f"meas under flux = {round(offset,3)}+{round(V_away_from,3)} V")
         Fctrl[specific_qubits](want_bias) 
-        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=1000,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],drive_read_overlap=drive_read_overlap) # 
+        
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=avg_times,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],drive_read_overlap=drive_read_overlap) # 
         Fctrl[specific_qubits](0.0)
+        
         cluster.reset() # *** important
         if XYL != 0:
             return QS_results[specific_qubits]
@@ -185,16 +187,16 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr4","last_ip":"81"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[5.08e9],"xyl_guess":[0.05],"g_guess":90e6, "tune_bias":0.0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q4":{"xyf_guess":[2.8e9],"xyl_guess":[0.03],"g_guess":90e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = ['c0']
+    couplers = []
 
     """ Optional paras """
     drive_read_overlap:bool = 0
     xy_IF = 100e6
     xyf_range = 500e6
-    fpts:int = 100
-    avg_n:int = 300
+    fpts:int = 300
+    avg_n:int = 500
 
 
     """ Running """

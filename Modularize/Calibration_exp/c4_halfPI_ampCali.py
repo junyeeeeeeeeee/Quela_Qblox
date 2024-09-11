@@ -92,8 +92,10 @@ def half_pi_amp_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:Measurem
     print(f"{specific_qubits} are under the measurement ...")
     if run:
         Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        
         Rabi_results = half_pi_amp_cali(QD_agent,meas_ctrl,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],run=True,half_pi_quadruple_num=half_pi_quadruple_num,amp_coef_span=XYamp_coef_span,points=pts,n_avg=avg_times,specific_data_folder=data_folder,IF=IF)
         Fctrl[specific_qubits](0.0)
+        
         cluster.reset()
         
         return Rabi_results[specific_qubits]
@@ -108,14 +110,14 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
-    couplers = ['c0']
+    ro_elements = ['q1']
+    couplers = []
 
 
     """ Optional paras """
-    half_pi_quadruple_num:list = [3,4]
+    half_pi_quadruple_num:list = [3,5]
     pi_amp_coef_span:float = 0.1
-    avg_n:int = 500
+    avg_n:int = 200
     data_pts:int = 80
     xy_IF = 250e6
     

@@ -532,7 +532,7 @@ Hcfg_dr4 = {
                 ],
             }
         },
-        f"clusterdr4_module14": {
+        f"clusterdr4_module12": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -563,12 +563,36 @@ Hcfg_dr4 = {
                 ],
             },
         },
+        f"clusterdr4_module14": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q4:mw",
+                        "clock": "q4.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
         
 
         # ============ FLUX ============#
         "clusterdr4_module4": {
             "instrument_type": "QCM",
             "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
+            "real_output_2": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
+            "real_output_3": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
+        },
+        "clusterdr4_module6": {
+            "instrument_type": "QCM",
+            "real_output_0": {"portclock_configs": [{"port": "q4:fl", "clock": "cl0.baseband"}]},
         },
         # ============ READOUT ============#
         f"clusterdr4_module18": {
@@ -601,6 +625,12 @@ Hcfg_dr4 = {
                     {
                         "port": "q:res",
                         "clock": "q3.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q:res",
+                        "clock": "q4.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
@@ -717,6 +747,10 @@ def get_FluxController(cluster, ip:str)->dict:
     elif which_dr.lower() == 'dr4':
         Fctrl: callable = {
             "q0":cluster.module4.out0_offset,
+            "q1":cluster.module4.out1_offset,
+            "q2":cluster.module4.out2_offset,
+            "q3":cluster.module4.out3_offset,
+            "q4":cluster.module6.out0_offset,
         }
     elif which_dr.lower() == 'drke':
         Fctrl: callable = {
@@ -746,7 +780,8 @@ def get_CouplerController(cluster, ip:str)->dict:
         }
     elif which_dr.lower() == 'dr4':
         Cctrl = {
-            "c0":cluster.module4.out1_offset,
+            "c0":cluster.module4.out2_offset,
+            "c1":cluster.module4.out3_offset,
         }
     return Cctrl
 
