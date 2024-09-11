@@ -47,6 +47,27 @@ This program will calibrate the IQ plane of the readout automaticly, so don't he
 --------------------------------------
 ## Update
 
+#### 2024-08-12 
+ * python==3.10
+ * qblox-instruments==0.12.0  
+ * quantify-core==0.7.4  
+ * quantify-scheduler==0.20.0  
+ * colorama
+ * numpy==1.26.2
+ * xarray==2023.12.0
+ * QCAT from shiau109
+ * scikit-learn
+ * pip install git+https://github.com/sebastianprobst/resonator_tools
+ * firmware == v0.7.0
+
+#### Single Qubit Charaterization 08-05-2024
+You will need the following package with pip and the firmware:  
+ * qblox-instruments == v0.12.0  
+ * quantify-core == v0.7.4  
+ * quantify-scheduler == v0.19.0  
+ * colorama
+ * firmware == v0.7.0
+
 #### Oidle5Q V0_4
 1. It's now able to measure any qubit(s) at the same time. Update to Oidle5QMeas_V0_4.ipynb and support.py
     * Measurements under two-tone can only measure one qubit in one measurement.
@@ -54,14 +75,8 @@ This program will calibrate the IQ plane of the readout automaticly, so don't he
     * Figure out the problem why two-tone can't draw the measuring pulse: if the pulse is longer than 1us, then the pulse will not show.
     * Waiting for Qblox to fix.
     * After fixing the problem, clear the codes in Oidle5QMeas.
-
-#### 
   
-#### Single Qubit Charaterization 08-05-2024
-You will need the following package with pip and the firmware:  
- * qblox-instruments == v0.12.0  
- * quantify-core == v0.7.4  
- * quantify-scheduler == v0.19.0  
- * colorama
- * firmware == v0.7.0  
+
+
+
     
