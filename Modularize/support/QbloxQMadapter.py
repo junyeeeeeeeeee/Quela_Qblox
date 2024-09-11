@@ -1,9 +1,9 @@
 """
 Aim to transform the dataset generated from Qblox into a analyzable format by the analysis prgrom in QM side.
 """
-
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import xarray as xr
-import os
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
 from Modularize.support.Pulse_schedule_library import dataset_to_array
 from Modularize.support.QDmanager import Data_manager
@@ -63,8 +63,8 @@ class DataTransformer:
 
 if __name__ == "__main__" :
     # files = ["Modularize/Meas_raw/2024_6_27/DR1SCAq0_zT1(1)_H14M8S35.nc"]
-    raw_folder = "Modularize/Meas_raw/zgateT1_test2"
-    files = [os.path.join(raw_folder,name) for name in os.listdir(raw_folder) if os.path.isfile(os.path.join(raw_folder,name))]
+    raw_folder = "Modularize/Meas_raw/z_gate_T1_test/z_gate_T1_pi_False"
+    files = [os.path.join(raw_folder,name) for name in os.listdir(raw_folder) if (os.path.isfile(os.path.join(raw_folder,name)) and name.split(".")[-1]=='nc')]
     for file in files:
         QM_folder = os.path.join(os.path.split(file)[0],"ToQM")
         if not os.path.exists( QM_folder ):

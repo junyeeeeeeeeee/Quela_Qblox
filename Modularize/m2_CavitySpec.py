@@ -176,26 +176,24 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr1', 'n','20240813_WJ3FQ3CQ_180_3', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240911_bandage5Q4C', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
     init_RO_DigiAtte = 20 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=5.50526e9,
-        q1=6.0545e9,
-        q2=6.1048e9,
-        q3=5.9495e9,
-        q4=5.90675e9,
-        q5=5.99974e9,
+        q4=6.043e9,
     # dummy cavity 5.049e9
     )
 
     """ Optional paras """
+    coupler_number:int = 0
+    qubit_num:int = 5
     freq_data_points = 101
-    half_freq_window_Hz = 5e6
+    half_freq_window_Hz = 8e6
     n_avg: int = 100
+
 
 
     """ Preparations """
@@ -204,8 +202,8 @@ if __name__ == "__main__":
                                                         mode=mode,
                                                         chip_name=chip_name,
                                                         chip_type=chip_type,
-                                                        qubit_number=len(list(ro_bare.keys())),
-                                                        coupler_number=0)
+                                                        qubit_number=qubit_num,
+                                                        coupler_number=coupler_number)
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 

@@ -145,7 +145,7 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q0':{"span_Hz":3e6}}
+    ro_elements = {'q4':{"span_Hz":8e6}}
     couplers = []
 
 

@@ -16,11 +16,11 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
+from Modularize.support.QuFluxFit import plot_QbFlux
 
 
 
-
-def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=300,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',c:str="c0",Experi_info:dict={}):
+def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_span_Hz:int=3e6,flux_span:float=0.3,n_avg:int=10,f_points:int=20,flux_points:int=20,run:bool=True,q:str='q1',c:str="c0",Experi_info:dict={}):
 
     sche_func = One_tone_sche
         
@@ -30,7 +30,9 @@ def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro
     # avoid frequency conflicts 
     from numpy import NaN
     qubit_info.clock_freqs.readout(NaN)
-
+    qubit_info.measure.pulse_duration(100e-6)
+    qubit_info.measure.integration_time(100e-6-1e-6)
+    qubit_info.reset.duration(250e-6)
     ro_f_samples = linspace(ro_f_center-ro_span_Hz,ro_f_center+ro_span_Hz,f_points)
     flux_samples = linspace(-flux_span,flux_span,flux_points)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
@@ -65,9 +67,10 @@ def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD')
-        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run()
+        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD',get_data_loc=True)
+        analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=1)
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
+        plot_QbFlux(QD_agent,nc_path,q)
         if Experi_info != {}:
             show_args(Experi_info(q))
         
@@ -86,18 +89,7 @@ def CpCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro
             show_args(Experi_info(q))
     return analysis_result
 
-def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
-    qubit = QD_agent.quantum_device.get_element(qb)
-    qubit.clock_freqs.readout(FD_results[qb].quantities_of_interest["freq_0"])
-    QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=qb,bias=FD_results[qb].quantities_of_interest["offset_0"].nominal_value)
-    QD_agent.Fluxmanager.save_period_for(target_q=qb, period=2*pi/FD_results[qb].quantities_of_interest["frequency"].nominal_value)
-    QD_agent.Fluxmanager.save_tuneawayBias_for(target_q=qb,mode='auto')
-    QD_agent.Fluxmanager.save_cavFittingParas_for(target_q=qb,
-        f=FD_results[qb].quantities_of_interest["frequency"].nominal_value,
-        amp=FD_results[qb].quantities_of_interest["amplitude"].nominal_value,
-        phi=FD_results[qb].quantities_of_interest["shift"].nominal_value,
-        offset=FD_results[qb].quantities_of_interest["offset"].nominal_value
-    )
+
 
 def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
     """
@@ -128,32 +120,34 @@ def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:di
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = True
+    execution:bool = 1
     chip_info_restore:bool = 1
     sweet_spot:bool = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = {"q0":["c0"]}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = {"q1":["c0"]}
 
     
     """ Optional paras """
-    freq_half_window_Hz = 2e6
-    flux_half_window_V  = 0.3
-    freq_data_points = 20
+    freq_half_window_Hz = 7e6
+    flux_half_window_V  = 0.4
+    freq_data_points = 80
     flux_data_points = 80
-    freq_center_shift = 0e6 # freq axis shift
+    freq_center_shift = -3e6 # freq axis shift
 
     
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-
+    
     """ Running """
     from Modularize.support.Experiment_setup import get_CouplerController, ip_register
     update = False
     Cctrl = get_CouplerController(cluster, ip=ip_register[DRandIP["dr"]])
     FD_results = {}
     for qubit in ro_elements:
+        qu = QD_agent.quantum_device.get_element(qubit)
+        qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
         for coupler in ro_elements[qubit]:
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
             if sweet_spot:

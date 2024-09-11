@@ -22,10 +22,8 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     qubit_info.measure.pulse_duration(100e-6)
-    qubit_info.measure.integration_time(100e-6-4e-9)
+    qubit_info.measure.integration_time(100e-6-1e-6)
     qubit_info.reset.duration(250e-6)
-
-    
     # qubit_info.measure.pulse_amp(0.05)
     ro_f_center = qubit_info.clock_freqs.readout()
     # avoid frequency conflicts 
@@ -131,12 +129,12 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
-    ro_elements = ['q3']
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = ['q4']
     cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 1.5e6
+    freq_half_window_Hz = 5e6
     flux_half_window_V  = 0.4
     freq_data_points = 40
     flux_data_points = 40

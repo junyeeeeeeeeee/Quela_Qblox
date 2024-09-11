@@ -16,9 +16,9 @@ if __name__ == "__main__":
     execution:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"evoT":15e-6}
+        "q1":{"evoT":60e-6}
     }
-    couplers = []
+    couplers = ['c1']
 
 
     """ Iteration (Do NOT touch!)"""
@@ -37,11 +37,11 @@ if __name__ == "__main__":
             
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             if step == 0:
-                _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=abs_detuning,freeDura=ro_elements[qubit]["evoT"],run=execution,avg_n=800)
+                _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=abs_detuning,freeDura=ro_elements[qubit]["evoT"],run=execution,avg_n=500)
                 abs_detuning += average_actual_detune[qubit]
             else:
                 trying_detune = ((-1)**(step))*abs_detuning
-                _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=trying_detune,freeDura=ro_elements[qubit]["evoT"],run=execution,avg_n=800)
+                _, _, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=trying_detune,freeDura=ro_elements[qubit]["evoT"],run=execution,avg_n=500)
             eyeson_print(f"Detuning = {round(abs_detuning*1e-6,2)} MHz")
             if step > 0 and average_actual_detune[qubit] < abs_detuning:
                 highlight_print(f"XYF calibration done successfully! detuning = {round(average_actual_detune[qubit]*1e-6,2)} MHz")

@@ -12,6 +12,10 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from numpy import linspace
+
+Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
+Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
+
 def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,run:bool=True, ro_amps:dict={})->dict:
     
     if run:
@@ -63,19 +67,15 @@ if __name__ == "__main__":
     execution:bool = True 
     sweetSpot:bool = 0     # If true, only support one one qubit
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr1","last_ip":"11"}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_element = {
-        "q3":{  "bare" :{"ro_amp":0.15,"window_shift":0},
-                "dress":{"ro_amp":0.15,"window_shift":2e6}},
-        "q4":{  "bare" :{"ro_amp":0.15,"window_shift":0e6},
-                "dress":{"ro_amp":0.02,"window_shift":6e6}},
-        # "q2":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
-        #         "dress":{"ro_amp":0.2,"window_shift":1.5e6}}
+        "q4":{  "bare" :{"ro_amp":0.2,"window_shift":0e6},
+                "dress":{"ro_amp":0.05,"window_shift":1.9e6}},
     }
-    ro_attes = {"dress":42, "bare":18} # all ro_elements shared
+    ro_attes = {"dress":30, "bare":20} # all ro_elements shared
 
     """ Optional paras"""
-    half_ro_freq_window_Hz = 5e6
+    half_ro_freq_window_Hz = 4e6
     freq_data_points = 200
 
 
@@ -104,12 +104,16 @@ if __name__ == "__main__":
             QD_agent.quantum_device.get_element(q).clock_freqs.readout(original_rof[q])
         
         for qubit in CS_results[state]:
+            print(f"{qubit} @ {state} cavity: ")
             if state == "bare":
                 PD_ans[qubit]["bareF_Hz"] = CS_results[state][qubit]['fr']
             else:
                 PD_ans[qubit]["dressF_Hz"] = CS_results[state][qubit]['fr']
                 PD_ans[qubit]["dressP"] = ro_element[qubit][state]["ro_amp"]
                 PD_ans[qubit]["ro_atte"] = ro_attes[state]
+            for Qua_idx, Qua in enumerate(Quality_values):
+                print(f"{Qua[:2]} = {round(float(CS_results[state][qubit][Qua])/1000,2)} 土 {round(float(CS_results[state][qubit][Quality_errors[Qua_idx]])/1000,2)} k")
+            
 
 
         """ Storing """

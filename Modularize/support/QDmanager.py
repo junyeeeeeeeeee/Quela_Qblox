@@ -298,6 +298,15 @@ class Data_manager:
         elif exp_type.lower() == 'zt1':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_zT1({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
+        elif exp_type.lower() == 'xylcali':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_XYLCali({label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        elif exp_type.lower() == 'xyl05cali':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_HalfPiCali({label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        elif exp_type.lower()[:4] == 'cryo':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_CryoScope{exp_type.lower()[-1]}({label})_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         else:
             path = ''
             raise KeyError("Wrong experience type!")
@@ -407,5 +416,13 @@ class Data_manager:
         """
         self.build_folder_today(self.raw_data_dir)
         return self.pic_folder
+    
+    def creat_datafolder_today(self,folder_name:str)->str:
+        """ create a new folder in the raw data folder today with the given name"""
+        self.build_folder_today(self.raw_data_dir)
+        new_folder = os.path.join(self.raw_folder,folder_name)
+        if not os.path.exists(new_folder):
+            os.mkdir(new_folder)
+        return new_folder
 
 

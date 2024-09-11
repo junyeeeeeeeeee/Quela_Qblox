@@ -66,7 +66,7 @@ if __name__ == "__main__":
     """ fill in """
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        'q0':{"mode_idx":0,"z_bias_forSave":'sweet'}   #["save","switch"] # save sweet spot bias with z_bias
+        'q1':{"mode_idx":0,"z_bias_forSave":'sweet'}
     }                                                      #["sweet","off-sweet"] or a float number
  
     """ Running and Storing"""
