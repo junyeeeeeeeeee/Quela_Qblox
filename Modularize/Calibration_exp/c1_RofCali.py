@@ -181,10 +181,11 @@ if __name__ == '__main__':
     for qubit in re_find_ground:
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        orginal_inte = QD_agent.quantum_device.get_element[qubit].measure.integration_time()
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         refIQ_executor(QD_agent,cluster,Fctrl,qubit,want_see_p01=True)
-
+        QD_agent.quantum_device.get_element[qubit].measure.integration_time(orginal_inte)
         """ Close """ 
         QD_agent.QD_keeper()   
         shut_down(cluster,Fctrl,Cctrl)

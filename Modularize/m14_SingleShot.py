@@ -27,7 +27,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     qubit_info = QD_agent.quantum_device.get_element(q)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
-    # qubit_info.measure.integration_time(0.65e-6)
+    qubit_info.measure.integration_time(2e-6)
     # qubit_info.reset.duration(250e-6)
     # qubit_info.clock_freqs.readout(5.863e9-0.4e6)
     print(qubit_info.clock_freqs.readout()*1e-9)
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     execute:bool = True
     repeat:int = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q4':{"roAmp_factor":0.8}}
+    ro_elements = {'q4':{"roAmp_factor":1}}
     couplers = []
 
 
