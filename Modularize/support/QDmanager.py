@@ -307,6 +307,12 @@ class Data_manager:
         elif exp_type.lower()[:4] == 'cryo':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_CryoScope{exp_type.lower()[-1]}({label})_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
+        elif exp_type.lower() == 'chevron':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_RabiChevron_{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
+        elif exp_type.lower() == 'fringe':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}RamseyFringe{exp_timeLabel}.nc")
+            ds.to_netcdf(path)
         else:
             path = ''
             raise KeyError("Wrong experience type!")

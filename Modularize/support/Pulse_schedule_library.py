@@ -575,6 +575,7 @@ def Qubit_state_heterodyne_spec_sched_nco(
 
 def Rabi_sche(
     q:str,
+    New_fxy:any,
     XY_amp: any,
     XY_duration:any,
     R_amp: dict,
@@ -584,6 +585,7 @@ def Rabi_sche(
     XY_theta:str,
     Rabi_type:str,
     repetitions:int=1,
+    chevron:bool=False
 ) -> Schedule:
 
     sched = Schedule(Rabi_type,repetitions=repetitions)
@@ -607,8 +609,9 @@ def Rabi_sche(
         
         
         sched.add(Reset(q))
-        
-        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        if chevron:
+            sched.add(
+                SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy))
         
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         if XY_theta== 'X_theta':
@@ -850,7 +853,7 @@ def Zgate_T1_sche(
 def Ramsey_sche(
     q:str,
     pi_amp: dict,
-    New_fxy:float,
+    New_fxy:any,
     freeduration:any,
     R_amp: dict,
     R_duration: dict,
@@ -865,7 +868,7 @@ def Ramsey_sche(
     sched = Schedule("Ramsey", repetitions=repetitions)
     
     pi_Du= pi_dura
-    print(f"second pulse phase: {second_pulse_phase}")
+    
     for acq_idx, freeDu in enumerate(freeduration):
         
         sched.add(

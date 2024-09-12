@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
     """ Optional paras """
     pi_pair_num:list = [3,4]
-    pi_amp_coef_span:float = 0.3
+    pi_amp_coef_span:float = 0.2
     avg_n:int = 200
     data_pts:int = 80
     xy_IF = 250e6
