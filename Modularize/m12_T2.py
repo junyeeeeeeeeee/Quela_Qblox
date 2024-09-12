@@ -186,7 +186,7 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q4":{"detune":1.388e6,"evoT":30e-6,"histo_counts":1},#-0.174e6
+        "q4":{"detune":0e6,"evoT":10e-6,"histo_counts":1},#-0.174e6
     }
     couplers = []
 
@@ -215,6 +215,8 @@ if __name__ == "__main__":
             highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
             if this_t2_us > 0:
                 t2_us_rec.append(this_t2_us)
+            else:
+                warning_print("T2 fitting got minus value")
 
             print(this_t2_us)
             
