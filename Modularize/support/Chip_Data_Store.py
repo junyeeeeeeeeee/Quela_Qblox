@@ -25,7 +25,7 @@ class Chip_file():
         self.file = self.name+".json"   # chip 檔案名稱
         self.file_path = os.path.join(os.getcwd(),"chip_information")  # chip 檔案位置
         self.file_name = os.path.join(self.file_path, self.file)    # chip 檔案完整位置+名稱
-        self.path_today = self.file_path+"\Timestamp"+'\\'+time.strftime('%Y%m%d',time.localtime(time.time()))             # chip 當日檔案位置
+        self.path_today = os.path.join(self.file_path,"Timestamp",time.strftime('%Y%m%d',time.localtime(time.time())))            # chip 當日檔案位置
         self.file_today = os.path.join(self.path_today, time.strftime('%Y%m%d',time.localtime(time.time()))+'_'+self.file) # chip 當日檔案完整位置+名稱
         self.__chip_dict = {}
         self.init_chip_file()
