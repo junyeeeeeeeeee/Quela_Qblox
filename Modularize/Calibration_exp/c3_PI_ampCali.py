@@ -64,7 +64,7 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, pi_pair_num:int
         cali_ds = meas_ctrl.run("Pi amp calibration")
         # Save the raw data into netCDF
         
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=cali_ds,qb=q,exp_type="xylcali",specific_dataFolder=specific_data_folder)
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=cali_ds,qb=q,exp_type="xylcali",label=f'{pi_pair_num}Pi',specific_dataFolder=specific_data_folder)
         I,Q= dataset_to_array(dataset=cali_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         
@@ -97,13 +97,15 @@ def plot_cali_results(data:dict, samples:ndarray):
     ans = {}
     for idx, pi_num in enumerate(list(data.keys())):
         x, p, y = cali_fit(samples,data[pi_num])
-        plt.plot(samples,data[pi_num],c=colors[idx][0])
+        plt.plot(samples,1000*data[pi_num],c=colors[idx][0],label=f'{pi_num}*2 pi-pulses')
         # plt.plot(x,y,label=f"{pi_num}*2 pi-pulses",c=colors[idx][1])
         # plt.scatter(1,sin_wave(array([1]),*p),marker='*')
         # plt.scatter(p[2],sin_wave(array([p[2]]),*p),marker="x")
         # ans[f"pi_num={pi_num}"] = round(sin_wave(array([1]),*p)[0],5)
-
-    # plt.legend()
+    plt.xlabel("Amplitude coefficient")
+    plt.ylabel("Contrast (mV)")
+    plt.legend()
+    plt.title("Pi-pulse amplitude calibration")
     plt.show()
     # print(ans)
     # print(f"Avg coef = {round(mean(array(list(ans.values()))),4)} ")
@@ -132,14 +134,14 @@ if __name__ == "__main__":
     execution:bool = 1 
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
+    ro_elements = ['q0']
     couplers = []
 
 
     """ Optional paras """
-    pi_pair_num:list = [3,4]
-    pi_amp_coef_span:float = 0.2
-    avg_n:int = 200
+    pi_pair_num:list = [7,9]
+    pi_amp_coef_span:float = 0.1
+    avg_n:int = 800
     data_pts:int = 80
     xy_IF = 250e6
     

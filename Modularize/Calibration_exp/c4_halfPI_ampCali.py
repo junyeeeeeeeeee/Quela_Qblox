@@ -59,7 +59,7 @@ def half_pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, half_pi_qu
         cali_ds = meas_ctrl.run("half-Pi amp calibration")
         # Save the raw data into netCDF
         
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=cali_ds,qb=q,exp_type="xyl05cali",specific_dataFolder=specific_data_folder)
+        Data_manager().save_raw_data(QD_agent=QD_agent,ds=cali_ds,qb=q,exp_type="xyl05cali",label=f"{half_pi_quadruple_num}HalfPi",specific_dataFolder=specific_data_folder)
         I,Q= dataset_to_array(dataset=cali_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         
@@ -83,7 +83,10 @@ def half_pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, half_pi_qu
 def plot_cali_results(data:dict, samples:ndarray):
     for pi_num in data:
         plt.plot(samples,data[pi_num],label=f"{pi_num}*4 pi/2 pulses")
+    plt.xlabel("pi/2 coefficient")
+    plt.ylabel("Contrast (mV)")
     plt.legend()
+    plt.title("Pi/2-pulse amplitude calibration")
     plt.show()
     
 
@@ -110,14 +113,14 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
+    ro_elements = ['q0']
     couplers = []
 
 
     """ Optional paras """
-    half_pi_quadruple_num:list = [3,5]
+    half_pi_quadruple_num:list = [7,9]
     pi_amp_coef_span:float = 0.1
-    avg_n:int = 200
+    avg_n:int = 1000
     data_pts:int = 80
     xy_IF = 250e6
     

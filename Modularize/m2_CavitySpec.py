@@ -123,23 +123,24 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         freq = array(ro_elements[q])
         res_er = ResonatorData(freq=array(ro_elements[q]),zdata=array(S21))
         result, data2plot, fit2plot = res_er.fit()
-        fig, ax = plt.subplots()
-        ax:plt.Axes        
-        ax.plot(freq,abs(data2plot))
-        ax.plot(freq,abs(fit2plot),c="red",label='fitting')
+        fig, ax = plt.subplots(1,2,figsize=(9,6))
+        ax0:plt.Axes = ax[0]        
+        ax0.plot(freq,abs(data2plot))
+        ax0.plot(freq,abs(fit2plot),c="red",label='fitting')
         # ax.vlines(float(result['fr']),min(data2plot),max(data2plot),linestyles="--")
-        ax.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
-        ax.legend()
+        ax0.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
+        ax0.legend()
+        ax1:plt.Axes = ax[1]        
+        ax1.scatter(real(data2plot),imag(data2plot),label='data')
+        ax1.scatter(real(fit2plot),imag(fit2plot),label='fit',c='red',s=10)
+        ax1.set_title("S21")
+        ax1.legend()
+        plt.tight_layout()
         if save_pic:
             Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
         else:
             plt.close()
         fit_results[q] = result
-
-        # plot S21
-        # plt.scatter(real(data2plot),imag(data2plot))
-        # plt.scatter(real(fit2plot),imag(fit2plot))
-        # plt.show()
 
     return fit_results
 
@@ -176,22 +177,26 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240911_bandage5Q4C', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = 'Modularize/QD_backup/2024_9_16/DR4#81_SumInfo.pkl', 'dr4', 'l','20240916_TL3FQ3CQ', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
     init_RO_DigiAtte = 20 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q4=6.043e9,
-    # dummy cavity 5.049e9
+        # q0=5.342e9,
+        # q1=5.874e9,
+        # q2=5.92e9,
+        # q3=5.78e9,
+        # q4=5.737e9,
+        q5=5.825e9
     )
 
-    """ Optional paras """
+    """ Optional paras """ 
     coupler_number:int = 0
-    qubit_num:int = 5
-    freq_data_points = 101
-    half_freq_window_Hz = 8e6
+    qubit_num:int = 6
+    freq_data_points = 201
+    half_freq_window_Hz = 10e6
     n_avg: int = 100
 
 

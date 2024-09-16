@@ -18,7 +18,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     analysis_result = {}
   
     sche_func= T1_sche
-
+    
     qubit_info = QD_agent.quantum_device.get_element(q)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
@@ -61,7 +61,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
         I,Q= dataset_to_array(dataset=T1_ds,dims=1)
         data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         if data_folder == '':
-            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=20e-6)
+            data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=1e-6)
             T1_us[q] = data_fit.attrs['T1_fit']*1e6
         else:
             data_fit=[]
@@ -123,13 +123,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q4":{"evoT":120e-6,"histo_counts":1},
+        "q0":{"evoT":5e-6,"histo_counts":1},
     }
     couplers = []
 
     """ Optional paras """
     time_data_points = 100
-    avg_n = 600
+    avg_n = 1000
     xy_IF = 250e6
   
 
