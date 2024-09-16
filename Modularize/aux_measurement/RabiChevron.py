@@ -147,7 +147,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
+    ro_elements = ['q0']
     couplers = []
 
 
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     xy_atte:int = 10
     span_detuning:float = 30e6
     freq_pts:int = 60
-    adj_freq:float = -60e6
+    adj_freq:float = 0e6
     
     """ Operations """
     

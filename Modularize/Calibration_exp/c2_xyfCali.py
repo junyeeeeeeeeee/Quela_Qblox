@@ -16,9 +16,9 @@ if __name__ == "__main__":
     execution:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q1":{"evoT":60e-6}
+        "q0":{"evoT":5e-6}
     }
-    couplers = ['c1']
+    couplers = []
 
 
     """ Iteration (Do NOT touch!)"""

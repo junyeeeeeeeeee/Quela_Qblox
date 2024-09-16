@@ -9,6 +9,7 @@ from xarray import Dataset, open_dataset # Dataset.to_dict(SS_ds)
 from numpy import array, ndarray, mean, std, round, arange, moveaxis, any, zeros, delete, average, sqrt
 # from Modularize.support.Pulse_schedule_library import hist_plot
 import matplotlib.pyplot as plt
+from xarray import DataArray
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.analysis.DRtemp import Kelvin_collector
 from qcat.analysis.state_discrimination.discriminator import train_GMModel  # type: ignore
@@ -338,16 +339,15 @@ def sort_files(file_name_list:list):
     
     return T1_file+T2_file+SS_file
 
-def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
+def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1)->tuple[list, list]:
     """
     total_array shape: (2,2,M,N) which is (IQ, state, histos, shots)\n
-    return traning, predict, label arrays:\n 1) (want_IQset_num, IQ, state, shots)\n 2) (histos, IQ, state, shots)\n
-    3) (g, IQ, shot)
+    return traning and predict list
     """
     from numpy.random import randint
-    total_sets = []
-    train_set  = []
-    for_label = []
+    all_datasets = []
+    train_dataset  = []
+    
     for histo in range(total_array.shape[2]):
         IQ_folder = []
         for iq in range(total_array.shape[0]):
@@ -355,14 +355,15 @@ def OSdata_arranger(total_array:ndarray, want_IQset_num:int=1):
             for state in range(total_array.shape[1]):
                 state_folder.append(total_array[iq][state][histo])
             IQ_folder.append(state_folder)
-        total_sets.append(IQ_folder)
-    print(array(total_sets).shape) # shape = (histo, IQ, State, shots)
+        ds = DataArray(array(IQ_folder), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(IQ_folder).shape[2]))] )
+        all_datasets.append(ds)
+    # total_sets.shape shape = (histo, IQ, State, shots)
 
     for pick_number in range(want_IQset_num):
-        rand_pick_set_idx = randint(0 ,len(total_sets))
-        train_set.append(total_sets[rand_pick_set_idx])
+        rand_pick_set_idx = randint(0 ,len(all_datasets))
+        train_dataset.append(all_datasets[rand_pick_set_idx])
     
-    return array(train_set), array(total_sets)
+    return train_dataset, all_datasets
 
 def collect_allSets_inTempera(temperature_folder_path:str, refresh:bool=False)->dict:
     """ 

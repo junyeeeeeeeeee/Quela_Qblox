@@ -96,7 +96,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q4':{"ro_amp_factor":1},}
+    ro_elements = {'q0':{"ro_amp_factor":1.2},}
                 
     couplers = []
 
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
         """ Running """
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-        print(QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+    
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         refIQ_executor(QD_agent,cluster,Fctrl,specific_qubits=qubit,run=execution,ro_amp_adj=ro_elements[qubit]["ro_amp_factor"])
         

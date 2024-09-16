@@ -153,16 +153,16 @@ if __name__ == "__main__":
     execution:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q4":{"detune":1e6,"evoT":10e-6},#-0.174e6
+        "q0":{"detune":2e6,"evoT":10e-6},#-0.174e6
     }
     couplers = []
 
     """ Optional paras """
     time_data_points = 100
-    freq_pts:int = 30
+    freq_pts:int = 20
     avg_n = 1000
     xy_IF = 250e6
-    adj_freq = 0.75e6
+    adj_freq = 0e6
 
 
     """ Iteration """

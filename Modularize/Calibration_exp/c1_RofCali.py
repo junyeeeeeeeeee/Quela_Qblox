@@ -145,7 +145,7 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q4':{"span_Hz":8e6}}
+    ro_elements = {'q0':{"span_Hz":8e6}}
     couplers = []
 
 
@@ -165,9 +165,21 @@ if __name__ == '__main__':
 
         optimal_rof = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,execution=execute,ro_f_span=ro_span)
         if execute:
-            if mark_input(f"Update the optimal ROF for {qubit}?[y/n]").lower() in ['y', 'yes']:
-                QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof)
-                keep = True
+            permission = mark_input(f"Update the optimal ROF for {qubit}?[y/n] or assign a RO freq in Hz directly: ")
+            try:
+                permission = float(permission)
+                aa = mark_input(f"Check Assigned RO freq = {permission} Hz, 'n' to cancel! ")
+                if aa.lower() not in ['n', 'no']:
+                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(permission)
+                    keep = True  
+                else:
+                    keep = False
+            except:
+                if permission.lower() in ['y', 'yes']:
+                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof)
+                    keep = True
+                else:
+                    keep = False
 
         """ Storing """ 
         if execute:

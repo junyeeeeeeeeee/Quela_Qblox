@@ -1318,18 +1318,18 @@ def Amp_plot(quantum_device:QuantumDevice, results:dict,title:str):
 def hist_plot(q:str,data:dict,title:str, save_path:str='', show:bool=True):
     fig, ax = plt.subplots(nrows =1,figsize =(4,3),dpi =250) 
     m, bins, patches = ax.hist(np.array(data[q]), bins='auto', density=False)
-    ax.axvline(np.mean(np.array(data[q])), color = "k", ls = "--",lw=1)
+    ax.axvline(np.median(np.array(data[q])), color = "k", ls = "--",lw=1)
     ax.set_ylabel('Counts')
     if title.lower() in ['t1','t2','t2*']:
         ax.set_xlabel(f"{title} (µs)")
-        plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} µs")
+        plt.title(f"{title} = {round(np.median(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} µs")
     else:
         if title.lower() in ["thermalpop"]:
             ax.set_xlabel(f"{title} (%)")
-            plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} %")
+            plt.title(f"{title} = {round(np.median(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} %")
         else:
             ax.set_xlabel(f"{title} (mK)")
-            plt.title(f"{title} = {round(np.mean(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} mK")
+            plt.title(f"{title} = {round(np.median(np.array(data[q])),1)}  $\pm$ {round(np.std(np.array(data[q])),1)} mK")
         
     plt.tight_layout()
     if save_path != '':

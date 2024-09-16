@@ -27,7 +27,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:st
     qubit_info = QD_agent.quantum_device.get_element(q)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
-    qubit_info.measure.integration_time(2e-6)
+    
     # qubit_info.reset.duration(250e-6)
     # qubit_info.clock_freqs.readout(5.863e9-0.4e6)
     print(qubit_info.clock_freqs.readout()*1e-9)
@@ -116,14 +116,14 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
     if mode == "WeiEn":
         if plot:
             Qubit_state_single_shot_plot(SS_result[target_q],Plot_type='both',y_scale='log')
-            effT_mk, snr_dB, thermal_p = 0, 0, 0
+            effT_mk, ro_fidelity, thermal_p = 0, 0, 0
         else:
-            effT_mk, snr_dB, thermal_p = 0, 0, 0
+            effT_mk, ro_fidelity, thermal_p = 0, 0, 0
     else:
-        thermal_p, effT_mk, snr_dB = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
+        thermal_p, effT_mk, ro_fidelity = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
 
 
-    return thermal_p, effT_mk, snr_dB
+    return thermal_p, effT_mk, ro_fidelity
 
 if __name__ == '__main__':
     
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     execute:bool = True
     repeat:int = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q4':{"roAmp_factor":1}}
+    ro_elements = {'q0':{"roAmp_factor":1}}
     couplers = []
 
 
