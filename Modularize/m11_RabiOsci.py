@@ -156,16 +156,16 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
+    ro_elements = ['q4']
     couplers = []
 
 
     """ Optional paras """
-    pi_duration:float = 40e-9
+    pi_duration:float = 100e-9
     pi_amp_max:float = 0.8
     rabi_type:str = 'power'  # 'time' or 'power'
     data_pts = 100
-    avg_n:int = 1000
+    avg_n:int = 10000
     xy_atte:int = 10
     adj_freq = 0e6
     

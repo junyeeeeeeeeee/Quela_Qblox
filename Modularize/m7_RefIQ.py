@@ -14,6 +14,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='
     sche_func = Qubit_SS_sche   
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
+    # qubit_info.clock_freqs.readout(qubit_info.clock_freqs.readout()+2e6)
     if thermal_pop_mode:
         qubit_info.measure.pulse_duration(2e-6)
         qubit_info.measure.integration_time(1.5e-6)
@@ -96,7 +97,7 @@ if __name__ == "__main__":
     """ Fill in """
     execution = True
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q0':{"ro_amp_factor":1.2},}
+    ro_elements = {'q4':{"ro_amp_factor":1.3},}
                 
     couplers = []
 

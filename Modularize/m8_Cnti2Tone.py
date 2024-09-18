@@ -187,12 +187,12 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr4","last_ip":"81"}
     #
     ro_elements = {
-        "q0":{"xyf_guess":[5.11e9],"xyl_guess":[0.06],"g_guess":45e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q4":{"xyf_guess":[5.44e9],"xyl_guess":[0,0.001],"g_guess":35e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = []
 
     """ Optional paras """
-    drive_read_overlap:bool = 0
+    drive_read_overlap:bool = 1
     xy_IF = 100e6
     xyf_range = 500e6
     fpts:int = 100
@@ -214,7 +214,7 @@ if __name__ == "__main__":
                 """ Running """
                 tt_results = {}
                 Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-            
+                print(QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
                 QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
                 init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
                 tune_bias = ro_elements[qubit]["tune_bias"]

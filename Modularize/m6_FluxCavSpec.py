@@ -24,7 +24,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     qubit_info.measure.pulse_duration(100e-6)
     qubit_info.measure.integration_time(100e-6-1e-6)
     qubit_info.reset.duration(250e-6)
-    # qubit_info.measure.pulse_amp(0.05)
+    qubit_info.measure.pulse_amp(qubit_info.measure.pulse_amp()/6)
     ro_f_center = qubit_info.clock_freqs.readout()
     # avoid frequency conflicts 
     from numpy import NaN
@@ -136,9 +136,9 @@ if __name__ == "__main__":
     """ Optional paras """
     freq_half_window_Hz = 5e6
     flux_half_window_V  = 0.4
-    freq_data_points = 40
-    flux_data_points = 40
-    freq_center_shift = 0e6 # freq axis shift
+    freq_data_points = 80
+    flux_data_points = 80
+    freq_center_shift = 2e6 # freq axis shift
 
     for qubit in ro_elements:
         """ Preparations """

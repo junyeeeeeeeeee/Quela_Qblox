@@ -145,7 +145,7 @@ if __name__ == "__main__":
     qrmRF_slot_idx:int  = 18
     lo_start_freq:float = 4.5  * 1e9
     lo_stop_freq:float = 5 * 1e9
-    num_data:int =5000
+    num_data:int =10000
 
 
     """ Preparations """

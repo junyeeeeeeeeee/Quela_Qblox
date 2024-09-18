@@ -20,6 +20,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float=80e-6,
     sche_func= T1_sche
     
     qubit_info = QD_agent.quantum_device.get_element(q)
+
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
     LO= qubit_info.clock_freqs.f01()+IF
@@ -123,13 +124,13 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"evoT":5e-6,"histo_counts":1},
+        "q4":{"evoT":2e-6,"histo_counts":5},
     }
     couplers = []
 
     """ Optional paras """
     time_data_points = 100
-    avg_n = 1000
+    avg_n = 10000
     xy_IF = 250e6
   
 
@@ -168,7 +169,7 @@ if __name__ == "__main__":
                     if ro_elements[qubit]["histo_counts"] >= 50:
                         QD_agent.quantum_device.get_element(qubit).reset.duration(10*multiples_of_x(mean_T1_us*1e-6,4e-9))
                         QD_agent.Notewriter.save_T1_for(mean_T1_us,qubit)
-                        # QD_agent.QD_keeper()
+                        QD_agent.QD_keeper()
                         if chip_info_restore:
                             chip_info.update_T1(qb=qubit, T1=f"{mean_T1_us} +- {std_T1_us}")
                 

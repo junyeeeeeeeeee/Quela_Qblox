@@ -400,8 +400,8 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0,
-                    "dura_time": 0,
+                    "amp": 0.19209478767924323,
+                    "dura_time": 4e-08,
                     "AC_stark": 0,
                     "freq": 0
                 },
@@ -503,8 +503,8 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0,
-                    "dura_time": 0,
+                    "amp": 0.31129692605813647,
+                    "dura_time": 1e-07,
                     "AC_stark": 0,
                     "freq": 0
                 },

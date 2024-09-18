@@ -21,9 +21,9 @@ def Chevron_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,detuning:float,
     
     LO= qubit_info.clock_freqs.f01()+IF
     
-    qubit_info.measure.pulse_duration(2e-6)
-    qubit_info.measure.integration_time(1e-6)
-    qubit_info.reset.duration(250e-6)
+    # qubit_info.measure.pulse_duration(2e-6)
+    # qubit_info.measure.integration_time(0.5e-6)
+    
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
 
@@ -147,19 +147,19 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q0']
+    ro_elements = ['q4']
     couplers = []
 
 
     """ Optional paras """
-    pi_duration:float = 40e-9
+    pi_duration:float = 100e-9
     pi_amp_max:float = 0.9
     rabi_type:str = 'power'  # 'time' or 'power'
     data_pts = 100
-    avg_n:int = 500
+    avg_n:int = 5000
     xy_atte:int = 10
-    span_detuning:float = 30e6
-    freq_pts:int = 60
+    span_detuning:float = 50e6
+    freq_pts:int = 25
     adj_freq:float = 0e6
     
     """ Operations """

@@ -177,7 +177,7 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = 'Modularize/QD_backup/2024_9_16/DR4#81_SumInfo.pkl', 'dr4', 'l','20240916_TL3FQ3CQ', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = 'Modularize/QD_backup/2024_9_17/DR4#81_SumInfo.pkl', 'dr4', 'l','20240916_TL3FQ3CQ', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
@@ -188,16 +188,16 @@ if __name__ == "__main__":
         # q1=5.874e9,
         # q2=5.92e9,
         # q3=5.78e9,
-        # q4=5.737e9,
-        q5=5.825e9
+        q4=5.737e9,
+        # q5=5.825e9
     )
 
     """ Optional paras """ 
     coupler_number:int = 0
     qubit_num:int = 6
-    freq_data_points = 201
+    freq_data_points = 401
     half_freq_window_Hz = 10e6
-    n_avg: int = 100
+    n_avg: int = 1000
 
 
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     """ Storing """
     if execution:
         QD_agent.refresh_log("After cavity search")
-        QD_agent.QD_keeper()
+        # QD_agent.QD_keeper()
         print('CavitySpectro done!')
         
         # Chip info!

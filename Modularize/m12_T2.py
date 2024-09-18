@@ -22,7 +22,6 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
     
     qubit_info = QD_agent.quantum_device.get_element(q)
 
-    
     # qubit_info.reset.duration(qubit_info.reset.duration()*2)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
@@ -186,14 +185,14 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
     ro_elements = {
-        "q0":{"detune":0e6,"evoT":5e-6,"histo_counts":100},#-0.174e6
+        "q4":{"detune":0e6,"evoT":5e-6,"histo_counts":1},#-0.174e6
     }
     couplers = []
 
     """ Optional paras """
     spin_echo_pi_num:int = 1
     time_data_points = 100
-    avg_n = 1000
+    avg_n = 20000
     xy_IF = 250e6
 
 

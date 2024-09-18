@@ -311,7 +311,7 @@ class Data_manager:
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_RabiChevron_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         elif exp_type.lower() == 'fringe':
-            path = os.path.join(parent_dir,f"{dr_loc}{qb}RamseyFringe{exp_timeLabel}.nc")
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_RamseyFringe_{exp_timeLabel}.nc")
             ds.to_netcdf(path)
         else:
             path = ''
