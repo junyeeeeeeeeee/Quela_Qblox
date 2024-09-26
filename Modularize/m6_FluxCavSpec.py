@@ -11,6 +11,7 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_sche, pulse_preview
+from Modularize.support.QuFluxFit import plot_QbFlux_iq
 
 
 
@@ -63,8 +64,10 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
+        
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD')
+        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD',get_data_loc=True)
+        plot_QbFlux_iq(QD_agent,nc_path,q)
         analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=0)
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -129,12 +132,12 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
-    cp_ctrl = {}
+    DRandIP = {"dr":"drke","last_ip":"242"}
+    ro_elements = ['q1']
+    cp_ctrl = {'c0':-0.167,'c1':-0.131}
 
     """ Optional paras """
-    freq_half_window_Hz = 5e6
+    freq_half_window_Hz = 8e6
     flux_half_window_V  = 0.4
     freq_data_points = 40
     flux_data_points = 40
@@ -173,7 +176,7 @@ if __name__ == "__main__":
         """ Storing """
         if update and execution:
             QD_agent.refresh_log("after FluxDep")
-            QD_agent.QD_keeper()
+            # QD_agent.QD_keeper()
             if chip_info_restore:
                 chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
             update = False

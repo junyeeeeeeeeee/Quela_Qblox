@@ -709,7 +709,7 @@ Hcfg_drke = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq":6.5e9,       # *** Should be set as a parameter later on
+                "lo_freq":6e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q:res",
@@ -794,6 +794,11 @@ def get_CouplerController(cluster, ip:str)->dict:
         }
     elif which_dr.lower() == 'dr4':
         Cctrl = {
+        }
+    elif which_dr.lower() == 'drke':
+        Cctrl = {
+            "c0":cluster.module2.out2_offset,
+            "c1":cluster.module2.out3_offset,
         }
     return Cctrl
 

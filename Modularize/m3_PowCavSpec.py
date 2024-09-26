@@ -16,7 +16,7 @@ from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
 
-def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,ro_p_min:float=0.01,ro_p_max:float=0.5,p_points:int=20,n_avg:int=100,run:bool=True,Experi_info:dict={}, rof_marks:dict={})->Dataset:
+def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,ro_p_min:float=0.01,ro_p_max:float=0.5,p_points:int=20,n_avg:int=100,run:bool=True,Experi_info:dict={})->Dataset:
 
     sche_func = One_tone_multi_sche
     freq_datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
@@ -73,7 +73,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         if Experi_info != {}:
             show_args(Experi_info(q))
         # try: 
-        plot_powerCavity_S21(nc_file, ro_elements, rof_marks)
+        
         # except:
         #     from Modularize.support.UserFriend import warning_print
         #     warning_print("Beware! plot_powerCavity_S21 didn't work~")
@@ -87,7 +87,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         spec_sched_kwargs['frequencies']= preview_para
         spec_sched_kwargs['R_amp']= {q:sweep_para2.reshape(sweep_para2.shape or (1,))[0]}
         pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
-
+        nc_file = ''
         # show_args(exp_kwargs, title="One_tone_powerDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -96,9 +96,9 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         qubit_info = QD_agent.quantum_device.get_element(q)
         original_rof[q] = qubit_info.clock_freqs.readout(original_rof[q])
 
-    return rp_ds
+    return nc_file
 
-def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict, rof_pos:dict={}):
+def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict, ro_atte:float, rof_pos:dict={}):
     """
     Plot |S21| from a given power cavity nc file and save it in the pic folder within the same day.
     """
@@ -130,11 +130,11 @@ def plot_powerCavity_S21(PC_nc_file:str, ro_elements:dict, rof_pos:dict={}):
         plt.xlabel("frequency (GHz)")
         plt.ylabel("Power (V)")
         plt.minorticks_on()
-        plt.title(title+f"_{q}")
+        plt.title(title+f"_{q}_{ro_atte}dB")
         plt.grid()
         plt.tight_layout()
         plt.legend()
-        plt.savefig(os.path.join(pic_dir,f"{title}_{q}.png"))
+        plt.savefig(os.path.join(pic_dir,f"{title}_{q}_{ro_atte}dB.png"))
         plt.close()
 
 
@@ -155,11 +155,14 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
     if run:
         if sweet_spot:
             Fctrl[list(ro_elements.keys())[0]](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=list(ro_elements.keys())[0]))
-        PD_ds = PowerDep_spec(QD_agent,meas_ctrl,ro_elements, ro_p_max=max_power, p_points=ppts, n_avg=avg_n, rof_marks=rof_baselines)
+        ncs = PowerDep_spec(QD_agent,meas_ctrl,ro_elements, ro_p_max=max_power, p_points=ppts, n_avg=avg_n)
+        
         if sweet_spot:
             Fctrl[list(ro_elements.keys())[0]](0.0)
     else:
-        PD_ds = PowerDep_spec(QD_agent,meas_ctrl,ro_elements,run=False,ro_p_max=max_power)
+        ncs = PowerDep_spec(QD_agent,meas_ctrl,ro_elements,run=False,ro_p_max=max_power)
+
+    return ncs, ro_elements, rof_baselines
 
     
 
@@ -168,13 +171,13 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0 # if true, only one qubit should be in the ro_elements 
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements =["q2"]     # measurement target q from this dict # q1, q2 44dB 0.2
-    ro_atte_for_all:int=20 
+    DRandIP = {"dr":"drke","last_ip":"242"}
+    ro_elements =["q0","q1"]     # measurement target q from this dict # q1, q2 44dB 0.2
+    ro_atte_for_all:int=40 
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 2e6
+    half_ro_freq_window_Hz = 8e6
     freq_data_points = 100
     power_data_points = 30
 
@@ -188,11 +191,12 @@ if __name__ == "__main__":
 
 
     """ Running """
-    powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare,avg_n=10)
+    plot_items = powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare,avg_n=10)
     cluster.reset()
     
 
     """ Storing """
+    plot_powerCavity_S21(plot_items[0],plot_items[1],ro_atte_for_all,plot_items[-1])
     if execution: 
         QD_agent.refresh_log('after PowerDep')
         QD_agent.QD_keeper()

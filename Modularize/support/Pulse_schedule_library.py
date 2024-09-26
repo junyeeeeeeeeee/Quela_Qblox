@@ -309,7 +309,7 @@ def Digital_down_convert(IF_Idata:np.ndarray,IF_Qdata:np.ndarray,IF:float,time_a
 #%% pulse library
 def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu, ref_point:str="start"):
     delay_c= -Du-freeDu
-    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
+    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point)
 
 def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
 
@@ -371,7 +371,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
 
     # tim_sample, env_sample = FlatTopGaussianPulse(Du,amp)
     # return sche.add(NumericalPulse(samples=env_sample,t_samples=tim_sample,port="q:res",clock=q+".ro",t0=0e-9),)
-    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9))
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=0e-9))
 
 def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     if powerDep is True:
@@ -475,16 +475,19 @@ def One_tone_multi_sche(
 
             sched.add(Reset(q))
             sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {qubit_idx} {acq_idx}")
+            # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {qubit_idx} {acq_idx}")
             
             if qubit_idx == 0:
                 spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
                 # Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
             else:
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
+
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
             
     return sched
+
+ 
 
 def Two_tone_sche(
     frequencies: np.ndarray,
@@ -504,7 +507,7 @@ def Two_tone_sche(
     for acq_idx, freq in enumerate(frequencies):
         sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
@@ -532,7 +535,7 @@ def Z_gate_two_tone_sche(
     for acq_idx, freq in enumerate(frequencies):
         sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)

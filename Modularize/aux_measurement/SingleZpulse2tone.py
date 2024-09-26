@@ -1,6 +1,6 @@
 
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from numpy import array, linspace, NaN
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
@@ -12,27 +12,22 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
 from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte, coupler_zctrl
-from Modularize.support.Pulse_schedule_library import Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
-
-def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0],drive_read_overlap:bool=False):
-    sche_func = Two_tone_sche   
+from Modularize.support.Pulse_schedule_library import Z_gate_two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, QS_fit_analysis, dataset_to_array, twotone_comp_plot
+import matplotlib.pyplot as plt
+def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_bias:float,IF:float=100e6,f01_guess:int=0,xyf_span_Hz:int=400e6,xyamp:float=0.02,n_avg:int=500,points:int=200,run:bool=True,q:str='q1',Experi_info:dict={},ref_IQ:list=[0,0]):
+    highlight_print(f"Z_pulse_amp = {Z_bias} V")
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     original_row = qubit_info.measure.pulse_duration()
     original_inteW = qubit_info.measure.integration_time()
-    if not drive_read_overlap:
-        drive_pulse_ref_pt = 'start'
-        qubit_info.measure.pulse_duration(1.5e-6)
-        qubit_info.measure.integration_time(1e-6)
-        drive_pulse_length = 100e-6
-    else:
-        drive_pulse_ref_pt = 'end'
-        drive_pulse_length = 100e-6
-        qubit_info.measure.pulse_duration(drive_pulse_length)
-        qubit_info.measure.integration_time(drive_pulse_length)
+    
+    qubit_info.measure.pulse_duration(1.5e-6)
+    qubit_info.measure.integration_time(1e-6)
+    drive_pulse_length = 10000e-6
 
-    qubit_info.reset.duration(280e-9+drive_pulse_length+0.5e-6)
-    eyeson_print(f"RO amp = {qubit_info.measure.pulse_amp()}")
+
+    qubit_info.reset.duration(0.5e-6+drive_pulse_length+280e-9)
+    eyeson_print(f"RO freq = {qubit_info.clock_freqs.readout()}")
     
     if f01_guess != 0:
         f01_high = f01_guess+IF
@@ -47,17 +42,17 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
     set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=f01_high)
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
-
+    sche_func = Z_gate_two_tone_sche
     spec_sched_kwargs = dict(   
         frequencies=freq,
         q=q,
         spec_amp=xyamp,
+        Z_amp=Z_bias,
         spec_Du=drive_pulse_length,
         R_amp={str(q):qubit_info.measure.pulse_amp()},
         R_duration={str(q):qubit_info.measure.pulse_duration()},
         R_integration={str(q):qubit_info.measure.integration_time()},
         R_inte_delay=qubit_info.measure.acq_delay(),
-        ref_pt=drive_pulse_ref_pt
     )
     exp_kwargs= dict(sweep_F=['start '+'%E' %f01_samples[0],'end '+'%E' %f01_samples[-1]],
                      spec_amp='%E' %spec_sched_kwargs['spec_amp'],
@@ -80,8 +75,27 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,IF:float=100e6
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
+        fig, ax = plt.subplots(1,2,figsize=(12,8))
+        ax0:plt.Axes=ax[0]
+        ax0.plot(f01_samples*1e-9, array(I).transpose())
+        ax0.set_xlabel("Frequency (GHz)", fontsize=20)
+        ax0.set_ylabel("Amp (mV)", fontsize=20)
+
+        ax0.xaxis.set_tick_params(labelsize=18)
+        ax0.yaxis.set_tick_params(labelsize=18)
+        ax0.set_title("Inphase")
+        ax1:plt.Axes=ax[1]
+        ax1.plot(f01_samples*1e-9, array(Q).transpose())
+        ax1.set_xlabel("Frequency (GHz)", fontsize=20)
+        ax1.set_ylabel("Amp (mV)", fontsize=20)
+
+        ax1.xaxis.set_tick_params(labelsize=18)
+        ax1.yaxis.set_tick_params(labelsize=18)
+        ax1.set_title("Quadrature")
+        plt.tight_layout()
+        plt.show()
         
-        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) 
+        data= IQ_data_dis(I,Q,ref_I=0,ref_Q=0) 
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)
         
         show_args(exp_kwargs, title="Two_tone_kwargs: Meas.qubit="+q)
@@ -142,20 +156,13 @@ def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float)
 
 
 
-def conti2tone_executor(QD_agent:QDmanager,Fctrl,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,XYF:float,XYL:float,xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0,drive_read_overlap:bool=False,avg_times:int=500,fpts:int=100):
+def conti2tone_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementControl,cluster:Cluster,specific_qubits:str,XYF:float,XYL:float,xyf_span:float=500e6,xy_if:float=100e6,run:bool=True,V_away_from:float=0,avg_times:int=500,fpts:int=100):
     
     if run:
         ori_data = []
         offset = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)
-        want_bias = offset+V_away_from
-        if V_away_from != 0:
-            rof = QD_agent.Fluxmanager.sin_for_cav(specific_qubits,array([want_bias]))[0]
-            QD_agent.quantum_device.get_element(specific_qubits).clock_freqs.readout(rof)
-            QD_agent.Fluxmanager.save_tuneawayBias_for('manual',specific_qubits,want_bias)
-            warning_print(f"meas under flux = {round(offset,3)}+{round(V_away_from,3)} V")
-        Fctrl[specific_qubits](want_bias) 
-        
-        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=avg_times,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],drive_read_overlap=drive_read_overlap) # 
+        Fctrl[specific_qubits](offset) 
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=avg_times,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],Z_bias=V_away_from) # 
         Fctrl[specific_qubits](0.0)
         
         cluster.reset() # *** important
@@ -167,7 +174,7 @@ def conti2tone_executor(QD_agent:QDmanager,Fctrl,meas_ctrl:MeasurementControl,cl
                 
     else:
         qu = specific_qubits
-        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=0.1,IF=xy_if,f01_guess=4e9,q=qu,xyf_span_Hz=xyf_span,points=50,n_avg=avg_times,run=False,ref_IQ=QD_agent.refIQ[qu],drive_read_overlap=drive_read_overlap)
+        QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=0.1,IF=xy_if,f01_guess=4e9,q=qu,xyf_span_Hz=xyf_span,points=50,n_avg=avg_times,run=False,ref_IQ=QD_agent.refIQ[qu],Z_bias=V_away_from)
 
         return 0
    
@@ -187,16 +194,16 @@ if __name__ == "__main__":
     DRandIP = {"dr":"drke","last_ip":"242"}
     #
     ro_elements = {
-        "q1":{"xyf_guess":[4.83e9],"xyl_guess":[0.01],"g_guess":95e6, "tune_bias":0.06} # g you can try a single value about 90e6 for a 5Q4C chip.
-    }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
-    couplers = []#'c0','c1']
+        "q1":{"xyf_guess":[4.72e9],"xyl_guess":[0.01],"g_guess":95e6, "z_pulse_amp":0.06} 
+    }                                                                            
+    couplers = ['c0','c1']
 
     """ Optional paras """
     drive_read_overlap:bool = 0
     xy_IF = 100e6
-    xyf_range = 500e6
+    xyf_range = 200e6
     fpts:int = 100
-    avg_n:int = 100
+    avg_n:int = 1000
 
 
     """ Running """
@@ -217,10 +224,11 @@ if __name__ == "__main__":
             
                 QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
                 init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-                tune_bias = ro_elements[qubit]["tune_bias"]
+                tune_bias = ro_elements[qubit]["z_pulse_amp"]
                 print(xyf)
-                tt_results = conti2tone_executor(QD_agent,Fctrl,meas_ctrl,cluster,specific_qubits=qubit,XYF=xyf,XYL=xyl,run=execution,xy_if=xy_IF,xyf_span=xyf_range,V_away_from=tune_bias,drive_read_overlap=drive_read_overlap,avg_times=avg_n,fpts=fpts)
-
+                tt_results = conti2tone_executor(QD_agent,Fctrl,meas_ctrl,cluster,specific_qubits=qubit,XYF=xyf,XYL=xyl,run=execution,xy_if=xy_IF,xyf_span=xyf_range,V_away_from=tune_bias,avg_times=avg_n,fpts=fpts)
+                Cctrl['c0'](0)
+                Cctrl['c1'](0)
                 if xyl == 0: 
                     background = tt_results
                 else:

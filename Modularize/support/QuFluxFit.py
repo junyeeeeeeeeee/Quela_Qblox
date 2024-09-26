@@ -30,6 +30,34 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
     plt.tight_layout()
     plt.show()
 
+def plot_QbFlux_iq(Qmanager:QDmanager, nc_path:str, target_q:str):
+    if target_q in Qmanager.refIQ:
+        ref = Qmanager.refIQ[target_q]
+    else:
+        ref = [0,0]
+    # plot flux-qubit 
+    f,z,i,q = convert_netCDF_2_arrays(nc_path)
+    
+    fig, ax = plt.subplots(1,2,figsize=(12,8))
+    ax0:plt.Axes=ax[0]
+    c = ax0.pcolormesh(z, f*1e-9, i.transpose(), cmap='RdBu')
+    ax0.set_xlabel("Flux Pulse amp (V)", fontsize=20)
+    ax0.set_ylabel("Frequency (GHz)", fontsize=20)
+    fig.colorbar(c, ax=ax0, label='Contrast (V)')
+    ax0.xaxis.set_tick_params(labelsize=18)
+    ax0.yaxis.set_tick_params(labelsize=18)
+    ax0.set_title("Inphase")
+    ax1:plt.Axes=ax[1]
+    d = ax1.pcolormesh(z, f*1e-9, q.transpose(), cmap='RdBu')
+    ax1.set_xlabel("Flux Pulse amp (V)", fontsize=20)
+    ax1.set_ylabel("Frequency (GHz)", fontsize=20)
+    fig.colorbar(d, ax=ax1, label='Contrast (V)')
+    ax1.xaxis.set_tick_params(labelsize=18)
+    ax1.yaxis.set_tick_params(labelsize=18)
+    ax1.set_title("Quadrature")
+    plt.tight_layout()
+    plt.show()
+
 
 # Plotting
 def plot_HeatScat(mag,x_heat_ary,y_heat_ary,x_scat_ary,y_scat_ary,fit_scat_ary:ndarray=array([]),q:str=''):

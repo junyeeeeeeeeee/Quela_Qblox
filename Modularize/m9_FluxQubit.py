@@ -138,7 +138,7 @@ def update_by_fluxQubit(QD_agent:QDmanager,correct_results:dict,target_q:str):
 
 
 
-def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=5,fpts:int=40,span_priod_factor:int=12,f_sapn_Hz=400e6,avg_times:int=1000,xy_IF:float=200e6):
+def fluxQubit_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementControl,specific_qubits:str,run:bool=True,z_shifter:float=0,zpts:int=5,fpts:int=40,span_priod_factor:int=12,f_sapn_Hz=400e6,avg_times:int=1000,xy_IF:float=200e6):
     center = QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=specific_qubits)
     partial_period = QD_agent.Fluxmanager.get_PeriodFor(target_q=specific_qubits)/span_priod_factor
 
@@ -169,16 +169,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
-    couplers = []
+    DRandIP = {"dr":"drke","last_ip":"242"}
+    ro_elements = ['q1']
+    couplers = ['c0','c1']
     z_shifter = 0.0 # V
 
     
     """ Optional paras """
-    span_period_factor:float = 10 # range in [sweet - period/span_period_factor, sweet + period/span_period_factor]
-    flux_pts:int = 30
-    freq_pts:int = 40
+    span_period_factor:float = 9 # range in [sweet - period/span_period_factor, sweet + period/span_period_factor]
+    flux_pts:int = 60
+    freq_pts:int = 80
     freq_span_Hz:float = 500e6
     sweet_flux_shifter:float = 0
     xy_IF = 100e6
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-            trustable, new_ans = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter,zpts=flux_pts,fpts=freq_pts,span_priod_factor=span_period_factor,f_sapn_Hz=freq_span_Hz,avg_times=avg_n,xy_IF=xy_IF)
+            trustable, new_ans = fluxQubit_executor(QD_agent,Fctrl,meas_ctrl,qubit,run=execution,z_shifter=z_shifter,zpts=flux_pts,fpts=freq_pts,span_priod_factor=span_period_factor,f_sapn_Hz=freq_span_Hz,avg_times=avg_n,xy_IF=xy_IF)
             cluster.reset()
 
             """ Storing """

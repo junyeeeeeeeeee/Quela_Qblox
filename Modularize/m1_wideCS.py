@@ -141,11 +141,11 @@ if __name__ == "__main__":
     from Modularize.support.UI_Window import init_meas_window
     
     """ Fill in """
-    QD_path, dr, mode = "", "dr4","n" #init_meas_window()
-    qrmRF_slot_idx:int  = 18
-    lo_start_freq:float = 4.5  * 1e9
-    lo_stop_freq:float = 5 * 1e9
-    num_data:int =5000
+    QD_path, dr, mode = "", "drke","n" #init_meas_window()
+    qrmRF_slot_idx:int  = 6
+    lo_start_freq:float = 5.8  * 1e9
+    lo_stop_freq:float = 6.1 * 1e9
+    num_data:int = 1200
 
 
     """ Preparations """
@@ -154,7 +154,7 @@ if __name__ == "__main__":
                                                         mode=mode)
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-    QRM_nco_init(cluster)
+    
     # Readout select
     readout_module = cluster.modules[qrmRF_slot_idx-1]
 

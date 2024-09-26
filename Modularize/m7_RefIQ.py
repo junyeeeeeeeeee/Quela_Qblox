@@ -95,10 +95,10 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution = True
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {'q0':{"ro_amp_factor":1.2},}
+    DRandIP = {"dr":"drke","last_ip":"242"}
+    ro_elements = {'q1':{"ro_amp_factor":1},}
                 
-    couplers = []
+    couplers = ['c0','c1']
 
 
     for qubit in ro_elements:

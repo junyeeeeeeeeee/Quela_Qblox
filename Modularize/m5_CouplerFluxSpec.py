@@ -123,8 +123,8 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     sweet_spot:bool = 0
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = {"q1":["c0"]}
+    DRandIP = {"dr":"drke","last_ip":"242"}
+    ro_elements = {"q1":["c1"]}
 
     
     """ Optional paras """
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     flux_half_window_V  = 0.4
     freq_data_points = 80
     flux_data_points = 80
-    freq_center_shift = -3e6 # freq axis shift
+    freq_center_shift = 0e6 # freq axis shift
 
     
     """ Preparations """

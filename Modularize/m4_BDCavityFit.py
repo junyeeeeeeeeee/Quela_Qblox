@@ -17,7 +17,7 @@ Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
 Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
 
 def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,run:bool=True, ro_amps:dict={})->dict:
-    
+    QD_agent.quantum_device.get_element(list(ro_elements.keys())[0]).reset.duration(0.5e-6+1e-2+280e-9)
     if run:
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=True,ro_amps=ro_amps,n_avg=100)
         CS_results = multiplexing_CS_ana(QD_agent, cs_ds, ro_elements)
@@ -41,7 +41,7 @@ def fillin_PDans(QD_agent:QDmanager,ans:dict):
         if ans[q]["ro_atte"] != "": QD_agent.Notewriter.save_DigiAtte_For(atte_dB=ans[q]["ro_atte"],target_q=q,mode='ro')
 
     QD_agent.refresh_log("PD answer stored!")
-    QD_agent.QD_keeper()
+    # QD_agent.QD_keeper()
 
 def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span_Hz:float, fpts:int):
     amps = {}
@@ -50,7 +50,7 @@ def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span
     original_rof = {}
     for q in qubits:
         if state in list(qubits[q].keys()):
-            amps[q] = qubits[q][state]['ro_amp']
+            amps[q] = QD_agent.quantum_device.get_element(q).measure.pulse_amp()#qubits[q][state]['ro_amp']
             
             rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             original_rof[q] = rof
@@ -64,18 +64,20 @@ def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span
 if __name__ == "__main__":
 
     """ Fill in """
-    execution:bool = True 
-    sweetSpot:bool = 0     # If true, only support one one qubit
+    execution:bool = 1
+    sweetSpot:bool = 1     # If true, only support one one qubit
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_element = {
-        "q4":{  "bare" :{"ro_amp":0.1,"window_shift":0e6},
-                "dress":{"ro_amp":0.15,"window_shift":0.3e6}},
+        # "q0":{  "bare" :{"ro_amp":0.15,"window_shift":0e6},
+        #         "dress":{"ro_amp":0.05,"window_shift":0e6}},
+        "q1":{  "bare" :{"ro_amp":0.15,"window_shift":0e6},
+                "dress":{"ro_amp":0.08,"window_shift":0e6}},
     }
-    ro_attes = {"dress":30, "bare":20} # all ro_elements shared
+    ro_attes = {"dress":40, "bare":40} # all ro_elements shared
 
     """ Optional paras"""
-    half_ro_freq_window_Hz = 4e6
+    half_ro_freq_window_Hz = 10e6
     freq_data_points = 200
 
 
