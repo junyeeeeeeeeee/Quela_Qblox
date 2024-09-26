@@ -9,7 +9,7 @@ from Modularize.support import init_meas, shut_down, init_system_atte, coupler_z
 
 
 if __name__ == "__main__":
-    # 2 sets, 2 histo_counts, take 2.7 mins
+
     """ fill in """
     T1_folder_path = 'Modularize\Meas_raw\T1_timeDep'
     T2_folder_path = 'Modularize\Meas_raw\T2_timeDep'
@@ -24,6 +24,9 @@ if __name__ == "__main__":
 
     """ Optional paras """
     doing_exp = {"T1":True,"T2":True,"OS":False}
+    XY_IF:float = 250e6
+    n_avg:int = 300
+    shots = 5e3
 
 
     """ Preparations """
@@ -63,13 +66,13 @@ if __name__ == "__main__":
                     Cctrl['c3'](0.13)
 
                     if exp == "T1" and T1_folder_path != '' and doing_exp[exp]:
-                        _ = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["freeTime"]["T1"],ith=set_idx,run=True,specific_folder=T1_folder_path,avg_times=300)
+                        _ = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["freeTime"]["T1"],ith=set_idx,run=True,specific_folder=T1_folder_path,avg_times=n_avg,IF=XY_IF)
                         
                     elif exp == "T2" and T2_folder_path != '' and doing_exp[exp]:
-                        _ = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["T2detune"],freeDura=ro_elements[qubit]["freeTime"]["T2"],ith=set_idx,run=True,specific_folder=T2_folder_path,avg_n=500)
+                        _ = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["T2detune"],freeDura=ro_elements[qubit]["freeTime"]["T2"],ith=set_idx,run=True,specific_folder=T2_folder_path,avg_n=int(1.5*n_avg),second_phase='y',IF=XY_IF)
                         
                     elif exp == "OS" and OS_folder_path != '' and doing_exp[exp]:
-                        SS_executor(QD_agent,cluster,Fctrl,qubit,execution=True,data_folder=OS_folder_path,exp_label=set_idx,plot=False)
+                        SS_executor(QD_agent,cluster,Fctrl,qubit,execution=True,data_folder=OS_folder_path,exp_label=set_idx,plot=False,IF=XY_IF,shots=shots)
                         
                     else:
                         print(f"*** Can't support this exp called '{exp}' in Radiator test set !")

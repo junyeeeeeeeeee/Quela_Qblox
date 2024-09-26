@@ -154,7 +154,7 @@ if __name__ == "__main__":
                                                         mode=mode)
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-    QRM_nco_init(cluster)
+
     # Readout select
     readout_module = cluster.modules[qrmRF_slot_idx-1]
 

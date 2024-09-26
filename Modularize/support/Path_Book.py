@@ -1,12 +1,16 @@
 """
     Path_book keeps the path indecated to the directories, and the object will be saved in the folder named by date.
 """
-import os, datetime
+import os, datetime, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from Modularize.support.UserFriend import eyeson_print
+
+root = os.getcwd()
 # The directory for measurement raw data
-meas_raw_dir = 'Modularize/Meas_raw'
+meas_raw_dir = os.path.join(root,'Modularize/Meas_raw')
 # The directory for qauntum device
-qdevice_backup_dir = 'Modularize/QD_backup'
+qdevice_backup_dir = os.path.join(root,'Modularize/QD_backup')
+
 
 def decode_datetime_2_foldername(date:datetime):
     latest = date.strftime("%Y%m%d")
@@ -72,3 +76,4 @@ if __name__ == "__main__":
     meas_dr_now = 'dr2'
     which_ip_last = '11'
     print(find_latest_QD_pkl_for_dr(meas_dr_now,which_ip_last))
+
