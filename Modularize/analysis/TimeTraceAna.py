@@ -42,7 +42,6 @@ def plot_coherence_timetrace(raw_data:ndarray, time_samples:ndarray, ans:ndarray
     if exp.lower() in ['t1', 'os']:
         ax2 = fig.add_subplot(gs[:,0])
     elif exp.lower() == 't2':
-        print("**********************************Yes")
         ax2 = fig.add_subplot(gs[1,0])
     else:
         pass
@@ -72,7 +71,7 @@ if __name__ == "__main__":
                     "T2_folder_path":"Modularize/Meas_raw/T2_timeDep",
                     "OS_folder_path":""
                     }
-    QD_file_path = 'Modularize/QD_backup/2024_9_25/DR4#81_SumInfo.pkl'
+    QD_file_path = 'Modularize/QD_backup/2024_9_23/DR4#81_SumInfo.pkl'
     qs = ['q4']
     sort_mode = 'idx' # 'idx' or 'time'
 
