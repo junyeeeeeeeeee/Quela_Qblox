@@ -23,10 +23,10 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_bias:float,I
     
     qubit_info.measure.pulse_duration(1.5e-6)
     qubit_info.measure.integration_time(1e-6)
-    drive_pulse_length = 10000e-6
+    drive_pulse_length = 1e-6
 
 
-    qubit_info.reset.duration(0.5e-6+drive_pulse_length+280e-9)
+    qubit_info.reset.duration(0.5e-6+drive_pulse_length+280e-9+10e-6)
     eyeson_print(f"RO freq = {qubit_info.clock_freqs.readout()}")
     
     if f01_guess != 0:
@@ -75,27 +75,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Z_bias:float,I
         # Save the raw data into netCDF
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb=q,exp_type='2tone')
         I,Q= dataset_to_array(dataset=qs_ds,dims=1)
-        fig, ax = plt.subplots(1,2,figsize=(12,8))
-        ax0:plt.Axes=ax[0]
-        ax0.plot(f01_samples*1e-9, array(I).transpose())
-        ax0.set_xlabel("Frequency (GHz)", fontsize=20)
-        ax0.set_ylabel("Amp (mV)", fontsize=20)
-
-        ax0.xaxis.set_tick_params(labelsize=18)
-        ax0.yaxis.set_tick_params(labelsize=18)
-        ax0.set_title("Inphase")
-        ax1:plt.Axes=ax[1]
-        ax1.plot(f01_samples*1e-9, array(Q).transpose())
-        ax1.set_xlabel("Frequency (GHz)", fontsize=20)
-        ax1.set_ylabel("Amp (mV)", fontsize=20)
-
-        ax1.xaxis.set_tick_params(labelsize=18)
-        ax1.yaxis.set_tick_params(labelsize=18)
-        ax1.set_title("Quadrature")
-        plt.tight_layout()
-        plt.show()
-        
-        data= IQ_data_dis(I,Q,ref_I=0,ref_Q=0) 
+        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1]) 
         analysis_result[q] = QS_fit_analysis(data,f=f01_samples)
         
         show_args(exp_kwargs, title="Two_tone_kwargs: Meas.qubit="+q)
@@ -161,6 +141,7 @@ def conti2tone_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementContr
     if run:
         ori_data = []
         offset = QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)
+        print("***** offset = ",offset)
         Fctrl[specific_qubits](offset) 
         QS_results = Two_tone_spec(QD_agent,meas_ctrl,xyamp=XYL,IF=xy_if,f01_guess=XYF,q=specific_qubits,xyf_span_Hz=xyf_span,points=fpts,n_avg=avg_times,run=True,ref_IQ=QD_agent.refIQ[specific_qubits],Z_bias=V_away_from) # 
         Fctrl[specific_qubits](0.0)
@@ -196,7 +177,7 @@ if __name__ == "__main__":
     ro_elements = {
         "q1":{"xyf_guess":[4.72e9],"xyl_guess":[0.01],"g_guess":95e6, "z_pulse_amp":0.06} 
     }                                                                            
-    couplers = ['c0','c1']
+    couplers = []
 
     """ Optional paras """
     drive_read_overlap:bool = 0
