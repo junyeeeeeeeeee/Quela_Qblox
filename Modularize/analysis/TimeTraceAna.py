@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from xarray import Dataset, open_dataset
 from Modularize.support import QDmanager,Data_manager
 import matplotlib.pyplot as plt
-from numpy import ndarray, array, median, std
+from numpy import ndarray, array, median, std, mean
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T2_fit_analysis, T1_fit_analysis
 from datetime import datetime 
 from matplotlib.gridspec import GridSpec as GS
@@ -89,12 +89,16 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
     ax:plt.Axes = axs[0]
     ax.grid()
     ax.plot(time_values, y_values)
-    ax.axhline(median(y_values)+std(y_values),linestyle='--',c='orange')
-    ax.axhline(median(y_values),linestyle='-',c='orange')
+    ax.axhline(median(y_values)+std(y_values),linestyle='--',c='orange',label='1σ')
+    ax.axhline(mean(y_values),linestyle='-',c='orange',label='mean')
     ax.axhline(median(y_values)-std(y_values),linestyle='--',c='orange')
+    ax.axhline(median(y_values),linestyle='-.',c='red',label='median')
     ax.set_xlabel(f"time past ({units['x']})",fontsize=16)
     ax.set_ylabel(f"{exp.upper()} ({units['y']})",fontsize=16)
     ax.set_title(f"Time dependent {exp.upper()}",fontsize=20)
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+    ax.legend()
 
     ax:plt.Axes=axs[1]
     ax.grid()
@@ -102,7 +106,9 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
     ax.axhline(median(y_values),c='k',ls='--',lw='1')
     ax.set_xlabel("Counts",fontsize=16)
     ax.set_ylabel(f"{exp.upper()} ({units['y']})", fontsize=16)
-    ax.set_title(f"{exp.upper()} = {round(median(y_values),1)} $\pm$ {round(std(y_values),1)} {units['y']}",fontsize=20)
+    ax.set_title(f"{exp.upper()} = {round(median(y_values),2 if exp == 'δf' else 1)} $\pm$ {round(std(y_values),2 if exp == 'δf' else 1)} {units['y']}",fontsize=20)
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
 
     ax:plt.Axes=axs[2]
     ax.hist(y_values, bins=5000, orientation="horizontal", cumulative=True, density=True,histtype="step")
@@ -112,7 +118,10 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
     ax.set_ylabel(f"{exp.upper()} ({units['y']})", fontsize=16)
     ax.set_title("CDF",fontsize=20)
     ax.legend()
-    plt.tight_layout()
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+
+    plt.tight_layout(pad=5.0)
     if fig_path is not None:
         plt.savefig(fig_path)
     plt.close()
