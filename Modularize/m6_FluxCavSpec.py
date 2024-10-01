@@ -23,7 +23,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     analysis_result = {}
     qubit_info = QD_agent.quantum_device.get_element(q)
     qubit_info.measure.pulse_duration(100e-6)
-    qubit_info.measure.integration_time(100e-6-1e-6)
+    qubit_info.measure.integration_time(100e-6)
     qubit_info.reset.duration(250e-6)
     # qubit_info.measure.pulse_amp(0.05)
     ro_f_center = qubit_info.clock_freqs.readout()
@@ -67,7 +67,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         # Save the raw data into netCDF
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD',get_data_loc=True)
-        plot_QbFlux_iq(QD_agent,nc_path,q)
+        # plot_QbFlux_iq(QD_agent,nc_path,q)
         analysis_result[q] = ResonatorFluxSpectroscopyAnalysis(tuid=rfs_ds.attrs["tuid"], dataset=rfs_ds).run(sweetspot_index=0)
         show_args(exp_kwargs, title="One_tone_FluxDep_kwargs: Meas.qubit="+q)
         if Experi_info != {}:
@@ -132,12 +132,12 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"drke","last_ip":"242"}
-    ro_elements = ['q1']
-    cp_ctrl = {'c0':-0.167,'c1':-0.131}
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements = ['q2']
+    cp_ctrl = {}
 
     """ Optional paras """
-    freq_half_window_Hz = 8e6
+    freq_half_window_Hz = 5e6
     flux_half_window_V  = 0.4
     freq_data_points = 40
     flux_data_points = 40

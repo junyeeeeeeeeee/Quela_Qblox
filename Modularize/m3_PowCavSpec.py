@@ -143,7 +143,10 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
     rof_baselines = {}
     for qb in qubits:
         QD_agent.Notewriter.save_DigiAtte_For(ro_atte,qb,'ro')
-        rof_baselines[qb] = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()
+        if qb == 'q4':
+            rof_baselines[qb] = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()+3e6
+        else:
+            rof_baselines[qb] = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()
         if dressHbare:
             rof = rof_baselines[qb]-1e6
             ro_elements[qb] = linspace(rof, rof+2*ro_span_Hz, fpts)
@@ -155,6 +158,7 @@ def powerCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:d
     if run:
         if sweet_spot:
             Fctrl[list(ro_elements.keys())[0]](QD_agent.Fluxmanager.get_sweetBiasFor(target_q=list(ro_elements.keys())[0]))
+        
         ncs = PowerDep_spec(QD_agent,meas_ctrl,ro_elements, ro_p_max=max_power, p_points=ppts, n_avg=avg_n)
         
         if sweet_spot:
@@ -171,13 +175,13 @@ if __name__ == "__main__":
     """ fill in """
     execution:bool = True
     sweetSpot_dispersive:bool = 0 # if true, only one qubit should be in the ro_elements 
-    DRandIP = {"dr":"drke","last_ip":"242"}
-    ro_elements =["q0","q1"]     # measurement target q from this dict # q1, q2 44dB 0.2
-    ro_atte_for_all:int=40 
+    DRandIP = {"dr":"dr4","last_ip":"81"}
+    ro_elements =["q1","q3","q5",]     # measurement target q from this dict # q1, q2 44dB 0.2
+    ro_atte_for_all:int=50
 
     """ Optional paras"""
     maxima_power = 0.6
-    half_ro_freq_window_Hz = 8e6
+    half_ro_freq_window_Hz = 3e6
     freq_data_points = 100
     power_data_points = 30
 
@@ -191,7 +195,9 @@ if __name__ == "__main__":
 
 
     """ Running """
+    # Fctrl["q4"](0.1)
     plot_items = powerCavity_executor(QD_agent,meas_ctrl,Fctrl,qubits=ro_elements,ro_atte=ro_atte_for_all,run=execution,sweet_spot=sweetSpot_dispersive,max_power=maxima_power,ro_span_Hz=half_ro_freq_window_Hz, fpts=freq_data_points, ppts=power_data_points,dressHbare=dress_higher_bare,avg_n=10)
+    # Fctrl["q4"](0.0)
     cluster.reset()
     
 

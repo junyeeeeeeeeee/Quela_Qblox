@@ -10,7 +10,7 @@ from Modularize.support import cds
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
-from numpy import array, linspace, arange, cos, sin, deg2rad, real, imag, sqrt
+from numpy import array, linspace, arange, cos, sin, deg2rad, real, imag, sqrt, arctan2
 from quantify_core.measurement.control import MeasurementControl
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from Modularize.support import init_meas, init_system_atte, shut_down
@@ -103,7 +103,7 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
         qubit.measure.acq_delay(0)
         qubit.measure.pulse_amp(0.15)
         qubit.measure.pulse_duration(100e-6)
-        qubit.measure.integration_time(100e-6-4e-9)
+        qubit.measure.integration_time(100e-6)
 
 
 def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
@@ -123,21 +123,31 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
         freq = array(ro_elements[q])[1:]
         res_er = ResonatorData(freq=freq,zdata=array(S21)[1:])
         result, data2plot, fit2plot = res_er.fit()
-        fig, ax = plt.subplots(1,2,figsize=(9,6))
-        ax0:plt.Axes = ax[0]        
+        fig, ax = plt.subplots(2,2,figsize=(12,12))
+        ax0:plt.Axes = ax[0][0]        
         ax0.plot(freq,result['A']*abs(data2plot))
         ax0.plot(freq,result['A']*abs(fit2plot),c="red",label='fitting')
-        ax0.vlines(5972.12*1e6,result['A']*min(data2plot),result['A']*max(data2plot),linestyles="--")
+        ax0.vlines(result['fr'],result['A']*min(data2plot),result['A']*max(data2plot),linestyles="--")
         ax0.set_title(f"{q} cavity @ {round(float(result['fr'])*1e-9,5)} GHz")
         ax0.legend()
-        ax1:plt.Axes = ax[1]        
-        ax1.scatter(real(data2plot),imag(data2plot),label='data')
-        ax1.scatter(real(fit2plot),imag(fit2plot),label='fit',c='red',s=10)
-        ax1.set_title("S21")
+        ax1:plt.Axes = ax[0][1]        
+        ax1.plot(freq,arctan2(imag(data2plot),real(data2plot)))
+        ax1.plot(freq,arctan2(imag(fit2plot),real(fit2plot)),c="red",label='fitting')
+        ax1.set_title("Phase")
         ax1.legend()
+        ax2:plt.Axes = ax[1][0]        
+        ax2.scatter(real(array(S21)[1:]),imag(array(S21)[1:]),label='data')
+        ax2.set_title("S21 raw data")
+        ax2.legend()
+        ax3:plt.Axes = ax[1][1]        
+        ax3.scatter(result['A']*real(data2plot),result['A']*imag(data2plot),label='data')
+        ax3.scatter(result['A']*real(fit2plot),result['A']*imag(fit2plot),label='fit',c='red',s=10)
+        ax3.set_title("S21 after fit")
+        ax3.legend()
         plt.tight_layout()
         if save_pic:
-            Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
+            # Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
+            plt.show()
         else:
             plt.close()
         fit_results[q] = result
@@ -149,6 +159,7 @@ def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_ba
     ro_elements = {}
     Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
     Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
+    ans = {"q0":5.47246e9,"q1":6.01803e9,"q2":6.06874e9,"q3":5.91653e9,"q4":5.87375e9,"q5":5.96651e9}
     for qb in list(ro_bare_guess.keys()):
         ro_elements[qb] = linspace(ro_bare_guess[qb]-ro_span_Hz, ro_bare_guess[qb]+ro_span_Hz, fpts)
     if run:
@@ -177,22 +188,26 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-    QD_path, dr, mode, chip_name, chip_type = '', 'drke', 'n','20240923_Qcage', '5Q4C'
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240930_WJ3FQ3CQ#18', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 20 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 46 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=6.0727e9,
-        q1=5.9645e9,
+        q0=5.472e9,
+        q1=6.0179e9,
+        q2=6.06894e9,
+        q3=5.91635e9,
+        q4=5.8738e9,
+        q5=5.9664e9
     )
 
     """ Optional paras """ 
-    coupler_number:int = 2
-    qubit_num:int = 2
+    coupler_number:int = 0
+    qubit_num:int = 6
     freq_data_points = 201
-    half_freq_window_Hz = 10e6
+    half_freq_window_Hz = 6e6
     n_avg: int = 100
 
 
@@ -209,7 +224,7 @@ if __name__ == "__main__":
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 
     # Set the system attenuations
-    if QD_path == '': QD_RO_init(QD_agent,ro_bare)
+    QD_RO_init(QD_agent,ro_bare)
     init_system_atte(QD_agent.quantum_device,list(ro_bare.keys()),ro_out_att=init_RO_DigiAtte)
     
     """ Measurements """
