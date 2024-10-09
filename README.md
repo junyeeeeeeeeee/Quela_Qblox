@@ -47,18 +47,13 @@ This program will calibrate the IQ plane of the readout automaticly, so don't he
 --------------------------------------
 ## Update
 
-#### 2024-08-12 
- * python==3.10
- * qblox-instruments==0.12.0  
- * quantify-core==0.7.4  
- * quantify-scheduler==0.20.0  
- * colorama
- * numpy==1.26.2
- * xarray==2023.12.0
- * QCAT from shiau109
- * scikit-learn
- * pip install git+https://github.com/sebastianprobst/resonator_tools
+#### 2024-10-08 
+ 1. pip install -r required_packages.txt (whole path of required_packages.txt in your local is required)
+ 2. conda install git (if `git` hasn't been installed)
+ 3. pip install git+https://github.com/sebastianprobst/resonator_tools
+ 4. pip install -e QCAT (whole path of QCAT repo in your local is required)
  * firmware == v0.7.0
+ * python>=3.10
 
 #### Single Qubit Charaterization 08-05-2024
 You will need the following package with pip and the firmware:  
