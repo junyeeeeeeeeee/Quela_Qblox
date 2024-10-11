@@ -18,11 +18,12 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
         ref = [0,0]
     # plot flux-qubit 
     f,z,i,q = convert_netCDF_2_arrays(nc_path)
+    real_z = 2.5*z/sqrt(2)
     amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
     fig, ax = plt.subplots(figsize=(12,8))
     ax:plt.Axes
-    c = ax.pcolormesh(z, f*1e-9, amp, cmap='RdBu')
-    ax.set_xlabel("Flux Pulse amp (V)", fontsize=20)
+    c = ax.pcolormesh(real_z, f*1e-9, amp, cmap='RdBu')
+    ax.set_xlabel("Real Flux Pulse amp (V)", fontsize=20)
     ax.set_ylabel("Driving Frequency (GHz)", fontsize=20)
     fig.colorbar(c, ax=ax, label='Contrast (V)')
     ax.xaxis.set_tick_params(labelsize=18)
