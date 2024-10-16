@@ -63,7 +63,7 @@ if __name__ == "__main__":
                     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
                     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
                     Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-                    Cctrl['c3'](0.13)
+        
 
                     if exp == "T1" and T1_folder_path != '' and doing_exp[exp]:
                         _ = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["freeTime"]["T1"],ith=set_idx,run=True,specific_folder=T1_folder_path,avg_times=n_avg,IF=XY_IF)

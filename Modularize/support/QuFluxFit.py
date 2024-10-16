@@ -11,14 +11,17 @@ from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, abs
 from scipy.optimize import curve_fit
 
 
-def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
+def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str, z_pulse:bool=True):
     if target_q in Qmanager.refIQ:
         ref = Qmanager.refIQ[target_q]
     else:
         ref = [0,0]
     # plot flux-qubit 
     f,z,i,q = convert_netCDF_2_arrays(nc_path)
-    real_z = 2.5*z/sqrt(2)
+    if z_pulse:
+        real_z = 2.5*z/sqrt(2)
+    else:
+        real_z = z
     amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
     fig, ax = plt.subplots(figsize=(12,8))
     ax:plt.Axes

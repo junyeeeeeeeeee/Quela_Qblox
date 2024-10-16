@@ -152,7 +152,7 @@ def fluxQubit_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,specific_
             plot_QbFlux(QD_agent,nc_path,specific_qubits)
             permission = mark_input("Update the QD with this result ? [y/n]") 
             if permission.lower() in ['y','yes']:
-                return trustable, {"xyf":results[specific_qubits].quantities_of_interest["freq_0"].nominal_value,"sweet_bias":2.5*(results[specific_qubits].quantities_of_interest["offset_0"].nominal_value)/sqrt(2)+center}
+                return trustable, {"xyf":results[specific_qubits].quantities_of_interest["freq_0"].nominal_value,"sweet_bias":results[specific_qubits].quantities_of_interest["offset_0"].nominal_value+center}
             else:
                 return False, {}
         else:
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q4']
+    ro_elements = ['q2']
     couplers = []
     z_shifter = 0.0 # V
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     freq_span_Hz:float = 500e6
     sweet_flux_shifter:float = 0
     xy_IF = 100e6
-    avg_n:int = 500
+    avg_n:int = 1000
 
 
 
@@ -202,7 +202,9 @@ if __name__ == "__main__":
     for qubit in ro_elements:
         if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+            
             trustable, new_ans = fluxQubit_executor(QD_agent,meas_ctrl,qubit,run=execution,z_shifter=z_shifter,zpts=flux_pts,fpts=freq_pts,span_priod_factor=span_period_factor,f_sapn_Hz=freq_span_Hz,avg_times=avg_n,xy_IF=xy_IF)
+        
             cluster.reset()
 
             """ Storing """
