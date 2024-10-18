@@ -766,6 +766,7 @@ def mix_T1_sche(
     R_integration:dict,
     R_inte_delay:float,
     repetitions:int=1,
+    pi_dura:float=0,
 ) -> Schedule:
 
     sched = Schedule("T1", repetitions=repetitions)
@@ -774,11 +775,11 @@ def mix_T1_sche(
         
         sched.add(Reset(q))
         
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        sched.add(IdlePulse(duration=50e-6), label=f"buffer {acq_idx}")
     
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         
-        Spec_pulse(sched,pi_amp[q],10e-6,q,spec_pulse,freeDu) # drive to mix state
+        Spec_pulse(sched,pi_amp[q],50e-6,q,spec_pulse,freeDu+electrical_delay) # drive to mix state
         
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
