@@ -214,6 +214,7 @@ class Data_manager:
         from Modularize.support.Path_Book import qdevice_backup_dir
         self.QD_back_dir = qdevice_backup_dir
         self.raw_data_dir = meas_raw_dir
+        self.raw_folder = None
 
     # generate time label for netCDF file name
     def get_time_now(self)->str:
@@ -226,7 +227,7 @@ class Data_manager:
     
     def get_date_today(self)->str:
         current_time = datetime.datetime.now()
-        return f"{current_time.year}_{current_time.month}_{current_time.day}"
+        return f"{current_time.year}{current_time.month}{current_time.day}"
 
     # build the folder for the data today
     def build_folder_today(self,parent_path:str=''):
@@ -249,6 +250,15 @@ class Data_manager:
         
         self.raw_folder = new_folder
         self.pic_folder = pic_folder
+    
+    def build_tuid_folder(self, tuid:str, additional_name:str=None):
+        if self.raw_folder is None:
+            self.build_folder_today(self.raw_data_dir)
+        
+        tuid_folder_path = os.path.join(self.raw_folder,f"{tuid}" if additional_name is None else f"{tuid}-{additional_name}")
+        if not os.path.isdir(tuid_folder_path):
+            os.mkdir(tuid_folder_path) 
+            print(f"TUID Folder had been created!")
 
     
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
