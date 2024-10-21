@@ -76,6 +76,9 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
         meas_ctrl.setpoints(datapoint_idx)
         
         rs_ds = meas_ctrl.run("One-tone")
+        for q in ro_elements:
+            rs_ds[f'x{q[-1]}'] = ro_elements[q]
+
         Data_manager().save_raw_data(QD_agent=QD_agent,ds=rs_ds,qb=q,exp_type='CS',specific_dataFolder=particular_folder)
         
         print(f"{q} Cavity:")
@@ -106,7 +109,7 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
         qubit.measure.integration_time(100e-6)
 
 
-def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_pic:bool=True)->dict:
+def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, save_pic:bool=True)->dict:
     """
     # Return\n
     A dict sorted by q_name with its fit results.\n
@@ -116,12 +119,15 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
     ['Qi_dia_corr', 'Qi_no_corr', 'absQc', 'Qc_dia_corr', 'Ql', 'fr', 'theta0', 'phi0', 'phi0_err', 'Ql_err', 'absQc_err', 'fr_err', 'chi_square', 'Qi_no_corr_err', 'Qi_dia_corr_err', 'A', 'alpha', 'delay', 'input_power']
     """
     fit_results = {}
-    for idx, q in enumerate(ro_elements):
+    for coord in array(ds.coords):
+        idx = coord[-1]
+        q = f'q{idx}'
         S21 = ds[f"y{2*idx}"] * cos(
                 deg2rad(ds[f"y{2*idx+1}"])
             ) + 1j * ds[f"y{2*idx}"] * sin(deg2rad(ds[f"y{2*idx+1}"]))
-        freq = array(ro_elements[q])[1:]
-        res_er = ResonatorData(freq=freq,zdata=array(S21)[1:])
+
+        freq = array(ds[coord])[5:]
+        res_er = ResonatorData(freq=freq,zdata=array(S21)[5:])
         result, data2plot, fit2plot = res_er.fit()
         fig, ax = plt.subplots(2,2,figsize=(12,12))
         ax0:plt.Axes = ax[0][0]        
@@ -149,6 +155,7 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, ro_elements:dict, save_p
             # Data_manager().save_multiplex_pics(QD_agent, q, 'CS', fig)
             plt.show()
         else:
+            plt.show()
             plt.close()
         fit_results[q] = result
 

@@ -261,62 +261,64 @@ class Data_manager:
         dr_loc = QD_agent.Identity.split("#")[0]
         if exp_type.lower() == 'cs':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_CavitySpectro_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'pd':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_PowerCavity_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'fd':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_FluxCavity_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'ss':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_SingleShot({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == '2tone':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_2tone_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'f2tone':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_Flux2tone_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'powerrabi':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_powerRabi_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'timerabi':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'ramsey':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 't1':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_T1({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 't2':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_T2({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'rofcali':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_RofCali({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'zt1':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_zT1({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'xylcali':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_XYLCali({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'xyl05cali':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_HalfPiCali({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower()[:4] == 'cryo':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_CryoScope{exp_type.lower()[-1]}({label})_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'chevron':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_RabiChevron_{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         elif exp_type.lower() == 'fringe':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}RamseyFringe{exp_timeLabel}.nc")
-            ds.to_netcdf(path)
+            
         else:
-            path = ''
+            path = os.path.join(parent_dir,"Unknown.nc")
             raise KeyError("Wrong experience type!")
         
+        ds.to_netcdf(path)
+
         if get_data_loc:
             return path
     

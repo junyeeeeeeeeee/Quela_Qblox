@@ -1,9 +1,11 @@
-import os, json
+import os, json, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import matplotlib.pyplot as plt
-from numpy import array, ndarray, cos, sin, deg2rad, imag, real, pi, abs, sqrt
+from numpy import array, ndarray, cos, sin, deg2rad, imag, real, pi, abs, sqrt, linspace
 from xarray import Dataset, open_dataset
 import pandas as pd
 from qcat.analysis.resonator.photon_dep.res_data import PhotonDepResonator
+from Modularize.support import QDmanager
 def dBm2photons():
     pass
 
@@ -167,6 +169,18 @@ def plot_raw_amp(folder_path:str):
         plt.savefig(os.path.join(folder_path,f"{qubit}_rawCav_special.png"))
         plt.close()
 
+def normally_show_qualities(nc_path:str):
+    Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
+    Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
+    from Modularize.m2_CavitySpec import multiplexing_CS_ana
+    ds = open_dataset(nc_path)
+    CS_results = multiplexing_CS_ana('',ds,False)
+    for qubit in CS_results:
+        print(f"\n{qubit}")
+        for Qua_idx, Qua in enumerate(Quality_values):
+            print(f"{Qua[:2]} = {round(float(CS_results[qubit][Qua])/1000,2)} 土 {round(float(CS_results[qubit][Quality_errors[Qua_idx]])/1000,2)} k")
+
+
 
 if __name__ == "__main__":
     # CavQua_nc_folder_path = "Modularize/Meas_raw/2024_7_17/Multiplex_CavityQuality_RTatte120dB_H21M35S32"
@@ -175,5 +189,7 @@ if __name__ == "__main__":
     # # plot cavity and its fitting
     # officallyPlot_a_givenAtte_cav(CavQua_nc_folder_path,0)
 
-    plot_raw_amp("Modularize/Meas_raw/2024_7_18/Multiplex_CavityQuality_RTatte120dB_H18M22S10")
+    # plot_raw_amp("Modularize/Meas_raw/2024_7_18/Multiplex_CavityQuality_RTatte120dB_H18M22S10")
+
+    normally_show_qualities("Modularize/Meas_raw/2024_10_14/DR4q4_CavitySpectro_H16M23S59.nc")
     
