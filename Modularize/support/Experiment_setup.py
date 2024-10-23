@@ -694,12 +694,60 @@ Hcfg_drke = {
                 ],
             }
         },
+        f"clusterdrke_module8": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q2:mw",
+                        "clock": "q2.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+            "complex_output_1": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q3:mw",
+                        "clock": "q3.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            }
+        },
+        f"clusterdrke_module10": {
+            "instrument_type": "QCM_RF",
+            "complex_output_0": {
+                "output_att": 0,
+                "dc_mixer_offset_I": 0.0,
+                "dc_mixer_offset_Q": 0.0,
+                "lo_freq": 4e9,
+                "portclock_configs": [
+                    {
+                        "port": "q4:mw",
+                        "clock": "q4.01",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    }
+                ],
+            },
+        },
 
         # ============ FLUX ============#
         f"clusterdrke_module2": {
             "instrument_type": "QCM",
-            "real_output_0": {"portclock_configs": [{"port": "q0:fl", "clock": "cl0.baseband"}]},
-            "real_output_1": {"portclock_configs": [{"port": "q1:fl", "clock": "cl0.baseband"}]},
+            "real_output_0": {"portclock_configs": [{"port": "q2:fl", "clock": "cl0.baseband"}]},
+            "real_output_1": {"portclock_configs": [{"port": "q3:fl", "clock": "cl0.baseband"}]},
         },
         # ============ READOUT ============#
         f"clusterdrke_module6": {
@@ -709,7 +757,7 @@ Hcfg_drke = {
                 "input_att": 0,
                 "dc_mixer_offset_I": 0.0,
                 "dc_mixer_offset_Q": 0.0,
-                "lo_freq":6.5e9,       # *** Should be set as a parameter later on
+                "lo_freq":5.8e9,       # *** Should be set as a parameter later on
                 "portclock_configs": [
                     {
                         "port": "q:res",
@@ -720,6 +768,24 @@ Hcfg_drke = {
                     {
                         "port": "q:res",
                         "clock": "q1.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q:res",
+                        "clock": "q2.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q:res",
+                        "clock": "q3.ro",
+                        "mixer_amp_ratio": 1.0,
+                        "mixer_phase_error_deg": 0.0,
+                    },
+                    {
+                        "port": "q:res",
+                        "clock": "q4.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
                     },
@@ -768,8 +834,8 @@ def get_FluxController(cluster, ip:str)->dict:
         }
     elif which_dr.lower() == 'drke':
         Fctrl: callable = {
-            "q0":cluster.module2.out0_offset,
-            "q1":cluster.module2.out1_offset,
+            "q2":cluster.module2.out0_offset,
+            "q3":cluster.module2.out1_offset,
         }
 
     else:
