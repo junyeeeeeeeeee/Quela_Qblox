@@ -132,13 +132,13 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"dr4","last_ip":"81"}
-    ro_elements = ['q2']
+    DRandIP = {"dr":"dr2","last_ip":"10"}
+    ro_elements = ["q0","q1"]
     cp_ctrl = {}
 
     """ Optional paras """
     freq_half_window_Hz = 5e6
-    flux_half_window_V  = 0.4
+    flux_half_window_V  = 0.2
     freq_data_points = 40
     flux_data_points = 40
     freq_center_shift = 0e6 # freq axis shift
@@ -147,41 +147,41 @@ if __name__ == "__main__":
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',)
-        
-        if ro_elements == 'all':
-            ro_elements = list(Fctrl.keys())
-        chip_info = cds.Chip_file(QD_agent=QD_agent)
+        print(Fctrl[qubit])
+        # if ro_elements == 'all':
+        #     ro_elements = list(Fctrl.keys())
+        # chip_info = cds.Chip_file(QD_agent=QD_agent)
 
 
-        """ Running """
-        update = False
-        FD_results = {}
+        # """ Running """
+        # update = False
+        # FD_results = {}
     
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
-        qu = QD_agent.quantum_device.get_element(qubit)
-        qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
-        FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=flux_half_window_V,ro_span_Hz=freq_half_window_Hz, zpts=flux_data_points,fpts=freq_data_points)
-        cluster.reset()
-        if execution:
-            permission = mark_input("Update the QD with this result ? [y/n]") 
-            if permission.lower() in ['y','yes']:
-                update_flux_info_in_results_for(QD_agent,qubit,FD_results)
-                update_coupler_bias(QD_agent, cp_ctrl)
-                update = True
-        else:
-            break
+        # Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
+        # init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+        # qu = QD_agent.quantum_device.get_element(qubit)
+        # qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
+        # FD_results[qubit] = fluxCavity_executor(QD_agent,meas_ctrl,qubit,run=execution,flux_span=flux_half_window_V,ro_span_Hz=freq_half_window_Hz, zpts=flux_data_points,fpts=freq_data_points)
+        # cluster.reset()
+        # if execution:
+        #     permission = mark_input("Update the QD with this result ? [y/n]") 
+        #     if permission.lower() in ['y','yes']:
+        #         update_flux_info_in_results_for(QD_agent,qubit,FD_results)
+        #         update_coupler_bias(QD_agent, cp_ctrl)
+        #         update = True
+        # else:
+        #     break
 
     
-        """ Storing """
-        if update and execution:
-            QD_agent.refresh_log("after FluxDep")
-            # QD_agent.QD_keeper()
-            if chip_info_restore:
-                chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
-            update = False
+        # """ Storing """
+        # if update and execution:
+        #     QD_agent.refresh_log("after FluxDep")
+        #     # QD_agent.QD_keeper()
+        #     if chip_info_restore:
+        #         chip_info.update_FluxCavitySpec(qb=qubit, result=FD_results[qubit])
+        #     update = False
     
 
-        """ Close """
-        print('Flux dependence done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        # """ Close """
+        # print('Flux dependence done!')
+        shut_down(cluster,Fctrl,Cctrl={})

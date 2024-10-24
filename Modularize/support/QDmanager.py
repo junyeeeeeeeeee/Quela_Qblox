@@ -223,11 +223,11 @@ class Data_manager:
         Ex: 19:23:34 return H19M23S34 
         """
         current_time = datetime.datetime.now()
-        return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
+        return f"H{current_time.hour:02d}M{current_time.minute:02d}S{current_time.second:02d}"
     
     def get_date_today(self)->str:
         current_time = datetime.datetime.now()
-        return f"{current_time.year}{current_time.month}{current_time.day}"
+        return f"{current_time.year:02d}{current_time.month:02d}{current_time.day:02d}"
 
     # build the folder for the data today
     def build_folder_today(self,parent_path:str=''):

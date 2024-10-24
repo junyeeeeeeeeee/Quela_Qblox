@@ -142,11 +142,11 @@ if __name__ == "__main__":
     from Modularize.support.UI_Window import init_meas_window
     
     """ Fill in """
-    QD_path, dr, mode = "", "dr4","n" #init_meas_window()
-    qrmRF_slot_idx:int  = 18
-    lo_start_freq:float = 5.4  * 1e9
+    QD_path, dr, mode = "", "dr2","n" #init_meas_window()
+    qrmRF_slot_idx:int  = 8
+    lo_start_freq:float = 5.8  * 1e9
     lo_stop_freq:float = 6.2 * 1e9
-    num_data:int = 1600
+    num_data:int = 800
 
 
     """ Preparations """

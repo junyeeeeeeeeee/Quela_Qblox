@@ -6,8 +6,9 @@ import quantify_core.data.handling as dh
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.support.QDmanager import Data_manager
+import matplotlib.pyplot as plt
 
-def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->Dataset:
+def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->dict:
     """
     For flux cavity meas, each qubit will get 2 x-data and 2 y-data, which are 'x0', 'x1', 'y0', 'y1' accordingly.
     """
@@ -16,13 +17,17 @@ def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->Dataset:
     for q_idx in range(array(ordered_q_labels).shape[0]):
         x0, x1 = ds[f"x{2*q_idx}"], ds[f"x{2*q_idx+1}"]
         y0, y1 = ds[f"y{2*q_idx}"], ds[f"y{2*q_idx+1}"]
+        for i in [x0, x1, y0, y1]:
+            print(array(i))
+
         new_ds = Dataset(
             data_vars = dict(y0=(["dim_0"],y0.data),y1=(["dim_0"],y1.data)),
             coords = dict(x0=(["dim_0"],x0.data),x1=(["dim_0"],x1.data))
         )
-
+        
         new_ds.attrs = ds.attrs
-        new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+str(int(new_ds.attrs["tuid"].split("-")[2])+q_idx)+"-"+new_ds.attrs["tuid"].split("-")[3]
+        new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+"-"+f'{(int(new_ds.attrs["tuid"].split("-")[2])+q_idx):03d}'+"-"+new_ds.attrs["tuid"].split("-")[3]
+        
         Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxCav")
         to_copy_array_attr = [x0, x1, y0, y1]
         for idx, item in enumerate([new_ds.x0, new_ds.x1, new_ds.y0, new_ds.y1]):
@@ -35,9 +40,9 @@ def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->Dataset:
 
 if __name__ == "__main__":
     dh.set_datadir(meas_raw_dir)
-    file = "Modularize/Meas_raw/2024_10_16/DR4q2_FluxCavity_H13M46S37.nc"
-
+    # file = "Modularize/Meas_raw/20241024/DR2q1_FluxCavity_H14M35S23.nc"
+    file = "Modularize/Meas_raw/2024_10_16/DR4q4_FluxCavity_H13M31S11.nc"
     dss = fluxCav_dataReductor(file, ['q0'])
-    for q in dss:
-        ResonatorFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run(sweetspot_index=0)
+    # for q in dss:
+    #     ResonatorFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run(sweetspot_index=0)
     

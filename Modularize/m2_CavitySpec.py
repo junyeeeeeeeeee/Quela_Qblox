@@ -165,7 +165,7 @@ def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_ba
     ro_elements = {}
     Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
     Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
-    ans = {"q0":5.47246e9,"q1":6.01803e9,"q2":6.06874e9,"q3":5.91653e9,"q4":5.87375e9,"q5":5.96651e9}
+    
     for qb in list(ro_bare_guess.keys()):
         ro_elements[qb] = linspace(ro_bare_guess[qb]-ro_span_Hz, ro_bare_guess[qb]+ro_span_Hz, fpts)
     if run:
@@ -173,10 +173,8 @@ def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_ba
         CS_results = multiplexing_CS_ana(QD_agent, list(ro_elements.keys()),cs_ds, ro_elements)
         for qubit in CS_results:
             qu = QD_agent.quantum_device.get_element(qubit)
-            if qubit != 'q0':
-                qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
-            else:
-                qu.clock_freqs.readout(5.434e9)
+            qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
+            
             print(f"{qubit}:")
             print("Res @ ",round(qu.clock_freqs.readout()*1e-9,4)," GHz")
             for Qua_idx, Qua in enumerate(Quality_values):
@@ -198,32 +196,27 @@ if __name__ == "__main__":
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
 
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr4', 'n','20240930_WJ3FQ3CQ#18', '5Q4C'
-
+    QD_path, dr, mode, chip_name, chip_type = '', 'dr2', 'n','test', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
     # RO attenuation
-    init_RO_DigiAtte = 46 # multiple of 2, 10 ~ 16 recommended
+    init_RO_DigiAtte = 16 # multiple of 2, 10 ~ 16 recommended
 
     ro_bare=dict(
-        q0=5.472e9,
-        q1=6.0179e9,
-        q2=6.06894e9,
-        q3=5.91635e9,
-        q4=5.8738e9,
-        q5=5.9664e9
+        q0=5.9902e9,
+        q1=6.0729e9,
+        # q2=6.06894e9,
+        # q3=5.91635e9,
+        # q4=5.8738e9,
+        # q5=5.9664e9
     )
 
     """ Optional paras """ 
     coupler_number:int = 0
-
-    qubit_num:int = 6
+    qubit_num:int = 2
     freq_data_points = 201
     half_freq_window_Hz = 6e6
-
     n_avg: int = 100
-
-
 
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
@@ -239,6 +232,8 @@ if __name__ == "__main__":
     # Set the system attenuations
     QD_RO_init(QD_agent,ro_bare)
     init_system_atte(QD_agent.quantum_device,list(ro_bare.keys()),ro_out_att=init_RO_DigiAtte)
+
+    
     
     """ Measurements """
     CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points,avg_times=n_avg)

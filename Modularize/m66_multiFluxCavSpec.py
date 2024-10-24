@@ -1,13 +1,13 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, linspace, pi, arange
+from numpy import array, linspace, pi, arange, sqrt
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager, cds, compose_para_for_multiplexing
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
+from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
@@ -22,27 +22,34 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     sche_func = One_tone_multi_sche
     freq_datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
     original_rof = {}
+    flux_dura = 0
     for q in ro_elements:
         qubit_info = QD_agent.quantum_device.get_element(q)
         qubit_info.measure.pulse_duration(100e-6)
         qubit_info.measure.integration_time(100e-6)
         qubit_info.reset.duration(250e-6)
+        flux_dura = qubit_info.reset.duration()+qubit_info.measure.integration_time()
         original_rof[q] = qubit_info.clock_freqs.readout()
         qubit_info.clock_freqs.readout(NaN)
 
-    flux_samples = linspace(-flux_span,flux_span,flux_points)
+    flux_samples = sqrt(2)*linspace(-flux_span,flux_span,flux_points)/2.5
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
+    bias = ManualParameter(name="bias", unit="V", label="Flux voltage")
+    bias.batched = False
     
     spec_sched_kwargs = dict(   
-        frequencies=freq,
-        q=q,
+        frequencies=ro_elements,
         R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,1),
         R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,3),
         R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,4),
         R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
         powerDep=False,
+        bias = bias,
+        bias_dura = flux_dura
     )
+
+    
 
     
     if run:
@@ -56,13 +63,25 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         )
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
-        meas_ctrl.settables([freq]+list(flux_ctrl.values()))
+        meas_ctrl.settables((freq,bias))
         meas_ctrl.setpoints_grid((freq_datapoint_idx,flux_samples)) # x0, x1
         
-        
-        
         rfs_ds = meas_ctrl.run("One-tone-Flux")
-        
+        for idx, q in enumerate(ro_elements):
+            attr_0 = rfs_ds['x0'].attrs
+            attr_1 = rfs_ds['x1'].attrs
+            rfs_ds[f'x{2*idx}'] = array(list(ro_elements[q])*flux_samples.shape[0])
+            rfs_ds[f'x{2*idx}'].attrs = attr_0
+            
+            rfs_ds[f'x{2*idx+1}'] = array([[i]*ro_elements[q].shape[0] for i in flux_samples]).reshape(-1)
+            rfs_ds[f'x{2*idx+1}'].attrs = attr_1
+            rfs_ds[f'x{2*idx+1}'].attrs['name'] = str(flux_ctrl[q])
+            rfs_ds[f'x{2*idx+1}'].attrs['long_name'] = str(flux_ctrl[q])
+
+
+        print(f"X : {array(rfs_ds.coords)}")
+        print(f"Y : {array(rfs_ds.data_vars)}")
+
         # Save the raw data into netCDF
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD',get_data_loc=True)
         
@@ -78,8 +97,9 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         preview_para = {}
         for q in ro_elements:
             preview_para[q] = ro_elements[q][:n_s]
-        
+        sweep_para2= array(flux_samples[:2])
         spec_sched_kwargs['frequencies']= preview_para
+        spec_sched_kwargs['bias']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
         pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
 
         if Experi_info != {}:
@@ -142,20 +162,22 @@ def fluxCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Fctrl:di
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = True
+    execution:bool = False
     chip_info_restore:bool = 0 # <- haven't been modified with the multiplexing version
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     cp_ctrl = {}
     freq_half_span = {
-        "q0":4e6
+        "q0":5e6,
+        "q1":5e6
     }
     freq_shift = {
-        "q0":-5e6
+        "q0":0e6,
+        "q1":0e6
     }
 
     """ Optional paras """
     freq_data_points = 40
-    flux_half_window_V  = 0.4
+    flux_half_window_V  = 0.2
     flux_data_points = 40
     avg_n = 20
     
@@ -178,8 +200,10 @@ if __name__ == "__main__":
 
     nc_path = fluxCavity_executor(QD_agent,meas_ctrl,Fctrl,ro_elements,run=execution,flux_span=flux_half_window_V, zpts=flux_data_points, avg_n=avg_n)
     cluster.reset()
-
+    print(nc_path)
     if execution:
+        import quantify_core.data.handling as dh
+        dh.set_datadir(meas_raw_dir)
         dss = fluxCav_dataReductor(nc_path,list(ro_elements.keys()))
         ans = {}
         for q in dss:

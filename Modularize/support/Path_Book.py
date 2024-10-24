@@ -17,17 +17,18 @@ def decode_datetime_2_foldername(date:datetime):
     y = latest[:4]
     m = latest[4:6] if latest[4] != '0' else latest[5]
     d = latest[6:8] if latest[6] != '0' else latest[7]
-    folder_name =  y+"_"+m+"_"+d
+    folder_name =  y+m+d
     return folder_name
 
 def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
     folders = [name for name in os.listdir(qdevice_backup_dir) if os.path.isdir(os.path.join(qdevice_backup_dir,name))]
     date = []
     for name in folders:
-        year_str = name.split("_")[0]
-        mon_str  = "0"+name.split("_")[1] if len(name.split("_")[1])==1 else name.split("_")[1]
-        day_str  = "0"+name.split("_")[2] if len(name.split("_")[2])==1 else name.split("_")[2]
+        year_str = name[:4]
+        mon_str  = name[4:6]
+        day_str  = name[6:]
         date.append(datetime.datetime.strptime(day_str+mon_str+year_str, "%d%m%Y").date())
+
     date.sort(reverse=True)
     for date_obj_idx in range(len(date)):
         date_folder = decode_datetime_2_foldername(date[date_obj_idx])
