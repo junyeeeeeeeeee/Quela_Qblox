@@ -14,7 +14,7 @@ from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse
 from Modularize.support.QuFluxFit import plot_QbFlux_iq
 from Modularize.analysis.raw_data_demolisher import fluxCav_dataReductor
 
-
+z_pulse_amp_OVER_const_z = sqrt(2)/2.5
 
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_elements:dict,flux_span:float=0.3,n_avg:int=300,flux_points:int=20,run:bool=True,Experi_info:dict={}):
@@ -32,7 +32,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         original_rof[q] = qubit_info.clock_freqs.readout()
         qubit_info.clock_freqs.readout(NaN)
 
-    flux_samples = sqrt(2)*linspace(-flux_span,flux_span,flux_points)/2.5
+    flux_samples = linspace(-flux_span,flux_span,flux_points)*z_pulse_amp_OVER_const_z
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
     bias = ManualParameter(name="bias", unit="V", label="Flux voltage")
@@ -73,7 +73,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             rfs_ds[f'x{2*idx}'] = array(list(ro_elements[q])*flux_samples.shape[0])
             rfs_ds[f'x{2*idx}'].attrs = attr_0
             
-            rfs_ds[f'x{2*idx+1}'] = array([[i]*ro_elements[q].shape[0] for i in flux_samples]).reshape(-1)
+            rfs_ds[f'x{2*idx+1}'] = array([[i]*ro_elements[q].shape[0] for i in flux_samples/z_pulse_amp_OVER_const_z]).reshape(-1)
             rfs_ds[f'x{2*idx+1}'].attrs = attr_1
             rfs_ds[f'x{2*idx+1}'].attrs['name'] = str(flux_ctrl[q])
             rfs_ds[f'x{2*idx+1}'].attrs['long_name'] = str(flux_ctrl[q])
