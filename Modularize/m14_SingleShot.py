@@ -25,6 +25,7 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=250e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
+    qubit_info.measure.integration_time(0.75e-6)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
     
@@ -131,7 +132,7 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     repeat:int = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {'q0':{"roAmp_factor":1}}
     couplers = []
 

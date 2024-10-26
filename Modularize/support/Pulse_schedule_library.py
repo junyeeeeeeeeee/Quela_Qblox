@@ -353,7 +353,7 @@ def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
         delay_z= -Du-freeDu
         return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
-    else: pass
+
 
 def Zc(sche,Z_amp,Du,qc,ref_pulse_sche,freeDu):
     if Du!=0:
@@ -588,7 +588,59 @@ def Z_gate_two_tone_sche(
      
     return sched
 
+#? Warning: Should avoid add the z-gate on the same channel at the same time
+def multi_Z_gate_two_tone_sche(
+    frequencies: dict,
+    bias_qs:list,
+    Z_amp:any,
+    spec_amp:float,
+    spec_Du:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,   
+    
+) -> Schedule:
+    sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
+    
+    additional_bias_list = []
+    qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
 
+    for q_need_bias in bias_qs:
+        if q_need_bias not in qubits2read:
+            additional_bias_list.append(q_need_bias)
+
+
+
+    for acq_idx in range(sameple_idx):    
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+".01", freq=array(frequencies[q]).flat[0]))
+   
+            sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
+            sched.add(Reset(q))
+            
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+            
+            drive = Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
+
+            if q in bias_qs:
+                Z(sched,Z_amp,spec_Du,q,drive,electrical_delay,'end')
+            
+            if len(additional_bias_list) != 0:
+                for qs in additional_bias_list:
+                    Z(sched,Z_amp,spec_Du,qs,drive,electrical_delay,'end')
+            
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+     
+    return sched
 
 def Qubit_state_heterodyne_spec_sched_nco(
     frequencies: np.ndarray,

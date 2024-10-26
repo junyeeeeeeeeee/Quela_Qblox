@@ -8,13 +8,14 @@ from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.support.QDmanager import Data_manager
 import matplotlib.pyplot as plt
 
-def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->dict:
+def fluxCav_dataReductor(nc_file_path:str)->dict:
     """
     For flux cavity meas, each qubit will get 2 x-data and 2 y-data, which are 'x0', 'x1', 'y0', 'y1' accordingly.
     """
     ds = open_dataset(nc_file_path)
+    ordered_q_labels = ds.attrs['RO_qs'].split(" ")[1:]
     datasets = {}
-    for q_idx in range(array(ordered_q_labels).shape[0]):
+    for q_idx, q in enumerate(ordered_q_labels):
         x0, x1 = ds[f"x{2*q_idx}"], ds[f"x{2*q_idx+1}"]
         y0, y1 = ds[f"y{2*q_idx}"], ds[f"y{2*q_idx+1}"]
 
@@ -28,6 +29,34 @@ def fluxCav_dataReductor(nc_file_path:str, ordered_q_labels:ndarray)->dict:
         new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+"-"+f'{(int(new_ds.attrs["tuid"].split("-")[2])+q_idx):03d}'+"-"+new_ds.attrs["tuid"].split("-")[3]
         
         Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxCav")
+        to_copy_array_attr = [x0, x1, y0, y1]
+        for idx, item in enumerate([new_ds.x0, new_ds.x1, new_ds.y0, new_ds.y1]):
+            item.attrs = to_copy_array_attr[idx].attrs
+
+        datasets[ordered_q_labels[q_idx]] = new_ds
+
+    return datasets
+
+def fluxQub_dataReductor(nc_file_path:str)->dict:
+    ds = open_dataset(nc_file_path)
+    ordered_q_labels = ds.attrs['RO_qs'].split(" ")[1:]
+    datasets = {}
+    for q_idx, q in enumerate(ordered_q_labels):
+        x0, x1 = ds[f"x{2*q_idx}"], ds[f"x{2*q_idx+1}"]
+        y0, y1 = ds[f"y{2*q_idx}"], ds[f"y{2*q_idx+1}"]
+
+        print(array(x0).shape)
+        print(array(x1).shape)
+
+        new_ds = Dataset(
+            data_vars = dict(y0=(["dim_0"],y0.data),y1=(["dim_0"],y1.data)),
+            coords = dict(x0=(["dim_0"],x0.data),x1=(["dim_0"],x1.data))
+        )
+        
+        new_ds.attrs = ds.attrs
+        new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+"-"+f'{(int(new_ds.attrs["tuid"].split("-")[2])+q_idx):03d}'+"-"+new_ds.attrs["tuid"].split("-")[3]
+        
+        Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxQubit")
         to_copy_array_attr = [x0, x1, y0, y1]
         for idx, item in enumerate([new_ds.x0, new_ds.x1, new_ds.y0, new_ds.y1]):
             item.attrs = to_copy_array_attr[idx].attrs

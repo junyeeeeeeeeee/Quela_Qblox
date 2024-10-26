@@ -167,7 +167,7 @@ def fluxQubit_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementContro
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = True
+    execution:bool = False
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = ['q1']

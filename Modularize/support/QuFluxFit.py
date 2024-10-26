@@ -12,10 +12,11 @@ from scipy.optimize import curve_fit
 
 
 def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
-    if target_q in Qmanager.refIQ:
-        ref = Qmanager.refIQ[target_q]
-    else:
-        ref = [0,0]
+    # if target_q in Qmanager.refIQ:
+    #     ref = Qmanager.refIQ[target_q]
+    # else:
+    #     ref = [0,0]
+    ref = [0,0]
     # plot flux-qubit 
     f,z,i,q = convert_netCDF_2_arrays(nc_path)
     amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()

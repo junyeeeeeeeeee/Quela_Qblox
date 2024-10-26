@@ -1,3 +1,5 @@
+import os, sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import matplotlib.pyplot as plt
 import pandas as pd
 from numpy import array, sqrt
@@ -5,8 +7,11 @@ import os
 import time
 from  datetime import datetime
 from xarray import open_dataset
-
-
+import quantify_core.data.handling as dh
+from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
+from Modularize.support.Path_Book import meas_raw_dir
+from Modularize.analysis.raw_data_demolisher import fluxQub_dataReductor
+from Modularize.support.QuFluxFit import plot_QbFlux
 
 # ds = open_dataset("Modularize/Meas_raw/20241025/ZgateT1_q0_H13M03S06/DR2q0_zT1(0)_H13M05S10.nc")
 # time_1 = ds.attrs["end_time"]
@@ -15,42 +20,20 @@ from xarray import open_dataset
 
 # total_sec_diff = (datetime.strptime(time_2,"%Y-%m-%d %H:%M:%S")-datetime.strptime(time_1,"%Y-%m-%d %H:%M:%S")).total_seconds()# print(time.strptime(end_time,"%Y-%m-%d %H:%M:%S")-time.strptime(start_time,"%Y-%m-%d %H:%M:%S"))
 # print(total_sec_diff)
-file = "Modularize/Meas_raw/20241026/DR2q1_2tone_H11M52S57.nc"
+# file = "Modularize/Meas_raw/20241026/DR2q1_2tone_H11M52S57.nc"
+dh.set_datadir(meas_raw_dir)
+file = "Modularize/Meas_raw/20241026/DR2multiQ_Flux2tone_H20M20S50.nc"
+dss = fluxQub_dataReductor(file)
+for q in dss:
+    QubitFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run()
 
-def twotone_ana(nc_path:str, plot:bool=True, refIQ:dict={})->dict:
-    fit_packs = {}
-    ds = open_dataset(nc_path)
-    joint_qs = ds.attrs["RO_qs"].split(" ")[1:] # the first element is " "
 
-    for idx, q in enumerate(joint_qs):
-        xyf = array(ds[f"x{2*idx}"])
-        xyl = array(ds[f"x{2*idx+1}"],dtype=float)
-        
-        xyl = xyl.reshape(int(xyl.shape[0]/xyf.shape[0]),xyf.shape[0]).transpose()[0]
-
-        ii = array(ds[f"y{2*idx}"])
-        qq = array(ds[f"y{2*idx+1}"])
-
-        if q not in refIQ:
-            refIQ[q] = [0,0]
-        
-        contrast = sqrt((ii-refIQ[q][0])**2+(qq-refIQ[q][1])**2).reshape(xyl.shape[0],xyf.shape[0])
-        
-        if plot:
-            if xyl.shape[0] != 1:
-                plt.pcolormesh(xyf,xyl,contrast)
-                plt.title(f"{q} power-dep 2tone")
-                plt.ylabel("XY power (V)")
-                
-            else:
-                plt.plot(xyf,contrast[0])
-                plt.ylabel("Contrast")
-                plt.title(f"{q} 2tone with XY power {xyl[0]} V")
-            plt.xlabel("XY frequency (Hz)")
-            plt.grid()
-            plt.show()
-        
-        if xyl.shape[0] == 1:
-            fit_packs[q] = {"xyf_data":xyf,"contrast":contrast[0]}
-        
-    return fit_packs
+# for q_idx, q in enumerate(ds.attrs['RO_qs'].split(" ")[1:]):
+#         x0, x1 = array(ds[f"x{2*q_idx}"]), array(ds[f"x{2*q_idx+1}"])
+#         y0, y1 = array(ds[f"y{2*q_idx}"]), array(ds[f"y{2*q_idx+1}"])
+#         x1 = x1.reshape(int(x1.shape[0]/x0.shape[0]),x0.shape[0]).transpose()[0]
+#         y0 = y0.reshape(x0.shape[0],x1.shape[0])
+#         y1 = y1.reshape(x0.shape[0],x1.shape[0])
+#         amp = sqrt(y0**2+y1**2)
+#         plt.pcolormesh(x1,x0,amp)
+#         plt.show()
