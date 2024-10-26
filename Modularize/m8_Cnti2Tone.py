@@ -184,10 +184,10 @@ if __name__ == "__main__":
     chip_info_restore:bool = 0
     update:bool = 1
     #
-    DRandIP = {"dr":"drke","last_ip":"242"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     #
     ro_elements = {
-        "q1":{"xyf_guess":[4.83e9],"xyl_guess":[0.01],"g_guess":95e6, "tune_bias":0.06} # g you can try a single value about 90e6 for a 5Q4C chip.
+        "q0":{"xyf_guess":[4.74e9],"xyl_guess":[0.03],"g_guess":95e6, "tune_bias":0} # g you can try a single value about 90e6 for a 5Q4C chip.
     }                                                                            # tune_bias is the voltage away from sweet spot. If it was given, here will calculate a ROF according to that z-bias and store it in Notebook.
     couplers = []#'c0','c1']
 
@@ -236,7 +236,7 @@ if __name__ == "__main__":
                 """ Storing """
                 if update:
                     QD_agent.refresh_log("After continuous 2-tone!")
-                    # QD_agent.QD_keeper()
+                    QD_agent.QD_keeper()
                     if chip_info_restore:
                         chip_info.update_Cnti2Tone({str(qubit):tt_results})
 

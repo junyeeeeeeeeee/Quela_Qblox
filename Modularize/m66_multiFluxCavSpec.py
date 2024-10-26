@@ -11,8 +11,8 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
-from Modularize.support.QuFluxFit import plot_QbFlux_iq
 from Modularize.analysis.raw_data_demolisher import fluxCav_dataReductor
+import quantify_core.data.handling as dh 
 
 z_pulse_amp_OVER_const_z = sqrt(2)/2.5
 
@@ -40,16 +40,14 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     
     spec_sched_kwargs = dict(   
         frequencies=ro_elements,
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,1),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,3),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,4),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
+        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
         powerDep=False,
         bias = bias,
         bias_dura = flux_dura
     )
-
-    
 
     
     if run:
@@ -67,7 +65,9 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         meas_ctrl.setpoints_grid((freq_datapoint_idx,flux_samples)) # x0, x1
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
+        rfs_ds.attrs["RO_qs"] = ""
         for idx, q in enumerate(ro_elements):
+            rfs_ds.attrs["RO_qs"] += f" {q}"
             attr_0 = rfs_ds['x0'].attrs
             attr_1 = rfs_ds['x1'].attrs
             rfs_ds[f'x{2*idx}'] = array(list(ro_elements[q])*flux_samples.shape[0])
@@ -77,13 +77,9 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             rfs_ds[f'x{2*idx+1}'].attrs = attr_1
             rfs_ds[f'x{2*idx+1}'].attrs['name'] = str(flux_ctrl[q])
             rfs_ds[f'x{2*idx+1}'].attrs['long_name'] = str(flux_ctrl[q])
-
-
-        print(f"X : {array(rfs_ds.coords)}")
-        print(f"Y : {array(rfs_ds.data_vars)}")
-
+        
         # Save the raw data into netCDF
-        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,exp_type='FD',get_data_loc=True)
+        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb="multiQ",exp_type='FD',get_data_loc=True)
         
         if Experi_info != {}:
             show_args(Experi_info(q))
@@ -179,7 +175,7 @@ if __name__ == "__main__":
     freq_data_points = 40
     flux_half_window_V  = 0.2
     flux_data_points = 40
-    avg_n = 20
+    avg_n = 50
     
 
     
@@ -200,9 +196,10 @@ if __name__ == "__main__":
 
     nc_path = fluxCavity_executor(QD_agent,meas_ctrl,Fctrl,ro_elements,run=execution,flux_span=flux_half_window_V, zpts=flux_data_points, avg_n=avg_n)
     cluster.reset()
-    print(nc_path)
+
+
+    """ Analysis """
     if execution:
-        import quantify_core.data.handling as dh
         dh.set_datadir(meas_raw_dir)
         dss = fluxCav_dataReductor(nc_path,list(ro_elements.keys()))
         ans = {}
@@ -212,9 +209,10 @@ if __name__ == "__main__":
         permission = mark_input("Update the QD with this result ? [y/n]") 
         if permission.lower() in ['y','yes']:
             for qubit in ans:
-                update_flux_info_in_results_for(QD_agent,qubit,ans[qubit])
+                update_flux_info_in_results_for(QD_agent,qubit,ans)
             update_coupler_bias(QD_agent, cp_ctrl)
             update = True
+
 
     """ Storing """
     if update and execution:

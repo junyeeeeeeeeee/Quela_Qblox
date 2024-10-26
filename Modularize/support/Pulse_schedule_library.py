@@ -522,6 +522,42 @@ def Two_tone_sche(
      
     return sched
 
+def multi_Two_tone_sche(
+    frequencies:dict,
+    spec_amp:any,
+    spec_Du:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,   
+    ref_pt:str='end'
+    
+) -> Schedule:
+    sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
+    qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+
+    for acq_idx in range(sameple_idx):    
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".01", freq=array(frequencies[q]).flat[0]))
+        
+            sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
+            sched.add(Reset(q))
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
+
+            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+     
+    return sched
+
 # try to put a bias on RO part 03/20
 def Z_gate_two_tone_sche(
     frequencies: np.ndarray,
@@ -1074,6 +1110,35 @@ def Qubit_SS_sche(
 
     return sched
 
+def multi_Qubit_SS_sche(
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Single shot", repetitions=repetitions)
+
+    for qubit_idx, q in enumerate(R_integration):
+
+        sched.add(Reset(q))
+        if qubit_idx == 0:
+            spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        else:
+            Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
+    
+        if ini_state=='e': 
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+        
+    
+        Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=0,acq_channel=qubit_idx,single_shot=True,get_trace=False,trace_recordlength=0)
+
+    return sched
+
 #? Calibrations :
 def ROF_Cali_sche(
     q:str,
@@ -1483,7 +1548,7 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
     plt.show()
 
 
-def Single_shot_fit_plot(results:dict):
+def Single_shot_fit_plot(results:dict,title_qubit:str=None):
     c_I,c_Q,sig=1000*results['fit_pack'][0],1000*results['fit_pack'][1],1000*results['fit_pack'][2]
     I,Q= results['data'][0],results['data'][1]
     
@@ -1493,7 +1558,7 @@ def Single_shot_fit_plot(results:dict):
     ax.add_patch(Ellipse(xy=[c_I,c_Q],width=sig*4,height=sig*4,fill=False, alpha=0.8, facecolor= None, edgecolor="k", linewidth=0.8, linestyle='--',angle=0))
     ax.set_xlabel(r"$I\ $(mV)",size ='15')
     ax.set_ylabel(r"$Q\ $(mV)",size ='15')
-    ax.set_title('Single shot raw data')
+    ax.set_title(f'{title_qubit if title_qubit is not None else ""} Single shot raw data')
     ax.set_xlim(1000*np.minimum(min(I),min(Q)),1000*np.maximum(max(I),max(Q)))
     ax.set_ylim(1000*np.minimum(min(I),min(Q)),1000*np.maximum(max(I),max(Q)))
     fig.tight_layout()
@@ -1710,7 +1775,7 @@ def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
     plt.show()
 
 from numpy import array, max, mean, min
-def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
+def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path='', title_q:str=''):
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
     ax.axvline(x=results.attrs['f01_fit']*1e-9, ymin=0, ymax= max(results.data_vars['data'].to_numpy())*1000,color='green',linestyle='dashed', alpha=0.8,lw=1)
     text_msg = "Fit results\n"
@@ -1737,6 +1802,8 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
     ax.set_title(title)
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
+    if title_q != "":
+        plt.title(f" {title_q} 2tone results")
     fig.tight_layout()
     plt.legend()
     if save_path != '':

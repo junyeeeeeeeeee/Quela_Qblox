@@ -169,16 +169,16 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = True
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"drke","last_ip":"242"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = ['q1']
-    couplers = ['c0','c1']
+    couplers = []
     z_shifter = 0.0 # V
 
     
     """ Optional paras """
-    span_period_factor:float = 9 # range in [sweet - period/span_period_factor, sweet + period/span_period_factor]
-    flux_pts:int = 60
-    freq_pts:int = 80
+    span_period_factor:float = 12 # range in [sweet - period/span_period_factor, sweet + period/span_period_factor]
+    flux_pts:int = 40
+    freq_pts:int = 40
     freq_span_Hz:float = 500e6
     sweet_flux_shifter:float = 0
     xy_IF = 100e6

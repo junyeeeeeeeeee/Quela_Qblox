@@ -40,9 +40,9 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
     spec_sched_kwargs = dict(   
         frequencies=ro_elements,
         R_amp=ro_pulse_amp,
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,3),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,4),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
+        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
         powerDep=True,
     )
     # exp_kwargs= dict(sweep_F=['start '+'%E' %ro_f_samples[0],'end '+'%E' %ro_f_samples[-1]],

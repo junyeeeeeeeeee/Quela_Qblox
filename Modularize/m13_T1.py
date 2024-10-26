@@ -121,15 +121,15 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"evoT":5e-6,"histo_counts":1},
+        "q0":{"evoT":60e-6,"histo_counts":1},
     }
     couplers = []
 
     """ Optional paras """
-    time_data_points = 100
-    avg_n = 1000
+    time_data_points = 50
+    avg_n = 100
     xy_IF = 250e6
   
 
@@ -159,10 +159,10 @@ if __name__ == "__main__":
                     mean_T1_us = round(mean(array(t1_us_rec)),2)
                     std_T1_us  = round(std(array(t1_us_rec)),2)
 
-                    if ro_elements[qubit]["histo_counts"] == 1:
-                        Fit_analysis_plot(T1_results[qubit],P_rescale=False,Dis=None)
-                    else:
-                        Data_manager().save_histo_pic(QD_agent,{str(qubit):t1_us_rec},qubit,mode="t1")
+                    # if ro_elements[qubit]["histo_counts"] == 1:
+                    #     Fit_analysis_plot(T1_results[qubit],P_rescale=False,Dis=None)
+                    # else:
+                    #     Data_manager().save_histo_pic(QD_agent,{str(qubit):t1_us_rec},qubit,mode="t1")
                     
                     highlight_print(f"{qubit}: mean T1 = {mean_T1_us} 土 {std_T1_us} µs")
                     if ro_elements[qubit]["histo_counts"] >= 50:
@@ -174,8 +174,9 @@ if __name__ == "__main__":
                 
             """ Close """
             print('T1 done!')
-            shut_down(cluster,Fctrl,Cctrl)
             every_end = time.time()
+            shut_down(cluster,Fctrl,Cctrl)
+            
             slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
         
         

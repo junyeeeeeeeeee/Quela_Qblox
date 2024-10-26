@@ -55,9 +55,9 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
     spec_sched_kwargs = dict(   
         frequencies=ro_elements,
         R_amp=amps,
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,3),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,4),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,2),
+        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
         powerDep=False,
     )
     

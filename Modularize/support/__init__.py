@@ -333,14 +333,16 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     
     return Cctrl
 
-def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:int)->dict:
+def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:str)->dict:
     """
     Get the dict about the required values for all qubits in quantum_device.
     The required value can be assigned by the arg `mode`.
     ------
     ### Args:\n
     * ro_elements: a dict with the keyname in qubit name. ex: {"q0":[ ],"q1":[ ],...}\n
-    * mode: 1 for RO-amp, 2 for acq-delay, 3 for RO-duration, 4 for integration time.\n
+    * mode:\n 
+        'r1' for RO-amp, 'r2' for acq-delay, 'r3' for RO-duration, 'r4' for integration time.\n
+        'd1' for xy-amp,                     'd3' for xy-duration,
     ----
     ### Returns:\n
     A dict with the same keyname as the `ro_elements`, and also with the value about the required mode.  
@@ -353,115 +355,24 @@ def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:int)->dict
         raise ValueError(f"The type of ro_elements should be list or dict but `{type(ro_elements)}` was recieved!")
     ans = {}
     for qubit in qubits:
-        if str(mode) == "1":
-            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_amp()
-        elif str(mode) == "2":
-            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.acq_delay()
-        elif str(mode) == "3":
-            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
-        elif str(mode) == "4":
-            ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.integration_time()
-        else:
-            raise KeyError(f"Un-supported mode = {mode} was given !")
+        match mode.lower():
+            case "r1":
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_amp()
+            case "r2":
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.acq_delay()
+            case "r3":
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.pulse_duration()
+            case "r4":
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).measure.integration_time()
+            case 'd1':
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).rxy.amp180()
+            case 'd3':
+                ans[qubit] = QD_agent.quantum_device.get_element(qubit).rxy.duration()
+            case _:
+                raise KeyError(f"Un-supported mode = {mode} was given !")
     
     return ans
 
-#TOO_OLD
-'''
-def CSresults_alignPlot(quantum_device:QuantumDevice, results:dict):
-    item_num = len(list(results.keys()))
-    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        fr = results[q].run().quantities_of_interest["fr"].nominal_value
-        dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axvline(fr, color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
-    
-    fig.suptitle(f"Resonator spectroscopy, {quantum_device.cfg_sched_repetitions()} repetitions")
-    fig.tight_layout()
-    plt.show()
-    
-def PDresults_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
-    item_num = len(list(results.keys()))
-
-    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        if show_mode == 'pha':
-            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
-        else:
-            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axhline(quantum_device.get_element(q).clock_freqs.readout(), color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
-        
-    fig.suptitle(f"Resonator Dispersive, {quantum_device.cfg_sched_repetitions()} repetitions")
-    fig.tight_layout()
-    plt.show()
-
-def FD_results_alignPlot(quantum_device:QuantumDevice, results:dict, show_mode:str='pha'):
-    item_num = len(list(results.keys()))
-    fig, ax = plt.subplots(1,item_num,figsize=plt.figaspect(1/item_num), sharey = False)
-    for idx, q in enumerate(list(results.keys())):
-        dressed_f = results[q].quantities_of_interest["freq_0"]
-        offset = results[q].quantities_of_interest["offset_0"].nominal_value
-        if show_mode == 'pha':
-            dh.to_gridded_dataset(results[q].dataset).y1.plot(ax = ax[idx])
-        else:
-            dh.to_gridded_dataset(results[q].dataset).y0.plot(ax = ax[idx])
-        ax[idx].axhline(dressed_f, color = "red", ls = "--")
-        ax[idx].axvline(offset, color = "red", ls = "--")
-        ax[idx].set_title(f"{q} resonator")
-        
-    fig.suptitle(f"Resonator Flux dependence, {quantum_device.cfg_sched_repetitions()} repetitions")
-    fig.tight_layout()
-    plt.show()
-
-
-def two_tone_spec_sched_nco(
-    qubit_name: str,
-    spec_pulse_amp: float,
-    spec_pulse_duration: float,
-    spec_pulse_port: str,
-    spec_pulse_clock: str,
-    spec_pulse_frequencies: np.ndarray,
-    repetitions: int = 1,
-) -> Schedule:
-    """
-    Generate a batched schedule for performing fast two-tone spectroscopy using the
-    `SetClockFrequency` operation for doing an NCO sweep.
-
-    Parameters
-    ----------
-    spec_pulse_amp
-        Amplitude of the spectroscopy pulse in Volt.
-    spec_pulse_duration
-        Duration of the spectroscopy pulse in seconds.
-    spec_pulse_port
-        Location on the device where the spectroscopy pulse should be applied.
-    spec_pulse_clock
-        Reference clock used to track the spectroscopy frequency.
-    spec_pulse_frequencies
-        Sample frequencies for the spectroscopy pulse in Hertz.
-    repetitions
-        The amount of times the Schedule will be repeated.
-    """
-    sched = Schedule("two-tone", repetitions)
-    sched.add_resource(ClockResource(name=spec_pulse_clock, freq=spec_pulse_frequencies.flat[0]))
-
-    for acq_idx, spec_pulse_freq in enumerate(spec_pulse_frequencies):
-        sched.add(Reset(qubit_name))
-        sched.add(SetClockFrequency(clock=spec_pulse_clock, clock_freq_new=spec_pulse_freq))
-        sched.add(
-            SquarePulse(
-                duration=spec_pulse_duration,
-                amp=spec_pulse_amp,
-                port=spec_pulse_port,
-                clock=spec_pulse_clock,
-            )
-        )
-        sched.add(Measure(qubit_name, acq_index=acq_idx))
-
-    return sched
-'''
 
 if __name__ == "__main__":
     pass

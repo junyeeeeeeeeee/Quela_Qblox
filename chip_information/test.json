@@ -38,11 +38,11 @@
                         "Ql": 0
                     },
                     "qubit": {
-                        "freq": 0,
+                        "freq": 4722345565.877538,
                         "T1": 0,
                         "T2": 0
                     },
-                    "flux": 0,
+                    "flux": 0.08785940961219876,
                     "g": 0
                 },
                 "min": {
@@ -83,7 +83,7 @@
                     "dura_time": 0,
                     "acq_delay": 0,
                     "integ_time": 0,
-                    "flux": 0,
+                    "flux": 0.08785940961219876,
                     "freq": 0
                 },
                 "x_gate": {
@@ -91,10 +91,10 @@
                         "gauss": {},
                         "cos": {}
                     },
-                    "amp": 0,
-                    "dura_time": 0,
+                    "amp": 0.3558121453776744,
+                    "dura_time": 4e-08,
                     "AC_stark": 0,
-                    "freq": 0
+                    "freq": 4722345565.877538
                 },
                 "tune_away": {
                     "q0_flux": 0,
