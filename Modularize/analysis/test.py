@@ -23,14 +23,9 @@ from Modularize.support.Pulse_schedule_library import QS_fit_analysis
 # total_sec_diff = (datetime.strptime(time_2,"%Y-%m-%d %H:%M:%S")-datetime.strptime(time_1,"%Y-%m-%d %H:%M:%S")).total_seconds()# print(time.strptime(end_time,"%Y-%m-%d %H:%M:%S")-time.strptime(start_time,"%Y-%m-%d %H:%M:%S"))
 # print(total_sec_diff)
 # file = "Modularize/Meas_raw/20241026/DR2q1_2tone_H11M52S57.nc"
-dh.set_datadir(meas_raw_dir)
-file = "Modularize/Meas_raw/20241027/DR2multiQ_Flux2tone_H19M36S58.nc"
-QD_agent = QDmanager("Modularize/QD_backup/20241027/DR2#10_SumInfo.pkl")
-QD_agent.QD_loader()
-
-dss = fluxQub_dataReductor(file)
-for q in dss:
-        fit_pack = plot_QbFlux_multiVersn(QD_agent,q,dss[q],QS_fit_analysis,Data_manager().get_today_picFolder(),filter_outlier=True)
+x = {"x":1}
+y = {"y":2}
+print(z)
 # for q in dss:
 #     QubitFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run()
 

@@ -730,7 +730,6 @@ def multi_Rabi_sche(
     R_inte_delay:dict,
     XY_theta:str,
     repetitions:int=1,
-    chevron:bool=False,
     OS_or_not:bool=False
 ) -> Schedule:
     if isinstance(XY_amp,dict):
