@@ -1,7 +1,7 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from numpy import NaN
-from numpy import array, linspace, arange
+from numpy import array, linspace, arange, sqrt
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
@@ -11,10 +11,11 @@ from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
 from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset, coupler_zctrl, compose_para_for_multiplexing
-from Modularize.support.QuFluxFit import plot_QbFlux
-from Modularize.support.Pulse_schedule_library import multi_Z_gate_two_tone_sche, set_LO_frequency, pulse_preview
+from Modularize.analysis.raw_data_demolisher import fluxQub_dataReductor
+from Modularize.support.QuFluxFit import plot_QbFlux_multiVersn
+from Modularize.support.Pulse_schedule_library import multi_Z_gate_two_tone_sche, set_LO_frequency, pulse_preview, QS_fit_analysis
 
-
+z_pulse_amp_OVER_const_z = sqrt(2)/2.5
 
 
 def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dict,Bias:dict,ref_z:dict,n_avg:int=1000,run:bool=True):
@@ -30,8 +31,8 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
         original_xyfs[q] = qubit_info.clock_freqs.f01()
         qubit_info.clock_freqs.f01(NaN)
         spec_pulse_amp = QD_agent.Notewriter.get_2tone_piampFor(q)
-        qubit_info.measure.pulse_duration(1e-6)
-        qubit_info.measure.integration_time(1e-6)
+        qubit_info.measure.pulse_duration(1.5e-6)
+        qubit_info.measure.integration_time(1.5e-6)
     
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
@@ -45,7 +46,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
         bias_qs=Bias["bias_qs"],
         Z_amp=Z_bias,
         spec_amp=spec_pulse_amp,
-        spec_Du=50e-6,
+        spec_Du=10e-6,
         R_amp=compose_para_for_multiplexing(QD_agent,XYFs,'r1'),
         R_duration=compose_para_for_multiplexing(QD_agent,XYFs,'r3'),
         R_integration=compose_para_for_multiplexing(QD_agent,XYFs,'r4'),
@@ -68,6 +69,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
         qs_ds = meas_ctrl.run("Zgate-two-tone")
         qs_ds.attrs["RO_qs"] = ""
         qs_ds.attrs["ref_z"] = ""
+        qs_ds.attrs["execution_time"] = Data_manager().get_time_now()
         
         for idx, q in enumerate(XYFs):
             attr_0 = qs_ds['x0'].attrs
@@ -75,10 +77,11 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
             qs_ds[f'x{2*idx}'].attrs = attr_0
             
             attr_1 = qs_ds['x1'].attrs
-            qs_ds[f'x{2*idx+1}'] = array([[i]*XYFs[q].shape[0] for i in Bias["bias_span"]]).reshape(-1)
+            qs_ds[f'x{2*idx+1}'] = array([[i]*XYFs[q].shape[0] for i in array(Bias["bias_span"])/z_pulse_amp_OVER_const_z]).reshape(-1)
             qs_ds[f'x{2*idx+1}'].attrs = attr_1
 
             qs_ds.attrs["RO_qs"] += f" {q}"
+        for idx, q in enumerate(Bias["bias_qs"]):
             qs_ds.attrs["ref_z"] += f"{q}_{round(ref_z[q],4)}_"
         # Save the raw data into netCDF
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=qs_ds,qb="multiQ",exp_type='F2tone',get_data_loc=True)
@@ -123,7 +126,7 @@ def flux_qubitspectro_waiter(QD_agent:QDmanager,ro_elements:dict,bias_elements:d
     for q in ro_elements:
         if q[0] == "q":
             if len(ro_elements[q]["assigned_xyf_range"]) != 0:
-                freqs[q] = linspace(min(ro_elements[q]["assigned_xyf_range"]),max(ro_elements[q]["assigned_xyf_range"][-1]),xyf_pts)
+                freqs[q] = linspace(min(ro_elements[q]["assigned_xyf_range"]),max(ro_elements[q]["assigned_xyf_range"]),xyf_pts)
                 set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(ro_elements[q]["assigned_xyf_range"]))
             else:
                 qubit_info = QD_agent.quantum_device.get_element(q)   
@@ -139,7 +142,7 @@ def flux_qubitspectro_waiter(QD_agent:QDmanager,ro_elements:dict,bias_elements:d
 
 
 def fluxQubit_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementControl,XYFs:dict,bias:dict,run:bool=True,avg_times:int=1000):
-    
+    nc_path = ""
     if run:
         ref_z = {}
         for q in bias["bias_qs"]:
@@ -167,7 +170,7 @@ def fluxQubit_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementContro
     # else:
     #     _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,XYFs,bias,ref_z={},run=False)
     #     return False, {}
-
+    return nc_path
 
 if __name__ == "__main__":
     #?  NOTE: Readout the qubit in the ro_elements at the same time, bias the qubit in the bias_element at the same time 
@@ -175,9 +178,9 @@ if __name__ == "__main__":
     
     """ Fill in """
     execution:bool = True
-    chip_info_restore:bool = 1
+    chip_info_restore:bool = 0
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {'q0':{"freq_span":500e6,"xy_IF":150e6,"assigned_xyf_range":[]},'q1':{"freq_span":500e6,"xy_IF":150e6,"assigned_xyf_range":[]},"xyf_pts":50}
+    ro_elements = {'q0':{"freq_span":500e6,"xy_IF":200e6,"assigned_xyf_range":[]},'q1':{"freq_span":500e6,"xy_IF":200e6,"assigned_xyf_range":[]},"xyf_pts":100}
     bias_element = {"bias_qs":[],"bias_span":0.05,"bias_pts":20}
     couplers = []
     
@@ -206,22 +209,29 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
     
     
-    fluxQubit_executor(QD_agent,Fctrl,meas_ctrl,freq_elements,bias_elements,run=execution,avg_times=avg_n)
+    nc_path = fluxQubit_executor(QD_agent,Fctrl,meas_ctrl,freq_elements,bias_elements,run=execution,avg_times=avg_n)
     cluster.reset()
 
-    # """ Storing """
-    # if  trustable:
-    #     update_by_fluxQubit(QD_agent,new_ans,qubit)
-    #     QD_agent.QD_keeper()
-    #     if chip_info_restore:
-    #         chip_info.update_FluxQubit(qb=qubit, result=new_ans)
-    # else:
-    #     check_again.append(qubit)    
+    dss = fluxQub_dataReductor(nc_path)
+
+    for q in dss:
+        fit_pack = plot_QbFlux_multiVersn(QD_agent,q,dss[q],QS_fit_analysis,Data_manager().get_today_picFolder(),filter_outlier=True)
+        if len(list(fit_pack.keys())) != 0:
+            update_by_fluxQubit(QD_agent,fit_pack,q)
+    
+    
+    """ Storing """
+    trustable = mark_input("Keep these results ? [y/n]")
+    if  trustable.lower() in ['y', 'yes']:
+        QD_agent.QD_keeper()
+        if chip_info_restore:
+            chip_info.update_FluxQubit(qb=qubit, result=fit_pack)
+    else:
+        warning_print(f"The results were deleted !")
+
 
     """ Close """
     print('Flux qubit done!')
-    if len(check_again) != 0:
-        warning_print(f"qubits to check again: {check_again}")
     shut_down(cluster,Fctrl,Cctrl)
 
   

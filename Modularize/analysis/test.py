@@ -6,12 +6,14 @@ from numpy import array, sqrt
 import os 
 import time
 from  datetime import datetime
-from xarray import open_dataset
+from xarray import open_dataset, Dataset
 import quantify_core.data.handling as dh
+from Modularize.support import QDmanager, Data_manager
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.analysis.raw_data_demolisher import fluxQub_dataReductor
-from Modularize.support.QuFluxFit import plot_QbFlux
+from Modularize.support.QuFluxFit import plot_QbFlux_multiVersn
+from Modularize.support.Pulse_schedule_library import QS_fit_analysis
 
 # ds = open_dataset("Modularize/Meas_raw/20241025/ZgateT1_q0_H13M03S06/DR2q0_zT1(0)_H13M05S10.nc")
 # time_1 = ds.attrs["end_time"]
@@ -22,10 +24,15 @@ from Modularize.support.QuFluxFit import plot_QbFlux
 # print(total_sec_diff)
 # file = "Modularize/Meas_raw/20241026/DR2q1_2tone_H11M52S57.nc"
 dh.set_datadir(meas_raw_dir)
-file = "Modularize/Meas_raw/20241026/DR2multiQ_Flux2tone_H20M20S50.nc"
+file = "Modularize/Meas_raw/20241027/DR2multiQ_Flux2tone_H18M09S09.nc"
+QD_agent = QDmanager("Modularize/QD_backup/20241026/DR2#10_SumInfo.pkl")
+QD_agent.QD_loader()
+
 dss = fluxQub_dataReductor(file)
 for q in dss:
-    QubitFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run()
+        fit_pack = plot_QbFlux_multiVersn(QD_agent,q,dss[q],QS_fit_analysis,filter_outlier=True)
+# for q in dss:
+#     QubitFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run()
 
 
 # for q_idx, q in enumerate(ds.attrs['RO_qs'].split(" ")[1:]):
@@ -37,3 +44,5 @@ for q in dss:
 #         amp = sqrt(y0**2+y1**2)
 #         plt.pcolormesh(x1,x0,amp)
 #         plt.show()
+
+

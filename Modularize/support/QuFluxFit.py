@@ -4,22 +4,85 @@ import xarray as xr
 import quantify_core.data.handling as dh
 import matplotlib.pyplot as plt
 from typing import Callable
-from numpy import flip, pi, linspace, array, sqrt, std, mean, sort, diag, sign, absolute
+from numpy import flip, pi, linspace, array, sqrt, std, median, mean, sort, diag, sign, absolute, where, argmax
 from Modularize.support import QDmanager, Data_manager
 from Modularize.support.Pulse_schedule_library import IQ_data_dis
-from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, abs
+from numpy import ndarray, cos, sin, deg2rad, real, imag, transpose, abs, convolve, ones
 from scipy.optimize import curve_fit
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+
+def smooth_filter(raw_data:ndarray)->ndarray:
+    
+    degree = 2
+    poly_features = PolynomialFeatures(degree=degree)
+    x_poly = poly_features.fit_transform(raw_data.reshape(-1, 1))
+
+    # Fit the polynomial to the noisy data
+    model = LinearRegression()
+    model.fit(x_poly, raw_data)
+
+    # Predict values and calculate residuals
+    predictions = model.predict(x_poly)
+    residuals = raw_data - predictions
+
+    # Identify points that are likely part of the parabola signal
+    threshold = mean(abs(residuals))+0.5*std(abs(residuals)) # Adjust based on noise level
+
+    signal_indices = where(abs(residuals) < threshold)[0]
+    extracted_signal = raw_data[signal_indices]
+    print(extracted_signal)
+    return signal_indices, extracted_signal
+
+def remove_outliers_with_window(data, window_length, m=2):
+    filtered_data = []
+    original_indices = []
+
+    # Split data into segments with the specified window length
+    for i in range(0, len(data), window_length):
+        window_data = data[i:i + window_length]
+        
+        # Compute mean and std within each window
+        avg = median(window_data)
+        std_dev = std(window_data)
+
+        # Identify inliers in the window
+        mask = (abs(window_data - avg) / std_dev) < m
+        filtered_data.extend(window_data[mask])  # Add inliers to the result
+        original_indices.extend(where(mask)[0] + i)  # Track original indices
+
+    return array(filtered_data), array(original_indices)
+
+def remove_outlier_after_fit(fit_func:callable,x_data:ndarray,y_data:ndarray,threshold:float=2)->tuple[ndarray,ndarray,tuple]:
+    paras, _ = curve_fit(fit_func,x_data,y_data)
+    fit_y = fit_func(x_data,*paras)
+    fit_raw_distance = absolute(array(fit_y)-array(y_data))
+    _, idxes = remove_outliers_with_window(fit_raw_distance,int(fit_raw_distance.shape[0]/2),threshold)
+    filtered_x = []
+    filtered_y = []
+    for i in idxes:
+        filtered_x.append(x_data[i])
+        filtered_y.append(y_data[i])
+    
+    want_paras, _ = curve_fit(fit_func,array(filtered_x),array(filtered_y))  
+
+    return array(filtered_x), array(filtered_y), want_paras 
+
+
+
+
 
 
 def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
-    # if target_q in Qmanager.refIQ:
-    #     ref = Qmanager.refIQ[target_q]
-    # else:
-    #     ref = [0,0]
-    ref = [0,0]
+    if target_q in Qmanager.refIQ:
+        ref = Qmanager.refIQ[target_q]
+    else:
+        ref = [0,0]
+    
     # plot flux-qubit 
     f,z,i,q = convert_netCDF_2_arrays(nc_path)
     amp = array(sqrt((i-array(ref)[0])**2+(q-array(ref)[1])**2)).transpose()
+    print(amp.shape)
     fig, ax = plt.subplots(figsize=(12,8))
     ax:plt.Axes
     c = ax.pcolormesh(z, f*1e-9, amp, cmap='RdBu')
@@ -30,6 +93,65 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
     ax.yaxis.set_tick_params(labelsize=18)
     plt.tight_layout()
     plt.show()
+
+def plot_QbFlux_multiVersn(Qmanager:QDmanager,qubit:str,ds:xr.Dataset,fit_func:callable=None, save_pic_path:str=None, filter_outlier:bool=False):
+    fitting_packs = {}
+    # plot flux-qubit 
+    ref_z = float(ds.attrs["ref_z"].split("_")[int(ds.attrs["ref_z"].split("_").index(qubit))+1])
+    
+    f,z,i,q = convert_netCDF_2_arrays(ds)
+    amp = array(sqrt((i-array(Qmanager.refIQ[qubit])[0])**2+(q-array(Qmanager.refIQ[qubit])[1])**2))
+    
+    fig, ax = plt.subplots(figsize=(13,9))
+    ax:plt.Axes
+    c = ax.pcolormesh(z, f*1e-9, amp.transpose())
+    if fit_func is not None:
+        # try:
+        fit_z = []
+        fit_f = []
+        def parabola(x,a,b,c):
+            return a*array(x)**2+b*array(x)+c
+        for z_idx, a_z_data in enumerate(amp):
+            if min(f) <= fit_func(a_z_data,f).attrs['f01_fit'] and fit_func(a_z_data,f).attrs['f01_fit'] <= max(f):
+                fit_f.append(fit_func(a_z_data,f).attrs['f01_fit']*1e-9) # GHz
+                fit_z.append(z[z_idx])
+        
+
+        if not filter_outlier:
+            paras, _ = curve_fit(parabola,fit_z,fit_f)
+            plt.scatter(fit_z,fit_f,marker='*',c='black')
+            plt.plot(z,parabola(z,*paras),'red')
+            plt.vlines(float(-paras[1]/(2*paras[0])),min(f)*1e-9,max(f)*1e-9,colors='red',linestyles='--')
+        else:
+            
+            filtered_z, filtered_f, paras = remove_outlier_after_fit(parabola,fit_z,fit_f)
+            plt.plot(fit_z,parabola(fit_z,*paras),'red')
+            plt.scatter(fit_z,fit_f,marker='*',c='black')
+            plt.vlines(float(-paras[1]/(2*paras[0])),min(f)*1e-9,max(f)*1e-9,colors='red',linestyles='--')
+            plt.scatter(filtered_z,filtered_f,marker='*',c='red')
+
+
+        fitting_packs["sweet_bias"] = ref_z + float(-paras[1]/(2*paras[0])) # offset + z_pulse_amp
+        fitting_packs["xyf"] = float(parabola(float(-paras[1]/(2*paras[0])),*paras))*1e9
+        fitting_packs["parabola_paras"] = list(paras)
+        # except:
+        #     print("Passed a wrong fitting for flux-qubit spectroscopy")
+    
+    ax.set_xlabel("Flux Pulse amp (V)", fontsize=20)
+    ax.set_ylabel("Driving Frequency (GHz)", fontsize=20)
+    fig.colorbar(c, ax=ax, label='Contrast (V)')
+    ax.xaxis.set_tick_params(labelsize=18)
+    ax.yaxis.set_tick_params(labelsize=18)
+    # plt.tight_layout()
+    if len(list(fitting_packs.keys())) != 0:
+        plt.title(f"{qubit} XYF={round(fitting_packs['xyf']*1e-9,3)} GHz with z_pulse amp={round(float(-paras[1]/(2*paras[0])),3)} V")
+    if save_pic_path is None:
+        plt.show()
+    else:
+        plt.savefig(os.path.join(save_pic_path,f"{qubit}_fluxQubitSpectro_{ds.attrs['execution_time'] if 'execution_time' in list(ds.attrs) else Data_manager().get_time_now()}.png"))
+        plt.close()
+
+    return fitting_packs
 
 def plot_QbFlux_iq(Qmanager:QDmanager, nc_path:str, target_q:str):
     if target_q in Qmanager.refIQ:
@@ -157,12 +279,21 @@ def sortAndDecora(raw_z:ndarray,raw_XYF:ndarray,raw_mag:ndarray,threshold:float=
 
     return array(filtered)
 
-def convert_netCDF_2_arrays(CDF_path:str):
+def convert_netCDF_2_arrays(nc:(str|xr.Dataset)):
     """
-    For Qblox system, give a netCDF file path to return some ndarrays.
-    ## Return: XYF (x0), z (x1), I, Q 
+    1.  If the arg `nc` was given with a `str` type, it will be treat as a nc file path.
+    2.  The other type of the arg is `xr.Dataset`, it will be treat as a Dataset.
+    this file should be magnitude and phase, not I and Q.
     """
-    dataset_processed = dh.to_gridded_dataset(xr.open_dataset(CDF_path))
+    if isinstance(nc,str):
+        print("Get the nc file path...")
+        dataset_processed = dh.to_gridded_dataset(xr.open_dataset(nc))
+    elif isinstance(nc,xr.Dataset):
+        print("Get the nc Dataset...")
+        dataset_processed = dh.to_gridded_dataset(nc)
+    else:
+        raise TypeError(f"The type of the given was not correct, it should be str or xr.Dataset")
+    
     XYF = dataset_processed["x0"].to_numpy()
     z = dataset_processed["x1"].to_numpy()
     S21 = transpose(dataset_processed.y0.data * cos(

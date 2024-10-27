@@ -1,7 +1,7 @@
 import os, sys 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from xarray import open_dataset, Dataset
-from numpy import ndarray, array, sqrt
+from numpy import ndarray, array, sqrt, cos, sin, transpose, deg2rad, real, imag
 import quantify_core.data.handling as dh
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Path_Book import meas_raw_dir
@@ -45,9 +45,6 @@ def fluxQub_dataReductor(nc_file_path:str)->dict:
         x0, x1 = ds[f"x{2*q_idx}"], ds[f"x{2*q_idx+1}"]
         y0, y1 = ds[f"y{2*q_idx}"], ds[f"y{2*q_idx+1}"]
 
-        print(array(x0).shape)
-        print(array(x1).shape)
-
         new_ds = Dataset(
             data_vars = dict(y0=(["dim_0"],y0.data),y1=(["dim_0"],y1.data)),
             coords = dict(x0=(["dim_0"],x0.data),x1=(["dim_0"],x1.data))
@@ -56,7 +53,7 @@ def fluxQub_dataReductor(nc_file_path:str)->dict:
         new_ds.attrs = ds.attrs
         new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+"-"+f'{(int(new_ds.attrs["tuid"].split("-")[2])+q_idx):03d}'+"-"+new_ds.attrs["tuid"].split("-")[3]
         
-        Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxQubit")
+        # Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxQubit")
         to_copy_array_attr = [x0, x1, y0, y1]
         for idx, item in enumerate([new_ds.x0, new_ds.x1, new_ds.y0, new_ds.y1]):
             item.attrs = to_copy_array_attr[idx].attrs

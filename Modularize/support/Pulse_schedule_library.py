@@ -628,14 +628,14 @@ def multi_Z_gate_two_tone_sche(
             else:
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
             
-            drive = Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
+            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
 
             if q in bias_qs:
-                Z(sched,Z_amp,spec_Du,q,drive,electrical_delay,'end')
+                Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)
             
             if len(additional_bias_list) != 0:
                 for qs in additional_bias_list:
-                    Z(sched,Z_amp,spec_Du,qs,drive,electrical_delay,'end')
+                    Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
             
 
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
