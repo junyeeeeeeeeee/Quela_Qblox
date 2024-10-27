@@ -97,8 +97,10 @@ def plot_QbFlux(Qmanager:QDmanager, nc_path:str, target_q:str):
 def plot_QbFlux_multiVersn(Qmanager:QDmanager,qubit:str,ds:xr.Dataset,fit_func:callable=None, save_pic_path:str=None, filter_outlier:bool=False):
     fitting_packs = {}
     # plot flux-qubit 
-    ref_z = float(ds.attrs["ref_z"].split("_")[int(ds.attrs["ref_z"].split("_").index(qubit))+1])
-    
+    if qubit in ds.attrs["ref_z"].split("_"):
+        ref_z = float(ds.attrs["ref_z"].split("_")[int(ds.attrs["ref_z"].split("_").index(qubit))+1])
+    else:
+        ref_z = 0
     f,z,i,q = convert_netCDF_2_arrays(ds)
     amp = array(sqrt((i-array(Qmanager.refIQ[qubit])[0])**2+(q-array(Qmanager.refIQ[qubit])[1])**2))
     
@@ -121,16 +123,16 @@ def plot_QbFlux_multiVersn(Qmanager:QDmanager,qubit:str,ds:xr.Dataset,fit_func:c
             paras, _ = curve_fit(parabola,fit_z,fit_f)
             plt.scatter(fit_z,fit_f,marker='*',c='black')
             plt.plot(z,parabola(z,*paras),'red')
-            plt.vlines(float(-paras[1]/(2*paras[0])),min(f)*1e-9,max(f)*1e-9,colors='red',linestyles='--')
         else:
             
             filtered_z, filtered_f, paras = remove_outlier_after_fit(parabola,fit_z,fit_f)
             plt.plot(fit_z,parabola(fit_z,*paras),'red')
             plt.scatter(fit_z,fit_f,marker='*',c='black')
-            plt.vlines(float(-paras[1]/(2*paras[0])),min(f)*1e-9,max(f)*1e-9,colors='red',linestyles='--')
             plt.scatter(filtered_z,filtered_f,marker='*',c='red')
 
-
+        if min(z)<=float(-paras[1]/(2*paras[0])) and float(-paras[1]/(2*paras[0])) <= max(z):
+            plt.vlines(float(-paras[1]/(2*paras[0])),min(f)*1e-9,max(f)*1e-9,colors='red',linestyles='--')
+        
         fitting_packs["sweet_bias"] = ref_z + float(-paras[1]/(2*paras[0])) # offset + z_pulse_amp
         fitting_packs["xyf"] = float(parabola(float(-paras[1]/(2*paras[0])),*paras))*1e9
         fitting_packs["parabola_paras"] = list(paras)

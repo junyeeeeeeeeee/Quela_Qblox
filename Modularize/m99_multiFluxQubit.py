@@ -180,8 +180,8 @@ if __name__ == "__main__":
     execution:bool = True
     chip_info_restore:bool = 0
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {'q0':{"freq_span":500e6,"xy_IF":200e6,"assigned_xyf_range":[]},'q1':{"freq_span":500e6,"xy_IF":200e6,"assigned_xyf_range":[]},"xyf_pts":100}
-    bias_element = {"bias_qs":[],"bias_span":0.05,"bias_pts":20}
+    ro_elements = {'q1':{"freq_span":500e6,"xy_IF":200e6,"assigned_xyf_range":[]},"xyf_pts":100}
+    bias_element = {"bias_qs":['q0'],"bias_span":0.05,"bias_pts":20}
     couplers = []
     
 

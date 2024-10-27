@@ -721,6 +721,60 @@ def Rabi_sche(
     
     return sched
 
+def multi_Rabi_sche(
+    XY_amp: dict|float,
+    XY_duration:dict|float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    XY_theta:str,
+    repetitions:int=1,
+    chevron:bool=False,
+    OS_or_not:bool=False
+) -> Schedule:
+    if isinstance(XY_amp,dict):
+        varables = XY_amp
+        varable_name = "PowerRabi"
+        qubits2read = list(XY_amp.keys())
+        sameple_idx = array(XY_amp[qubits2read[0]]).shape[0]
+    elif isinstance(XY_duration,dict):
+        varables = XY_duration
+        varable_name = "TimeRabi"
+        qubits2read = list(XY_duration.keys())
+        sameple_idx = array(XY_duration[qubits2read[0]]).shape[0]
+    else:
+        raise TypeError("The type of XY_amp or XY_duration should be dict !")
+    
+    sched = Schedule(varable_name,repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):    
+        for qubit_idx, q in enumerate(qubits2read):
+            varable = varables[q][acq_idx]
+            sched.add(Reset(q))
+
+            spec_pulse = Readout(sched,q,R_amp,R_duration)
+            
+            if XY_theta== 'X_theta':
+                if varable_name == 'PowerRabi':
+                    X_theta(sched,varable,XY_duration,q,spec_pulse,freeDu=electrical_delay)
+                else:
+                    X_theta(sched,XY_amp,varable,q,spec_pulse,freeDu=electrical_delay)
+            elif XY_theta== 'Y_theta':
+                if varable_name == 'PowerRabi':
+                    Y_theta(sched,varable,XY_duration,q,spec_pulse,freeDu=electrical_delay)
+                else:
+                    Y_theta(sched,XY_amp,varable,q,spec_pulse,freeDu=electrical_delay)
+            
+            else: raise KeyError ('Typing error: XY_theta')
+        
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
+    
+    return sched
+
+def multi_RabiSchevron_sche():
+    pass
+
 def Rabi_12_sche(
     q:str,
     XY_12_amp: any,
@@ -771,8 +825,6 @@ def Rabi_12_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
     
     return sched
-
-
 
 
 def Zgate_Rabi_sche(
