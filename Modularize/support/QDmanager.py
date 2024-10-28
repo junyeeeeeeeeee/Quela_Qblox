@@ -292,6 +292,9 @@ class Data_manager:
             
         elif exp_type.lower() == 'timerabi':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
+        
+        elif exp_type.lower() == 'rabi':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_Rabi_{exp_timeLabel}.nc")
             
         elif exp_type.lower() == 'ramsey':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")

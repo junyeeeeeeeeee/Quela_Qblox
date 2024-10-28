@@ -156,16 +156,16 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = ['q0']
+    ro_elements = ['q1']
     couplers = []
 
 
     """ Optional paras """
-    pi_duration:float = 40e-9
-    pi_amp_max:float = 0.6
-    rabi_type:str = 'power'  # 'time' or 'power'
+    pi_duration:float = 200e-9
+    pi_amp_max:float = 0.5
+    rabi_type:str = 'time'  # 'time' or 'power'
     data_pts = 100
-    avg_n:int = 1000
+    avg_n:int = 300
     xy_atte:int = 10
     adj_freq = 0e6
     
@@ -187,16 +187,16 @@ if __name__ == "__main__":
         cluster.reset()
     
         """ Storing """
-        if trustable:   
-            QD_agent.refresh_log("after Rabi")
-            if adj_freq != 0:
-                ans = mark_input(f"This adj_freq is not 0, save it ? [y/n]")
-                if ans.lower() in ['y', 'yes']:
-                    QD_agent.QD_keeper()
-            else:
-                QD_agent.QD_keeper()
-            if chip_info_restore:
-                chip_info.update_RabiOsci(qb=qubit)
+        # if trustable:   
+        #     QD_agent.refresh_log("after Rabi")
+        #     if adj_freq != 0:
+        #         ans = mark_input(f"This adj_freq is not 0, save it ? [y/n]")
+        #         if ans.lower() in ['y', 'yes']:
+        #             QD_agent.QD_keeper()
+        #     else:
+        #         QD_agent.QD_keeper()
+        #     if chip_info_restore:
+        #         chip_info.update_RabiOsci(qb=qubit)
 
 
         """ Close """

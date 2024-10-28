@@ -8,6 +8,17 @@ from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.support.QDmanager import Data_manager
 import matplotlib.pyplot as plt
 
+class MultiplexingDataReducer():
+    def __init__(self, nc:str|Dataset):
+        if isinstance(nc,str):
+            self.ds = open_dataset(nc)
+        elif isinstance(nc,Dataset):
+            self.ds = nc
+        else:
+            raise TypeError("You should give a nc_file path or a xr.Dataset")
+        
+
+
 def fluxCav_dataReductor(nc_file_path:str)->dict:
     """
     For flux cavity meas, each qubit will get 2 x-data and 2 y-data, which are 'x0', 'x1', 'y0', 'y1' accordingly.
@@ -61,6 +72,59 @@ def fluxQub_dataReductor(nc_file_path:str)->dict:
         datasets[ordered_q_labels[q_idx]] = new_ds
 
     return datasets
+
+def Rabi_dataReducer(nc_file_path:str):
+    ds = open_dataset(nc_file_path)
+    
+    joint_q = [x for x in ds.attrs["RO_qs"].split(" ") if x.startswith('q')] 
+    dataset = {}
+    for q_idx, q in enumerate(joint_q):
+        attr = ds.attrs
+        x0 = ds[f"x{q_idx}"]
+        y0 = ds[f"y{2*q_idx}"]
+        y1 = ds[f"y{2*q_idx+1}"]
+
+        new_ds = Dataset(
+            data_vars = dict(y0=(["Mixer_I"],y0.data),y1=(["Mixer_Q"],y1.data)),
+            coords = dict(x0=(["Varable_1"],x0.data))
+        )
+        new_ds.attrs = attr
+        new_ds.attrs['target_q'] = q
+        to_copy_array_attr = [x0, y0, y1]
+        for idx, item in enumerate([new_ds.x0, new_ds.y0, new_ds.y1]):
+            item.attrs = to_copy_array_attr[idx].attrs
+        
+        dataset[q] = new_ds
+    
+    return dataset
+
+
+def Conti2tone_dataReducer(nc_file_path:str):
+    ds = open_dataset(nc_file_path)
+    ordered_q_labels = ds.attrs['RO_qs'].split(" ")[1:]
+    datasets = {}
+    for q_idx, q in enumerate(ordered_q_labels):
+        x0, x1 = ds[f"x{2*q_idx}"], ds[f"x{2*q_idx+1}"]
+        y0, y1 = ds[f"y{2*q_idx}"], ds[f"y{2*q_idx+1}"]
+
+        new_ds = Dataset(
+            data_vars = dict(y0=(["dim_0"],y0.data),y1=(["dim_0"],y1.data)),
+            coords = dict(x0=(["dim_0"],array(list(x0.data)*int(len(list(x1.data))/len(list(x0.data))))),x1=(["dim_0"],x1.data))
+        )
+        
+        new_ds.attrs = ds.attrs
+        new_ds.attrs['target_q'] = q 
+        to_copy_array_attr = [x0, x1, y0, y1]
+        for idx, item in enumerate([new_ds.x0, new_ds.x1, new_ds.y0, new_ds.y1]):
+            item.attrs = to_copy_array_attr[idx].attrs
+
+        datasets[ordered_q_labels[q_idx]] = new_ds
+
+    return datasets
+
+
+
+
 
 def twotone_ana(nc_path:str, plot:bool=True, refIQ:dict={} , fit_func:callable=None)->dict:
     fit_packs = {}

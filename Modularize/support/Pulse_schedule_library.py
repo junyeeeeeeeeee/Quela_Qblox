@@ -722,8 +722,7 @@ def Rabi_sche(
     return sched
 
 def multi_Rabi_sche(
-    XY_amp: dict|float,
-    XY_duration:dict|float,
+    Paras:dict,
     R_amp: dict,
     R_duration: dict,
     R_integration:dict,
@@ -732,40 +731,32 @@ def multi_Rabi_sche(
     repetitions:int=1,
     OS_or_not:bool=False
 ) -> Schedule:
-    if isinstance(XY_amp,dict):
-        varables = XY_amp
-        varable_name = "PowerRabi"
-        qubits2read = list(XY_amp.keys())
-        sameple_idx = array(XY_amp[qubits2read[0]]).shape[0]
-    elif isinstance(XY_duration,dict):
-        varables = XY_duration
-        varable_name = "TimeRabi"
-        qubits2read = list(XY_duration.keys())
-        sameple_idx = array(XY_duration[qubits2read[0]]).shape[0]
+    
+    qubits2read = list(Paras.keys())
+    sched = Schedule("RabiOscillation",repetitions=repetitions)
+    
+    if isinstance(Paras[qubits2read[0]]["XY_duration"],np.ndarray):
+        sample_len = Paras[qubits2read[0]]["XY_duration"].shape[0]
     else:
-        raise TypeError("The type of XY_amp or XY_duration should be dict !")
+        sample_len = Paras[qubits2read[0]]["XY_amp"].shape[0]
     
-    sched = Schedule(varable_name,repetitions=repetitions)
-    
-    for acq_idx in range(sameple_idx):    
-        for qubit_idx, q in enumerate(qubits2read):
-            varable = varables[q][acq_idx]
-            sched.add(Reset(q))
+    match XY_theta:
+        case 'Y_theta':
+            gate:callable = Y_theta
+        case _:
+            gate:callable = Y_theta
 
+    
+    for acq_idx in range(sample_len):    
+        for qubit_idx, q in enumerate(qubits2read):
+            sched.add(Reset(q))
             spec_pulse = Readout(sched,q,R_amp,R_duration)
             
-            if XY_theta== 'X_theta':
-                if varable_name == 'PowerRabi':
-                    X_theta(sched,varable,XY_duration,q,spec_pulse,freeDu=electrical_delay)
-                else:
-                    X_theta(sched,XY_amp,varable,q,spec_pulse,freeDu=electrical_delay)
-            elif XY_theta== 'Y_theta':
-                if varable_name == 'PowerRabi':
-                    Y_theta(sched,varable,XY_duration,q,spec_pulse,freeDu=electrical_delay)
-                else:
-                    Y_theta(sched,XY_amp,varable,q,spec_pulse,freeDu=electrical_delay)
-            
-            else: raise KeyError ('Typing error: XY_theta')
+            if isinstance(Paras[q]["XY_duration"],np.ndarray):
+                gate(sched,Paras[q]["XY_amp"],Paras[q]["XY_duration"][acq_idx],q,spec_pulse,freeDu=electrical_delay)
+            else:
+                gate(sched,Paras[q]["XY_amp"][acq_idx],Paras[q]["XY_duration"],q,spec_pulse,freeDu=electrical_delay)
+           
         
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
     
@@ -1735,7 +1726,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False, q:str=''):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1756,10 +1747,10 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         
     elif results.attrs['exper'] == 'T1': 
         if spin_echo:
-            title = "Spin echo" 
+            title = "Spin echo" if q =="" else f"{q} Spin echo"
             text_msg += r"$T_{2}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
         else:
-            title= 'T1 relaxation'
+            title= 'T1 relaxation' if q =="" else f"{q} T1 relaxation"
             text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
@@ -1771,7 +1762,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             ans = np.array(results.data_vars['fitting']).max()/Nor_f-np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
-        title= 'Ramsey'
+        title= 'Ramsey' if q =="" else f"{q} Ramsey"
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
@@ -1783,6 +1774,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         title= results.attrs['Rabi_type']
         
         if title=='PowerRabi':
+            if q != "": title = f"{q} {title}"
             pi_2= results.attrs['pi_2']
             x_unit= r"$\ [V]$"
             x_label= r"$XY\ amp$"+x_unit
@@ -1790,6 +1782,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             x_fit= results.coords['para_fit']
             
         elif title=='TimeRabi':
+            if q != "": title = f"{q} {title}"
             pi_2= results.attrs['pi_2']*1e9
             x_unit= r"$\ [ns]$"
             x_label= r"$XY\ duration$"+x_unit
