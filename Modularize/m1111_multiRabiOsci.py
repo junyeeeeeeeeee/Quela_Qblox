@@ -2,7 +2,7 @@
 import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_instruments import Cluster
-from Modularize.support.UserFriend import eyeson_print, slightly_print, mark_input
+from Modularize.support.UserFriend import *
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from numpy import linspace, array, arange, NaN, ndarray
@@ -11,7 +11,10 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
-from Modularize.support.Pulse_schedule_library import multi_Rabi_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, Rabi_fit_analysis, Fit_analysis_plot
+from Modularize.support.Pulse_schedule_library import multi_Rabi_sche, set_LO_frequency, pulse_preview
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
+from Modularize.analysis.raw_data_demolisher import Rabi_dataReducer
+from xarray import Dataset
 
 #? The way to merge two dict a and b : c = {**a,**b}
 
@@ -81,7 +84,8 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=30
        
         rabi_ds = meas_ctrl.run("RabiOsci")
         rabi_ds.attrs["RO_qs"] = ""
-
+        rabi_ds.attrs["OS_mode"] = OSmode
+        rabi_ds.attrs["execution_time"] = Data_manager().get_time_now()
         name_dict = {"XY_duration":{"name":"Time","long_name":"TimeRabi","unit":"s"},"XY_amp":{"name":"Amplitude","long_name":"PowerRabi","unit":"V"}}
 
         for idx, q in enumerate(list(ro_elements.keys())):
@@ -96,10 +100,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=30
                 
         # Save the raw data into netCDF
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rabi_ds,qb="multiQ",exp_type="Rabi",specific_dataFolder=specific_data_folder,get_data_loc=True)
-        # I,Q = dataset_to_array(dataset=rabi_ds,dims=1)
-        # data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
-        # data_fit= Rabi_fit_analysis(data=data,samples=samples,Rabi_type=osci_type)
-        # analysis_result[q]= data_fit
+        
         
     else:
         sched_kwargs = sched_kwargs
@@ -132,6 +133,21 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
         nc_path = Rabi(QD_agent,meas_ctrl,ro_elements,run=False,n_avg=avg_times,specific_data_folder=data_folder,OSmode=OneShot)
     
     return nc_path
+
+
+def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,ro_elements:dict,target_q:str):
+    if fit_results.attrs['pi_2'] >= min(fit_results.coords['samples']) and fit_results.attrs['pi_2'] <= max(fit_results.coords['samples']) :
+        qubit = QD_agent.quantum_device.get_element(target_q)
+        match str(fit_results.attrs['Rabi_type']).lower():
+            case 'powerrabi':
+                qubit.rxy.amp180(fit_results.attrs['pi_2'])
+                qubit.rxy.duration(ro_elements[target_q]["XY_duration"])
+            case 'timerabi':
+                qubit.rxy.amp180(ro_elements[target_q]["XY_amp"])
+                qubit.rxy.duration(fit_results.attrs['pi_2'])
+    else:
+        warning_print(f"Results for {target_q} didn't satisfy the update condition !")
+
     
   
 def RabiOsci_waiter(QD_agent:QDmanager,ro_elements:dict):
@@ -174,7 +190,6 @@ def RabiOsci_waiter(QD_agent:QDmanager,ro_elements:dict):
                         time_sample_sec = list(set([round_to_nearest_multiple_of_4ns(x) for x in array(ro_elements[qubit][item])*1e9]))
                         time_sample_sec.sort()
                         new_ro_elements[qubit]["XY_duration"] = array(time_sample_sec)*1e-9
-                        print(new_ro_elements[qubit]["XY_duration"])
                     case "xy_amp":
                         new_ro_elements[qubit]["XY_amp"] = ro_elements[qubit][item]
                     case _:
@@ -223,20 +238,24 @@ if __name__ == "__main__":
     
     """Running """
     nc_path = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,ro_elements,run=execution,OneShot=OneShot,avg_times=avg_n)
-    
+    slightly_print(f"Raw data loc:\n{nc_path}")
+
+
+    """ Analysis """
+    dss = Rabi_dataReducer(nc_path)  
+    ANA = Multiplex_analyzer("m1111")      
+    for q in dss:
+        ANA._import_data(dss[q],1,QD_agent.refIQ[q])
+        ANA._start_analysis()
+        ans = ANA._export_result(Data_manager().get_today_picFolder())
+        conditional_update_qubitInfo(QD_agent,ans,ro_elements,q)
 
 
     """ Storing """
-    # if trustable:   
-    #     QD_agent.refresh_log("after Rabi")
-    #     if adj_freq != 0:
-    #         ans = mark_input(f"This adj_freq is not 0, save it ? [y/n]")
-    #         if ans.lower() in ['y', 'yes']:
-    #             QD_agent.QD_keeper()
-    #     else:
-    #         QD_agent.QD_keeper()
-    #     if chip_info_restore:
-    #         chip_info.update_RabiOsci(qb=qubit)
+    QD_agent.refresh_log("after Rabi")
+    QD_agent.QD_keeper()
+    if chip_info_restore:
+        chip_info.update_RabiOsci(qb=qubit)
 
 
     """ Close """

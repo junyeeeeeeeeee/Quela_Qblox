@@ -51,7 +51,7 @@ class analysis_tools():
         if self.xyl.shape[0] == 1:
             self.fit_packs[self.target_q] = {"xyf_data":self.xyf,"contrast":self.contrast[0]}
     
-    def conti2tone_plot(self):
+    def conti2tone_plot(self, save_pic_path:str=None):
         if self.xyl.shape[0] != 1:
             plt.pcolormesh(self.xyf,self.xyl,self.contrast)
             if len(self.fit_f01s) != 0 :
@@ -65,14 +65,22 @@ class analysis_tools():
             plt.title(f"{self.target_q} 2tone with XY power {self.xyl[0]} V")
         plt.xlabel("XY frequency (Hz)")
         plt.grid()
+
+        if save_pic_path is None:
+            plt.show()
+        else:
+            plt.savefig(os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
+            plt.close()
+
+
         plt.show()
 
     def fluxQb_ana(self, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
-        qubit = self.ds.attrs['target_q']
+        self.qubit = self.ds.attrs['target_q']
         self.fit_packs = {}
         self.filtered_z, self.filtered_f = [], []
-        if qubit in self.ds.attrs["ref_z"].split("_"):
-            self.ref_z = float(self.ds.attrs["ref_z"].split("_")[int(self.ds.attrs["ref_z"].split("_").index(qubit))+1])
+        if self.qubit in self.ds.attrs["ref_z"].split("_"):
+            self.ref_z = float(self.ds.attrs["ref_z"].split("_")[int(self.ds.attrs["ref_z"].split("_").index(self.qubit))+1])
         else:
             self.ref_z = 0
 
@@ -117,27 +125,28 @@ class analysis_tools():
         ax.yaxis.set_tick_params(labelsize=18)
 
         if len(list(self.fit_packs.keys())) != 0:
-            plt.title(f"{self.ds.attrs['target_q']} XYF={round(self.fit_packs['xyf']*1e-9,3)} GHz with z_pulse amp={round(float(-self.paras[1]/(2*self.paras[0])),3)} V")
+            plt.title(f"{self.qubit} XYF={round(self.fit_packs['xyf']*1e-9,3)} GHz with z_pulse amp={round(float(-self.paras[1]/(2*self.paras[0])),3)} V")
         if save_pic_path is None:
             plt.show()
         else:
-            plt.savefig(os.path.join(save_pic_path,f"{self.ds.attrs['target_q']}_fluxQubitSpectro_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
+            plt.savefig(os.path.join(save_pic_path,f"{self.qubit}_fluxQubitSpectro_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
             plt.close()
 
     def rabi_ana(self, refIQ:list=[]):
+        self.qubit = self.ds.attrs["target_q"]
         x_data = array(self.ds['x0'])
         title = self.ds['x0'].attrs["long_name"]
-        x_axis_name = self.ds['x0'].attrs["name"]
-        x_axis_unit = self.ds['x0'].attrs["unit"]
 
         i_data = array(self.ds['y0'])
         q_data = array(self.ds['y1'])
 
         contrast = sqrt((i_data-refIQ[0])**2+(q_data-refIQ[1])**2)
         self.fit_packs = Rabi_fit_analysis(contrast,x_data,title)
+        
 
-    def rabi_plot(self):
-        Fit_analysis_plot(self.fit_packs,P_rescale=None,Dis=None,q=self.ds.attrs['target_q'])
+    def rabi_plot(self, save_pic_path:str=None):
+        if save_pic_path is not None: save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
 
 
@@ -171,15 +180,15 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
-    def _export_result( self, plot:bool=False):
-        if plot:
-            match self.exp_name:
-                case 'm88':
-                    self.conti2tone_plot()
-                case 'm99':
-                    self.fluxQb_plot()
-                case 'm1111': 
-                    self.rabi_plot()
+    def _export_result( self, pic_save_folder=None):
+        match self.exp_name:
+            case 'm88':
+                self.conti2tone_plot(pic_save_folder)
+            case 'm99':
+                self.fluxQb_plot(pic_save_folder)
+            case 'm1111': 
+                self.rabi_plot(pic_save_folder)
+        
         return self.fit_packs
 
 
@@ -214,7 +223,8 @@ if __name__ == "__main__":
     #     ans = ANA._export_result(plot=True)
 
     """ Rabi Oscillation """
-    m1111_file = "Modularize/Meas_raw/20241028/DR2multiQ_Rabi_H19M51S07.nc"
+    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M06S00.nc" # power rabi
+    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
     QD_file = "Modularize/QD_backup/20241027/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
@@ -222,7 +232,7 @@ if __name__ == "__main__":
     dss = Rabi_dataReducer(m1111_file)  
     ANA = Multiplex_analyzer("m1111")      
     for q in dss:
-        ANA._import_data(dss[q],2,QD_agent.refIQ[q])
+        ANA._import_data(dss[q],1,QD_agent.refIQ[q])
         ANA._start_analysis()
         ans = ANA._export_result(plot=True)
 

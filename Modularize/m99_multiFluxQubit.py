@@ -12,8 +12,8 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
 from Modularize.support import init_meas, init_system_atte, shut_down, reset_offset, coupler_zctrl, compose_para_for_multiplexing
 from Modularize.analysis.raw_data_demolisher import fluxQub_dataReductor
-from Modularize.support.QuFluxFit import plot_QbFlux_multiVersn
 from Modularize.support.Pulse_schedule_library import multi_Z_gate_two_tone_sche, set_LO_frequency, pulse_preview, QS_fit_analysis
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 
 z_pulse_amp_OVER_const_z = sqrt(2)/2.5
 
@@ -152,24 +152,8 @@ def fluxQubit_executor(QD_agent:QDmanager,Fctrl:dict,meas_ctrl:MeasurementContro
         
         nc_path = Zgate_two_tone_spec(QD_agent,meas_ctrl,XYFs,bias,ref_z,run=True,n_avg=avg_times)
         reset_offset(Fctrl)
-        
-        
-        
-        # if trustable:
-        #     plot_QbFlux(QD_agent,nc_path,specific_qubits)
-        #     permission = mark_input("Update the QD with this result ? [y/n]") 
-        #     if permission.lower() in ['y','yes']:
-        #         return trustable, {"xyf":results[specific_qubits].quantities_of_interest["freq_0"].nominal_value,"sweet_bias":results[specific_qubits].quantities_of_interest["offset_0"].nominal_value+center}
-        #     else:
-        #         return False, {}
-        # else:
-        #     plot_QbFlux(QD_agent,nc_path,specific_qubits)
-        #     trustable = False
-        #     return False, {}
-
-    # else:
-    #     _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,XYFs,bias,ref_z={},run=False)
-    #     return False, {}
+    else:
+        _ = Zgate_two_tone_spec(QD_agent,meas_ctrl,XYFs,bias,ref_z,run=False,n_avg=avg_times)
     return nc_path
 
 if __name__ == "__main__":
@@ -185,10 +169,8 @@ if __name__ == "__main__":
     couplers = []
     
 
-    
     """ Optional paras """
     avg_n:int = 500
-
 
 
     """ Preparations """
@@ -201,23 +183,26 @@ if __name__ == "__main__":
 
 
     """ Running """
-    FQ_results = {}
-    check_again =[]
     Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         if qubit[0] == "q":
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
     
-    
     nc_path = fluxQubit_executor(QD_agent,Fctrl,meas_ctrl,freq_elements,bias_elements,run=execution,avg_times=avg_n)
+    slightly_print(f"Raw data loc:\n{nc_path}")
     cluster.reset()
 
+    
+    """ Analysis """
+    ana_results = {}
     dss = fluxQub_dataReductor(nc_path)
-
+    ANA = Multiplex_analyzer("m99") 
     for q in dss:
-        fit_pack = plot_QbFlux_multiVersn(QD_agent,q,dss[q],QS_fit_analysis,Data_manager().get_today_picFolder(),filter_outlier=True)
-        if len(list(fit_pack.keys())) != 0:
-            update_by_fluxQubit(QD_agent,fit_pack,q)
+        ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
+        ANA._start_analysis()
+        ana_results[q] = ANA._export_result(Data_manager().get_today_picFolder())
+        if len(list(ana_results[q].keys())) != 0:
+            update_by_fluxQubit(QD_agent,ana_results[q],q)
     
     
     """ Storing """
@@ -225,7 +210,7 @@ if __name__ == "__main__":
     if  trustable.lower() in ['y', 'yes']:
         QD_agent.QD_keeper()
         if chip_info_restore:
-            chip_info.update_FluxQubit(qb=qubit, result=fit_pack)
+            chip_info.update_FluxQubit(qb=qubit, result=ana_results[q])
     else:
         warning_print(f"The results were deleted !")
 

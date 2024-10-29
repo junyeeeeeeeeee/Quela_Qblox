@@ -13,7 +13,8 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
 from Modularize.support import init_meas, shut_down,  advise_where_fq, init_system_atte, coupler_zctrl, compose_para_for_multiplexing
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, multi_Two_tone_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, twotone_comp_plot
-from Modularize.analysis.raw_data_demolisher import twotone_ana
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
+from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer
 
 def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict,xyl_guess:list,IF:float=100e6,xyf_span_Hz:int=400e6,n_avg:int=500,points:int=200,run:bool=True,drive_read_overlap:bool=False)->str:
     sche_func = multi_Two_tone_sche   
@@ -80,6 +81,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
         
         qs_ds = meas_ctrl.run("Two-tone")
         qs_ds.attrs["RO_qs"] = ""
+        qs_ds.attrs["execution_time"] = Data_manager().get_time_now()
         for idx, q in enumerate(freqs_to_set):
             attr_0 = qs_ds['x0'].attrs
             qs_ds[f'x{2*idx}'] = array(freqs_to_set[q])
@@ -227,28 +229,33 @@ if __name__ == "__main__":
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-
-    """ Running """
-    tt_results = {}
     Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-
     for qubit in xyf_setup:
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
 
+
+    """ Running """
+    tt_results = {}
     nc_path = conti2tone_executor(QD_agent,Fctrl,meas_ctrl,cluster,XYFs=ro_elements,XYLs=xyl_guess,run=execution,xy_if=xy_IF,xyf_span=xyf_range,V_away_from=tunebias_setup,drive_read_overlap=drive_read_overlap,avg_times=avg_n,fpts=fpts)
+    slightly_print(f"Raw data loc:\n{nc_path}")
+
 
     """ Analysis """
-    fit_packs = twotone_ana(nc_path,True if len(list(xyl_guess))>1 else False,QD_agent.refIQ,QS_fit_analysis)
+    dss = Conti2tone_dataReducer(nc_path)
+    ANA = Multiplex_analyzer("m88")      
+    for q in dss:
+        ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
+        ANA._start_analysis()
+        ans = ANA._export_result(Data_manager().get_today_picFolder())
 
-    if fit_packs != {}:
-        for q in fit_packs:
-            analysis_result = QS_fit_analysis(fit_packs[q]["contrast"],f=fit_packs[q]["xyf_data"])
+        if ans != {}:
+            analysis_result = QS_fit_analysis(ans[q]["contrast"],f=ans[q]["xyf_data"])
             twotone_comp_plot(analysis_result,[],True)
             update_2toneResults_for(QD_agent,q,{str(q):analysis_result},xyl_guess[0])
-    else:
-        update = False
-    
+        else:
+            update = False
+        
         
     """ Storing """
     if update:
