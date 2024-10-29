@@ -119,16 +119,7 @@ def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementContro
         nc_path = Rabi(QD_agent,meas_ctrl,ro_elements,run=True,n_avg=avg_times,specific_data_folder=data_folder,OSmode=OneShot)
         reset_offset(Fctrl)
         cluster.reset()
-        # if Rabi_results == {}:
-        #     print(f"Rabi Osci error qubit: {specific_qubits}")
-        # else:
-        #     if data_folder == '':
-        #         Fit_analysis_plot(Rabi_results[specific_qubits],P_rescale=False,Dis=None)
-        #         if abs(Rabi_results[specific_qubits].attrs['pi_2']) <= 0.8 and exp_type == 'powerRabi':
-        #             qubit = QD_agent.quantum_device.get_element(specific_qubits)
-        #             qubit.rxy.amp180(Rabi_results[specific_qubits].attrs['pi_2'])
-        #             qubit.rxy.duration(XYdura_max)
-        #             trustable = True
+        
     else:
         nc_path = Rabi(QD_agent,meas_ctrl,ro_elements,run=False,n_avg=avg_times,specific_data_folder=data_folder,OSmode=OneShot)
     

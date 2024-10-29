@@ -98,6 +98,13 @@ def Rabi_dataReducer(nc_file_path:str):
     
     return dataset
 
+def OneShot_dataReducer(nc_file_path:str):
+    dataset = open_dataset(nc_file_path)
+    for var in dataset.data_vars:
+        dataset[var] = dataset[var] * 1000
+    
+    return dataset
+
 
 def Conti2tone_dataReducer(nc_file_path:str):
     ds = open_dataset(nc_file_path)

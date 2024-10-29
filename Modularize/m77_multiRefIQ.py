@@ -45,6 +45,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
+            num_channels=len(list(ro_elements.keys())),
         )
         QD_agent.quantum_device.cfg_sched_repetitions(shots)
         iq_tuples = gettable.get() # tuple?
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     if execution:
         if keep.lower() in ["y", "yes"]:
             QD_agent.refresh_log("After IQ ref checking!")
-            QD_agent.QD_keeper()
+            # QD_agent.QD_keeper()
 
 
     """ Close """

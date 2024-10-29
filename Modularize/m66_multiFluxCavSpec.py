@@ -130,7 +130,7 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
     for cp in cp_elements:
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
-def freq_arranger(QD_agent:QDmanager,freq_halfspan:dict,freq_shift:dict, fpts:int)->dict:
+def FluxCav_waiter(QD_agent:QDmanager,freq_halfspan:dict,freq_shift:dict, fpts:int)->dict:
     """
     Generate the frequencies samples array with the rule: array = linspace(ROfreq+freq_shift-freq_halfspan, ROfreq+freq_shift+freq_halfspan, fpts)
     * frequency unit in Hz
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',)
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-    ro_elements = freq_arranger(QD_agent, freq_half_span, freq_shift, freq_data_points)
+    ro_elements = FluxCav_waiter(QD_agent, freq_half_span, freq_shift, freq_data_points)
 
 
     """ Running """

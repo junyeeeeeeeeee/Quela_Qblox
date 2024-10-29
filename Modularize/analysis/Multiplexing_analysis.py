@@ -1,7 +1,7 @@
-from numpy import array, mean, median, argmax, linspace, arange
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like
 from numpy import sqrt
 from numpy import ndarray
-from xarray import Dataset
+from xarray import Dataset, DataArray
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
 import os, sys 
@@ -12,6 +12,10 @@ from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, flux
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, Fit_analysis_plot
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
+from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
+from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from Modularize.support import rotate_onto_Inphase, rotate_data
+
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
 
@@ -132,7 +136,7 @@ class analysis_tools():
             plt.savefig(os.path.join(save_pic_path,f"{self.qubit}_fluxQubitSpectro_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
             plt.close()
 
-    def rabi_ana(self, refIQ:list=[]):
+    def rabi_ana(self, ref:list=[]):
         self.qubit = self.ds.attrs["target_q"]
         x_data = array(self.ds['x0'])
         title = self.ds['x0'].attrs["long_name"]
@@ -141,17 +145,44 @@ class analysis_tools():
         q_data = array(self.ds['y1'])
 
         if not self.ds.attrs["OS_mode"]:
-            contrast = sqrt((i_data-refIQ[0])**2+(q_data-refIQ[1])**2)
+            if len(ref) == 2:
+                data_to_fit = sqrt((i_data-ref[0])**2+(q_data-ref[1])**2)
+            else:
+                iq_data = column_stack((i_data,q_data)).T
+                data_to_fit = rotate_data(iq_data,float(ref[0]))[0]
+                plt.plot(data_to_fit)
+                plt.show()
         else:
-            pass # need GMM model helps analysis the one-shot mode measurement
-        self.fit_packs = Rabi_fit_analysis(contrast,x_data,title)
+            # wait GMM
+            pass
+
+        self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,title)
         
 
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
+    def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
+        self.fq = tansition_freq_Hz
+        self.gmm2d_fidelity = GMMROFidelity()
+        self.gmm2d_fidelity._import_data(data)
+        self.gmm2d_fidelity._start_analysis()
+        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+        _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.centers[0],self.gmm2d_fidelity.centers[1])
+        z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+        self.rotated_data = empty_like(array(data))
+        for state_idx, state_data in enumerate(z):
+            self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
 
+    def oneshot_plot(self,save_pic_path:str=None):
+        da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
+        self.gmm2d_fidelity._import_data(da)
+        self.gmm2d_fidelity._start_analysis()
+        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+
+        plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+        plt.close()
 
 
 ################################
@@ -166,11 +197,12 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.exp_name = analyze_for_what_exp.lower()
 
 
-    def _import_data( self, data:Dataset, var_dimension:int, refIQ:list=[], fit_func:callable=None):
+    def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
         self.ds = data
         self.dim = var_dimension
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
+        self.transition_freq = fq_Hz
 
     def _start_analysis(self):
         match self.exp_name:
@@ -180,6 +212,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.fluxQb_ana(self.fit_func,self.refIQ)
             case 'm1111': 
                 self.rabi_ana(self.refIQ)
+            case 'm1414': 
+                self.oneshot_ana(self.ds,self.transition_freq)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -191,6 +225,9 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.fluxQb_plot(pic_save_folder)
             case 'm1111': 
                 self.rabi_plot(pic_save_folder)
+            case 'm1414': 
+                self.oneshot_plot(pic_save_folder)
+                self.fit_packs = {}
         
         return self.fit_packs
 
@@ -226,9 +263,9 @@ if __name__ == "__main__":
     #     ans = ANA._export_result()
 
     """ Rabi Oscillation """
-    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M06S00.nc" # power rabi
-    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
-    QD_file = "Modularize/QD_backup/20241027/DR2#10_SumInfo.pkl"
+    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H15M46S09.nc" # power rabi
+    # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
+    QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 

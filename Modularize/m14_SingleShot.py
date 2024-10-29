@@ -25,7 +25,7 @@ except:
 
 def Qubit_state_single_shot(QD_agent:QDmanager,shots:int=1000,run:bool=True,q:str='q1',IF:float=250e6,Experi_info:dict={},ro_amp_factor:float=1,T1:float=15e-6,exp_idx:int=0,parent_datafolder:str='',plot:bool=False):
     qubit_info = QD_agent.quantum_device.get_element(q)
-    qubit_info.measure.integration_time(0.75e-6)
+    qubit_info.measure.integration_time(1e-6)
     print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
     print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
     
@@ -121,10 +121,10 @@ def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict,target_q:str,shots
         else:
             effT_mk, ro_fidelity, thermal_p = 0, 0, 0
     else:
-        thermal_p, effT_mk, ro_fidelity = a_OSdata_analPlot(QD_agent,target_q,nc,plot,save_pic=save_every_pic)
+        thermal_p, effT_mk, ro_fidelity, rotate_angle = a_OSdata_analPlot(nc,QD_agent,target_q,plot,save_pic=save_every_pic)
 
 
-    return thermal_p, effT_mk, ro_fidelity
+    return thermal_p, effT_mk, ro_fidelity, rotate_angle
 
 if __name__ == '__main__':
     
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     execute:bool = True
     repeat:int = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {'q0':{"roAmp_factor":1}}
+    ro_elements = {'q0':{"roAmp_factor":1},'q1':{"roAmp_factor":1}}
     couplers = []
 
 
@@ -168,6 +168,7 @@ if __name__ == '__main__':
             snr_rec[qubit].append(info[2])
             effT_rec[qubit].append(info[1])
             thermal_pop[qubit].append(info[0]*100)
+            QD_agent.refIQ[qubit] = [info[-1]]
             if ro_amp_scaling !=1 or ro_atte_degrade_dB != 0:
                 keep = mark_input(f"Keep this RO amp for {qubit}?[y/n]")
             else:

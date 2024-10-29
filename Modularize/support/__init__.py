@@ -22,8 +22,9 @@ from utils.tutorial_utils import (
 from Modularize.support.QDmanager import QDmanager, Data_manager
 import Modularize.support.UI_Window as uw
 import Modularize.support.Chip_Data_Store as cds
-
-from numpy import asarray, ndarray, real
+from numpy import ndarray
+from numpy import asarray, real, vstack, array
+from numpy import arctan2, pi, cos, sin
 from Modularize.support.UserFriend import *
 
 
@@ -372,6 +373,49 @@ def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:str)->dict
                 raise KeyError(f"Un-supported mode = {mode} was given !")
     
     return ans
+
+def rotation_matrix(angle)->ndarray:
+    rotate_matrix = array([
+        [cos(angle), -sin(angle)],
+        [sin(angle),  cos(angle)]
+    ])
+    return rotate_matrix
+
+def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=None)->tuple[ndarray,float]:
+    """
+        Give 2 points, rotate them makes them lie one the x-axis and return the rotate angle in degree.\n
+        If you also give the rotate angle in degree, we rotate them according to this angle.
+    """
+
+    translation = -point_1
+    P1_translated = point_1 + translation
+    P2_translated = point_2 + translation
+
+    # Step 2: Calculate the angle of rotation to align P2_translated with the x-axis
+    delta_x = P2_translated[0]
+    delta_y = P2_translated[1]
+    
+    if angle_degree is None:
+        angle = -arctan2(delta_y, delta_x)  # Angle to align with x-axis
+    else:
+        angle = -angle_degree*pi/180
+ 
+    # Step 3: Define the rotation matrix for -angle (to align along x-axis)
+
+    # Apply rotation to both translated points
+    P1_rotated = rotation_matrix(angle) @ P1_translated 
+    P2_rotated = rotation_matrix(angle) @ P2_translated 
+
+    return vstack((P1_rotated,P2_rotated)), -angle*180/pi
+
+
+def rotate_data(data:ndarray, angle_degree:float)->ndarray:
+    """ data shape (IQ, shots)"""
+
+    angle = -angle_degree*pi/180
+    data_rotated = rotation_matrix(angle) @ data
+
+    return data_rotated
 
 
 if __name__ == "__main__":
