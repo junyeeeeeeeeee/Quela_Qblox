@@ -140,12 +140,15 @@ class analysis_tools():
         i_data = array(self.ds['y0'])
         q_data = array(self.ds['y1'])
 
-        contrast = sqrt((i_data-refIQ[0])**2+(q_data-refIQ[1])**2)
+        if not self.ds.attrs["OS_mode"]:
+            contrast = sqrt((i_data-refIQ[0])**2+(q_data-refIQ[1])**2)
+        else:
+            pass # need GMM model helps analysis the one-shot mode measurement
         self.fit_packs = Rabi_fit_analysis(contrast,x_data,title)
         
 
     def rabi_plot(self, save_pic_path:str=None):
-        if save_pic_path is not None: save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
 
@@ -206,7 +209,7 @@ if __name__ == "__main__":
     # for q in dss:
     #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
     #     ANA._start_analysis()
-    #     ans = ANA._export_result(plot=True)
+    #     ans = ANA._export_result()
 
 
     """ Flux Qubit Spectroscopy """
@@ -220,7 +223,7 @@ if __name__ == "__main__":
     # for q in dss:
     #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
     #     ANA._start_analysis()
-    #     ans = ANA._export_result(plot=True)
+    #     ans = ANA._export_result()
 
     """ Rabi Oscillation """
     m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M06S00.nc" # power rabi
@@ -234,6 +237,6 @@ if __name__ == "__main__":
     for q in dss:
         ANA._import_data(dss[q],1,QD_agent.refIQ[q])
         ANA._start_analysis()
-        ans = ANA._export_result(plot=True)
+        ans = ANA._export_result()
 
     
