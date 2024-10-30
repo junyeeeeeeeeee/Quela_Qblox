@@ -247,10 +247,10 @@ if __name__ == "__main__":
     for q in dss:
         ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
         ANA._start_analysis()
-        ans = ANA._export_result(Data_manager().get_today_picFolder())
+        ANA._export_result(Data_manager().get_today_picFolder())
 
-        if ans != {}:
-            analysis_result = QS_fit_analysis(ans[q]["contrast"],f=ans[q]["xyf_data"])
+        if ANA.fit_packs != {}:
+            analysis_result = QS_fit_analysis(ANA.fit_packs[q]["contrast"],f=ANA.fit_packs[q]["xyf_data"])
             twotone_comp_plot(analysis_result,[],True)
             update_2toneResults_for(QD_agent,q,{str(q):analysis_result},xyl_guess[0])
         else:

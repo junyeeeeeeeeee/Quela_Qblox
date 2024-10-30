@@ -14,6 +14,7 @@ from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
+from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from Modularize.support import rotate_onto_Inphase, rotate_data
 
@@ -176,11 +177,23 @@ class analysis_tools():
         self.gmm2d_fidelity._import_data(data)
         self.gmm2d_fidelity._start_analysis()
         g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+        p00 = g1d_fidelity.g1d_dist[0][0][0]
+        self.thermal_populations = g1d_fidelity.g1d_dist[0][0][1]
+        p11 = g1d_fidelity.g1d_dist[1][0][1]
+        if self.fq is not None:
+            self.effT_mK = p01_to_Teff(self.thermal_populations, self.fq)*1000
+        else:
+            self.effT_mK = 0
+        self.RO_fidelity_percentage = (p00+p11)*100/2
+
+
         _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.centers[0],self.gmm2d_fidelity.centers[1])
         z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
         self.rotated_data = empty_like(array(data))
         for state_idx, state_data in enumerate(z):
             self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
+        
+        self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
 
     def oneshot_plot(self,save_pic_path:str=None):
         da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
@@ -234,9 +247,6 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm1414': 
                 self.oneshot_plot(pic_save_folder)
-                self.fit_packs = {}
-        
-        return self.fit_packs
 
 
 

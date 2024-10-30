@@ -24,66 +24,41 @@ from Modularize.support import rotate_onto_Inphase, rotate_data
 
 # total_sec_diff = (datetime.strptime(time_2,"%Y-%m-%d %H:%M:%S")-datetime.strptime(time_1,"%Y-%m-%d %H:%M:%S")).total_seconds()# print(time.strptime(end_time,"%Y-%m-%d %H:%M:%S")-time.strptime(start_time,"%Y-%m-%d %H:%M:%S"))
 # print(total_sec_diff)
-file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H18M40S57.nc"
-QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
-QD_agent = QDmanager(QD_file)
-QD_agent.QD_loader()
+# file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H18M40S57.nc"
+# QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
+# QD_agent = QDmanager(QD_file)
+# QD_agent.QD_loader()
 
-ds = open_dataset(file)
-for var in ds.data_vars:
-    ds[var] = ds[var] * 1000
-data = ds['q0']
-gmm2d_fidelity = GMMROFidelity()
-gmm2d_fidelity._import_data(data)
-gmm2d_fidelity._start_analysis()
-g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
+# ds = open_dataset(file)
+# for var in ds.data_vars:
+#     ds[var] = ds[var] * 1000
+# data = ds['q0']
+# gmm2d_fidelity = GMMROFidelity()
+# gmm2d_fidelity._import_data(data)
+# gmm2d_fidelity._start_analysis()
+# g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
 
-transi_freq = None
-
-
-_, angle = rotate_onto_Inphase(gmm2d_fidelity.centers[0],gmm2d_fidelity.centers[1])
+# transi_freq = None
 
 
+# _, angle = rotate_onto_Inphase(gmm2d_fidelity.centers[0],gmm2d_fidelity.centers[1])
 
 
 
-z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
-rotated_data = empty_like(array(data))
-for state_idx, state_data in enumerate(z):
-    rotated_data[state_idx] = rotate_data(state_data,angle)
-
-da = DataArray(moveaxis(rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(data).shape[2]))] )
-gmm2d_fidelity._import_data(da)
-gmm2d_fidelity._start_analysis()
-g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
-print(f"!! center:\n{gmm2d_fidelity.centers}")
-plot_readout_fidelity(da, gmm2d_fidelity, g1d_fidelity,transi_freq,None)
-plt.close()
-
-# print(array(ds['e']).shape)
-# print(array(ds['g']).shape)
-# dss = Rabi_dataReducer(file)
-# for q in dss:
-#     ds = dss[q]
-#     x_data = array(ds['x0'])
-#     title = ds['x0'].attrs["long_name"]
-#     x_axis_name = ds['x0'].attrs["name"]
-#     x_axis_unit = ds['x0'].attrs["unit"]
-
-#     i_data = array(ds['y0'])
-#     q_data = array(ds['y1'])
-
-#     contrast = sqrt((i_data-QD_agent.refIQ[q][0])**2+(q_data-QD_agent.refIQ[q][1])**2)
-#     fit_pack = Rabi_fit_analysis(contrast,x_data,title)
-#     Fit_analysis_plot(fit_pack,P_rescale=None,Dis=None,q=q)
-    # plt.plot(x_data,contrast)
-    # plt.xlabel(f"{x_axis_name} ({x_axis_unit})")
-    # plt.title(f"{q}_{title}")
-    # plt.ylabel("Contrast (mV)")
-    # plt.show()
 
 
+# z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+# rotated_data = empty_like(array(data))
+# for state_idx, state_data in enumerate(z):
+#     rotated_data[state_idx] = rotate_data(state_data,angle)
 
-# if __name__ == "__main__":
-#     x = ["abc", "eee", "dsd"]
-#     print([y for y in x if y.lower()=='abc'])
+# da = DataArray(moveaxis(rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(data).shape[2]))] )
+# gmm2d_fidelity._import_data(da)
+# gmm2d_fidelity._start_analysis()
+# g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
+# print(f"!! center:\n{gmm2d_fidelity.centers}")
+# plot_readout_fidelity(da, gmm2d_fidelity, g1d_fidelity,transi_freq,None)
+# plt.close()
+
+name = "DR2q0_SingleShot(0)_H11M01S48"
+print(name.split("_")[1].split("(")[1][:-1])

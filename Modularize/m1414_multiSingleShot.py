@@ -114,7 +114,7 @@ if __name__ == '__main__':
     
     """ Fill in """
     execute:bool = True
-    repeat:int = 1
+    repeat:int = 10
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
         'q0':{"ro_amp_factor":1,"xy_IF":250e6},
@@ -123,13 +123,20 @@ if __name__ == '__main__':
     couplers = []
 
 
+
     """ Optional paras """
     shot_num:int = 10000
     
 
 
     """ Iteration """
-    snr_rec, effT_rec, thermal_pop = {}, {}, {}
+    imediately_analysis:bool = True
+    repeat_folder_path:str = ''
+    if repeat > 1:
+        DM = Data_manager()
+        repeat_folder_path = DM.creat_datafolder_today(f"MultiQ_OScollections_{DM.get_time_now()}")
+        imediately_analysis = False
+        freqs:dict = {}
     
     for i in range(repeat):
         start_time = time.time()
@@ -142,24 +149,27 @@ if __name__ == '__main__':
         ro_elements, auto_save = SS_waiter(QD_agent,ro_elements,repeat)
         for qubit in ro_elements:
             init_system_atte(QD_agent.quantum_device,list([qubit]),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
+            if not imediately_analysis and i == repeat-1:
+                freqs[qubit] = QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()
+
 
 
         """ Running """
-        nc_path = SS_executor(QD_agent,cluster,Fctrl,ro_elements,execution=execute,shots=shot_num,exp_label=i)
+        nc_path = SS_executor(QD_agent,cluster,Fctrl,ro_elements,execution=execute,shots=shot_num,data_folder=repeat_folder_path,exp_label=i)
         slightly_print(nc_path)
         
-        """ Analysis """
-        ds = OneShot_dataReducer(nc_path)
-        for var in ds.data_vars:
-            ANA = Multiplex_analyzer("m1414")
-            ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
-            ANA._start_analysis()
-            pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
-            ANA._export_result(pic_path)
-
-
         """ Storing """ 
         if execute and repeat == 1:
+            """ Analysis """
+            ds = OneShot_dataReducer(nc_path)
+            for var in ds.data_vars:
+                ANA = Multiplex_analyzer("m1414")
+                ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
+                ANA._start_analysis()
+                pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
+                ANA._export_result(pic_path)
+                QD_agent.refIQ[var] = ANA.fit_packs["RO_rotation_angle"]
+                
             if auto_save:
                 QD_agent.QD_keeper() 
                 
@@ -168,11 +178,31 @@ if __name__ == '__main__':
         shut_down(cluster,Fctrl,Cctrl)
         end_time = time.time()
         slightly_print(f"time cose: {round(end_time-start_time,1)} secs")
+    
+    
+    
+    if not imediately_analysis:
+        eff_T, thermal_pop = {}, {}
+        from Modularize.analysis.Radiator.RadiatorSetAna import sort_set
+        nc_files = [name for name in os.listdir(repeat_folder_path) if (os.path.isfile(os.path.join(repeat_folder_path,name)) and name.split(".")[-1] == "nc")] # DR1q0_{T1/T2/SingleShot}(exp_idx)_H17M23S19.nc
+        sort_set(nc_files,1) 
 
-    # for qubit in effT_rec:
-    #     highlight_print(f"{qubit}: {round(median(array(effT_rec[qubit])),1)} +/- {round(std(array(effT_rec[qubit])),1)} mK")
-    #     Data_manager().save_histo_pic(QD_agent,effT_rec,qubit,mode="ss")
-    #     Data_manager().save_histo_pic(QD_agent,thermal_pop,qubit,mode="pop")
+        for nc_idx, nc_file in enumerate(nc_files):
+            ds = OneShot_dataReducer(os.path.join(repeat_folder_path,nc_file))
+            for var in ds.data_vars:
+                if nc_idx == 0: eff_T[var], thermal_pop[var] = [], []
+                ANA = Multiplex_analyzer("m1414")
+                ANA._import_data(ds[var],var_dimension=0,fq_Hz=freqs[var])
+                ANA._start_analysis()
+                # pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot({nc_file.split("_")[1].split("(")[1][:-1]})_{ds.attrs['execution_time']}")
+                # ANA._export_result(pic_path)
+                eff_T[var].append(ANA.fit_packs["effT_mK"])
+                thermal_pop[var].append(ANA.fit_packs["thermal_population"]*100)
+        
+        for qubit in eff_T:
+            highlight_print(f"{qubit}: {round(median(array(eff_T[qubit])),1)} +/- {round(std(array(eff_T[qubit])),1)} mK")
+            Data_manager().save_histo_pic(QD_agent,eff_T,qubit,mode="ss",pic_folder=repeat_folder_path)
+            Data_manager().save_histo_pic(QD_agent,thermal_pop,qubit,mode="pop",pic_folder=repeat_folder_path)
         
         
 

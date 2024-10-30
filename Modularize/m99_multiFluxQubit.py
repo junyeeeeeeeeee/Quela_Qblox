@@ -200,7 +200,8 @@ if __name__ == "__main__":
     for q in dss:
         ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
         ANA._start_analysis()
-        ana_results[q] = ANA._export_result(Data_manager().get_today_picFolder())
+        ANA._export_result(Data_manager().get_today_picFolder())
+        ana_results[q] = ANA.fit_packs
         if len(list(ana_results[q].keys())) != 0:
             update_by_fluxQubit(QD_agent,ana_results[q],q)
     
