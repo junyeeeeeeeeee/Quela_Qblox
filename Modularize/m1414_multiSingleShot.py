@@ -117,13 +117,13 @@ if __name__ == '__main__':
     repeat:int = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        'q0':{"ro_amp_factor":1,"xy_IF":150e6},
-        'q1':{"ro_amp_factor":1,"xy_IF":150e6}
+        'q0':{"ro_amp_factor":1,"xy_IF":250e6},
+        'q1':{"ro_amp_factor":1,"xy_IF":250e6}
     } 
     couplers = []
 
 
-    """ Optional paras (don't use is better) """
+    """ Optional paras """
     shot_num:int = 10000
     
 
@@ -150,8 +150,8 @@ if __name__ == '__main__':
         
         """ Analysis """
         ds = OneShot_dataReducer(nc_path)
-        ANA = Multiplex_analyzer("m1414")
         for var in ds.data_vars:
+            ANA = Multiplex_analyzer("m1414")
             ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
             ANA._start_analysis()
             pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")

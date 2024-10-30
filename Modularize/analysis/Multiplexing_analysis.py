@@ -6,15 +6,17 @@ from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
 import os, sys 
 import quantify_core.data.handling as dh
+from Modularize.support.UserFriend import *
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer
+from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, Fit_analysis_plot
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from Modularize.support import rotate_onto_Inphase, rotate_data
+
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
@@ -73,7 +75,9 @@ class analysis_tools():
         if save_pic_path is None:
             plt.show()
         else:
-            plt.savefig(os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
+            pic_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+            slightly_print(f"pic saved located:\n{pic_path}")
+            plt.savefig(pic_path)
             plt.close()
 
 
@@ -133,7 +137,9 @@ class analysis_tools():
         if save_pic_path is None:
             plt.show()
         else:
-            plt.savefig(os.path.join(save_pic_path,f"{self.qubit}_fluxQubitSpectro_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png"))
+            pic_path = os.path.join(save_pic_path,f"{self.qubit}_fluxQubitSpectro_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+            slightly_print(f"pic saved located:\n{pic_path}")
+            plt.savefig(pic_path)
             plt.close()
 
     def rabi_ana(self, ref:list=[]):
@@ -161,6 +167,7 @@ class analysis_tools():
 
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        if save_pic_path is not None: slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
     def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
@@ -263,17 +270,30 @@ if __name__ == "__main__":
     #     ans = ANA._export_result()
 
     """ Rabi Oscillation """
-    m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H15M46S09.nc" # power rabi
-    # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
+    # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H15M46S09.nc" # power rabi
+    # # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
+    # QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # dss = Rabi_dataReducer(m1111_file)  
+    # ANA = Multiplex_analyzer("m1111")      
+    # for q in dss:
+    #     ANA._import_data(dss[q],1,QD_agent.refIQ[q])
+    #     ANA._start_analysis()
+    #     ans = ANA._export_result()
+
+    """ Single shot """
+    m1414_file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H20M03S35.nc"
     QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    dss = Rabi_dataReducer(m1111_file)  
-    ANA = Multiplex_analyzer("m1111")      
-    for q in dss:
-        ANA._import_data(dss[q],1,QD_agent.refIQ[q])
+    ds = OneShot_dataReducer(m1414_file)
+    for var in ds.data_vars:
+        ANA = Multiplex_analyzer("m1414")
+        ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
         ANA._start_analysis()
-        ans = ANA._export_result()
-
+        pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
+        ANA._export_result(pic_path)
     
