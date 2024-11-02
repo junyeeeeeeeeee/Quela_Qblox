@@ -15,6 +15,7 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
+from utils.tutorial_utils import set_readout_attenuation
 
 def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,ro_p_min:float=0.01,ro_p_max:float=0.5,p_points:int=20,n_avg:int=100,run:bool=True,Experi_info:dict={})->Dataset:
 

@@ -4,63 +4,51 @@ from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 import matplotlib.pyplot as plt
+from xarray import Dataset
 from Modularize.support.UserFriend import *
 from Modularize.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
-from numpy import std, arange, array, average, mean, ndarray, pi
+from numpy import std, arange, array, average, mean, ndarray, pi, arange, reshape
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from Modularize.support.Pulse_schedule_library import Ramsey_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T2_fit_analysis, Fit_analysis_plot, Fit_T2_cali_analysis_plot, T1_fit_analysis
+from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
+from Modularize.support.Pulse_schedule_library import multi_ramsey_sche, set_LO_frequency, pulse_preview
+from Modularize.analysis.raw_data_demolisher import T2_dataReducer
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 
+def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:int=1,n_avg:int=1000,run:bool=True,exp_idx:int=0,data_folder:str='', second_phase:str='x'):
+    
+    sche_func= multi_ramsey_sche
+    nc_path = ''
+    for q in ro_elements['time_samples']:
+        qubit_info = QD_agent.quantum_device.get_element(q)
+        print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
+        print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+        time_data_idx = arange(ro_elements['time_samples'][q].shape[0])
 
-def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,arti_detune:int=0,IF:int=250e6,n_avg:int=1000,points:int=101,run:bool=True,q='q1', ref_IQ:list=[0,0],Experi_info:dict={},exp_idx:int=0,data_folder:str='',spin:int=0, second_phase:str='x'):
-    
-    T2_us = {}
-    analysis_result = {}
-    Real_detune= {}
-    
-    qubit_info = QD_agent.quantum_device.get_element(q)
-
-    
-    print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
-    print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
-
-    
-    New_fxy= qubit_info.clock_freqs.f01()+arti_detune
-    
-    LO= New_fxy+IF
-    set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=LO)
+    repeat_data_idx = arange(repeat)
     
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
     Para_free_Du.batched = True
+    Para_repeat = ManualParameter(name="repeat", unit="n", label="Count")
+    Para_repeat.batched = False
     
-    gap = (freeduration)*1e9 // points + (((freeduration)*1e9 // points) %(4*(spin+1))) # multiple by 8 ns
+
     
-    if spin >= 1:
-        samples = arange(0,freeduration,gap*1e-9)
-        samples = modify_time_point(samples, spin*8e-9)
-    else:
-        samples = arange(0,freeduration,gap*1e-9)
-        samples = modify_time_point(samples, 4e-9)
-    
-    sche_func= Ramsey_sche
+   
     sched_kwargs = dict(
-        q=q,
-        pi_amp={str(q):qubit_info.rxy.amp180()},
-        New_fxy=New_fxy,
-        freeduration=Para_free_Du,
-        pi_dura=qubit_info.rxy.duration(),
-        R_amp={str(q):qubit_info.measure.pulse_amp()},
-        R_duration={str(q):qubit_info.measure.pulse_duration()},
-        R_integration={str(q):qubit_info.measure.integration_time()},
-        R_inte_delay=qubit_info.measure.acq_delay(),
-        echo_pi_num=spin,
+        New_fxy=ro_elements["xyf"],
+        freeduration=ro_elements["time_samples"],
+        pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'d1'),
+        pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'d3'),
+        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["xyf"],'r2'),
+        echo_pi_num=ro_elements["spin_num"],
         second_pulse_phase=second_phase
         )
-    exp_kwargs= dict(sweep_freeDu=['start '+'%E' %samples[0],'end '+'%E' %samples[-1]],
-                     f_xy='%E' %sched_kwargs['New_fxy'],
-                     )
+
     if run:
         gettable = ScheduleGettable(
             QD_agent.quantum_device,
@@ -68,57 +56,43 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,ar
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
+            num_channels=len(list(ro_elements["time_samples"].keys())),
         )
         
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
-        meas_ctrl.settables(Para_free_Du)
-        meas_ctrl.setpoints(samples)
+        meas_ctrl.settables([Para_free_Du,Para_repeat])
+        meas_ctrl.setpoints_grid((time_data_idx,repeat_data_idx))
         
         
-        ramsey_ds = meas_ctrl.run('Ramsey')
-
+        ds = meas_ctrl.run('Ramsey')
         # Save the raw data into netCDF
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb=q,exp_type='T2',specific_dataFolder=data_folder)
+        dict_ = {}
+        for q_idx, q in enumerate(ro_elements["time_samples"]):
+            i_data = array(ds[f'y{2*q_idx}']).reshape(repeat,ro_elements["time_samples"][q].shape[0])
+            q_data = array(ds[f'y{2*q_idx+1}']).reshape(repeat,ro_elements["time_samples"][q].shape[0])
+            dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
+            time_values = list(ro_elements["time_samples"][q])*2*repeat
+            dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,repeat,ro_elements["time_samples"][q].shape[0]))
         
-        I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
+        ramsey_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":repeat_data_idx,"idx":time_data_idx})
+        for var in ramsey_ds.data_vars:
+            ramsey_ds[var].attrs["spin_num"] = ro_elements["spin_num"][var[:2]]
+        ramsey_ds.attrs["execution_time"] = Data_manager().get_time_now()
+        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb="multiQ",exp_type='T2',specific_dataFolder=data_folder,get_data_loc=True)
         
-        data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
+        # I,Q= dataset_to_array(dataset=ramsey_ds,dims=1)
         
-        try:
-            if spin == 0:
-                data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=20e-6)
-                phase = round(data_fit.attrs['phase']*180/pi,1)
-                T2_us[q] = data_fit.attrs['T2_fit']*1e6
-                Real_detune[q] = data_fit.attrs['f']
-            else:
-                data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=40e-6)
-                T2_us[q] = data_fit.attrs['T1_fit']*1e6
-                Real_detune[q] = 0
-        except:
-            warning_print("T2 fitting error")
+        # data= IQ_data_dis(I,Q,ref_I=ref_IQ[0],ref_Q=ref_IQ[-1])
         
-            data_fit=[]
-            T2_us[q] = 0
-            Real_detune[q] = 0
-
-        analysis_result[q] = data_fit
-
-        show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
-        if Experi_info != {}:
-            show_args(Experi_info(q))
     else:
-        # n_s = 2
-        sweep_para= array([samples[0],samples[-1]])
-        sched_kwargs['freeduration']= sweep_para.reshape(sweep_para.shape or (1,))
+        preview_para = {}
+        for q in ro_elements["time_samples"]:
+            preview_para[q] = array([ro_elements["time_samples"][q][0],ro_elements["time_samples"][q][-1]])
+        sched_kwargs['freeduration']= preview_para
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
         
-
-        show_args(exp_kwargs, title="Ramsey_kwargs: Meas.qubit="+q)
-        if Experi_info != {}:
-            show_args(Experi_info(q))
-        
-    return analysis_result, T2_us, Real_detune
+    return nc_path
 
 
 def modify_time_point(ary:ndarray,factor1:int, factor2:int=0):
@@ -153,44 +127,53 @@ def modify_time_point(ary:ndarray,factor1:int, factor2:int=0):
     return array(x)
 
 
-def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,artificial_detune:float=0e6,freeDura:float=30e-6,ith:int=1,run:bool=True,specific_folder:str='',pts:int=100, avg_n:int=800, spin_echo:int=0, IF:float=250e6, second_phase:str='x'):
+def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,repeat:int=1,ith:int=1,run:bool=True,specific_folder:str='', avg_n:int=800, second_phase:str='x'):
     if run:
-        qubit_info = QD_agent.quantum_device.get_element(specific_qubits)
-        ori_reset = qubit_info.reset.duration()
-        qubit_info.reset.duration(qubit_info.reset.duration()+freeDura)
-    
+        ori_reset = {}
         slightly_print(f"The {ith}-th T2:")
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
+        for q in ro_elements["time_samples"]:
+            qubit_info = QD_agent.quantum_device.get_element(q)
+            ori_reset[q] = qubit_info.reset.duration()
+            qubit_info.reset.duration(qubit_info.reset.duration()+max(ro_elements["time_samples"][q]))
+            Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
         
-        Ramsey_results, T2_us, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=avg_n,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=pts,run=True,exp_idx=ith,data_folder=specific_folder,spin=spin_echo,IF=IF,second_phase=second_phase)
-        Fctrl[specific_qubits](0.0)
+        nc_path = Ramsey(QD_agent,meas_ctrl,ro_elements,repeat,n_avg=avg_n,run=True,exp_idx=ith,data_folder=specific_folder,second_phase=second_phase)
+        reset_offset(Fctrl)
         
         cluster.reset()
-        this_t2_us = T2_us[specific_qubits]
-        qubit_info.reset.duration(ori_reset)
-        
+        for q in ori_reset:
+            qubit_info = QD_agent.quantum_device.get_element(q)
+            qubit_info.reset.duration(ori_reset[q])
     else:
-        Ramsey_results, _, average_actual_detune = Ramsey(QD_agent,meas_ctrl,arti_detune=artificial_detune,freeduration=freeDura,n_avg=1000,q=specific_qubits,ref_IQ=QD_agent.refIQ[specific_qubits],points=100,run=False,spin=spin_echo)
-        this_t2_us = 0
+        nc_path = Ramsey(QD_agent,meas_ctrl,ro_elements,repeat,n_avg=1000,run=False)
 
-    return Ramsey_results, this_t2_us, average_actual_detune
+    return nc_path
 
 
-def T2_waiter(QD_agent:QDmanager,ro_element:dict,evo_T:float,time_pts:int=100,spin_num:int=0)->dict:
+def T2_waiter(QD_agent:QDmanager,ro_element:dict,time_pts:int)->dict:
     """
-    The ro_element must satisfy these key_name inside the item for each qubit: `'detune'`. And alternatively: `'xy_IF'`.\n
-    For example: `ro_element = {"q0":{'detune':5e6,'xy_IF':150e6},...}`.
+    The ro_element must satisfy these key_name inside the item for each qubit: `'detune'`,`'evo_T'`,`'spin_num'`. And alternatively: `'xy_IF'`.\n
+    For example: `ro_element = {"q0":{'detune':5e6,'evo_T':10e-6, 'spin_num':0,'xy_IF':150e6},...}`.
     """
-    ro_elements = {}
+    ro_elements = {"xyf":{},"time_samples":{},"spin_num":{}}
+    
     for q in ro_element:
-        ro_elements[q] = {}
-        # LO setting
+        
+        
+        # XY-freq setting
         IF_key = [name for name in list(ro_element[q].keys()) if str(name).lower() == 'xy_if'][0] if len([name for name in list(ro_element[q].keys()) if str(name).lower() == 'xy_if'])==1 else ""      
         IF = ro_element[q][IF_key] if IF_key != "" else 150e6
-        new_freq = QD_agent.quantum_device.get_element(q).clock_freqs.f01() + ro_element[q]['detune']
+        new_freq = QD_agent.quantum_device.get_element(q).clock_freqs.f01() + (ro_element[q]['detune'] if 'detune' in list(ro_element[q].keys()) else 0)
+        ro_elements["xyf"][q] = new_freq
+        # LO settings
         set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=new_freq+IF)
-        ro_elements[q]["xyf"] = new_freq
-
+        # Spin echo pi number settings
+        ro_elements["spin_num"][q] = ro_element[q]['spin_num'] if 'spin_num' in list(ro_element[q].keys()) else 0
+        # Time sample settings
+        gap = (ro_element[q]['evo_T'])*1e9 // time_pts + (((ro_element[q]['evo_T'])*1e9 // time_pts) %(4*(ro_elements["spin_num"][q]+1))) # multiple by 8 ns
+        time_samples = modify_time_point(arange(0,ro_element[q]['evo_T'],gap*1e-9), ro_elements["spin_num"][q]*8e-9 if ro_elements["spin_num"][q]>=1 else 4e-9)
+        ro_elements["time_samples"][q] = time_samples
+        
 
     return ro_elements
 
@@ -202,76 +185,83 @@ if __name__ == "__main__":
     """ Fill in """
     execution:bool = 1
     chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"detune":0e6, "xy_IF":250e6},#-0.174e6
+        "q0":{"detune":0e6, 'evo_T':50e-6, 'spin_num':0, "xy_IF":250e6},
+        "q1":{"detune":0e6, 'evo_T':50e-6, 'spin_num':0, "xy_IF":250e6},
     }
     couplers = []
 
     """ Optional paras """
-    evo_T:float = 10e-6
-    histo_counts:int = 1
-    spin_echo_num:int = 0
-
+    histo_counts:int = 1       # if > 100, use while loop outside the FPGA
     time_data_points:int = 100
-    avg_n:int = 1000
+    avg_n:int = 500
 
 
     """ Iteration """
-    for qubit in ro_elements:
-        t2_us_rec = []
-        for ith_histo in range(ro_elements[qubit]["histo_counts"]):
-            start_time = time.time()
-            """ Preparations """
-            QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-            chip_info = cds.Chip_file(QD_agent=QD_agent)
-            
-            """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    if histo_counts > 100: # use while loop
+        repeat = 1
+        DM = Data_manager()
+        repeat_folder_path = DM.creat_datafolder_today(f"MultiQ_T2collections_{DM.get_time_now()}")
+    
+    ith_histo = 0
+    dont_stop = True
+    while dont_stop:
+        if histo_counts <= 100 :
+            repeat = histo_counts # repeat into FPGA
+            dont_stop = False
+            repeat_folder_path = ''
+        start_time = time.time()
+        
+        
+        """ Preparations """
+        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        chip_info = cds.Chip_file(QD_agent=QD_agent)
+        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        new_ro_elements = T2_waiter(QD_agent,ro_elements,time_data_points)
+    
+        
+        """ Running """
+        for qubit in new_ro_elements["xyf"]:
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-            slightly_print(f"Ramsey with detuning = {round(ro_elements[qubit]['detune']*1e-6,2)} MHz")
-            ramsey_results, this_t2_us, average_actual_detune = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],ith=ith_histo,run=execution,pts=time_data_points,spin_echo=spin_echo_pi_num,avg_n=avg_n,IF=xy_IF)
-            highlight_print(f"{qubit} XYF = {round(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()*1e-9,5)} GHz")
-            if this_t2_us > 0:
-                t2_us_rec.append(this_t2_us)
-            else:
-                warning_print("T2 fitting got minus value")
-
-            print(this_t2_us)
-            
-            """ Storing """
-            if ith_histo == int(ro_elements[qubit]["histo_counts"])-1:
-                if execution:
-                    mean_T2_us = round(mean(array(t2_us_rec)),2)
-                    std_T2_us  = round(std(array(t2_us_rec)),2)
-                    highlight_print(f"{qubit}: mean T2 = {mean_T2_us} 土 {std_T2_us} µs")
-
-                    if ro_elements[qubit]["histo_counts"] == 1:
-                        mean_T2_us = t2_us_rec[0]
-                        sd_T2_us = 0
-                        Fit_analysis_plot(ramsey_results[qubit],P_rescale=False,Dis=None,spin_echo=True if spin_echo_pi_num ==1 else False)
-                    else:
-                        if spin_echo_pi_num == 0:
-                            Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2*")
-                        else:
-                            Data_manager().save_histo_pic(QD_agent,{str(qubit):t2_us_rec},qubit,mode="t2")
-                        
-                        if ro_elements[qubit]["histo_counts"] >= 50:
-                            QD_agent.Notewriter.save_T2_for(mean_T2_us,qubit)
-                            QD_agent.QD_keeper()
-                            if chip_info_restore:
-                                chip_info.update_T2(qb=qubit, T2=f'{mean_T2_us} +- {std_T2_us}')
-
-            """ Close """
-            print('T2 done!')
-            shut_down(cluster,Fctrl,Cctrl)
-            end_time = time.time()
-            slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
-            
         
+        nc_path = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,new_ro_elements,repeat,ith=ith_histo,run=execution,avg_n=avg_n,specific_folder=repeat_folder_path)
+        slightly_print(f"Data saved located:\n{nc_path}")
+
         
-            
+        """ Analysis """
+        if not dont_stop:
+            ds = T2_dataReducer(nc_path)
+            for var in ds.data_vars:
+                if var.split("_")[-1] != 'x':
+                    time_data = array(ds[f"{var}_x"])[0][0]
+                    ANA = Multiplex_analyzer("m1212")
+                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+                    ANA._import_2nddata(time_data)
+                    ANA._start_analysis()
+
+                    fit_pic_folder = None#Data_manager().get_today_picFolder()
+                    ANA._export_result(fit_pic_folder)
+
+                    """ Storing """
+                    if histo_counts >= 50:
+                        QD_agent.Notewriter.save_T2_for(ANA.fit_packs["median_T2"],var)
+                        QD_agent.QD_keeper()
+                        if chip_info_restore:
+                            chip_info.update_T2(qb=qubit, T2=f'{ANA.fit_packs["median_T2"]} +- {ANA.fit_packs["std_T2"]}')
+
+
+        """ Close """
+        print('T2 done!')
+        shut_down(cluster,Fctrl,Cctrl)
+        end_time = time.time()
+        slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
+        ith_histo += 1
+        
+    
+    
+        
             
         
 

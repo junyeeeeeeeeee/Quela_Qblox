@@ -1,16 +1,16 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std
 from numpy import sqrt
 from numpy import ndarray
 from xarray import Dataset, DataArray
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
 import os, sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer
-from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, Fit_analysis_plot
+from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer
+from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
@@ -32,12 +32,12 @@ def parabola(x,a,b,c):
 class analysis_tools():
     def __init__(self):
         self.ds:Dataset = None
-    
+        self.fit_packs = {}
     def import_dataset(self,ds:Dataset):
         self.ds = ds  # inheritance 
 
     def conti2tone_ana(self, fit_func:callable=None, refIQ:list=[]):
-        self.fit_packs = {}
+        
         dataset_processed = dh.to_gridded_dataset(self.ds)
         self.target_q = self.ds.attrs['target_q']
         self.xyf = array(dataset_processed['x0'])
@@ -86,7 +86,6 @@ class analysis_tools():
 
     def fluxQb_ana(self, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
         self.qubit = self.ds.attrs['target_q']
-        self.fit_packs = {}
         self.filtered_z, self.filtered_f = [], []
         if self.qubit in self.ds.attrs["ref_z"].split("_"):
             self.ref_z = float(self.ds.attrs["ref_z"].split("_")[int(self.ds.attrs["ref_z"].split("_").index(self.qubit))+1])
@@ -168,7 +167,7 @@ class analysis_tools():
 
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
-        if save_pic_path is not None: slightly_print(f"pic saved located:\n{save_pic_path}")
+        if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
     def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
@@ -204,6 +203,36 @@ class analysis_tools():
         plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
         plt.close()
 
+    
+    def T2_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+        self.qubit = raw_data.name
+        
+        self.T2_fit = []
+        for idx, data in enumerate(reshaped):
+            self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
+            if len(ref) == 1:
+                data = rotate_data(data,ref[0])[0] # I
+            else:
+                data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
+            self.ans = T2_fit_analysis(data,array(time_samples))
+            self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
+        self.fit_packs["freq"] = self.ans.attrs['f']
+        self.fit_packs["median_T2"] = median(array(self.T2_fit))
+        self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
+        self.fit_packs["std_T2"] = std(array(self.T2_fit))
+
+    def T2_plot(self,save_pic_path:str=None):
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
+        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+        if len(self.T2_fit) > 1:
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}")
+
+    def XYF_cali_plot(self,save_pic_path:str=None,fq_MHz:int=None):
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_XYFcalibration_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
+        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
 ################################
 ####   Analysis Interface   ####
@@ -223,6 +252,9 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
         self.transition_freq = fq_Hz
+    
+    def _import_2nddata(self, data:DataArray):
+        self.data_2nd = data
 
     def _start_analysis(self):
         match self.exp_name:
@@ -234,6 +266,10 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_ana(self.refIQ)
             case 'm1414': 
                 self.oneshot_ana(self.ds,self.transition_freq)
+            case 'm1212':
+                self.T2_ana(self.ds,self.data_2nd,self.refIQ)
+            case 'c22':
+                self.T2_ana(self.ds,self.data_2nd,self.refIQ)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -247,6 +283,10 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm1414': 
                 self.oneshot_plot(pic_save_folder)
+            case 'm1212':
+                self.T2_plot(pic_save_folder)
+            case 'c22':
+                self.XYF_cali_plot(pic_save_folder,round(self.transition_freq*1e-6) if self.transition_freq is not None else None)
 
 
 
@@ -294,16 +334,36 @@ if __name__ == "__main__":
     #     ans = ANA._export_result()
 
     """ Single shot """
-    m1414_file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H20M03S35.nc"
-    QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
+    # m1414_file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H20M03S35.nc"
+    # QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # ds = OneShot_dataReducer(m1414_file)
+    # for var in ds.data_vars:
+    #     ANA = Multiplex_analyzer("m1414")
+    #     ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
+    #     ANA._start_analysis()
+    #     pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
+    #     ANA._export_result(pic_path)
+
+    """ T2 """
+    m1212_file = "Modularize/Meas_raw/20241030/DR2multiQ_T2(0)_H16M55S45.nc"
+    QD_file = "Modularize/QD_backup/20241030/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    ds = OneShot_dataReducer(m1414_file)
+    ds = T2_dataReducer(m1212_file)
     for var in ds.data_vars:
-        ANA = Multiplex_analyzer("m1414")
-        ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
-        ANA._start_analysis()
-        pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
-        ANA._export_result(pic_path)
-    
+        if var.split("_")[-1] != 'x':
+            time_data = array(ds[f"{var}_x"])[0][0]
+            ANA = Multiplex_analyzer("m1212")
+            ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+            ANA._import_2nddata(time_data)
+            ANA._start_analysis()
+
+            fit_pic_folder = Data_manager().get_today_picFolder()
+            ANA._export_result(fit_pic_folder)
+
+
+

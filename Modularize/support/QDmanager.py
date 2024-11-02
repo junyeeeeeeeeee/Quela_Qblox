@@ -358,13 +358,17 @@ class Data_manager:
     
     def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
+        if QD_agent is not None:
+            dr_loc = QD_agent.Identity.split("#")[0]
+        else:
+            dr_loc = "DR-"
         exp_timeLabel = self.get_time_now()
         if pic_folder == '':
             self.build_folder_today(self.raw_data_dir)
             pic_dir = self.pic_folder
         else:
             pic_dir = pic_folder
-        dr_loc = QD_agent.Identity.split("#")[0]
+        
         if mode.lower() =="t1" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")

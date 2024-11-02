@@ -105,6 +105,10 @@ def OneShot_dataReducer(nc_file_path:str):
     
     return dataset
 
+def T2_dataReducer(nc_file_path:str):
+    dataset = open_dataset(nc_file_path)
+
+    return dataset
 
 def Conti2tone_dataReducer(nc_file_path:str):
     ds = open_dataset(nc_file_path)

@@ -128,10 +128,11 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,ret
     
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=0.1e-6, max=5*T2_guess) 
-    up_lim_f= 5*1e6
+    up_lim_f= 30*1e6
     f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
     result = Ramsey_func_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
-    fit_error = float(result.covar[1][1])*1e6
+    if return_error:
+        fit_error = float(result.covar[1][1])*1e6
     A_fit= result.best_values['A']
     f_fit= result.best_values['f']
     phase_fit= result.best_values['phase']
@@ -1039,6 +1040,55 @@ def Ramsey_sche(
         
     return sched
 
+def multi_ramsey_sche(
+    New_fxy:dict,
+    freeduration:dict,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    echo_pi_num:dict,
+    repetitions:int=1,
+    second_pulse_phase:str='x',
+) -> Schedule:
+    qubits2read = list(freeduration.keys())
+    sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):   
+        for qubit_idx, q in enumerate(qubits2read):
+            freeDu = freeduration[q][acq_idx]
+            if acq_idx == 0:
+                sched.add(SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy[q]))
+            sched.add(Reset(q))
+
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+
+            if second_pulse_phase.lower() == 'x':
+                first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+            else:
+                first_half_pi = Y_pi_2_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+        
+            if echo_pi_num[q] != 0:
+                a_separate_free_Du = freeDu / echo_pi_num[q]
+                for pi_idx in range(echo_pi_num[q]):
+                    if pi_idx == 0 :
+                        pi = X_pi_p(sched,pi_amp,q,pi_dura[q],first_half_pi,0.5*a_separate_free_Du)
+                    else:
+                        pi = X_pi_p(sched,pi_amp,q,pi_dura[q],pi,1*a_separate_free_Du)
+                X_pi_2_p(sched,pi_amp,q,pi_dura[q],pi,0.5*a_separate_free_Du)
+            else:
+                X_pi_2_p(sched,pi_amp,q,pi_dura[q],first_half_pi,freeDu)
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 def Ramsey_readOther_sche(
     q:str,
     read_q:str,
@@ -1319,8 +1369,6 @@ def pi_half_cali_sche(
         Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
     return sched
-
-
 
 def Qubit_amp_SS_sche(
     q:str,
@@ -1726,7 +1774,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False, q:str=''):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False, q:str='', fq_MHz:int=None):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1763,6 +1811,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey' if q =="" else f"{q} Ramsey"
+        if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
