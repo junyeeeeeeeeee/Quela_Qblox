@@ -10,7 +10,7 @@ import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager, Data_manager
 from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer
-from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot
+from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
@@ -234,6 +234,32 @@ class analysis_tools():
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
+    def T1_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+        self.qubit = raw_data.name
+        
+        self.T1_fit = []
+        for idx, data in enumerate(reshaped):
+            
+            if len(ref) == 1:
+                data = rotate_data(data,ref[0])[0] # I
+            else:
+                data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
+            self.ans = T1_fit_analysis(data,array(time_samples))
+            self.T1_fit.append(self.ans.attrs["T1_fit"]*1e6)
+        self.fit_packs["median_T1"] = median(array(self.T1_fit))
+        self.fit_packs["mean_T1"] = mean(array(self.T1_fit))
+        self.fit_packs["std_T1"] = std(array(self.T1_fit))
+    
+    def T1_plot(self,save_pic_path:str=None):
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
+        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit)
+        if len(self.T1_fit) > 1:
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1")
+
+
+
 ################################
 ####   Analysis Interface   ####
 ################################
@@ -270,6 +296,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.T2_ana(self.ds,self.data_2nd,self.refIQ)
             case 'c22':
                 self.T2_ana(self.ds,self.data_2nd,self.refIQ)
+            case 'm1313':
+                self.T1_ana(self.ds,self.data_2nd,self.refIQ)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -287,6 +315,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.T2_plot(pic_save_folder)
             case 'c22':
                 self.XYF_cali_plot(pic_save_folder,round(self.transition_freq*1e-6) if self.transition_freq is not None else None)
+            case 'm1313':
+                self.T1_plot(pic_save_folder)
 
 
 

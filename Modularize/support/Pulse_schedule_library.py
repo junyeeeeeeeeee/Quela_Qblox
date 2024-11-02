@@ -897,6 +897,37 @@ def T1_sche(
         
     return sched
 
+def multi_T1_sche(
+    freeduration:dict,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(freeduration.keys())
+    sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
+    sched = Schedule("T1", repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            freeDu = freeduration[q][acq_idx]
+            sched.add(Reset(q))
+        
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+        
+        
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu+electrical_delay)
+            
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 def mix_T1_sche(
     q:str,
     pi_amp: dict,
@@ -907,6 +938,7 @@ def mix_T1_sche(
     R_inte_delay:float,
     repetitions:int=1,
 ) -> Schedule:
+
 
     sched = Schedule("T1", repetitions=repetitions)
     
@@ -923,7 +955,6 @@ def mix_T1_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
-
 
 def XY_Z_timing_sche(
     q:str,
