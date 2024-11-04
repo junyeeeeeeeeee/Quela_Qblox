@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer
+from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
@@ -17,6 +17,9 @@ from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from Modularize.support import rotate_onto_Inphase, rotate_data
+from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
+from qcat.analysis.qubit.relaxation import qubit_relaxation_fitting
+
 
 
 def parabola(x,a,b,c):
@@ -237,7 +240,7 @@ class analysis_tools():
     def T1_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
         self.qubit = raw_data.name
-        
+        self.plot_item = {"time":array(time_samples)*1e6}
         self.T1_fit = []
         for idx, data in enumerate(reshaped):
             
@@ -245,16 +248,24 @@ class analysis_tools():
                 data = rotate_data(data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.ans = T1_fit_analysis(data,array(time_samples))
-            self.T1_fit.append(self.ans.attrs["T1_fit"]*1e6)
+            self.plot_item["data"] = data
+            self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
+            self.T1_fit.append(self.ans.params["tau"].value)
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
         self.fit_packs["mean_T1"] = mean(array(self.T1_fit))
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
-        if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
-        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit)
+        fig, ax = plt.subplots()
+        ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
+        ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
+        if save_pic_path != "" : 
+            slightly_print(f"pic saved located:\n{save_pic_path}")
+            plt.savefig(save_pic_path)
+            plt.close()
+        else:
+            plt.show()
         if len(self.T1_fit) > 1:
             Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1")
 
@@ -378,22 +389,39 @@ if __name__ == "__main__":
     #     ANA._export_result(pic_path)
 
     """ T2 """
-    m1212_file = "Modularize/Meas_raw/20241030/DR2multiQ_T2(0)_H16M55S45.nc"
-    QD_file = "Modularize/QD_backup/20241030/DR2#10_SumInfo.pkl"
+    # m1212_file = "Modularize/Meas_raw/20241030/DR2multiQ_T2(0)_H16M55S45.nc"
+    # QD_file = "Modularize/QD_backup/20241030/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # ds = T2_dataReducer(m1212_file)
+    # for var in ds.data_vars:
+    #     if var.split("_")[-1] != 'x':
+    #         time_data = array(ds[f"{var}_x"])[0][0]
+    #         ANA = Multiplex_analyzer("m1212")
+    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+    #         ANA._import_2nddata(time_data)
+    #         ANA._start_analysis()
+
+    #         fit_pic_folder = Data_manager().get_today_picFolder()
+    #         ANA._export_result(fit_pic_folder)
+
+    """ T1 """
+    m1313_file = "Modularize/Meas_raw/20241102/DR2multiQ_T1(0)_H20M15S39.nc"
+    QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    ds = T2_dataReducer(m1212_file)
+    ds = T1_dataReducer(m1313_file)
     for var in ds.data_vars:
         if var.split("_")[-1] != 'x':
             time_data = array(ds[f"{var}_x"])[0][0]
-            ANA = Multiplex_analyzer("m1212")
+            ANA = Multiplex_analyzer("m1313")
             ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
             ANA._import_2nddata(time_data)
             ANA._start_analysis()
 
             fit_pic_folder = Data_manager().get_today_picFolder()
             ANA._export_result(fit_pic_folder)
-
 
 

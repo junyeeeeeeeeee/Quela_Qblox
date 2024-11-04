@@ -133,7 +133,7 @@ if __name__ == "__main__":
     couplers = []
 
     """ Optional paras """
-    histo_counts:int = 5 # > 100 use while loop outside the FPGA
+    histo_counts:int = 1 # > 100 use while loop outside the FPGA
     time_data_points:int = 100
     avg_n = 500
   
@@ -188,7 +188,7 @@ if __name__ == "__main__":
                         QD_agent.Notewriter.save_T1_for(ANA.fit_packs["median_T1"],var)
                         QD_agent.QD_keeper()
                         if chip_info_restore:
-                            chip_info.update_T2(qb=var, T2=f'{ANA.fit_packs["median_T1"]} +- {ANA.fit_packs["std_T1"]}')
+                            chip_info.update_T1(qb=var, T1=f'{ANA.fit_packs["median_T1"]} +- {ANA.fit_packs["std_T1"]}')
 
                 
         """ Close """
