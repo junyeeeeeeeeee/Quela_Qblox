@@ -218,8 +218,13 @@ class analysis_tools():
                 data = rotate_data(data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.ans = T2_fit_analysis(data,array(time_samples))
-            self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
+            if not self.echo:
+                self.ans = T2_fit_analysis(data,array(time_samples))
+                self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
+            else:
+                self.ans = T1_fit_analysis(data,array(time_samples))
+                self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
+                    
         self.fit_packs["freq"] = self.ans.attrs['f']
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
