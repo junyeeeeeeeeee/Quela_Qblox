@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import tkinter as tk
 from tkinter import ttk
 
-from Modularize.support.Experiment_setup import ip_register
+from Modularize.Configs.Experiment_setup import ip_register
 ip_values = list(ip_register.values())
 drs = list(ip_register.keys())
 # Initialize measurement window

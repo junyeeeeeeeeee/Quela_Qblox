@@ -42,14 +42,14 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
 
     amps = {}
     if ro_amps != {}:
-        init = compose_para_for_multiplexing(QD_agent,ro_elements,1)
+        init = compose_para_for_multiplexing(QD_agent,ro_elements,'r1')
         for q in ro_elements:
             if q in list(ro_amps.keys()):
                 amps[q] = ro_amps[q]
             else:
                 amps[q] = init[q]
     else:
-        amps = compose_para_for_multiplexing(QD_agent,ro_elements,1)
+        amps = compose_para_for_multiplexing(QD_agent,ro_elements,'r1')
 
 
     spec_sched_kwargs = dict(   

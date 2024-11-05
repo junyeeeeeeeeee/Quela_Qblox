@@ -17,6 +17,10 @@ class MultiplexingDataReducer():
         else:
             raise TypeError("You should give a nc_file path or a xr.Dataset")
         
+def fluxCoupler_dataReducer(nc_file_path:str)->Dataset:
+    dataset = open_dataset(nc_file_path)
+
+    return dataset
 
 
 def fluxCav_dataReductor(nc_file_path:str)->dict:
@@ -62,6 +66,7 @@ def fluxQub_dataReductor(nc_file_path:str)->dict:
         )
         
         new_ds.attrs = ds.attrs
+        new_ds.attrs["target_q"] = q
         new_ds.attrs["tuid"] = new_ds.attrs["tuid"].split("-")[0]+"-"+new_ds.attrs["tuid"].split("-")[1]+"-"+f'{(int(new_ds.attrs["tuid"].split("-")[2])+q_idx):03d}'+"-"+new_ds.attrs["tuid"].split("-")[3]
         
         # Data_manager().build_tuid_folder(new_ds.attrs["tuid"],f"{ordered_q_labels[q_idx]}FluxQubit")

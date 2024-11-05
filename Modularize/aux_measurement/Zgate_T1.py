@@ -12,7 +12,7 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import Zgate_T1_sche, set_LO_frequency, pulse_preview
 from Modularize.support.QbloxQMadapter import DataTransformer
-# from Modularize.analysis.zgateT1_plot import plot_z_gateT1_poster, plot_background
+from Modularize.analysis.zgateT1_plot import ZT1_Analyzer, Drawer
 
 def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,freeduration:float,Z_amp_min:float,Z_amp_max:float,n_avg:int=500,freeDu_points:int=101,Z_points:int=201,IF:float=150e6,run:bool=True,q='q1',Experi_info:dict={},exp_idx:int=0,no_pi_pulse:bool=False,data_folder:str=''):
     times = 1
@@ -97,6 +97,8 @@ def zT1_data_transform(data_folder:str, offset_z:float, want_system:str="qm"):
         ds = DataTransformer(output_data_system=want_system).zgateT1_adapter(file,offset_z,save_path=QM_folder) 
     return QM_folder
 
+
+
 def zgateT1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,freeDura:float=30e-6,z_span_period_factor:int=2,run:bool=True,specific_folder:str='',tpts:int=101,zpts=201,ith:int=0,pi_pulse:bool=True,n_avg:int=300):
     flux_guard_Volt = 0.4
 
@@ -180,12 +182,12 @@ if __name__ == "__main__":
             zgateT1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["evoT"],z_span_period_factor=flux_span_period_factor,tpts=evotime_data_points,zpts=flux_data_points,run=execution,ith=ith_histo,pi_pulse=prepare_excited,specific_folder=specific_folder,n_avg=avg_times)
 
             # """ plot """
-            # if plot_result and ith_histo == ro_elements[qubit]["histo_counts"]-1:
-            #     analyzed_folder = zT1_data_transform(specific_folder,QD_agent.Fluxmanager.get_sweetBiasFor(qubit))
-            #     if prepare_excited:
-            #         plot_z_gateT1_poster(analyzed_folder,QD_agent.Fluxmanager.get_sweetBiasFor(qubit),QD_agent.refIQ[qubit])
-            #     else:
-            #         plot_background(analyzed_folder,QD_agent.refIQ[qubit],QD_agent.Fluxmanager.get_sweetBiasFor(qubit))
+            if plot_result and ith_histo == ro_elements[qubit]["histo_counts"]-1:
+                analyzed_folder = zT1_data_transform(specific_folder,QD_agent.Fluxmanager.get_sweetBiasFor(qubit))
+                if prepare_excited:
+                    plot_z_gateT1_poster(analyzed_folder,QD_agent.Fluxmanager.get_sweetBiasFor(qubit),QD_agent.refIQ[qubit])
+                else:
+                    plot_background(analyzed_folder,QD_agent.refIQ[qubit],QD_agent.Fluxmanager.get_sweetBiasFor(qubit))
             
             """ Close """
             

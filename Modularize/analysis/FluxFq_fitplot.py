@@ -2,14 +2,19 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import xarray as xr
 import matplotlib.pyplot as plt 
-from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 from Modularize.support.QDmanager import QDmanager
 from Modularize.support.Pulse_schedule_library import IQ_data_dis, T1_fit_analysis, Fit_analysis_plot
-from numpy import array, mean, median, std, average, round, max, min, transpose, abs, sqrt, cos, sin, pi, linspace, arange,ndarray, log10, ndarray, asarray
-from datetime import datetime
-#//================= Fill in here ========================
+from numpy import array, std, average, round, max, min, transpose, abs, sqrt, cos, sin, pi, linspace, arange,ndarray, log10, ndarray, asarray
 
+#//================= Fill in here ========================
+target_q = 'q2'
+background_dir_path = "" # This folder contains all the ZgateT1 BACKGROUND nc files
+dir_path = "Modularize/Meas_raw/20241104/ZgateT1_q2_H16M38S41/ToQM" # This folder contains all the ZgateT1 nc files
+QD_file = "Modularize/QD_backup/20241104/DRKE#242_SumInfo.pkl"
+QD_agent = QDmanager(QD_file)
+QD_agent.QD_loader()
+z_fq_map = {"sweet":{"fq_GHz":QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()*1e-9,"Z_v":QD_agent.Fluxmanager.get_sweetBiasFor(target_q)}}
 
 def set_fit_paras(): # **** manually set
     d = 0.6
@@ -23,7 +28,7 @@ def set_fit_paras(): # **** manually set
 
 #//===================================================================================
 
-
+ref_IQ = QD_agent.refIQ[target_q]
 # z_period = QD_agent.Fluxmanager.get_PeriodFor(target_q)
 # f_bare_MHz = QD_agent.Notewriter.get_bareFreqFor(target_q)*1e-6
 # g_rq_MHz = QD_agent.Notewriter.get_sweetGFor(target_q)*1e-6
@@ -123,107 +128,6 @@ def plot_background(dir_path:str, ref_IQ:list, sweet_bias:float=0):
     
     return average(avg_I_data), std(avg_I_data)
 
-class ZT1_Analyzer():
-    def __init__(self,refIQ:list,bias_ref:float):
-        self.refIQ = refIQ
-        self.ref_bias = bias_ref
-
-    def import_data(self,folder_path:str):
-        self.folder_path = folder_path
-        self.datasets = []
-        # Iterate directory
-        for path in os.listdir(dir_path):
-            # check if current path is a file
-            if os.path.isfile(os.path.join(dir_path, path)):
-                file_path = os.path.join(dir_path,path)
-                if file_path.split(".")[-1] == 'nc':
-                    self.datasets.append(xr.open_dataset(file_path))
-    def start_analysis(self,time_sort:bool=False):
-        """ 
-        If time_sort: 
-            self.T1_rec = {"%Y-%m-%d %H:%M:%S":{"T1s":[],"mean_T1":0, "median_T1":0, "std_T1":0}.
-        else:
-            
-        """
-        if not time_sort:
-            self.T1_per_dataset = []
-            self.I_chennel_per_dataset = []   
-            for dataset in self.datasets :
-                # for dataset in sub_set:
-                self.qubit = list(dataset.data_vars)[0]
-                self.time, bias, T1s, Isignal = zgate_T1_fitting(dataset,self.refIQ)
-                self.T1_per_dataset.append(T1s)
-                self.I_chennel_per_dataset.append(Isignal)
-            self.avg_I_data = average(array(self.I_chennel_per_dataset),axis=0)
-            self.z = bias+self.ref_bias
-
-            self.avg_T1 = average(array(self.T1_per_dataset),axis=0)
-            self.std_T1_percent = round(std(array(self.T1_per_dataset),axis=0)*100/self.avg_T1,1)
-
-        else:
-            self.T1_rec = {}
-            for dataset in self.datasets :
-                # for dataset in sub_set:
-                self.qubit = list(dataset.data_vars)[0]
-                self.time, bias, T1s, Isignal = zgate_T1_fitting(dataset,self.refIQ)
-                self.T1_rec[dataset.attrs["end_time"]] = {}
-                self.T1_rec[dataset.attrs["end_time"]]["T1s"] = T1s
-                self.T1_rec[dataset.attrs["end_time"]]["mean_T1"] = mean(array(T1s))
-                self.T1_rec[dataset.attrs["end_time"]]["median_T1"] = median(array(T1s))
-                self.T1_rec[dataset.attrs["end_time"]]["std_T1"] = std(array(T1s))
-            self.T1_rec = dict(sorted(self.T1_rec.items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S")))
-            self.z = bias+self.ref_bias
-
-class Drawer():
-    def __init__(self,pic_title:str,save_pic_path:str=None):
-        self.title = pic_title
-        self.pic_save_path = save_pic_path
-        self.title_fontsize:int = 20
-
-    def export_results(self):
-        plt.title(self.title,fontsize=self.title_fontsize)
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
-        if self.pic_save_path is not None:
-            plt.savefig(self.pic_save_path)
-            plt.close()
-        else:
-            plt.show()
- 
-    
-    def build_up_plot_frame(self,subplots_alignment:list=[3,1])->tuple[Figure,list]:
-        fig, axs = plt.subplots(subplots_alignment[0],subplots_alignment[1],figsize=(subplots_alignment[0]*9,subplots_alignment[1]*6))
-        if subplots_alignment[0] == 1 and subplots_alignment[1] == 1:
-            axs = [axs]
-        return fig, axs
-    
-    def add_colormesh_on_ax(self,x_data:ndarray,y_data:ndarray,z_data:ndarray,fig:Figure,ax:plt.Axes)->plt.Axes:
-        im = ax.pcolormesh(x_data,y_data,transpose(z_data),shading="nearest")
-        fig.colorbar(im, ax=ax)
-        return ax
-
-    def add_scatter_on_ax(self,x_data:ndarray,y_data:ndarray,ax:plt.Axes,**kwargs)->plt.Axes:
-        ax.scatter(x_data,y_data,**kwargs)
-        return ax
-    
-    def add_plot_on_ax(self,x_data:ndarray,y_data:ndarray,ax:plt.Axes,**kwargs)->plt.Axes:
-        ax.plot(x_data,y_data,**kwargs)
-        return ax
-    
-    def set_xaxis_number_size(self,axs:list,fontsize:int):
-        for ax in axs:
-            ax:plt.Axes
-            ax.xaxis.set_tick_params(labelsize=fontsize)
-    
-    def set_yaxis_number_size(self,axs:list,fontsize:int):
-        for ax in axs:
-            ax:plt.Axes
-            ax.yaxis.set_tick_params(labelsize=fontsize)
-
-
-
-
 
 def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,ref_IQ:list,other_bias:list=None, other_bias_label:str=None, flux_cav_nc_path:str=None):
     
@@ -266,7 +170,8 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,ref_IQ:list,other_bias:li
         data_fit = T1_fit_analysis(data=zDepData,freeDu=array(time),T1_guess=1e-6)
         T1_1.append(data_fit.attrs['T1_fit']*1e6)
     
-    
+    print(T1)
+    print(time)
 
     avg_T1 = average(array(T1),axis=0)
     std_T1_percent = round(std(array(T1),axis=0)*100/avg_T1,1)
@@ -293,9 +198,9 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,ref_IQ:list,other_bias:li
     fig, ax = plt.subplots(plots_max_n,1,figsize=(12.5,22))
     # # plot T1 and the 2D color map in flux
     
-    im = ax[0].pcolormesh(z,time,transpose(avg_I_data),shading="nearest")
+    im = ax[0].pcolormesh(z,time,transpose(avg_I_data),cmap='RdBu',shading="nearest")
     ax[0].scatter(z,avg_T1,s=3,label='$T_{1}$',c='#0000FF')
-    
+   
     if other_bias is not None:
         ax[0].vlines(other_bias,0,50,colors='black',linestyles="--",label=other_bias_label)
     # ax[0].vlines([sweet_bias],0,50,colors='orange',linestyles="--",label='Fq=5.3GHz')
@@ -331,7 +236,38 @@ def plot_z_gateT1_poster(dir_path:str,sweet_bias:float,ref_IQ:list,other_bias:li
     # ax[2].set_ylim(0,100)
 
 
+    # # plot flux-cavity if it's given
+    if flux_cav_nc_path is not None:
+        dataset = xr.open_dataset(flux_cav_nc_path)
+        for ro, data in dataset.data_vars.items():
 
+            amp = data[0] + 1j*data[1]
+            freq = (dataset.coords["frequency"].values+5762)/1000 # ***
+            flux = dataset.coords["flux"].values
+            ax[flx_cav_plot_idx].pcolormesh(flux,freq,abs(amp),cmap='RdBu')
+            ax[flx_cav_plot_idx].set_xlim(min(z),max(z))
+            # ax[flx_cav_plot_idx].set_ylim(5.7525,5.765)                          # ***
+            ax[flx_cav_plot_idx].set_ylabel("Frequency (GHz)")
+            ax[flx_cav_plot_idx].set_title("Flux dependent Cavity")
+            if other_bias is not None:
+                ax[flx_cav_plot_idx].vlines(other_bias,min(freq),max(freq),colors='black',linestyles="--")
+            ax[flx_cav_plot_idx].vlines([sweet_bias],min(freq),max(freq),colors='orange',linestyles="--")
+
+    # # plot flux-fq fitting results
+    if other_bias is not None and other_bias_label is not None:
+        from scipy.optimize import curve_fit 
+        init, lo_b, up_b = set_fit_paras()
+        p, e = curve_fit(FqEqn,[z_fq_map[pos]["Z_v"] for pos in z_fq_map],[z_fq_map[pos]["fq_GHz"] for pos in z_fq_map],p0=init,bounds=(lo_b,up_b))
+        fq = FqEqn(z,*p)
+        pos_a = [z_fq_map["sweet"]["Z_v"],z_fq_map["sweet"]["fq_GHz"]]
+        
+        ax[flx_qub_plt_idx].plot(z,fq)
+        ax[flx_qub_plt_idx].set_title(f"Ec={round(p[0],3)} GHz, Ej={round(p[1],1)} GHz, d={round(p[2],2)}")
+        ax[flx_qub_plt_idx].vlines([pos_a[0]],min(fq),pos_a[1],colors='black',linestyles="--")
+        ax[flx_qub_plt_idx].vlines([z_fq_map[other_bias_label]["Z_v"]],min(fq),z_fq_map[other_bias_label]["fq_GHz"],colors='orange',linestyles="--")
+        ax[flx_qub_plt_idx].set_xlabel("bias (V)")
+        ax[flx_qub_plt_idx].set_ylabel("$f_{q}$ (GHz)")
+        ax[flx_qub_plt_idx].set_title("Flux dependent Transition Frequency")
 
 
     # # background peak flux
@@ -476,67 +412,7 @@ def give_Z_plotT1(z:list,flux_ary:ndarray,time:ndarray,Isignals:ndarray):
 # # give_Z_plotT1([0.08,0.04533338,-0.02],z,time,avg_I_data)
 
 
-def zT1_poster(dir_path:str,refIQ:list,bias_ref:float,pic_save_path:str=None,time_trace_mode:bool=False):
-    ZT1_ana = ZT1_Analyzer(refIQ=refIQ,bias_ref=bias_ref)
-    ZT1_ana.import_data(dir_path)
-    ZT1_ana.start_analysis(time_trace_mode)
-    Plotter = Drawer(pic_title=f"zgate-T1-{ZT1_ana.qubit}")
-    if not time_trace_mode:
-        
-        fig, axs = Plotter.build_up_plot_frame([1,1])
-        ax = Plotter.add_colormesh_on_ax(ZT1_ana.z,ZT1_ana.time,ZT1_ana.avg_I_data,fig,axs[0])
-        for T1_per_dataset in ZT1_ana.T1_per_dataset:
-            ax = Plotter.add_scatter_on_ax(x_data=ZT1_ana.z,y_data=T1_per_dataset,ax=ax,c='red',marker='*',s=50,label="raw data")
-        Plotter.ax = Plotter.add_scatter_on_ax(x_data=ZT1_ana.z,y_data=ZT1_ana.avg_T1,ax=ax,c='pink',s=10,label="avg data")
-        Plotter.ax.set_xlabel(f"{ZT1_ana.qubit} plux (V)",fontsize=Plotter.title_fontsize)
-        Plotter.ax.set_ylabel("Free evolution time (µs)",fontsize=Plotter.title_fontsize)
-        Plotter.ax.set_ylim(0,max(ZT1_ana.time))
-        
-
-    else:
-        
-        fig, axs = Plotter.build_up_plot_frame([1,1])
-        z = ZT1_ana.z
-        ans_dict = ZT1_ana.T1_rec
-        times = [datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S") for time_str in ans_dict.keys()]
-        time_diffs = [(t - times[0]).total_seconds() / 60 for t in times]  # Convert to minutes
-
-        # Get values
-        T1_data = [entry["T1s"] for entry in ans_dict.values()]
-
-        T1_data = array(T1_data).reshape(z.shape[0],len(times))
-        ax = Plotter.add_colormesh_on_ax(ZT1_ana.z,time_diffs,T1_data,fig,axs[0])
-        Plotter.ax.set_xlabel(f"{ZT1_ana.qubit} plux (V)",fontsize=Plotter.title_fontsize)
-        Plotter.ax.set_ylabel("Time past (min)",fontsize=Plotter.title_fontsize)
-
-    Plotter.pic_save_path = pic_save_path
-    Plotter.export_results()
-
-
-
 if __name__ == "__main__":
-    # fq, p, z, rate, std_T1_percent = plot_z_gateT1_poster(dir_path,z_fq_map["sweet"]["Z_v"],ref_IQ)
+    fq, p, z, rate, std_T1_percent = plot_z_gateT1_poster(dir_path,z_fq_map["sweet"]["Z_v"],ref_IQ)
     # plot_background("Modularize/Meas_raw/z_gate_T1_test/z_gate_T1_pi_False/ToQM",ref_IQ,0)
     # plot_purcell_compa(fq, p, z, z_fq_map["sweet"]["Z_v"], rate, std_T1_percent, kappa)
-    target_q = 'q0'
-    background_dir_path = "" # This folder contains all the ZgateT1 BACKGROUND nc files
-    dir_path = "Modularize/Meas_raw/20241104/ZgateT1_q0_H16M04S39/ToQM" # This folder contains all the ZgateT1 nc files
-    QD_file = "Modularize/QD_backup/20241104/DR2#10_SumInfo.pkl"
-    QD_agent = QDmanager(QD_file)
-    QD_agent.QD_loader()
-
-    ZT1_ana = ZT1_Analyzer(refIQ=QD_agent.refIQ[target_q],bias_ref=QD_agent.Fluxmanager.get_sweetBiasFor(target_q))
-    ZT1_ana.import_data(dir_path)
-    ZT1_ana.start_analysis()
-
-    Plotter = Drawer(pic_title=f"zgate-T1-{ZT1_ana.qubit}")
-    fig, axs = Plotter.build_up_plot_frame([1,1])
-
-    ax = Plotter.add_colormesh_on_ax(ZT1_ana.z,ZT1_ana.time,ZT1_ana.avg_I_data,fig,axs[0])
-    for T1_per_dataset in ZT1_ana.T1_per_dataset:
-        ax = Plotter.add_scatter_on_ax(x_data=ZT1_ana.z,y_data=T1_per_dataset,ax=ax,c='red',marker='*',s=50,label="raw data")
-    Plotter.ax = Plotter.add_scatter_on_ax(x_data=ZT1_ana.z,y_data=ZT1_ana.avg_T1,ax=ax,c='pink',s=10,label="avg data")
-    Plotter.ax.set_ylim(0,max(ZT1_ana.time))
-    Plotter.export_results()
-
-    

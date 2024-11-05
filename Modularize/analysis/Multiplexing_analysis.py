@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer
+from Modularize.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
@@ -31,6 +31,25 @@ def parabola(x,a,b,c):
 ####     Analysis tools    ####
 ################################
 
+def plot_FreqBiasIQ(f:ndarray,z:ndarray,I:ndarray,Q:ndarray,refIQ:list=[], ax:plt.Axes=None)->plt.Axes:
+    """
+        I and Q shape in (z, freq)
+    """
+    if len(refIQ) != 2:
+        refIQ = [0,0]
+        
+    data = sqrt((I-refIQ[0])**2+(Q-refIQ[1])**2)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12,8))
+        ax:plt.Axes
+    c = ax.pcolormesh(z, f*1e-9, data.transpose(), cmap='RdBu')
+    ax.set_xlabel("Flux Pulse amp (V)", fontsize=20)
+    ax.set_ylabel("Frequency (GHz)", fontsize=20)
+    fig.colorbar(c, ax=ax, label='Contrast (V)')
+    ax.xaxis.set_tick_params(labelsize=18)
+    ax.yaxis.set_tick_params(labelsize=18)
+    
+    return ax
 
 class analysis_tools():
     def __init__(self):
@@ -38,6 +57,32 @@ class analysis_tools():
         self.fit_packs = {}
     def import_dataset(self,ds:Dataset):
         self.ds = ds  # inheritance 
+
+
+    
+    def fluxCoupler_ana(self, var_name:str, refIQ:list=[]):
+        self.qubit = var_name
+        self.freqs = {}
+        self.freqs[var_name] = array(self.ds.data_vars[f"{var_name}_freq"])[0][0]
+        self.bias = array(self.ds.coords["bias"])
+        self.refIQ = refIQ
+        
+
+    def fluxCoupler_plot(self, save_pic_path:str=None):
+        I_data = array(self.ds.data_vars[self.qubit])[0]
+        Q_data = array(self.ds.data_vars[self.qubit])[1]
+        ax = plot_FreqBiasIQ(self.freqs[self.qubit],self.bias,I_data,Q_data,self.refIQ)
+        ax.set_title(f"{self.qubit} Readout",fontsize=20)
+        ax.set_xlabel(f"couplers {self.ds.attrs['cntrl_couplers'].replace('_', ' & ')} bias amplitude (V)")
+        plt.grid()
+        plt.tight_layout()
+        if save_pic_path is None:
+            plt.show()
+        else:
+            pic_path = os.path.join(save_pic_path,f"{self.qubit}_FluxCoupler_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+            slightly_print(f"pic saved located:\n{pic_path}")
+            plt.savefig(pic_path)
+            plt.close()
 
     def conti2tone_ana(self, fit_func:callable=None, refIQ:list=[]):
         
@@ -224,7 +269,7 @@ class analysis_tools():
             else:
                 self.ans = T1_fit_analysis(data,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
-                    
+
         self.fit_packs["freq"] = self.ans.attrs['f']
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
@@ -298,45 +343,61 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
     def _import_2nddata(self, data:DataArray):
         self.data_2nd = data
 
-    def _start_analysis(self):
+    def _start_analysis(self,**kwargs):
         match self.exp_name:
-            case 'm88': 
+            case 'm5':
+                self.fluxCoupler_ana(kwargs["var_name"],self.refIQ)
+            case 'm8': 
                 self.conti2tone_ana(self.fit_func,self.refIQ)
-            case 'm99': 
+            case 'm9': 
                 self.fluxQb_ana(self.fit_func,self.refIQ)
-            case 'm1111': 
+            case 'm11': 
                 self.rabi_ana(self.refIQ)
-            case 'm1414': 
+            case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
-            case 'm1212':
+            case 'm12':
                 self.T2_ana(self.ds,self.data_2nd,self.refIQ)
-            case 'c22':
+            case 'c2':
                 self.T2_ana(self.ds,self.data_2nd,self.refIQ)
-            case 'm1313':
+            case 'm13':
                 self.T1_ana(self.ds,self.data_2nd,self.refIQ)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
     def _export_result( self, pic_save_folder=None):
         match self.exp_name:
-            case 'm88':
+            case 'm5':
+                self.fluxCoupler_plot(pic_save_folder)
+            case 'm8':
                 self.conti2tone_plot(pic_save_folder)
-            case 'm99':
+            case 'm9':
                 self.fluxQb_plot(pic_save_folder)
-            case 'm1111': 
+            case 'm11': 
                 self.rabi_plot(pic_save_folder)
-            case 'm1414': 
+            case 'm14': 
                 self.oneshot_plot(pic_save_folder)
-            case 'm1212':
+            case 'm12':
                 self.T2_plot(pic_save_folder)
-            case 'c22':
+            case 'c2':
                 self.XYF_cali_plot(pic_save_folder,round(self.transition_freq*1e-6) if self.transition_freq is not None else None)
-            case 'm1313':
+            case 'm13':
                 self.T1_plot(pic_save_folder)
 
 
 
 if __name__ == "__main__":
+
+    """ Flux coupler """
+    m55_file = "Modularize/Meas_raw/20241104/DR2multiQ_FluxCavity_H12M37S17.nc"
+    QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
+    QD_agent = QDmanager(QD_file)
+    QD_agent.QD_loader()
+
+    ds = fluxCoupler_dataReducer(m55_file)
+    for var in ds.data_vars:
+        if var.split("_")[-1] != 'freq':
+            ANA = Multiplex_analyzer("m55")
+
 
     """ Continuous wave 2 tone """
     # m88_file = "Modularize/Meas_raw/20241026/DR2multiQ_2tone_H13M01S43.nc"
@@ -358,7 +419,7 @@ if __name__ == "__main__":
     # QD_agent = QDmanager(QD_file)
     # QD_agent.QD_loader()
 
-    # dss = Conti2tone_dataReducer(m99_file)  
+    # dss = fluxQub_dataReductor(m99_file)  
     # ANA = Multiplex_analyzer("m99")      
     # for q in dss:
     #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)

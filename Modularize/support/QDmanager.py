@@ -75,7 +75,7 @@ class QDmanager():
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
         if new_Hcfg:
-            from Modularize.support.Experiment_setup import hcfg_map
+            from Modularize.Configs.Experiment_setup import hcfg_map
             self.Hcfg = hcfg_map[self.Identity.split("#")[0].lower()]
         else:
             self.Hcfg = gift["Hcfg"]
@@ -212,7 +212,11 @@ class Data_manager:
     def __init__(self):
         from Modularize.support.Path_Book import meas_raw_dir
         from Modularize.support.Path_Book import qdevice_backup_dir
+        if not os.path.isdir(qdevice_backup_dir):
+            os.mkdir(qdevice_backup_dir) 
         self.QD_back_dir = qdevice_backup_dir
+        if not os.path.isdir(meas_raw_dir):
+            os.mkdir(meas_raw_dir) 
         self.raw_data_dir = meas_raw_dir
         self.raw_folder = None
 
@@ -237,6 +241,7 @@ class Data_manager:
         """ 
         if parent_path == '':
             parent_path = self.QD_back_dir
+            
 
         folder = self.get_date_today()
         new_folder = os.path.join(parent_path, folder) 

@@ -1,7 +1,7 @@
 import pickle, os
 from typing import Callable
-from Modularize.support.Experiment_setup import get_FluxController, get_CouplerController
-from Modularize.support.Experiment_setup import ip_register, port_register
+from Modularize.Configs.Experiment_setup import get_FluxController, get_CouplerController
+from Modularize.Configs.Experiment_setup import ip_register, port_register
 from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
 import ipywidgets as widgets
@@ -53,7 +53,7 @@ def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,couple
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
     if mode.lower() in ['new', 'n']:
-        from Modularize.support.Experiment_setup import hcfg_map
+        from Modularize.Configs.Experiment_setup import hcfg_map
         cfg, pth = hcfg_map[dr_loc.lower()], ''
         cluster_ip = ip_register[dr_loc.lower()]
         if dr_loc == '':
