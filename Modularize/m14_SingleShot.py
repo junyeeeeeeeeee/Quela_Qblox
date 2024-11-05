@@ -6,6 +6,7 @@ from Modularize.support.UserFriend import *
 from numpy import array, linspace, median, std, moveaxis, arange
 from quantify_scheduler.gettables import ScheduleGettable
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
+from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
 from Modularize.support import QDmanager, Data_manager,init_system_atte, init_meas, shut_down, coupler_zctrl, compose_para_for_multiplexing,reset_offset
 from Modularize.support.Pulse_schedule_library import multi_Qubit_SS_sche, set_LO_frequency, pulse_preview
 from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
@@ -17,9 +18,10 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,r
 
     for q in ro_elements:
         qubit_info = QD_agent.quantum_device.get_element(q)
-        qubit_info.measure.integration_time(1e-6)
-        print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
-        print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+        qubit_info.measure.pulse_duration(get_manully_integration_time(q))
+        qubit_info.measure.integration_time(get_manully_integration_time(q))
+        qubit_info.reset.duration(get_manully_reset_time(q) if get_manully_reset_time(q) != 0 else set_reset_time_by_T1(QD_agent,q))
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
 
         qubit_info.measure.pulse_amp(float(ro_elements[q]["ro_amp_factor"])*qubit_info.measure.pulse_amp())
         if float(ro_elements[q]["ro_amp_factor"]) != 1:
@@ -168,6 +170,7 @@ if __name__ == '__main__':
                 ANA._start_analysis()
                 pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
                 ANA._export_result(pic_path)
+                highlight_print(f"{var} rotate angle = {ANA.fit_packs["RO_rotation_angle"]} in degree.")
                 QD_agent.refIQ[var] = [ANA.fit_packs["RO_rotation_angle"]]
                 
             if auto_save:

@@ -1,7 +1,7 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose
 from numpy import sqrt
 from numpy import ndarray
-from xarray import Dataset, DataArray
+from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
 import os, sys 
@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer
+from Modularize.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer
 from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
@@ -19,17 +19,11 @@ from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from Modularize.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
 from qcat.analysis.qubit.relaxation import qubit_relaxation_fitting
-
-
+from datetime import datetime
+from matplotlib.figure import Figure
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
-
-
-#? Analyzer use tools to analyze data
-################################
-####     Analysis tools    ####
-################################
 
 def plot_FreqBiasIQ(f:ndarray,z:ndarray,I:ndarray,Q:ndarray,refIQ:list=[], ax:plt.Axes=None)->plt.Axes:
     """
@@ -51,10 +45,106 @@ def plot_FreqBiasIQ(f:ndarray,z:ndarray,I:ndarray,Q:ndarray,refIQ:list=[], ax:pl
     
     return ax
 
+def zgate_T1_fitting(time_array:DataArray,IQ_array:DataArray, ref_IQ:list, fit:bool=True)->tuple[list,list]:
+    I_array = list(IQ_array[0]) # shape in (bias, time)
+    Q_array = list(IQ_array[1]) # shape in (bias, time)
+
+    T1s = []
+    signals = []
+    if len(ref_IQ) == 1:
+        for bias_idx, bias_data in enumerate(I_array):
+            signals.append(rotate_data(array([bias_data,Q_array[bias_idx]]),ref_IQ[0])[0])
+            if fit:
+                T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
+    else:
+        for bias_idx, bias_data in enumerate(I_array):
+            signals.append(sqrt((array(bias_data)-ref_IQ[0])**2+(array(Q_array[bias_idx])-ref_IQ[1])**2))
+            if fit:
+                T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
+
+    return signals, T1s
+
+def build_result_pic_path(dir_path:str,folder_name:str="")->str:
+    parent = os.path.split(dir_path)[0]
+    new_path = os.path.join(parent,"ZgateT1_pic" if folder_name == "" else folder_name)
+    if not os.path.exists(new_path):
+        os.mkdir(new_path)
+    return new_path
+
+class Artist():
+    def __init__(self,pic_title:str,save_pic_path:str=None):
+        self.title:str = pic_title
+        self.pic_save_path:str = save_pic_path
+        self.title_fontsize:int = 22
+        self.axis_subtitle_fontsize:int = 19
+        self.axis_label_fontsize:int = 19
+        self.tick_number_fontsize:int = 16
+        self.color_cndidates:list = ["#1E90FF","#D2691E","#FFA500","#BDB76B","#FF0000","#0000FF","#9400D3"]
+        self.axs:list = []
+
+    def export_results(self):
+        import warnings
+        warnings.filterwarnings("ignore", message="No artists with labels found to put in legend")
+        plt.title(self.title,fontsize=self.title_fontsize)
+        plt.legend()
+        plt.grid()
+        plt.tight_layout()
+        if self.pic_save_path is not None:
+            plt.savefig(self.pic_save_path)
+            plt.close()
+        else:
+            plt.show()
+
+    def includes_axes(self,axes:list):
+        for ax in axes:
+            self.axs.append(ax)
+    
+    def set_LabelandSubtitles(self,info:list):
+        """ 
+        The arg `info` is a list contains multiples of dict. each dict must have three key name: 'subtitle', 'xlabel' and 'ylabel'.\n
+        The order is compatible with the arg `axes` of method `self.includes_axes`. So, the first dict in `info` will be fill into the first ax in axes.
+        """
+        for idx, element in enumerate(info):
+            ax:plt.Axes = self.axs[idx]
+            if element['subtitle'] != "": ax.set_title(element['subtitle'],fontsize=self.axis_subtitle_fontsize)
+            if element['xlabel'] != "": ax.set_xlabel(element['xlabel'],fontsize=self.axis_label_fontsize)
+            if element['ylabel'] != "": ax.set_ylabel(element['ylabel'],fontsize=self.axis_label_fontsize)
+ 
+    def build_up_plot_frame(self,subplots_alignment:tuple=(3,1))->tuple[Figure,list]:
+        fig, axs = plt.subplots(subplots_alignment[0],subplots_alignment[1],figsize=(subplots_alignment[0]*9,subplots_alignment[1]*6))
+        if subplots_alignment[0] == 1 and subplots_alignment[1] == 1:
+            axs = [axs]
+        for ax in axs:
+            ax:plt.Axes
+            ax.xaxis.set_tick_params(labelsize=self.tick_number_fontsize)
+            ax.yaxis.set_tick_params(labelsize=self.tick_number_fontsize)
+            ax.xaxis.label.set_size(self.axis_label_fontsize) 
+            ax.yaxis.label.set_size(self.axis_label_fontsize)
+        return fig, axs
+    
+    def add_colormesh_on_ax(self,x_data:ndarray,y_data:ndarray,z_data:ndarray,fig:Figure,ax:plt.Axes,colorbar_name:str=None)->plt.Axes:
+        im = ax.pcolormesh(x_data,y_data,transpose(z_data))
+        fig.colorbar(im, ax=ax, label="" if colorbar_name is None else colorbar_name)
+        return ax
+
+    def add_scatter_on_ax(self,x_data:ndarray,y_data:ndarray,ax:plt.Axes,**kwargs)->plt.Axes:
+        ax.scatter(x_data,y_data,**kwargs)
+        return ax
+    
+    def add_plot_on_ax(self,x_data:ndarray,y_data:ndarray,ax:plt.Axes,**kwargs)->plt.Axes:
+        ax.plot(x_data,y_data,**kwargs)
+        return ax
+
+
+#? Analyzer use tools to analyze data
+################################
+####     Analysis tools    ####
+################################
 class analysis_tools():
     def __init__(self):
         self.ds:Dataset = None
         self.fit_packs = {}
+    
     def import_dataset(self,ds:Dataset):
         self.ds = ds  # inheritance 
 
@@ -266,11 +356,13 @@ class analysis_tools():
             if not self.echo:
                 self.ans = T2_fit_analysis(data,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
+                self.fit_packs["freq"] = self.ans.attrs['f']
             else:
                 self.ans = T1_fit_analysis(data,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
+                self.fit_packs["freq"] = 0
 
-        self.fit_packs["freq"] = self.ans.attrs['f']
+        
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
@@ -319,6 +411,73 @@ class analysis_tools():
         if len(self.T1_fit) > 1:
             Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1")
 
+    def ZgateT1_ana(self,time_sort:bool=False):
+        self.time_trace_mode = time_sort
+        self.prepare_excited = self.ds.attrs["prepare_excited"]
+        self.qubit = [var for var in self.ds.data_vars if var.split("_")[-1] != "time"][0]
+        end_times = array(self.ds.coords["end_time"])
+        self.evotime_array = array(self.ds[f"{self.qubit}_time"])[0][0][0]*1e6
+        z_pulse_amplitudes = array(self.ds.coords["z_voltage"])
+        if not time_sort:
+            self.T1_per_time = []
+            self.I_chennel_per_time = []  
+            for time_dep_data in array(self.ds[self.qubit]): # time_dep_data shape in  (mixer, bias, evo-time)
+                signals, T1s = zgate_T1_fitting(self.evotime_array,time_dep_data,self.refIQ,self.prepare_excited)
+                if self.prepare_excited:
+                    self.T1_per_time.append(T1s)
+            self.I_chennel_per_time.append(signals)
+
+
+            self.avg_I_data = average(array(self.I_chennel_per_time),axis=0)
+            
+            if self.prepare_excited:
+                self.avg_T1 = average(array(self.T1_per_time),axis=0)
+                self.std_T1_percent = array([round(i,1) for i in std(array(self.T1_per_time),axis=0)*100/self.avg_T1])
+
+        else:
+            self.T1_rec = {}
+            for end_time_idx, time_dep_data in enumerate(array(self.ds[self.qubit])):
+                signals, T1s = zgate_T1_fitting(self.evotime_array,time_dep_data,self.refIQ,self.prepare_excited)
+                self.T1_rec[end_times[end_time_idx]] = {}
+                self.T1_rec[end_times[end_time_idx]]["T1s"] = T1s
+            self.T1_rec = dict(sorted(self.T1_rec.items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S")))
+        
+        self.z = z_pulse_amplitudes+self.ds.attrs["z_offset"]
+    
+    def ZgateT1_plot(self,save_pic_folder:str=None):
+        Plotter = Artist(pic_title=f"zgate-T1-{self.qubit}")
+        if not self.time_trace_mode:
+            fig, axs = Plotter.build_up_plot_frame([1,1])
+            ax = Plotter.add_colormesh_on_ax(self.z,self.evotime_array,self.avg_I_data,fig,axs[0])
+            if self.prepare_excited:
+                for idx, T1_per_dataset in enumerate(self.T1_per_time):
+                    if idx == 0:
+                        ax = Plotter.add_scatter_on_ax(x_data=self.z,y_data=T1_per_dataset,ax=ax,c='pink',s=5,label="raw data")
+                    else:
+                        ax = Plotter.add_scatter_on_ax(x_data=self.z,y_data=T1_per_dataset,ax=ax,c='pink',s=5)
+                ax = Plotter.add_scatter_on_ax(x_data=self.z,y_data=self.avg_T1,ax=ax,c='red',marker='*',s=30,label="avg data")
+            ax.set_ylim(0,max(self.evotime_array))
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"Free evolution time (µs)"}])
+
+        else:
+            fig, axs = Plotter.build_up_plot_frame([1,1])
+            z = self.z
+            ans_dict = self.T1_rec
+            times = [datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S") for time_str in ans_dict.keys()]
+            time_diffs = [(t - times[0]).total_seconds() / 60 for t in times]  # Convert to minutes
+
+            # Get values
+            T1_data = [entry["T1s"] for entry in ans_dict.values()]
+            T1_data = array(T1_data).reshape(z.shape[0],len(times))
+            ax = Plotter.add_colormesh_on_ax(self.z,time_diffs,T1_data,fig,axs[0],"T1 (µs)")
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"Time past (min)"}])
+
+        Plotter.pic_save_path = os.path.join(build_result_pic_path(save_pic_folder),f"ZgateT1_{'zAVG' if  not self.time_trace_mode else 'TimeTrace'}_poster.png")
+        slightly_print(f"{self.qubit} pic saved located:\n{Plotter.pic_save_path}")
+        Plotter.export_results()
+
 
 
 ################################
@@ -361,6 +520,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.T2_ana(self.ds,self.data_2nd,self.refIQ)
             case 'm13':
                 self.T1_ana(self.ds,self.data_2nd,self.refIQ)
+            case 'auxa':
+                self.ZgateT1_ana(**kwargs)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -382,21 +543,23 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.XYF_cali_plot(pic_save_folder,round(self.transition_freq*1e-6) if self.transition_freq is not None else None)
             case 'm13':
                 self.T1_plot(pic_save_folder)
+            case 'auxa':
+                self.ZgateT1_plot(pic_save_folder)
 
 
 
 if __name__ == "__main__":
 
     """ Flux coupler """
-    m55_file = "Modularize/Meas_raw/20241104/DR2multiQ_FluxCavity_H12M37S17.nc"
-    QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
-    QD_agent = QDmanager(QD_file)
-    QD_agent.QD_loader()
+    # m55_file = "Modularize/Meas_raw/20241104/DR2multiQ_FluxCavity_H12M37S17.nc"
+    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
 
-    ds = fluxCoupler_dataReducer(m55_file)
-    for var in ds.data_vars:
-        if var.split("_")[-1] != 'freq':
-            ANA = Multiplex_analyzer("m55")
+    # ds = fluxCoupler_dataReducer(m55_file)
+    # for var in ds.data_vars:
+    #     if var.split("_")[-1] != 'freq':
+    #         ANA = Multiplex_analyzer("m55")
 
 
     """ Continuous wave 2 tone """
@@ -473,21 +636,34 @@ if __name__ == "__main__":
     #         ANA._export_result(fit_pic_folder)
 
     """ T1 """
-    m1313_file = "Modularize/Meas_raw/20241102/DR2multiQ_T1(0)_H20M15S39.nc"
-    QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
+    # m1313_file = "Modularize/Meas_raw/20241102/DR2multiQ_T1(0)_H20M15S39.nc"
+    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # ds = T1_dataReducer(m1313_file)
+    # for var in ds.data_vars:
+    #     if var.split("_")[-1] != 'x':
+    #         time_data = array(ds[f"{var}_x"])[0][0]
+    #         ANA = Multiplex_analyzer("m1313")
+    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+    #         ANA._import_2nddata(time_data)
+    #         ANA._start_analysis()
+
+    #         fit_pic_folder = Data_manager().get_today_picFolder()
+    #         ANA._export_result(fit_pic_folder)
+
+
+    """ Zgate T1 """
+    zgate_T1_folder = "Modularize/Meas_raw/20241105/ZgateT1_MultiQ_H14M00S46"
+    QD_file = "Modularize/QD_backup/20241105/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    ds = T1_dataReducer(m1313_file)
-    for var in ds.data_vars:
-        if var.split("_")[-1] != 'x':
-            time_data = array(ds[f"{var}_x"])[0][0]
-            ANA = Multiplex_analyzer("m1313")
-            ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-            ANA._import_2nddata(time_data)
-            ANA._start_analysis()
-
-            fit_pic_folder = Data_manager().get_today_picFolder()
-            ANA._export_result(fit_pic_folder)
-
-
+    nc_paths = ZgateT1_dataReducer(zgate_T1_folder)
+    for q in nc_paths:
+        ds = open_dataset(nc_paths[q])
+        ANA = Multiplex_analyzer("auxA")
+        ANA._import_data(ds,var_dimension=2,refIQ=QD_agent.refIQ[q])
+        ANA._start_analysis(time_sort=True)
+        ANA._export_result(nc_paths[q])

@@ -11,10 +11,12 @@ from quantify_scheduler.gettables import ScheduleGettable
 from numpy import std, arange, array, average, mean, ndarray, pi, arange, reshape
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
+from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
 from Modularize.support.Pulse_schedule_library import multi_ramsey_sche, set_LO_frequency, pulse_preview
 from Modularize.analysis.raw_data_demolisher import T2_dataReducer
 from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
+
 
 def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:int=1,n_avg:int=1000,run:bool=True,exp_idx:int=0,data_folder:str='', second_phase:str='x'):
     
@@ -22,8 +24,10 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repe
     nc_path = ''
     for q in ro_elements['time_samples']:
         qubit_info = QD_agent.quantum_device.get_element(q)
-        print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
-        print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+        qubit_info.measure.pulse_duration(get_manully_integration_time(q))
+        qubit_info.measure.integration_time(get_manully_integration_time(q))
+        qubit_info.reset.duration(get_manully_reset_time(q) if get_manully_reset_time(q) != 0 else set_reset_time_by_T1(QD_agent,q))
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         time_data_idx = arange(ro_elements['time_samples'][q].shape[0])
 
     repeat_data_idx = arange(repeat)
@@ -183,12 +187,12 @@ def T2_waiter(QD_agent:QDmanager,ro_element:dict,time_pts:int)->dict:
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = 1
+    execution:bool = 0
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"detune":0e6, 'evo_T':50e-6, 'spin_num':0, "xy_IF":250e6},
-        "q1":{"detune":0e6, 'evo_T':50e-6, 'spin_num':0, "xy_IF":250e6},
+        "q0":{"detune":0e6, 'evo_T':60e-6, 'spin_num':1, "xy_IF":250e6},
+        "q1":{"detune":0e6, 'evo_T':60e-6, 'spin_num':1, "xy_IF":250e6},
     }
     couplers = []
 

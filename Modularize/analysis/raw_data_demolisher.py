@@ -7,6 +7,7 @@ from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Path_Book import meas_raw_dir
 from Modularize.support.QDmanager import Data_manager
 import matplotlib.pyplot as plt
+import re
 
 class MultiplexingDataReducer():
     def __init__(self, nc:str|Dataset):
@@ -120,6 +121,45 @@ def T1_dataReducer(nc_file_path:str):
 
     return dataset
 
+def ZgateT1_dataReducer(raw_data_folder:str)->dict:
+    
+    datasets = []
+    # Iterate directory
+    for path in os.listdir(raw_data_folder):
+        # check if current path is a file
+        if os.path.isfile(os.path.join(raw_data_folder, path)):
+            file_path = os.path.join(raw_data_folder,path)
+            if file_path.split(".")[-1] == 'nc':
+                datasets.append(open_dataset(file_path))
+    # make VIP folder for each qubit
+    vip_folders:dict = {}
+    for q in [var for var in datasets[0].data_vars if var.split("_")[-1] != "time"]:
+        vip_folders[q] = os.path.join(raw_data_folder, f"{q}_ZgateT1")
+        if not os.path.exists(vip_folders[q]): os.mkdir(vip_folders[q])
+
+    # make a new dataset with a new dimension with the attrs["end_time"] of each dataset.
+    summarized_nc_paths = {}
+    for var in vip_folders:
+        end_times = []
+        data = []
+        for dataset in datasets:
+            end_times.append(dataset.attrs["end_time"])
+            data.append(array(dataset[var]).tolist()) # shape in (mixer, bias, evo-time)
+
+            time_data = [list(dataset[f"{var}_time"])]*len(datasets)
+            ref_bias = float(re.search(rf"{var}_(\d+\.\d+)", dataset.attrs["ref_bias"]).group(1))
+            # pre_exci = dataset.attrs["prepare_excited"]
+
+        dict_ = {var:(["end_time","mixer","z_voltage","time"],array(data)),f"{var}_time":(["end_time","mixer","z_voltage","time"],array(time_data))}
+        zT1_ds = Dataset(dict_,coords={"end_time":array(end_times),"mixer":array(["I","Q"]),"z_voltage":array(dataset.coords["z_voltage"]),"time":array(dataset.coords["time"])})
+        zT1_ds.attrs["z_offset"] = [ref_bias]
+        zT1_ds.attrs["prepare_excited"] = True #pre_exci
+        summarized_nc_paths[var] = os.path.join(vip_folders[var],f"{var}_Summaized_zT1.nc")
+        zT1_ds.to_netcdf(summarized_nc_paths[var])
+    
+    # return dict contains nc_path with the q_name as its key 
+    return summarized_nc_paths
+
 
 def Conti2tone_dataReducer(nc_file_path:str):
     ds = open_dataset(nc_file_path)
@@ -198,10 +238,8 @@ def twotone_ana(nc_path:str, plot:bool=True, refIQ:dict={} , fit_func:callable=N
 
 
 if __name__ == "__main__":
-    dh.set_datadir(meas_raw_dir)
-    # file = "Modularize/Meas_raw/20241024/DR2q1_FluxCavity_H14M35S23.nc"
-    file = "Modularize/Meas_raw/2024_10_16/DR4q4_FluxCavity_H13M31S11.nc"
-    dss = fluxCav_dataReductor(file, ['q0'])
-    # for q in dss:
-    #     ResonatorFluxSpectroscopyAnalysis(tuid=dss[q].attrs["tuid"], dataset=dss[q]).run(sweetspot_index=0)
+    x = []
+    for i in range(10):
+        x.append(i)
+        print(x[-1])
     

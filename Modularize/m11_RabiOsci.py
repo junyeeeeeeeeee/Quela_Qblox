@@ -7,6 +7,7 @@ from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from numpy import linspace, array, arange, NaN, ndarray
 from Modularize.support import QDmanager, Data_manager, cds
+from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
@@ -31,11 +32,10 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=30
     for q in Paras:
         pulse_review_paras[q],ds_restore[q] = {}, {}
         qubit_info = QD_agent.quantum_device.get_element(q)
-        qubit_info.measure.pulse_duration(1e-6)
-        qubit_info.measure.integration_time(1e-6)
-        qubit_info.reset.duration(250e-6)
-        print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
-        print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+        qubit_info.measure.pulse_duration(get_manully_integration_time(q))
+        qubit_info.measure.integration_time(get_manully_integration_time(q))
+        qubit_info.reset.duration(get_manully_reset_time(q) if get_manully_reset_time(q) != 0 else set_reset_time_by_T1(QD_agent,q))
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
         if isinstance(Paras[q]["XY_amp"],ndarray):
             dummy_sweep_varabel = arange(0,Paras[q]["XY_amp"].shape[0])

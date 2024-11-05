@@ -10,6 +10,7 @@ from Modularize.support import QDmanager, Data_manager, multiples_of_x, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
+from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
 from Modularize.support.Pulse_schedule_library import multi_T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis, Fit_analysis_plot
 from Modularize.analysis.raw_data_demolisher import T1_dataReducer
@@ -21,8 +22,10 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
 
     for q in ro_elements["time_samples"]:
         qubit_info = QD_agent.quantum_device.get_element(q)
-        print("Integration time ",qubit_info.measure.integration_time()*1e6, "µs")
-        print("Reset time ", qubit_info.reset.duration()*1e6, "µs")
+        qubit_info.measure.pulse_duration(get_manully_integration_time(q))
+        qubit_info.measure.integration_time(get_manully_integration_time(q))
+        qubit_info.reset.duration(get_manully_reset_time(q) if get_manully_reset_time(q) != 0 else set_reset_time_by_T1(QD_agent,q))
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         time_data_idx = arange(ro_elements["time_samples"][q].shape[0])
     
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")

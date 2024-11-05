@@ -64,7 +64,7 @@ class DataTransformer:
 
 if __name__ == "__main__" :
     # files = ["Modularize/Meas_raw/2024_6_27/DR1SCAq0_zT1(1)_H14M8S35.nc"]
-    raw_folder = "Modularize/Meas_raw/20241104/ZgateT1_q0_H16M04S39"
+    raw_folder = "/Users/ratiswu/Downloads/ZgateT1_q2_H22M41S14"
     files = [os.path.join(raw_folder,name) for name in os.listdir(raw_folder) if (os.path.isfile(os.path.join(raw_folder,name)) and name.split(".")[-1]=='nc')]
     for file in files:
         QM_folder = os.path.join(os.path.split(file)[0],"ToQM")
