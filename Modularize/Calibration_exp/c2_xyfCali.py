@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
 
     """ Iteration (Do NOT touch!)"""
+    ana_target = ["c2","m12"]
     avg_n = 1000
     initializing_detune = 10e6
     evoT = 0.5e-6
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     
     """ Preparation """
     actual_detune = {}
-    for idx in range(2):
+    for idx, exp in enumerate(ana_target):
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
@@ -63,7 +64,7 @@ if __name__ == "__main__":
         for var in ds.data_vars:
             if var.split("_")[-1] != 'x':
                 time_data = array(ds[f"{var}_x"])[0][0]
-                ANA = Multiplex_analyzer("c2")
+                ANA = Multiplex_analyzer(exp)
                 ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var],fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01()+actual_detune[var] if idx == 1 else None)
                 ANA._import_2nddata(time_data)
                 ANA._start_analysis()

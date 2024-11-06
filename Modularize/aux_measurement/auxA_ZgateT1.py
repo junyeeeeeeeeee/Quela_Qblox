@@ -79,7 +79,7 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,bi
             ref_bias += f"_{q}_{round(QD_agent.Fluxmanager.get_proper_zbiasFor(q),3)}"
         
         zT1_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"z_voltage":Z_samples/z_pulse_amp_OVER_const_z,"time":arange(time_data_idx.shape[0])})
-        zT1_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()) # '2024-10-25 13:02:39'
+        zT1_ds.attrs["execution_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()) # '2024-10-25 13:02:39'
         zT1_ds.attrs["ref_bias"] = ref_bias
         zT1_ds.attrs["prepare_excited"] = not no_pi_pulse
 
@@ -198,10 +198,10 @@ if __name__ == "__main__":
                 ds = open_dataset(nc_paths[q])
                 ANA = Multiplex_analyzer("auxA")
                 ANA._import_data(ds,var_dimension=2,refIQ=QD_agent.refIQ[q])
-                ANA._start_analysis(time_sort=False)
+                ANA._start_analysis(time_sort=plot_time_vs_flux)
                 ANA._export_result(nc_paths[q])
 
-                
+
         """ Close """
         print('Zgate T1 done!')
         shut_down(cluster,Fctrl,Cctrl)

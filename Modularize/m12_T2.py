@@ -82,6 +82,7 @@ def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repe
         ramsey_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":repeat_data_idx,"idx":time_data_idx})
         for var in ramsey_ds.data_vars:
             ramsey_ds[var].attrs["spin_num"] = ro_elements["spin_num"][var[:2]]
+        ramsey_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         ramsey_ds.attrs["execution_time"] = Data_manager().get_time_now()
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=ramsey_ds,label=exp_idx,qb="multiQ",exp_type='T2',specific_dataFolder=data_folder,get_data_loc=True)
         
@@ -133,21 +134,14 @@ def modify_time_point(ary:ndarray,factor1:int, factor2:int=0):
 
 def ramsey_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,repeat:int=1,ith:int=1,run:bool=True,specific_folder:str='', avg_n:int=800, second_phase:str='x'):
     if run:
-        ori_reset = {}
         slightly_print(f"The {ith}-th T2:")
         for q in ro_elements["time_samples"]:
-            qubit_info = QD_agent.quantum_device.get_element(q)
-            ori_reset[q] = qubit_info.reset.duration()
-            qubit_info.reset.duration(qubit_info.reset.duration()+max(ro_elements["time_samples"][q]))
             Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
         
         nc_path = Ramsey(QD_agent,meas_ctrl,ro_elements,repeat,n_avg=avg_n,run=True,exp_idx=ith,data_folder=specific_folder,second_phase=second_phase)
         reset_offset(Fctrl)
-        
         cluster.reset()
-        for q in ori_reset:
-            qubit_info = QD_agent.quantum_device.get_element(q)
-            qubit_info.reset.duration(ori_reset[q])
+
     else:
         nc_path = Ramsey(QD_agent,meas_ctrl,ro_elements,repeat,n_avg=1000,run=False)
 

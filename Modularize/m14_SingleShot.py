@@ -67,8 +67,8 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,r
         output_dict[q_name] = (["mixer","prepared_state","index"],folder[q_idx])
 
     SS_ds = Dataset(output_dict, coords= {"mixer":array(["I","Q"]), "prepared_state":array([0,1]),"index":arange(shots)})
+    SS_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     SS_ds.attrs["execution_time"] = Data_manager().get_time_now()
-
     if run:
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=SS_ds,qb="multiQ",exp_type='ss',label=exp_idx,specific_dataFolder=parent_datafolder,get_data_loc=True)
     else:
@@ -78,7 +78,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,r
 
 
 def SS_executor(QD_agent:QDmanager,cluster:Cluster,Fctrl:dict, ro_elements:dict, shots:int=10000,execution:bool=True,data_folder='',exp_label:int=0):
-    
+    slightly_print(f"The {exp_label}-th OS:")
     for q in ro_elements:
         Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
 
@@ -170,7 +170,7 @@ if __name__ == '__main__':
                 ANA._start_analysis()
                 pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
                 ANA._export_result(pic_path)
-                highlight_print(f"{var} rotate angle = {ANA.fit_packs["RO_rotation_angle"]} in degree.")
+                highlight_print(f"{var} rotate angle = {ANA.fit_packs['RO_rotation_angle']} in degree.")
                 QD_agent.refIQ[var] = [ANA.fit_packs["RO_rotation_angle"]]
                 
             if auto_save:

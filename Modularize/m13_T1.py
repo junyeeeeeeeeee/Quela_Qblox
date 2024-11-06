@@ -69,6 +69,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
         
         T1_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":repeat_data_idx,"idx":time_data_idx})
         T1_ds.attrs["execution_time"] = Data_manager().get_time_now()
+        T1_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
         # Save the raw data into netCDF
         nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=T1_ds,label=exp_idx,qb="multiQ",exp_type='T1',specific_dataFolder=data_folder,get_data_loc=True)
@@ -86,19 +87,14 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
 
 def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,run:bool=True,repeat:int=1,specific_folder:str='',ith:int=0,avg_times:int=500):
     if run:
-        ori_reset_time = {}
+        slightly_print(f"The {ith}-th T1:")
         for q in ro_elements["time_samples"]:
-            qubit_info = QD_agent.quantum_device.get_element(q)
-            ori_reset_time[q] = qubit_info.reset.duration()
-            qubit_info.reset.duration(qubit_info.reset.duration()+max(ro_elements["time_samples"][q]))
             Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
         
         nc_path = T1(QD_agent,meas_ctrl,ro_elements,repeat,run=True,exp_idx=ith,data_folder=specific_folder,n_avg=avg_times)
         reset_offset(Fctrl)
         cluster.reset()
 
-        for q in ori_reset_time:
-            QD_agent.quantum_device.get_element(q).reset.duration(ori_reset_time[q])
     else:
         nc_path = T1(QD_agent,meas_ctrl,ro_elements,repeat=1,run=False,exp_idx=ith,data_folder=specific_folder,n_avg=avg_times)
         

@@ -90,6 +90,8 @@ def T1_func(D,A,T1,offset):
     return A*np.exp(-D/T1)+offset
 def Ramsey_func(D,A,T2,f,phase,offset):
     return A*np.exp(-D/T2)*np.cos(2*np.pi*f*D+phase)+offset
+def Cosine_func(D,A,f,phase,offset):
+    return A*np.cos(2*np.pi*f*D+phase)+offset
 def Loren_func(x,x0,gamma,A,base):
     return (A/np.pi)*((gamma/2)/((x-x0)**2+(gamma/2)**2))+base
 def gauss_func(x,c,sigma,A):
@@ -103,11 +105,29 @@ def Relax_cal(inte_i,tf,T1):
     Relax= 1+(T1/tau)*(np.exp(-(inte_i+tau)/T1)-np.exp(-inte_i/T1))
     return Relax
 Rabi_model = Model(Rabi_func)
+cosine_model = Model(Cosine_func)
 T1_func_model = Model(T1_func)
 Ramsey_func_model = Model(Ramsey_func)
 Loren_func_model = Model(Loren_func)
 gauss2d_func_model = Model(gauss2d_func, independent_vars=['I', 'Q'])
 bigauss2d_func_model = Model(bigauss2d_func, independent_vars=['I', 'Q'])
+
+def cos_fit_analysis(data:np.ndarray,freeDu:np.ndarray):
+    f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
+    f_guess_=Parameter(name='f', value=f_guess , min=0, max=f_guess*10)
+    result = cosine_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
+
+    A_fit= result.best_values['A']
+    f_fit= result.best_values['f']
+    phase_fit= result.best_values['phase']
+    offset_fit= result.best_values['offset']
+    para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
+
+    fitting= Cosine_func(para_fit,A_fit,f_fit,phase_fit,offset_fit)
+
+    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="xyfcali",f=f_fit,phase=phase_fit))
+
+
 
 def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,return_error:bool=False):
     offset_guess= data[-1]
@@ -1415,6 +1435,43 @@ def ROF_Cali_sche(
 
     return sched
 
+def multi_ROF_Cali_sche(
+    ro_freq:dict,
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(ro_freq.keys())
+    sameple_idx = array(ro_freq[qubits2read[0]]).shape[0]
+    sched = Schedule("ROF calibration", repetitions=repetitions)
+    for acq_idx in range(sameple_idx):    
+
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = ro_freq[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(ro_freq[q]).flat[0]))
+
+            sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
+            sched.add(Reset(q))
+            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+
+            if ini_state=='e': 
+                X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+                
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+          
+    return sched
+
 def PI_amp_cali_sche(
     q:str,
     XY_amp: dict,
@@ -1923,6 +1980,15 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
         ans = np.exp(-1)*(np.array(results.data_vars['fitting'])[0]-np.array(results.data_vars['fitting'])[-1])/Nor_f+np.array(results.data_vars['fitting'])[-1]/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
+    
+    elif results.attrs['exper'] == 'xyfcali':  
+        title= 'XYF-calibration' if q =="" else f"{q} XYF-calibration"
+        if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
+        x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+        x= results.coords['freeDu']*1e6
+        x_fit= results.coords['para_fit']*1e6   
+        text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
+        
     elif results.attrs['exper'] == 'Rabi': 
         title= results.attrs['Rabi_type']
         

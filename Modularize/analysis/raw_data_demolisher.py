@@ -145,15 +145,13 @@ def ZgateT1_dataReducer(raw_data_folder:str)->dict:
         for dataset in datasets:
             end_times.append(dataset.attrs["end_time"])
             data.append(array(dataset[var]).tolist()) # shape in (mixer, bias, evo-time)
-
             time_data = [list(dataset[f"{var}_time"])]*len(datasets)
-            ref_bias = float(re.search(rf"{var}_(\d+\.\d+)", dataset.attrs["ref_bias"]).group(1))
-            # pre_exci = dataset.attrs["prepare_excited"]
+            
 
         dict_ = {var:(["end_time","mixer","z_voltage","time"],array(data)),f"{var}_time":(["end_time","mixer","z_voltage","time"],array(time_data))}
         zT1_ds = Dataset(dict_,coords={"end_time":array(end_times),"mixer":array(["I","Q"]),"z_voltage":array(dataset.coords["z_voltage"]),"time":array(dataset.coords["time"])})
-        zT1_ds.attrs["z_offset"] = [ref_bias]
-        zT1_ds.attrs["prepare_excited"] = True #pre_exci
+        zT1_ds.attrs["z_offset"] = [float(re.search(rf"{var}_(\d+\.\d+)", datasets[0].attrs["ref_bias"]).group(1))]
+        zT1_ds.attrs["prepare_excited"] = datasets[0].attrs["prepare_excited"]
         summarized_nc_paths[var] = os.path.join(vip_folders[var],f"{var}_Summaized_zT1.nc")
         zT1_ds.to_netcdf(summarized_nc_paths[var])
     
@@ -184,7 +182,9 @@ def Conti2tone_dataReducer(nc_file_path:str):
 
     return datasets
 
-
+def rofcali_dataReducer(nc_file_path:str)->Dataset:
+    ds = open_dataset(nc_file_path)
+    return ds
 
 
 
