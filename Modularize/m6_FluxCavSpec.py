@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, linspace, pi, arange, sqrt
+from numpy import array, linspace, pi, arange, sqrt, NaN
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
 from Modularize.support.UserFriend import *
@@ -18,12 +18,10 @@ z_pulse_amp_OVER_const_z = sqrt(2)/2.5
 
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_elements:dict,bias_elements:dict,n_avg:int=300,run:bool=True,Experi_info:dict={}):
-    from numpy import NaN
     sche_func = One_tone_multi_sche
-    freq_datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
     original_rof = {}
     flux_dura = 0
-    for q in ro_elements:
+    for q in ro_elements["freq_samples"]:
         qubit_info = QD_agent.quantum_device.get_element(q)
         qubit_info.measure.pulse_duration(100e-6)
         qubit_info.measure.integration_time(100e-6)
@@ -31,6 +29,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         flux_dura = qubit_info.reset.duration()+qubit_info.measure.integration_time()
         original_rof[q] = qubit_info.clock_freqs.readout()
         qubit_info.clock_freqs.readout(NaN)
+        freq_datapoint_idx = arange(ro_elements["freq_samples"][q].shape[0])
 
     flux_samples = bias_elements["bias_samples"] #linspace(-flux_span,flux_span,flux_points)*z_pulse_amp_OVER_const_z
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
@@ -39,11 +38,11 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
     bias.batched = False
     
     spec_sched_kwargs = dict(   
-        frequencies=ro_elements,
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
+        frequencies=ro_elements["freq_samples"],
+        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["freq_samples"],'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["freq_samples"],'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["freq_samples"],'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["freq_samples"],'r2'),
         powerDep=False,
         bias = bias,
         bias_dura = flux_dura
@@ -57,7 +56,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             schedule_kwargs=spec_sched_kwargs,
             real_imag=False,
             batched=True,
-            num_channels=len(list(ro_elements.keys())),
+            num_channels=len(list(ro_elements["freq_samples"].keys())),
         )
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
@@ -66,14 +65,14 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         
         rfs_ds = meas_ctrl.run("One-tone-Flux")
         rfs_ds.attrs["RO_qs"] = ""
-        for idx, q in enumerate(ro_elements):
+        for idx, q in enumerate(ro_elements["freq_samples"]):
             rfs_ds.attrs["RO_qs"] += f" {q}"
             attr_0 = rfs_ds['x0'].attrs
             attr_1 = rfs_ds['x1'].attrs
-            rfs_ds[f'x{2*idx}'] = array(list(ro_elements[q])*flux_samples.shape[0])
+            rfs_ds[f'x{2*idx}'] = array(list(ro_elements["freq_samples"][q])*flux_samples.shape[0])
             rfs_ds[f'x{2*idx}'].attrs = attr_0
             
-            rfs_ds[f'x{2*idx+1}'] = array([[i]*ro_elements[q].shape[0] for i in flux_samples/z_pulse_amp_OVER_const_z]).reshape(-1)
+            rfs_ds[f'x{2*idx+1}'] = array([[i]*ro_elements["freq_samples"][q].shape[0] for i in flux_samples/z_pulse_amp_OVER_const_z]).reshape(-1)
             rfs_ds[f'x{2*idx+1}'].attrs = attr_1
             rfs_ds[f'x{2*idx+1}'].attrs['name'] = str(flux_ctrl[q])
             rfs_ds[f'x{2*idx+1}'].attrs['long_name'] = str(flux_ctrl[q])
@@ -85,14 +84,14 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             show_args(Experi_info(q))
         
         # reset flux bias
-        for q in ro_elements:
+        for q in ro_elements["freq_samples"]:
             flux_ctrl[q](0.0)
         
     else:
         n_s = 2
         preview_para = {}
-        for q in ro_elements:
-            preview_para[q] = ro_elements[q][:n_s]
+        for q in ro_elements["freq_samples"]:
+            preview_para[q] = ro_elements["freq_samples"][q][:n_s]
         sweep_para2= array(flux_samples[:2])
         spec_sched_kwargs['frequencies']= preview_para
         spec_sched_kwargs['bias']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
@@ -102,7 +101,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
             show_args(Experi_info(q))
         nc_path = ''
 
-    for q in ro_elements:
+    for q in ro_elements["freq_samples"]:
         QD_agent.quantum_device.get_element(q).clock_freqs.readout(original_rof[q])
     
     return nc_path
@@ -130,16 +129,21 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
     for cp in cp_elements:
         QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
-def FluxCav_waiter(QD_agent:QDmanager,freq_halfspan:dict, freq_shift:dict, fpts:int, flux_span:float=0.3, flux_pts:int=30)->tuple[dict,dict]:
+def FluxCav_waiter(QD_agent:QDmanager,ro_element:dict, fpts:int, flux_span:float=0.3, flux_pts:int=30)->tuple[dict,dict]:
     """
     Generate the frequencies samples array with the rule: array = linspace(ROfreq+freq_shift-freq_halfspan, ROfreq+freq_shift+freq_halfspan, fpts)
     * frequency unit in Hz
     """
     # RO freq settings
-    ro_elements = {}
-    for q in freq_halfspan:
+    ro_elements = {"freq_samples":{}}
+    for q in ro_element:
+        if "freq_half_span" not in list(ro_element[q].keys()):
+            raise KeyError(f"You should assign 'freq_half_span' in your ro_elements for {q}")
+        freq_shift = 0 if "freq_shift" not in list(ro_element[q].keys()) else ro_element[q]["freq_shift"]
+
+
         rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
-        ro_elements[q] = linspace(rof+freq_shift[q]-freq_halfspan[q], rof+freq_shift[q]+freq_halfspan[q], fpts)
+        ro_elements["freq_samples"][q] = linspace(rof+freq_shift-ro_element[q]["freq_half_span"], rof+freq_shift+ro_element[q]["freq_half_span"], fpts)
     
     # bias settings
     if flux_span > 0.4: mark_input("Attempting to set flux voltage higher than 0.4 V, press any key to continue...")
@@ -165,14 +169,8 @@ if __name__ == "__main__":
     chip_info_restore:bool = 0 # <- haven't been modified with the multiplexing version
     DRandIP = {"dr":"dr2","last_ip":"10"}
     cp_ctrl = {}
-    freq_half_span = {
-        "q0":5e6,
-        "q1":5e6
-    }
-    freq_shift = {
-        "q0":0e6,
-        "q1":0e6
-    }
+    ro_elements = {"q0":{"freq_half_span":5e6,"freq_shift":0e6}}
+
 
     """ Optional paras """
     freq_data_points = 40
@@ -186,9 +184,9 @@ if __name__ == "__main__":
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',)
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-    ro_elements, bias_elements = FluxCav_waiter(QD_agent, freq_half_span, freq_shift, freq_data_points, flux_half_window_V, flux_data_points)
+    ro_elements, bias_elements = FluxCav_waiter(QD_agent, ro_elements, freq_data_points, flux_half_window_V, flux_data_points)
     Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
-    for qubit in ro_elements:
+    for qubit in ro_elements["freq_samples"]:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
 
 

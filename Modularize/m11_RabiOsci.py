@@ -236,7 +236,7 @@ if __name__ == "__main__":
     dss = Rabi_dataReducer(nc_path)  
     ANA = Multiplex_analyzer("m11")      
     for q in dss:
-        ANA._import_data(dss[q],1,QD_agent.refIQ[q])
+        ANA._import_data(dss[q],1,QD_agent.refIQ)
         ANA._start_analysis()
         ANA._export_result(Data_manager().get_today_picFolder())
         conditional_update_qubitInfo(QD_agent,ANA.fit_packs,ro_elements,q)

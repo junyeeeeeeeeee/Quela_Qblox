@@ -130,7 +130,7 @@ if __name__ == "__main__":
     execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {"q0":{"pi_amp_coef_span":0.15,"xy_IF":250e6},"q1":{"pi_amp_coef_span":0.15,"xy_IF":250e6}}
+    ro_elements = {"q0":{"pi_amp_coef_span":0.2,"xy_IF":250e6},"q1":{"pi_amp_coef_span":0.2,"xy_IF":250e6}}
     couplers = []
 
 

@@ -140,7 +140,7 @@ if __name__ == '__main__':
     """ Fill in """
     execute:bool = True
     DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {'q0':{"span_Hz":8e6},'q1':{"span_Hz":8e6}}
+    ro_elements = {'q0':{"span_Hz":8e6}}
     couplers = []
 
     """ Optional paras """
@@ -184,7 +184,7 @@ if __name__ == '__main__':
                 QD_agent.quantum_device.get_element(permission.lower()).clock_freqs.readout(optimal_rof[permission.lower()])
                 keep = True
             case _:
-                print("Do nothing ~ ")
+                warning_print("QD updates got denied !")
 
 
     """ Storing """ 

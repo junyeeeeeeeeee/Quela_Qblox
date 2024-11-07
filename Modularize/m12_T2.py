@@ -181,12 +181,12 @@ def T2_waiter(QD_agent:QDmanager,ro_element:dict,time_pts:int)->dict:
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = 0
+    execution:bool = 1
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"detune":0e6, 'evo_T':60e-6, 'spin_num':1, "xy_IF":250e6},
-        "q1":{"detune":0e6, 'evo_T':60e-6, 'spin_num':1, "xy_IF":250e6},
+        "q0":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':0, "xy_IF":250e6},
+        "q1":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':0, "xy_IF":250e6},
     }
     couplers = []
 

@@ -263,7 +263,7 @@ class Data_manager:
         tuid_folder_path = os.path.join(self.raw_folder,f"{tuid}" if additional_name is None else f"{tuid}-{additional_name}")
         if not os.path.isdir(tuid_folder_path):
             os.mkdir(tuid_folder_path) 
-            print(f"TUID Folder had been created!")
+            print(f"TUID Folder created at:\n{tuid_folder_path}")
 
     
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):

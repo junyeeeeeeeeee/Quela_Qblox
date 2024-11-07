@@ -94,7 +94,7 @@ if __name__ == "__main__":
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
         'q0':{"ro_amp_factor":1,"specified_bias":0},
-        'q1':{"ro_amp_factor":1,"specified_bias":0}
+        # 'q1':{"ro_amp_factor":1,"specified_bias":0}
     } # If 'specified_bias' is not zero, it will bias with it while the exp running.
                 
     couplers = []

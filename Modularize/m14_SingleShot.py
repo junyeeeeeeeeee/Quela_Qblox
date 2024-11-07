@@ -119,8 +119,8 @@ if __name__ == '__main__':
     repeat:int = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        'q0':{"ro_amp_factor":1.01,"xy_IF":250e6},
-        'q1':{"ro_amp_factor":1.01,"xy_IF":250e6}
+        'q0':{"ro_amp_factor":1,"xy_IF":250e6},
+        'q1':{"ro_amp_factor":0.8,"xy_IF":250e6}
     } 
     couplers = []
 

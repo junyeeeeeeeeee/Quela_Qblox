@@ -166,11 +166,11 @@ if __name__ == "__main__":
     cp_ctrl = ["c0", "c1"]
     freq_half_span = {
         "q0":5e6,
-        "q1":5e6
+        
     }
     freq_shift = {
         "q0":0e6,
-        "q1":0e6
+        
     }
 
     """ Optional paras """

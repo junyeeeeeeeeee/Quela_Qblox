@@ -393,9 +393,6 @@ def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=Non
     else:
         angle = -angle_degree*pi/180
  
-    # assign point_1 to origin 
-    point_1 = array([0,0])
-    point_2 = vector_21
 
     # Apply rotation to both translated points
     P1_rotated = rotation_matrix(angle) @ point_1 

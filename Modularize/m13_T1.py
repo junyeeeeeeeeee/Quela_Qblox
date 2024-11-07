@@ -126,8 +126,8 @@ if __name__ == "__main__":
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"evoT":100e-6,"xy_IF":250e6},
-        "q1":{"evoT":60e-6,"xy_IF":250e6},
+        "q0":{"evoT":120e-6,"xy_IF":250e6},
+        "q1":{"evoT":100e-6,"xy_IF":250e6},
     }
     couplers = []
 

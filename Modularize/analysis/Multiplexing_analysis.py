@@ -321,7 +321,7 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self, ref:list=[]):
+    def rabi_ana(self):
         self.qubit = self.ds.attrs["target_q"]
         x_data = array(self.ds['x0'])
         title = self.ds['x0'].attrs["long_name"]
@@ -330,13 +330,11 @@ class analysis_tools():
         q_data = array(self.ds['y1'])
 
         if not self.ds.attrs["OS_mode"]:
-            if len(ref) == 2:
-                data_to_fit = sqrt((i_data-ref[0])**2+(q_data-ref[1])**2)
+            if len(self.refIQ[self.qubit]) == 2:
+                data_to_fit = sqrt((i_data-self.refIQ[self.qubit][0])**2+(q_data-self.refIQ[self.qubit][1])**2)
             else:
                 iq_data = column_stack((i_data,q_data)).T
-                data_to_fit = rotate_data(iq_data,float(ref[0]))[0]
-                plt.plot(data_to_fit)
-                plt.show()
+                data_to_fit = rotate_data(iq_data,float(self.refIQ[self.qubit][0]))[0]
         else:
             # wait GMM
             pass
@@ -444,7 +442,7 @@ class analysis_tools():
                 data = rotate_data(data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.plot_item["data"] = data*1000
+            self.plot_item["data"] = data
             self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
             self.T1_fit.append(self.ans.params["tau"].value)
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
@@ -662,7 +660,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm9': 
                 self.fluxQb_ana(self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana(self.refIQ)
+                self.rabi_ana()
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':
