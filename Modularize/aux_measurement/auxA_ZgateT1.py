@@ -130,7 +130,7 @@ def zgateT1_waiter(QD_agent:QDmanager,ro_element:dict,flux_span_factor:float,flu
     ro_elements, bias_elements = {}, {}
     # z pulse amplitude settings
     flux_period:ndarray = array([QD_agent.Fluxmanager.get_PeriodFor(target_q=q) for q in ro_element])
-    bias_elements["flux_samples"] = linspace(-max(flux_period)/flux_span_factor,max(flux_period)/flux_span_factor,flux_pts)
+    bias_elements["flux_samples"] = linspace(-max(flux_period)*z_pulse_amp_OVER_const_z/flux_span_factor,max(flux_period)*z_pulse_amp_OVER_const_z/flux_span_factor,flux_pts)
     # free evolution time settings
     ro_elements["time_samples"] = {}
     for q in ro_element:

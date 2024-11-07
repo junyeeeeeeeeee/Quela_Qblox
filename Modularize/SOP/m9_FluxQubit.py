@@ -135,7 +135,7 @@ def flux_qubitspectro_waiter(QD_agent:QDmanager,ro_elements:dict,bias_elements:d
                 freqs[q] = linspace(original_f01+ro_elements[q]["xy_IF"]-ro_elements[q]["freq_span"],original_f01+(ro_elements[q]["xy_IF"]),xyf_pts)
     # flux
     bias_elements["bias_qs"] = bias_elements["bias_qs"] if len(bias_elements["bias_qs"]) != 0 else list(freqs.keys())
-    bias_elements["bias_span"] = linspace(-bias_elements["bias_span"],bias_elements["bias_span"],bias_elements["bias_pts"])
+    bias_elements["bias_span"] = linspace(-bias_elements["bias_span"]*z_pulse_amp_OVER_const_z,bias_elements["bias_span"]*z_pulse_amp_OVER_const_z,bias_elements["bias_pts"])
     
     return freqs, bias_elements
 

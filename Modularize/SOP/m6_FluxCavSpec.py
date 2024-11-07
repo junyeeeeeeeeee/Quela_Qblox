@@ -13,9 +13,7 @@ from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from Modularize.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
 from Modularize.analysis.raw_data_demolisher import fluxCav_dataReductor
 import quantify_core.data.handling as dh 
-
-z_pulse_amp_OVER_const_z = sqrt(2)/2.5
-
+from Modularize.m9_FluxQubit import z_pulse_amp_OVER_const_z
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_elements:dict,bias_elements:dict,n_avg:int=300,run:bool=True,Experi_info:dict={}):
     sche_func = One_tone_multi_sche
