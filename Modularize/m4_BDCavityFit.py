@@ -17,7 +17,7 @@ Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
 Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
 
 def preciseCavity_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,run:bool=True, ro_amps:dict={})->dict:
-    
+    QD_agent.quantum_device.get_element(list(ro_elements.keys())[0]).reset.duration(250e-6)
     if run:
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=True,ro_amps=ro_amps,n_avg=100)
         CS_results = multiplexing_CS_ana(QD_agent, list(ro_elements.keys()), cs_ds)
@@ -50,7 +50,7 @@ def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span
     original_rof = {}
     for q in qubits:
         if state in list(qubits[q].keys()):
-            amps[q] = qubits[q][state]['ro_amp']
+            amps[q] = QD_agent.quantum_device.get_element(q).measure.pulse_amp()#qubits[q][state]['ro_amp']
             
             rof = QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             original_rof[q] = rof
@@ -64,25 +64,24 @@ def BDC_waiter(QD_agent:QDmanager, state:str, qubits:dict, ro_atte:dict, ro_span
 if __name__ == "__main__":
 
     """ Fill in """
-    execution:bool = True 
+    execution:bool = 1
     sweetSpot:bool = 0     # If true, only support one one qubit
     chip_info_restore:bool = 0
-    DRandIP = {"dr":"drke","last_ip":"242"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_element = {
-        "q2":{  "bare" :{"ro_amp":0.1,"window_shift":0e6},
-                "dress":{"ro_amp":0.3,"window_shift":0e6}},
-        "q3":{  "bare" :{"ro_amp":0.1,"window_shift":0e6},
-                "dress":{"ro_amp":0.3,"window_shift":0e6}},
+
+        "q0":{  "bare" :{"ro_amp":0.15,"window_shift":0e6},
+                "dress":{"ro_amp":0.2,"window_shift":6e6}},
+        "q1":{  "bare" :{"ro_amp":0.15,"window_shift":0e6},
+                "dress":{"ro_amp":0.2,"window_shift":3e6}},
     }
-    ro_attes = {"dress":50, "bare":20} # all ro_elements shared
+    ro_attes = {"dress":40, "bare":20} # all ro_elements shared
 
     """ Optional paras"""
-    half_ro_freq_window_Hz = 20e6
-    freq_data_points = 400
 
-
+    half_ro_freq_window_Hz = 4e6
+    freq_data_points = 200
     
-   
     CS_results = {}
     for state in ["bare", "dress"]: # bare is always the first !!
         eyeson_print(f"{state} cavities: ")

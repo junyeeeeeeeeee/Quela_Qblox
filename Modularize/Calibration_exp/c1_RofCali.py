@@ -1,49 +1,51 @@
-import os, sys
+import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-import matplotlib.pyplot as plt
 from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from Modularize.m7_RefIQ import refIQ_executor
+from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
-from numpy import linspace, array, where, max, ndarray, sqrt, arctan2
-from Modularize.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte,coupler_zctrl
-from Modularize.support.Pulse_schedule_library import ROF_Cali_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array
+from numpy import linspace, array, where, max, ndarray, sqrt, arctan2,NaN, arange, moveaxis
+from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
+from Modularize.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte,coupler_zctrl, reset_offset, compose_para_for_multiplexing
+from Modularize.support.Pulse_schedule_library import multi_ROF_Cali_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
+from Modularize.analysis.raw_data_demolisher import rofcali_dataReducer
 
-
-def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6,IF:int=150e6,n_avg:int=500,f_points:int=101,run:bool=True,q='q1',Experi_info:dict={},data_folder:str=''):
+def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=500,run:bool=True,data_folder:str=''):
+    sche_func= multi_ROF_Cali_sche
+    nc_path = ""
+    ro_f_origin = {}
+    for q in ro_elements["rof_samples"]:
+        qubit_info = QD_agent.quantum_device.get_element(q)
+        ro_f_origin[q] = qubit_info.clock_freqs.readout()
+        qubit_info.clock_freqs.readout(NaN)
+        qubit_info.measure.pulse_duration(get_manully_integration_time(q))
+        qubit_info.measure.integration_time(get_manully_integration_time(q))
+        qubit_info.reset.duration(get_manully_reset_time(q) if get_manully_reset_time(q) != 0 else set_reset_time_by_T1(QD_agent,q))
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+        rof_data_idx = arange(ro_elements["rof_samples"][q].shape[0])
     
-    analysis_result = {}
-    qubit = QD_agent.quantum_device.get_element(q)
-
-    ro_f_origin= qubit.clock_freqs.readout()
-    LO= ro_f_origin+IF+ro_span_Hz
-    from numpy import NaN
-    qubit.clock_freqs.readout(NaN)
-    set_LO_frequency(QD_agent.quantum_device,q=q,module_type='readout',LO_frequency=LO)
     
     option_rof = ManualParameter(name="freq", unit="Hz", label="Frequency")
     option_rof.batched = True
-    ro_f_samples = linspace(ro_f_origin-ro_span_Hz,ro_f_origin+ro_span_Hz,f_points)
-    
-    sche_func= ROF_Cali_sche
 
     def state_dep_sched(ini_state:str):
         sched_kwargs = dict(
-            q=q,
-            ro_freq=option_rof,
+            ro_freq=ro_elements["rof_samples"],
             ini_state=ini_state,
-            pi_amp={str(q):qubit.rxy.amp180()},
-            pi_dura={str(q):qubit.rxy.duration()},
-            R_amp={str(q):qubit.measure.pulse_amp()},
-            R_duration={str(q):qubit.measure.pulse_duration()},
-            R_integration={str(q):qubit.measure.integration_time()},
-            R_inte_delay=qubit.measure.acq_delay(),
+            pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'d1'),
+            pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'d3'),
+            R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'r1'),
+            R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'r3'),
+            R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'r4'),
+            R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["rof_samples"],'r2'),
             )
-        exp_kwargs= dict(sweep_ROF=['start '+'%E' %ro_f_samples[0],'end '+'%E' %ro_f_samples[-1]])
+        
         if run:
             gettable = ScheduleGettable(
                 QD_agent.quantum_device,
@@ -51,92 +53,85 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_span_Hz:float=3e6
                 schedule_kwargs=sched_kwargs,
                 real_imag=True,
                 batched=True,
+                num_channels=len(list(ro_elements["rof_samples"].keys())),
             )
             
             QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
             meas_ctrl.gettables(gettable)
             meas_ctrl.settables(option_rof)
-            meas_ctrl.setpoints(ro_f_samples)
+            meas_ctrl.setpoints(rof_data_idx)
             
+            ds = meas_ctrl.run("Rof-Calibrate")
+            dict_ = {}
+            for q_idx, q in enumerate(ro_elements["rof_samples"]):
+                i_data = array(ds[f'y{2*q_idx}'])
+                q_data = array(ds[f'y{2*q_idx+1}'])
+                dict_[q] = array([i_data.tolist(),q_data.tolist()]) # shape (mixer, rof_idx)
+                dict_[f"{q}_rof"] = array([array(ro_elements["rof_samples"][q])]*2) # shape (mixer, rof_idx)
             
-            rfs_ds = meas_ctrl.run("Rof-Calibrate")
-            # Save the raw data into netCDF
-            Data_manager().save_raw_data(QD_agent=QD_agent,ds=rfs_ds,qb=q,label=ini_state,exp_type='RofCali',specific_dataFolder=data_folder)
-            
-            I,Q= dataset_to_array(dataset=rfs_ds,dims=1)
-            
-            show_args(exp_kwargs, title="RofCali_kwargs: Meas.qubit="+q)
-
+            return dict_
+    
         else:
-            n_s = 2
-            sweep_para= array(ro_f_samples[:n_s])
-            sched_kwargs['ro_freq']= sweep_para.reshape(sweep_para.shape or (1,))
+            preview_para = {}
+            for q in ro_elements:
+                preview_para[q] = ro_elements[q][:2]
+            sched_kwargs['ro_freq']= preview_para
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
-            
 
-            show_args(exp_kwargs, title="RofCali_kwargs: Meas.qubit="+q)
-            if Experi_info != {}:
-                show_args(Experi_info(q))
-            I, Q = [], []
-        
-        return array(I), array(Q)
+            return {}
     
-    slightly_print("Running |1>")
-    I_e, Q_e = array(state_dep_sched('e'))
     slightly_print("Running |0>")
-    I_g, Q_g = array(state_dep_sched('g'))
-    I_diff = I_e-I_g
-    Q_diff = Q_e-Q_g
-    dis_diff = sqrt((I_diff)**2+(Q_diff)**2)
+    data_dict_g = state_dep_sched('g')
+    slightly_print("Running |1>")
+    data_dict_e = state_dep_sched('e')
+
     if run:
-        great_rof = anal_rof_cali(I_e,Q_e,I_g,Q_g,dis_diff,ro_f_samples,ro_f_origin)
-    else:
-        great_rof = 0
-    qubit.clock_freqs.readout(ro_f_origin)
-    return great_rof
+        dict_ = {}
+        for var in data_dict_g :
+            if var.split("_")[-1] != "rof":
+                state_data = []
+                rof_data = [array(data_dict_g[f"{var}_rof"]).tolist()]*2
+                for item in [array(data_dict_g[var]).tolist(), array(data_dict_e[var]).tolist()]: # shape (state, mixer, rof)
+                    state_data.append(item)
+                dict_[var] = (["mixer","state","rof"],moveaxis(array(state_data),0,1)) 
+                dict_[f"{var}_rof"] = (["mixer","state","rof"],moveaxis(array(rof_data),0,1))
+        
+        rofcali_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"state":["g","e"],"rof":rof_data_idx})
+        rofcali_ds.attrs["execution_time"] = Data_manager().get_time_now()
+        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rofcali_ds,qb="multiQ",exp_type='RofCali',specific_dataFolder=data_folder,get_data_loc=True)
 
-
-def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarray,ro_f_samples:ndarray,original_rof=float):
-    max_dif_idx = where(dis_diff==max(dis_diff))[0][0]
-    optimized_rof = ro_f_samples[max_dif_idx]
-    fig, ax = plt.subplots(3,1)
-    amp_e = sqrt(I_e**2+Q_e**2)
-    amp_g = sqrt(I_g**2+Q_g**2)
-    ax[0].plot(ro_f_samples,amp_e,label='|1>')
-    ax[0].plot(ro_f_samples,amp_g,label='|0>')
-    ax[0].set_xlabel('ROF (Hz)')
-    ax[0].set_ylabel("Amplitude (V)")
-    ax[0].legend()
-
-    pha_e = arctan2(Q_e,I_e)
-    pha_g = arctan2(Q_g,I_g)
-    ax[1].plot(ro_f_samples,pha_e,label='|1>')
-    ax[1].plot(ro_f_samples,pha_g,label='|0>')
-    ax[1].set_xlabel('ROF (Hz)')
-    ax[1].set_ylabel("phase")
-    ax[1].legend()
-
-    ax[2].plot(ro_f_samples,dis_diff,label='diff')
-    ax[2].vlines(x=array([optimized_rof]),ymin=min(dis_diff),ymax=max(dis_diff),colors='black',linestyles='--',label='optimal')
-    ax[2].vlines(x=array([original_rof]),ymin=min(dis_diff),ymax=max(dis_diff),colors='#DCDCDC',linestyles='--',label='original')
-    ax[2].set_xlabel('ROF (Hz)')
-    ax[2].set_ylabel("diff (V)")
-    ax[2].legend()
-    plt.show()
-
-    return optimized_rof
+        for q in ro_f_origin:
+            qubit_info = QD_agent.quantum_device.get_element(q)
+            qubit_info.clock_freqs.readout(ro_f_origin[q])
     
+    return nc_path
 
-def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,specific_qubits:str,execution:bool=True,ro_f_span:float=2e6,fpts:int=100):
+
+def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,execution:bool=True,n_avg:int=300):
     if execution:
-        Fctrl[specific_qubits](float(QD_agent.Fluxmanager.get_proper_zbiasFor(specific_qubits)))
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
-        Fctrl[specific_qubits](0.0)
+        for q in ro_elements["rof_samples"]:
+            Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
+        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_elements,run=execution,n_avg=n_avg)
+        reset_offset(Fctrl)
         cluster.reset()
     else:
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_span_Hz=ro_f_span,q=specific_qubits,f_points=fpts,run=execution)
+        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_elements,run=execution,n_avg=n_avg)
 
     return optimal_rof
+
+
+def rofCali_waiter(QD_agent:QDmanager,ro_element:dict,fpts:int=100)->dict:
+    ro_elements = {"rof_samples":{}}
+    for q in ro_element:
+        # rof samples settings
+        ro_f_origin= QD_agent.quantum_device.get_element(q).clock_freqs.readout()
+        ro_elements["rof_samples"][q] = linspace(ro_f_origin-ro_element[q]["span_Hz"],ro_f_origin+ro_element[q]["span_Hz"],fpts)
+        # driving LO settings
+        set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=QD_agent.quantum_device.get_element(q).clock_freqs.f01()+250e6)
+
+    return ro_elements
+
+
 
 
 
@@ -144,60 +139,60 @@ if __name__ == '__main__':
 
     """ Fill in """
     execute:bool = True
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {'q0':{"span_Hz":8e6}}
     couplers = []
 
+    """ Optional paras """
+    freq_pts:int = 100
+    avg_n:int = 300
+
 
     """ Preparation """
-    re_find_ground = []
-    for qubit in ro_elements:
-        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    keep = False
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    ro_elements = rofCali_waiter(QD_agent,ro_elements,freq_pts)
+    for qubit in ro_elements["rof_samples"]:
+        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
+    
+
+
+    """ Running """
+    nc_path = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,ro_elements,execution=execute,n_avg=avg_n)
+    slightly_print(f"data saved located:\n{nc_path}")
+    if execute:
+        ds = rofcali_dataReducer(nc_path)
+        qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
+        optimal_rof = {}
+        for var in qubit:
+            ANA = Multiplex_analyzer("c1")
+            ANA._import_data(ds,var_dimension=1)
+            ANA._start_analysis(var_name = var)
+            fit_pic_folder = Data_manager().get_today_picFolder()
+            ANA._export_result(fit_pic_folder)
+            optimal_rof[var] = ANA.fit_packs[var]["optimal_rof"]
         
+        permission = mark_input(f"Update the optimal ROF for {qubit}?[y/n] or a qubit name to update... ")
+        match permission.lower()[0]:
+            case 'y':
+                for qubit in ro_elements["rof_samples"]:
+                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof[qubit])
+                keep = True
+            case 'q':
+                QD_agent.quantum_device.get_element(permission.lower()).clock_freqs.readout(optimal_rof[permission.lower()])
+                keep = True
+            case _:
+                warning_print("QD updates got denied !")
 
-        """ Running """
-        keep = False
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+
+    """ Storing """ 
+    if execute:
+        if keep:
+            QD_agent.QD_keeper()
+
+
+    """ Close """    
+    shut_down(cluster,Fctrl,Cctrl)
     
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        ro_span = ro_elements[qubit]["span_Hz"]
-
-        optimal_rof = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,execution=execute,ro_f_span=ro_span)
-        if execute:
-            permission = mark_input(f"Update the optimal ROF for {qubit}?[y/n] or assign a RO freq in Hz directly: ")
-            try:
-                permission = float(permission)
-                aa = mark_input(f"Check Assigned RO freq = {permission} Hz, 'n' to cancel! ")
-                if aa.lower() not in ['n', 'no']:
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(permission)
-                    keep = True  
-                else:
-                    keep = False
-            except:
-                if permission.lower() in ['y', 'yes']:
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof)
-                    keep = True
-                else:
-                    keep = False
-
-        """ Storing """ 
-        if execute:
-            if keep:
-                QD_agent.QD_keeper()
-                re_find_ground.append(qubit)
-
-        """ Close """    
-        shut_down(cluster,Fctrl,Cctrl)
-    
-    for qubit in re_find_ground:
-        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-        orginal_inte = QD_agent.quantum_device.get_element(qubit).measure.integration_time()
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-        refIQ_executor(QD_agent,cluster,Fctrl,qubit,want_see_p01=True)
-        QD_agent.quantum_device.get_element(qubit).measure.integration_time(orginal_inte)
-        """ Close """ 
-        QD_agent.QD_keeper()   
-        shut_down(cluster,Fctrl,Cctrl)

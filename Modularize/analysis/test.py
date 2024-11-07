@@ -1,61 +1,58 @@
+import os, sys 
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
-from scipy.optimize import curve_fit
+from numpy import array, sqrt, linspace, diff, arange, arctan2, sin, cos, hstack, vstack, ndarray, pi, column_stack, moveaxis, empty_like, where, mean
 import os 
-# def e_fn(x, a, tau, c):
-#     return a*np.exp(-x/tau) + c
+import time
+from  datetime import datetime
+from xarray import open_dataset, Dataset, DataArray
+import quantify_core.data.handling as dh
+from Modularize.support import QDmanager, Data_manager
+from utils.tutorial_analysis_classes import QubitFluxSpectroscopyAnalysis
+from Modularize.support.Path_Book import meas_raw_dir
+from Modularize.analysis.raw_data_demolisher import Rabi_dataReducer
+from Modularize.support.QuFluxFit import plot_QbFlux_multiVersn
+from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis,T2_fit_analysis, Fit_analysis_plot,T1_fit_analysis, IQ_data_dis, cos_fit_analysis
+from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
+from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from Modularize.support import rotate_onto_Inphase, rotate_data
+from Modularize.support.QuFluxFit import plot_QbFlux
 
-# file = "/Users/ratiswu/Downloads/A/ScalinQ/q0_re0KTIME_effT_H22M49S19/effT_dataValues.csv"
-# df = pd.read_csv(file, sep=',')
-# x = np.array(df["exp_x_(min)"])[:100]
-# y = np.array(df["exp_y_(mK)"])[:100]
 
-# p, e = curve_fit(e_fn, x, y)
-# fig = plt.figure(figsize=(9,7))
-# plt.scatter(x,y, label='data')
-# plt.plot(x,e_fn(x,*p),c='red', label='fit')
-# plt.xlabel("time past (min)", fontsize=26)
-# plt.xticks(fontsize=20)
-# plt.ylabel("Eff. Temp. (mK)", fontsize=26)
-# plt.yticks(fontsize=20)
-# plt.title("Temp monitor after off 80mK heater", fontsize=20)
-# plt.legend(fontsize=20)
-# plt.grid()
-# plt.savefig(os.path.join(os.path.split(file)[0], "fit.png"))
-# plt.close()
-# print(p)
 
-from numpy import arange, ndarray, array
 
-n = 13
-t = 172
-spin= 3
+file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H12M39S40.nc"
+QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
+QD_agent = QDmanager(QD_file)
+QD_agent.QD_loader()
 
-gap = (t) // n + ((t // n) %(4*(spin+1))) # multiple by 8 ns
-samples = arange((4*(spin+1)),t,gap)
+refIQ = QD_agent.refIQ
 
-def modify_time_point(ary:ndarray,factor:int):
-    x = []
-    for i in ary:
-        if i % factor == 0:
-            if i not in x :
-                x.append(i)
+
+""" for half pi """
+ds = open_dataset(file)
+for var in ds.data_vars:
+    if var.split("_")[-1] != "HalfPIcoef":
+        pi_amp_coef =  moveaxis(array(ds[f"{var}_HalfPIcoef"]),1,0)[0][0]
+        pi_pair_num = array(ds.coords["PiPairNum"])
+        data = moveaxis(array(ds[var]),1,0)
+        refined_data_folder = []
+        for PiPairNum_dep_data in data:
+            if len(refIQ[var]) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],refIQ[var][0],refIQ[var][1])
             else:
-                pass
-        else:
-            multiples = i // factor
-            multiples_of_factor = factor*(multiples+1)
-            if multiples_of_factor not in x:
-                x.append(multiples_of_factor)
-            else:
-                pass
-    return array(x)
-
-good_samples = modify_time_point(samples, spin+1)
-print(samples)
-print(good_samples)
-        
-
-
-    
+                refined_data = rotate_data(PiPairNum_dep_data,refIQ[var][0])[0]
+            refined_data_folder.append(cos_fit_analysis(refined_data,pi_amp_coef))
+        fig, ax = plt.subplots()
+        for idx, refined_data in enumerate(refined_data_folder):
+            x = refined_data.coords['freeDu']
+            x_fit = refined_data.coords['para_fit']  
+            ax.plot(x,refined_data.data_vars['data'],'--',label=f"{pi_pair_num[idx]} halfPI quadruples", alpha=0.8, ms=4)
+            ax.plot(x_fit,refined_data.data_vars['fitting'],'-', alpha=1, lw=2)    
+            
+        #     plt.plot(pi_amp_coef,refined_data,label=f"{pi_pair_num[idx]} pairs pi-pulses")
+        plt.title(f"{var} PI-pulse amp coef calibration")
+        plt.legend()
+        plt.grid()
+        plt.show()

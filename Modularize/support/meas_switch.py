@@ -64,9 +64,9 @@ def switch_a_meas_point(dr:str,last_ip:str,target_q:str):
 if __name__ == "__main__":
 
     """ fill in """
-    DRandIP = {"dr":"dr4","last_ip":"81"}
+    DRandIP = {"dr":"drke","last_ip":"242"}
     ro_elements = {
-        'q1':{"mode_idx":0,"z_bias_forSave":'sweet'}
+        'q0':{"mode_idx":1,"z_bias_forSave":'sweet'}
     }                                                      #["sweet","off-sweet"] or a float number
  
     """ Running and Storing"""

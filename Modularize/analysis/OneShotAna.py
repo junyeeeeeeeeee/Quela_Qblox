@@ -2,17 +2,17 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
-from xarray import Dataset, open_dataset
+from xarray import Dataset, open_dataset, DataArray
 from Modularize.analysis.Radiator.RadiatorSetAna import OSdata_arranger
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager
-from numpy import array, moveaxis, mean, std, median, arange
+from numpy import array, moveaxis, mean, std, median, arange,ndarray, pi, sin, cos, vstack, arctan2, column_stack, hstack, empty_like
 import matplotlib.pyplot as plt
 from Modularize.analysis.Radiator.RadiatorSetAna import sort_files
 from qcat.analysis.state_discrimination import p01_to_Teff
+from Modularize.support import rotate_onto_Inphase, rotate_data
 
-
-def a_OSdata_analPlot(QD_agent:QDmanager, target_q:str, nc_path:str, plot:bool=True, pic_path:str='', save_pic:bool=False): # 
+def a_OSdata_analPlot(nc_path:str, QD_agent:QDmanager=None, target_q:str=None, plot:bool=True, pic_path:str='', save_pic:bool=False): # 
     folder = os.path.join(os.path.split(nc_path)[0],'OS_pic')
     if not os.path.exists(folder):
         os.mkdir(folder)
@@ -37,18 +37,35 @@ def a_OSdata_analPlot(QD_agent:QDmanager, target_q:str, nc_path:str, plot:bool=T
     gmm2d_fidelity._import_data(tarin_data[0])
     gmm2d_fidelity._start_analysis()
     g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
-    transi_freq = QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
+    if QD_agent is not None:
+        transi_freq = QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
+    else: 
+        transi_freq = None
+    
+   
+    _, angle = rotate_onto_Inphase(gmm2d_fidelity.centers[0],gmm2d_fidelity.centers[1])
     
     p00 = g1d_fidelity.g1d_dist[0][0][0]
     p01 = g1d_fidelity.g1d_dist[0][0][1]
     p11 = g1d_fidelity.g1d_dist[1][0][1]
-    effT_mK = p01_to_Teff(p01, transi_freq)*1000
+    if transi_freq is not None:
+        effT_mK = p01_to_Teff(p01, transi_freq)*1000
     RO_fidelity_percentage = (p00+p11)*100/2
     if plot:
-        plot_readout_fidelity( tarin_data[0], gmm2d_fidelity, g1d_fidelity,transi_freq,pic_save_path)
+        z = moveaxis(array(tarin_data[0]),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+        rotated_data = empty_like(z)
+        for state_idx, state_data in enumerate(z):
+            rotated_data[state_idx] = rotate_data(state_data,angle)
+    
+        da = DataArray(moveaxis(rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(tarin_data[0]).shape[2]))] )
+        gmm2d_fidelity._import_data(da)
+        gmm2d_fidelity._start_analysis()
+        g1d_fidelity = gmm2d_fidelity.export_G1DROFidelity()
+        print(f"!! center:\n{gmm2d_fidelity.centers}")
+        plot_readout_fidelity(da, gmm2d_fidelity, g1d_fidelity,transi_freq,pic_save_path)
         plt.close()
 
-    return p01, effT_mK, RO_fidelity_percentage
+    return p01, effT_mK, RO_fidelity_percentage, angle
 
 def share_model_OSana(QD_agent:QDmanager,target_q:str,folder_path:str,pic_save:bool=True):
     transi_freq = QD_agent.quantum_device.get_element(target_q).clock_freqs.f01()
@@ -92,5 +109,5 @@ def share_model_OSana(QD_agent:QDmanager,target_q:str,folder_path:str,pic_save:b
 
 
 if __name__ == "__main__":
-    nc_path = 'Modularize/Meas_raw/2024_9_12/DR4q4_SingleShot(0)_H15M24S30.nc'
+    nc_path = 'Modularize/Meas_raw/20241029/DR2q0_SingleShot(0)_H12M46S03.nc'
     a_OSdata_analPlot(nc_path)

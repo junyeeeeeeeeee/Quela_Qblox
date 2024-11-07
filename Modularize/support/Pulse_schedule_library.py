@@ -90,6 +90,8 @@ def T1_func(D,A,T1,offset):
     return A*np.exp(-D/T1)+offset
 def Ramsey_func(D,A,T2,f,phase,offset):
     return A*np.exp(-D/T2)*np.cos(2*np.pi*f*D+phase)+offset
+def Cosine_func(D,A,f,phase,offset):
+    return A*np.cos(2*np.pi*f*D+phase)+offset
 def Loren_func(x,x0,gamma,A,base):
     return (A/np.pi)*((gamma/2)/((x-x0)**2+(gamma/2)**2))+base
 def gauss_func(x,c,sigma,A):
@@ -103,11 +105,29 @@ def Relax_cal(inte_i,tf,T1):
     Relax= 1+(T1/tau)*(np.exp(-(inte_i+tau)/T1)-np.exp(-inte_i/T1))
     return Relax
 Rabi_model = Model(Rabi_func)
+cosine_model = Model(Cosine_func)
 T1_func_model = Model(T1_func)
 Ramsey_func_model = Model(Ramsey_func)
 Loren_func_model = Model(Loren_func)
 gauss2d_func_model = Model(gauss2d_func, independent_vars=['I', 'Q'])
 bigauss2d_func_model = Model(bigauss2d_func, independent_vars=['I', 'Q'])
+
+def cos_fit_analysis(data:np.ndarray,freeDu:np.ndarray):
+    f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
+    f_guess_=Parameter(name='f', value=f_guess , min=0, max=f_guess*10)
+    result = cosine_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
+
+    A_fit= result.best_values['A']
+    f_fit= result.best_values['f']
+    phase_fit= result.best_values['phase']
+    offset_fit= result.best_values['offset']
+    para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
+
+    fitting= Cosine_func(para_fit,A_fit,f_fit,phase_fit,offset_fit)
+
+    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="xyfcali",f=f_fit,phase=phase_fit))
+
+
 
 def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,return_error:bool=False):
     offset_guess= data[-1]
@@ -128,10 +148,11 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,ret
     
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=0.1e-6, max=5*T2_guess) 
-    up_lim_f= 5*1e6
+    up_lim_f= 30*1e6
     f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
     result = Ramsey_func_model.fit(data,D=freeDu,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
-    fit_error = float(result.covar[1][1])*1e6
+    if return_error:
+        fit_error = float(result.covar[1][1])*1e6
     A_fit= result.best_values['A']
     f_fit= result.best_values['f']
     phase_fit= result.best_values['phase']
@@ -309,7 +330,7 @@ def Digital_down_convert(IF_Idata:np.ndarray,IF_Qdata:np.ndarray,IF:float,time_a
 #%% pulse library
 def Spec_pulse(sche,amp,Du,q,ref_pulse_sche,freeDu, ref_point:str="start"):
     delay_c= -Du-freeDu
-    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point,)
+    return sche.add(SquarePulse(duration=Du,amp=amp, port=q+":mw", clock=q+".01"),rel_time=delay_c,ref_op=ref_pulse_sche,ref_pt=ref_point)
 
 def X_theta(sche,amp,Du,q,ref_pulse_sche,freeDu):
 
@@ -353,7 +374,7 @@ def Z(sche,Z_amp,Du,q,ref_pulse_sche,freeDu,ref_position='start'):
     if Du!=0:
         delay_z= -Du-freeDu
         return sche.add(SquarePulse(duration= Du,amp=Z_amp, port=q+":fl", clock="cl0.baseband"),rel_time=delay_z,ref_op=ref_pulse_sche,ref_pt=ref_position,)
-    else: pass
+
 
 def Zc(sche,Z_amp,Du,qc,ref_pulse_sche,freeDu):
     if Du!=0:
@@ -459,6 +480,8 @@ def One_tone_multi_sche(
     R_integration:dict,
     R_inte_delay:dict,
     powerDep:bool,
+    bias:any=0,
+    bias_dura:float=0,
     repetitions:int=1,    
 ) -> Schedule:
     
@@ -466,25 +489,72 @@ def One_tone_multi_sche(
     sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
     sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
 
+
     for acq_idx in range(sameple_idx):    
 
         for qubit_idx, q in enumerate(qubits2read):
             freq = frequencies[q][acq_idx]
             if acq_idx == 0:
                 sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
-
+            
             sched.add(Reset(q))
             sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {qubit_idx} {acq_idx}")
+            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+
             
             if qubit_idx == 0:
                 spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-                # Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
             else:
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
             
+            if bias != 0 and bias_dura != 0: 
+                Z(sched,bias,bias_dura,q,spec_pulse,0,ref_position='end')
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+          
     return sched
+
+def RabiSplitting_multi_sche(
+    frequencies: dict,
+    bias_couplers:list,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    powerDep:bool,
+    bias:any=0,
+    bias_dura:float=0,
+    repetitions:int=1,    
+) -> Schedule:
+    
+    qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+    sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
+
+
+    for acq_idx in range(sameple_idx):    
+
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
+            
+            sched.add(Reset(q))
+            sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
+            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+
+            
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
+                if bias != 0 and bias_dura != 0 and len(list(bias_couplers)):
+                    for qc in bias_couplers:
+                        Z(sched,bias,bias_dura,qc,spec_pulse,0,ref_position='end')
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+          
+    return sched 
 
 def Two_tone_sche(
     frequencies: np.ndarray,
@@ -504,11 +574,47 @@ def Two_tone_sche(
     for acq_idx, freq in enumerate(frequencies):
         sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+     
+    return sched
+
+def multi_Two_tone_sche(
+    frequencies:dict,
+    spec_amp:any,
+    spec_Du:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,   
+    ref_pt:str='end'
+    
+) -> Schedule:
+    sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
+    qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+
+    for acq_idx in range(sameple_idx):    
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".01", freq=array(frequencies[q]).flat[0]))
+        
+            sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
+            sched.add(Reset(q))
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
+
+            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
      
     return sched
@@ -532,7 +638,7 @@ def Z_gate_two_tone_sche(
     for acq_idx, freq in enumerate(frequencies):
         sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
         sched.add(Reset(q))
-        sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
         Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)
@@ -543,7 +649,59 @@ def Z_gate_two_tone_sche(
      
     return sched
 
+#? Warning: Should avoid add the z-gate on the same channel at the same time
+def multi_Z_gate_two_tone_sche(
+    frequencies: dict,
+    bias_qs:list,
+    Z_amp:any,
+    spec_amp:float,
+    spec_Du:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,   
+    
+) -> Schedule:
+    sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
+    
+    additional_bias_list = []
+    qubits2read = list(frequencies.keys())
+    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
 
+    for q_need_bias in bias_qs:
+        if q_need_bias not in qubits2read:
+            additional_bias_list.append(q_need_bias)
+
+
+
+    for acq_idx in range(sameple_idx):    
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = frequencies[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+".01", freq=array(frequencies[q]).flat[0]))
+   
+            sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
+            sched.add(Reset(q))
+            
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+            
+            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
+
+            if q in bias_qs:
+                Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)
+            
+            if len(additional_bias_list) != 0:
+                for qs in additional_bias_list:
+                    Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
+            
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+     
+    return sched
 
 def Qubit_state_heterodyne_spec_sched_nco(
     frequencies: np.ndarray,
@@ -624,6 +782,50 @@ def Rabi_sche(
     
     return sched
 
+def multi_Rabi_sche(
+    Paras:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    XY_theta:str,
+    repetitions:int=1,
+    OS_or_not:bool=False
+) -> Schedule:
+    
+    qubits2read = list(Paras.keys())
+    sched = Schedule("RabiOscillation",repetitions=repetitions)
+    
+    if isinstance(Paras[qubits2read[0]]["XY_duration"],np.ndarray):
+        sample_len = Paras[qubits2read[0]]["XY_duration"].shape[0]
+    else:
+        sample_len = Paras[qubits2read[0]]["XY_amp"].shape[0]
+    
+    match XY_theta:
+        case 'Y_theta':
+            gate:callable = Y_theta
+        case _:
+            gate:callable = Y_theta
+
+    
+    for acq_idx in range(sample_len):    
+        for qubit_idx, q in enumerate(qubits2read):
+            sched.add(Reset(q))
+            spec_pulse = Readout(sched,q,R_amp,R_duration)
+            
+            if isinstance(Paras[q]["XY_duration"],np.ndarray):
+                gate(sched,Paras[q]["XY_amp"],Paras[q]["XY_duration"][acq_idx],q,spec_pulse,freeDu=electrical_delay)
+            else:
+                gate(sched,Paras[q]["XY_amp"][acq_idx],Paras[q]["XY_duration"],q,spec_pulse,freeDu=electrical_delay)
+           
+        
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
+    
+    return sched
+
+def multi_RabiSchevron_sche():
+    pass
+
 def Rabi_12_sche(
     q:str,
     XY_12_amp: any,
@@ -674,8 +876,6 @@ def Rabi_12_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
     
     return sched
-
-
 
 
 def Zgate_Rabi_sche(
@@ -757,6 +957,37 @@ def T1_sche(
         
     return sched
 
+def multi_T1_sche(
+    freeduration:dict,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(freeduration.keys())
+    sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
+    sched = Schedule("T1", repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            freeDu = freeduration[q][acq_idx]
+            sched.add(Reset(q))
+        
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+        
+        
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu+electrical_delay)
+            
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 def mix_T1_sche(
     q:str,
     pi_amp: dict,
@@ -767,6 +998,7 @@ def mix_T1_sche(
     R_inte_delay:float,
     repetitions:int=1,
 ) -> Schedule:
+
 
     sched = Schedule("T1", repetitions=repetitions)
     
@@ -783,7 +1015,6 @@ def mix_T1_sche(
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
-
 
 def XY_Z_timing_sche(
     q:str,
@@ -849,6 +1080,39 @@ def Zgate_T1_sche(
         
     return sched
 
+def multi_Zgate_T1_sche(
+    freeduration:dict,
+    Z_amp:any,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(freeduration.keys())
+    sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
+    sched = Schedule("Zgate-T1", repetitions=repetitions)
+
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            freeDu = freeduration[q][acq_idx]
+            sched.add(Reset(q))
+        
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+        
+        
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu+electrical_delay)
+            Z(sched,Z_amp,freeDu,q,spec_pulse,freeDu=electrical_delay)
+            
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
 
 def Ramsey_sche(
     q:str,
@@ -897,6 +1161,55 @@ def Ramsey_sche(
             X_pi_2_p(sched,pi_amp,q,pi_Du,first_half_pi,freeDu)
 
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+        
+    return sched
+
+def multi_ramsey_sche(
+    New_fxy:dict,
+    freeduration:dict,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    echo_pi_num:dict,
+    repetitions:int=1,
+    second_pulse_phase:str='x',
+) -> Schedule:
+    qubits2read = list(freeduration.keys())
+    sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
+    sched = Schedule("Ramsey", repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):   
+        for qubit_idx, q in enumerate(qubits2read):
+            freeDu = freeduration[q][acq_idx]
+            if acq_idx == 0:
+                sched.add(SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy[q]))
+            sched.add(Reset(q))
+
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+
+            if second_pulse_phase.lower() == 'x':
+                first_half_pi = X_pi_2_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+            else:
+                first_half_pi = Y_pi_2_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+        
+            if echo_pi_num[q] != 0:
+                a_separate_free_Du = freeDu / echo_pi_num[q]
+                for pi_idx in range(echo_pi_num[q]):
+                    if pi_idx == 0 :
+                        pi = X_pi_p(sched,pi_amp,q,pi_dura[q],first_half_pi,0.5*a_separate_free_Du)
+                    else:
+                        pi = X_pi_p(sched,pi_amp,q,pi_dura[q],pi,1*a_separate_free_Du)
+                X_pi_2_p(sched,pi_amp,q,pi_dura[q],pi,0.5*a_separate_free_Du)
+            else:
+                X_pi_2_p(sched,pi_amp,q,pi_dura[q],first_half_pi,freeDu)
+
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
         
     return sched
 
@@ -1065,6 +1378,35 @@ def Qubit_SS_sche(
 
     return sched
 
+def multi_Qubit_SS_sche(
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+
+    sched = Schedule("Single shot", repetitions=repetitions)
+
+    for qubit_idx, q in enumerate(R_integration):
+
+        sched.add(Reset(q))
+        if qubit_idx == 0:
+            spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+        else:
+            Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
+    
+        if ini_state=='e': 
+            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+        
+    
+        Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=0,acq_channel=qubit_idx,single_shot=True,get_trace=False,trace_recordlength=0)
+
+    return sched
+
 #? Calibrations :
 def ROF_Cali_sche(
     q:str,
@@ -1091,6 +1433,43 @@ def ROF_Cali_sche(
             
         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
+    return sched
+
+def multi_ROF_Cali_sche(
+    ro_freq:dict,
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(ro_freq.keys())
+    sameple_idx = array(ro_freq[qubits2read[0]]).shape[0]
+    sched = Schedule("ROF calibration", repetitions=repetitions)
+    for acq_idx in range(sameple_idx):    
+
+        for qubit_idx, q in enumerate(qubits2read):
+            freq = ro_freq[q][acq_idx]
+            if acq_idx == 0:
+                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(ro_freq[q]).flat[0]))
+
+            sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
+            sched.add(Reset(q))
+            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+
+            if ini_state=='e': 
+                X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+                
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+          
     return sched
 
 def PI_amp_cali_sche(
@@ -1124,6 +1503,46 @@ def PI_amp_cali_sche(
 
     return sched
 
+def multi_PI_amp_cali_sche(
+    pi_amp_coefs: dict,
+    pi_pair_num:int,
+    XY_amp: dict,
+    XY_duration:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+    )-> Schedule:
+    qubits2read = list(pi_amp_coefs.keys())
+    sameple_idx = array(pi_amp_coefs[qubits2read[0]]).shape[0]
+    sched = Schedule("Pi amp modification", repetitions=repetitions)
+
+    if np.median(pi_amp_coefs[qubits2read[0]]) > 0.9 : # should be 1 when pi amp cali
+        pairs:int = 2
+    else:                          # should be 0.5 when half-pi amp cali
+        pairs:int = 4
+    
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            amp_coef = pi_amp_coefs[q][acq_idx]
+            
+            
+            sched.add(Reset(q))
+            
+            if qubit_idx == 0:
+                read_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
+            
+            for pi_num in range(pi_pair_num):
+                for pi_idx in range(pairs):
+                    spec_pulse = X_pi_p(sched,{str(q):float(XY_amp[q])*amp_coef},q,XY_duration[q],read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                    
+            Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
+
 def pi_half_cali_sche(
     q:str,
     pi_amp: dict,
@@ -1151,8 +1570,6 @@ def pi_half_cali_sche(
         Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
     return sched
-
-
 
 def Qubit_amp_SS_sche(
     q:str,
@@ -1474,7 +1891,7 @@ def Qubit_state_single_shot_plot(results:dict,Plot_type:str,y_scale:str):
     plt.show()
 
 
-def Single_shot_fit_plot(results:dict):
+def Single_shot_fit_plot(results:dict,title_qubit:str=None):
     c_I,c_Q,sig=1000*results['fit_pack'][0],1000*results['fit_pack'][1],1000*results['fit_pack'][2]
     I,Q= results['data'][0],results['data'][1]
     
@@ -1484,7 +1901,7 @@ def Single_shot_fit_plot(results:dict):
     ax.add_patch(Ellipse(xy=[c_I,c_Q],width=sig*4,height=sig*4,fill=False, alpha=0.8, facecolor= None, edgecolor="k", linewidth=0.8, linestyle='--',angle=0))
     ax.set_xlabel(r"$I\ $(mV)",size ='15')
     ax.set_ylabel(r"$Q\ $(mV)",size ='15')
-    ax.set_title('Single shot raw data')
+    ax.set_title(f'{title_qubit if title_qubit is not None else ""} Single shot raw data')
     ax.set_xlim(1000*np.minimum(min(I),min(Q)),1000*np.maximum(max(I),max(Q)))
     ax.set_ylim(1000*np.minimum(min(I),min(Q)),1000*np.maximum(max(I),max(Q)))
     fig.tight_layout()
@@ -1558,7 +1975,7 @@ def Qubit_state_Avgtimetrace_plot(results:dict,fc:float,Digital_downconvert:bool
     
     return dict(Ig=Ig,Qg=Qg,Ie=Ie,Qe=Qe)
     
-def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False):
+def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, save_path:str='', spin_echo=False, q:str='', fq_MHz:int=None):
     if P_rescale is not True:
         Nor_f=1/1000
         y_label= 'Contrast'+' [mV]'
@@ -1579,10 +1996,10 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         
     elif results.attrs['exper'] == 'T1': 
         if spin_echo:
-            title = "Spin echo" 
+            title = "Spin echo" if q =="" else f"{q} Spin echo"
             text_msg += r"$T_{2}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
         else:
-            title= 'T1 relaxation'
+            title= 'T1 relaxation' if q =="" else f"{q} T1 relaxation"
             text_msg += r"$T_{1}= %.3f $"%(results.attrs['T1_fit']*1e6) +r"$\ [\mu$s]"+'\n'
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
@@ -1594,7 +2011,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             ans = np.array(results.data_vars['fitting']).max()/Nor_f-np.exp(-1)*(np.array(results.data_vars['fitting']).max()-np.array(results.data_vars['fitting']).min())/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
-        title= 'Ramsey'
+        title= 'Ramsey' if q =="" else f"{q} Ramsey"
+        if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
         x_fit= results.coords['para_fit']*1e6
@@ -1602,10 +2020,20 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
         ans = np.exp(-1)*(np.array(results.data_vars['fitting'])[0]-np.array(results.data_vars['fitting'])[-1])/Nor_f+np.array(results.data_vars['fitting'])[-1]/Nor_f
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
+    
+    elif results.attrs['exper'] == 'xyfcali':  
+        title= 'XYF-calibration' if q =="" else f"{q} XYF-calibration"
+        if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
+        x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
+        x= results.coords['freeDu']*1e6
+        x_fit= results.coords['para_fit']*1e6   
+        text_msg += r"$detuning= %.3f $"%(results.attrs['f']*1e-6) +' MHz\n'
+        
     elif results.attrs['exper'] == 'Rabi': 
         title= results.attrs['Rabi_type']
         
         if title=='PowerRabi':
+            if q != "": title = f"{q} {title}"
             pi_2= results.attrs['pi_2']
             x_unit= r"$\ [V]$"
             x_label= r"$XY\ amp$"+x_unit
@@ -1613,6 +2041,7 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             x_fit= results.coords['para_fit']
             
         elif title=='TimeRabi':
+            if q != "": title = f"{q} {title}"
             pi_2= results.attrs['pi_2']*1e9
             x_unit= r"$\ [ns]$"
             x_label= r"$XY\ duration$"+x_unit
@@ -1701,7 +2130,7 @@ def Fit_T2_cali_analysis_plot(all_ramsey_results:list, P_rescale:bool, Dis:any):
     plt.show()
 
 from numpy import array, max, mean, min
-def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path=''):
+def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[], turn_on:bool=False, save_path='', title_q:str=''):
     fig, ax = plt.subplots(nrows =1,figsize =(6,4),dpi =250)
     ax.axvline(x=results.attrs['f01_fit']*1e-9, ymin=0, ymax= max(results.data_vars['data'].to_numpy())*1000,color='green',linestyle='dashed', alpha=0.8,lw=1)
     text_msg = "Fit results\n"
@@ -1728,6 +2157,8 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
     ax.set_title(title)
     ax.set_ylabel(y_label)
     plot_textbox(ax,text_msg)
+    if title_q != "":
+        plt.title(f" {title_q} 2tone results")
     fig.tight_layout()
     plt.legend()
     if save_path != '':

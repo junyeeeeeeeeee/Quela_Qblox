@@ -75,7 +75,7 @@ class QDmanager():
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
         if new_Hcfg:
-            from Modularize.support.Experiment_setup import hcfg_map
+            from Modularize.Configs.Experiment_setup import hcfg_map
             self.Hcfg = hcfg_map[self.Identity.split("#")[0].lower()]
         else:
             self.Hcfg = gift["Hcfg"]
@@ -212,8 +212,13 @@ class Data_manager:
     def __init__(self):
         from Modularize.support.Path_Book import meas_raw_dir
         from Modularize.support.Path_Book import qdevice_backup_dir
+        if not os.path.isdir(qdevice_backup_dir):
+            os.mkdir(qdevice_backup_dir) 
         self.QD_back_dir = qdevice_backup_dir
+        if not os.path.isdir(meas_raw_dir):
+            os.mkdir(meas_raw_dir) 
         self.raw_data_dir = meas_raw_dir
+        self.raw_folder = None
 
     # generate time label for netCDF file name
     def get_time_now(self)->str:
@@ -222,11 +227,11 @@ class Data_manager:
         Ex: 19:23:34 return H19M23S34 
         """
         current_time = datetime.datetime.now()
-        return f"H{current_time.hour}M{current_time.minute}S{current_time.second}"
+        return f"H{current_time.hour:02d}M{current_time.minute:02d}S{current_time.second:02d}"
     
     def get_date_today(self)->str:
         current_time = datetime.datetime.now()
-        return f"{current_time.year}_{current_time.month}_{current_time.day}"
+        return f"{current_time.year:02d}{current_time.month:02d}{current_time.day:02d}"
 
     # build the folder for the data today
     def build_folder_today(self,parent_path:str=''):
@@ -236,6 +241,7 @@ class Data_manager:
         """ 
         if parent_path == '':
             parent_path = self.QD_back_dir
+            
 
         folder = self.get_date_today()
         new_folder = os.path.join(parent_path, folder) 
@@ -249,6 +255,15 @@ class Data_manager:
         
         self.raw_folder = new_folder
         self.pic_folder = pic_folder
+    
+    def build_tuid_folder(self, tuid:str, additional_name:str=None):
+        if self.raw_folder is None:
+            self.build_folder_today(self.raw_data_dir)
+        
+        tuid_folder_path = os.path.join(self.raw_folder,f"{tuid}" if additional_name is None else f"{tuid}-{additional_name}")
+        if not os.path.isdir(tuid_folder_path):
+            os.mkdir(tuid_folder_path) 
+            print(f"TUID Folder created at:\n{tuid_folder_path}")
 
     
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
@@ -282,6 +297,9 @@ class Data_manager:
             
         elif exp_type.lower() == 'timerabi':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_timeRabi_{exp_timeLabel}.nc")
+        
+        elif exp_type.lower() == 'rabi':
+            path = os.path.join(parent_dir,f"{dr_loc}{qb}_Rabi_{exp_timeLabel}.nc")
             
         elif exp_type.lower() == 'ramsey':
             path = os.path.join(parent_dir,f"{dr_loc}{qb}_ramsey_{exp_timeLabel}.nc")
@@ -345,13 +363,17 @@ class Data_manager:
     
     def save_histo_pic(self,QD_agent:QDmanager,hist_dict:dict,qb:str='q0',mode:str="t1", show_fig:bool=False, save_fig:bool=True,pic_folder:str=''):
         from Modularize.support.Pulse_schedule_library import hist_plot
+        if QD_agent is not None:
+            dr_loc = QD_agent.Identity.split("#")[0]
+        else:
+            dr_loc = "DR-"
         exp_timeLabel = self.get_time_now()
         if pic_folder == '':
             self.build_folder_today(self.raw_data_dir)
             pic_dir = self.pic_folder
         else:
             pic_dir = pic_folder
-        dr_loc = QD_agent.Identity.split("#")[0]
+        
         if mode.lower() =="t1" :
             if save_fig:
                 fig_path = os.path.join(pic_dir,f"{dr_loc}{qb}_T1histo_{exp_timeLabel}.png")

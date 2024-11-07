@@ -44,15 +44,15 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
         file.close()
 
     # Upload sequence
-    readout_module.sequencer0.sequence("sequence.json")
+    readout_module.sequencers[0].sequence("sequence.json")
     readout_module.disconnect_outputs()
     readout_module.disconnect_inputs()
 
     # Configure channel map
-    readout_module.sequencer0.connect_sequencer("io0")
+    readout_module.sequencers[0].connect_sequencer("io0")
 
-    readout_module.sequencer0.marker_ovr_en(True)
-    readout_module.sequencer0.marker_ovr_value(3)  # Enables output on QRM-RF
+    readout_module.sequencers[0].marker_ovr_en(True)
+    readout_module.sequencers[0].marker_ovr_value(3)  # Enables output on QRM-RF
 
     # Set offset in mV
     readout_module.out0_offset_path0(5.5)
@@ -64,14 +64,14 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     readout_module.scope_acq_trigger_mode_path1("sequencer")
 
     # Configure the sequencer
-    readout_module.sequencer0.mod_en_awg(True)
-    readout_module.sequencer0.demod_en_acq(True)
-    readout_module.sequencer0.nco_freq(nco_freq)
-    readout_module.sequencer0.integration_length_acq(integration_length)
-    readout_module.sequencer0.sync_en(True)
+    readout_module.sequencers[0].mod_en_awg(True)
+    readout_module.sequencers[0].demod_en_acq(True)
+    readout_module.sequencers[0].nco_freq(nco_freq)
+    readout_module.sequencers[0].integration_length_acq(integration_length)
+    readout_module.sequencers[0].sync_en(True)
 
     # NCO delay compensation
-    readout_module.sequencer0.nco_prop_delay_comp_en(True)
+    readout_module.sequencers[0].nco_prop_delay_comp_en(True)
 
     lo_sweep_range = np.linspace(lo_start_freq, lo_stop_freq, num_data)
 
@@ -83,7 +83,8 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
         readout_module.out0_in0_lo_freq(lo_val)
 
         # Clear acquisitions
-        readout_module.sequencer0.delete_acquisition_data("acq")
+        
+        readout_module.sequencers[0].delete_acquisition_data("acq")
 
         readout_module.arm_sequencer(0)
         readout_module.start_sequencer()
@@ -141,11 +142,11 @@ if __name__ == "__main__":
     from Modularize.support.UI_Window import init_meas_window
     
     """ Fill in """
-    QD_path, dr, mode = "", "dr4","n" #init_meas_window()
-    qrmRF_slot_idx:int  = 18
-    lo_start_freq:float = 4.5  * 1e9
-    lo_stop_freq:float = 5 * 1e9
-    num_data:int =5000
+    QD_path, dr, mode = "", "dr2","n" #init_meas_window()
+    qrmRF_slot_idx:int  = 8
+    lo_start_freq:float = 5.8  * 1e9
+    lo_stop_freq:float = 6.2 * 1e9
+    num_data:int = 800
 
 
     """ Preparations """
@@ -154,7 +155,6 @@ if __name__ == "__main__":
                                                         mode=mode)
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-
     # Readout select
     readout_module = cluster.modules[qrmRF_slot_idx-1]
 
