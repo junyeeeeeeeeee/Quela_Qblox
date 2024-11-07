@@ -119,8 +119,8 @@ if __name__ == '__main__':
     repeat:int = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        'q0':{"ro_amp_factor":1,"xy_IF":250e6},
-        'q1':{"ro_amp_factor":1,"xy_IF":250e6}
+        'q0':{"ro_amp_factor":1.01,"xy_IF":250e6},
+        'q1':{"ro_amp_factor":1.01,"xy_IF":250e6}
     } 
     couplers = []
 
@@ -170,11 +170,17 @@ if __name__ == '__main__':
                 ANA._start_analysis()
                 pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
                 ANA._export_result(pic_path)
-                highlight_print(f"{var} rotate angle = {ANA.fit_packs['RO_rotation_angle']} in degree.")
+                highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
                 QD_agent.refIQ[var] = [ANA.fit_packs["RO_rotation_angle"]]
                 
             if auto_save:
                 QD_agent.QD_keeper() 
+            else:
+                permission = mark_input(f"Some qubit ROamp got amplified, do you wanna update it ?[y/n] ")
+                if permission.lower() in ["y", "yes"]:
+                    QD_agent.QD_keeper() 
+                else:
+                    warning_print("QD updates got denied !")
                 
                 
         """ Close """    

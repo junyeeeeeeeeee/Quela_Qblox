@@ -132,7 +132,7 @@ if __name__ == "__main__":
     couplers = []
 
     """ Optional paras """
-    histo_counts:int = 100 # > 100 use while loop outside the FPGA
+    histo_counts:int = 1 # > 100 use while loop outside the FPGA
     time_data_points:int = 100
     avg_n = 500
   

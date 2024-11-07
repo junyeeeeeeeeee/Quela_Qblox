@@ -386,25 +386,20 @@ def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=Non
         Give 2 points, rotate them makes them lie one the x-axis and return the rotate angle in degree.\n
         If you also give the rotate angle in degree, we rotate them according to this angle.
     """
-
-    translation = -point_1
-    P1_translated = point_1 + translation
-    P2_translated = point_2 + translation
-
-    # Step 2: Calculate the angle of rotation to align P2_translated with the x-axis
-    delta_x = P2_translated[0]
-    delta_y = P2_translated[1]
+    vector_21 = point_2 - point_1
     
     if angle_degree is None:
-        angle = -arctan2(delta_y, delta_x)  # Angle to align with x-axis
+        angle = -arctan2(vector_21[1], vector_21[0])  # Angle to align with x-axis
     else:
         angle = -angle_degree*pi/180
  
-    # Step 3: Define the rotation matrix for -angle (to align along x-axis)
+    # assign point_1 to origin 
+    point_1 = array([0,0])
+    point_2 = vector_21
 
     # Apply rotation to both translated points
-    P1_rotated = rotation_matrix(angle) @ P1_translated 
-    P2_rotated = rotation_matrix(angle) @ P2_translated 
+    P1_rotated = rotation_matrix(angle) @ point_1 
+    P2_rotated = rotation_matrix(angle) @ point_2 
 
     return vstack((P1_rotated,P2_rotated)), -angle*180/pi
 

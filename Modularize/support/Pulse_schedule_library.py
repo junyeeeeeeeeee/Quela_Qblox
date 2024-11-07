@@ -1503,6 +1503,46 @@ def PI_amp_cali_sche(
 
     return sched
 
+def multi_PI_amp_cali_sche(
+    pi_amp_coefs: dict,
+    pi_pair_num:int,
+    XY_amp: dict,
+    XY_duration:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+    )-> Schedule:
+    qubits2read = list(pi_amp_coefs.keys())
+    sameple_idx = array(pi_amp_coefs[qubits2read[0]]).shape[0]
+    sched = Schedule("Pi amp modification", repetitions=repetitions)
+
+    if np.median(pi_amp_coefs[qubits2read[0]]) > 0.9 : # should be 1 when pi amp cali
+        pairs:int = 2
+    else:                          # should be 0.5 when half-pi amp cali
+        pairs:int = 4
+    
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            amp_coef = pi_amp_coefs[q][acq_idx]
+            
+            
+            sched.add(Reset(q))
+            
+            if qubit_idx == 0:
+                read_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
+            
+            for pi_num in range(pi_pair_num):
+                for pi_idx in range(pairs):
+                    spec_pulse = X_pi_p(sched,{str(q):float(XY_amp[q])*amp_coef},q,XY_duration[q],read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                    
+            Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
+
 def pi_half_cali_sche(
     q:str,
     pi_amp: dict,

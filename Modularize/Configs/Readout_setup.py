@@ -24,9 +24,9 @@ def set_reset_time_by_T1(QD_agent:QDmanager,target_q:str)->float:
 #// Reset time can be set in str 'auto', which will use 10*T1 if there is the T1 record in the QD_agent. Otherwise, set it as 250e-6. 
 Readers:dict = {
     "q0":{
-        "integration_time":1e-6, "reset_time":300e-6, "rotate_on_I_angle_degree":0
+        "integration_time":2e-6, "reset_time":300e-6, "rotate_on_I_angle_degree":0
     },
     "q1":{
-        "integration_time":1e-6, "reset_time":250e-6, "rotate_on_I_angle_degree":0
+        "integration_time":2e-6, "reset_time":250e-6, "rotate_on_I_angle_degree":0
     }
 }

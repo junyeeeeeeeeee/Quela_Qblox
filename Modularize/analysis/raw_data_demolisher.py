@@ -186,7 +186,9 @@ def rofcali_dataReducer(nc_file_path:str)->Dataset:
     ds = open_dataset(nc_file_path)
     return ds
 
-
+def piampcali_dataReducer(nc_file_path:str)->Dataset:
+    ds = open_dataset(nc_file_path)
+    return ds
 
 def twotone_ana(nc_path:str, plot:bool=True, refIQ:dict={} , fit_func:callable=None)->dict:
     fit_packs = {}

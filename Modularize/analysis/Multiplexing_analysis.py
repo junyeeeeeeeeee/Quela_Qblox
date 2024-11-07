@@ -9,8 +9,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from Modularize.support.UserFriend import *
 from Modularize.support.QDmanager import QDmanager, Data_manager
-from Modularize.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer, rofcali_dataReducer
-from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis
+from Modularize.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer, rofcali_dataReducer, piampcali_dataReducer
+from Modularize.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis
 from Modularize.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
@@ -444,7 +444,7 @@ class analysis_tools():
                 data = rotate_data(data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.plot_item["data"] = data
+            self.plot_item["data"] = data*1000
             self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
             self.T1_fit.append(self.ans.params["tau"].value)
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
@@ -544,8 +544,8 @@ class analysis_tools():
 
     def ROF_cali_plot(self,save_pic_folder:str=None):
         q = list(self.fit_packs.keys())[0]
-        save_pic_path = os.path.join(save_pic_folder,f"{q}_ROF_cali_{self.ds.attrs['execution_time']}.png")
-        Plotter = Artist(pic_title=f"{q}_ROF_calibration",save_pic_path=save_pic_path)
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{q}_ROF_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{q}_ROF_calibration",save_pic_path=save_pic_folder)
         fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
         ax0:plt.Axes = axs[0]
         Plotter.add_plot_on_ax(self.rof,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|0>")
@@ -566,6 +566,69 @@ class analysis_tools():
         )
         Plotter.export_results()
 
+    def piamp_cali_ana(self,var:str):
+        self.qubit = var
+        self.pi_amp_coef =  moveaxis(array(self.ds[f"{var}_PIcoef"]),1,0)[0][0]
+        self.pi_pair_num = array(self.ds.coords["PiPairNum"])
+        data = moveaxis(array(self.ds[var]),1,0)
+        refined_data_folder = []
+        for PiPairNum_dep_data in data:
+            if len(self.refIQ[var]) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            else:
+                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+            refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
+        self.fit_packs = {var:refined_data_folder}
+    
+    def piamp_cali_plot(self,save_pic_folder:str=None):
+        q = list(self.fit_packs.keys())[0]
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{q}_PIamp_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{q} PI-pulse amp coef calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((1,1),fig_size=(12,9))
+        ax:plt.Axes = axs[0]
+        for idx, refined_data in enumerate(self.fit_packs[q]):
+            x = refined_data.coords['freeDu']
+            x_fit = refined_data.coords['para_fit']  
+            Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI pairs", alpha=0.8, ms=4)
+            Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
+            
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"PI-amp coef.", 'ylabel':"I signals (V)"}]
+        )
+        Plotter.export_results()
+    
+    def halfpiamp_cali_ana(self,var:str):
+        self.qubit = var
+        self.pi_amp_coef =  moveaxis(array(self.ds[f"{var}_HalfPIcoef"]),1,0)[0][0]
+        self.pi_pair_num = array(self.ds.coords["PiPairNum"])
+        data = moveaxis(array(self.ds[var]),1,0)
+        refined_data_folder = []
+        for PiPairNum_dep_data in data:
+            if len(self.refIQ[var]) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            else:
+                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+            refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
+        self.fit_packs = {var:refined_data_folder}
+    
+    def halfpiamp_cali_plot(self,save_pic_folder:str=None):
+        q = list(self.fit_packs.keys())[0]
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{q}_halfPIamp_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{q} half PI-pulse amp coef calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((1,1),fig_size=(12,9))
+        ax:plt.Axes = axs[0]
+        for idx, refined_data in enumerate(self.fit_packs[q]):
+            x = refined_data.coords['freeDu']
+            x_fit = refined_data.coords['para_fit']  
+            Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI quadruples", alpha=0.8, ms=4)
+            Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
+            
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"half PI-amp coef.", 'ylabel':"I signals (V)"}]
+        )
+        Plotter.export_results()
 
 
 ################################
@@ -610,6 +673,10 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
                 self.XYF_cali_ana(self.ds,self.data_2nd,self.refIQ)
+            case 'c3':
+                self.piamp_cali_ana(kwargs["var_name"])
+            case 'c4':
+                self.halfpiamp_cali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
             case _:
@@ -635,6 +702,10 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ROF_cali_plot(pic_save_folder)
             case 'c2':
                 self.XYF_cali_plot(pic_save_folder,round(self.transition_freq*1e-6) if self.transition_freq is not None else None)
+            case 'c3':
+                self.piamp_cali_plot(pic_save_folder)
+            case 'c4':
+                self.halfpiamp_cali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
 
@@ -761,16 +832,48 @@ if __name__ == "__main__":
     #     ANA._export_result(nc_paths[q])
 
     """ ROF calibration """
-    rof_cali_file = "Modularize/Meas_raw/20241106/DR2multiQ_RofCali(0)_H16M28S22.nc"
-    QD_file = "Modularize/QD_backup/20241106/DR2#10_SumInfo.pkl"
+    # rof_cali_file = "Modularize/Meas_raw/20241106/DR2multiQ_RofCali(0)_H16M28S22.nc"
+    # QD_file = "Modularize/QD_backup/20241106/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # ds = rofcali_dataReducer(rof_cali_file)
+    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
+    # for var in qubit:
+    #     ANA = Multiplex_analyzer("c1")
+    #     ANA._import_data(ds,var_dimension=1)
+    #     ANA._start_analysis(var_name = var)
+    #     fit_pic_folder = Data_manager().get_today_picFolder()
+    #     ANA._export_result(fit_pic_folder)
+
+    """ PI-amp calibration """
+    # piamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_XYLCali(0)_H13M08S43.nc"
+    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
+
+    # ds = piampcali_dataReducer(piamp_cali_file)
+    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "PIcoef"]
+    # for var in qubit:
+    #     ANA = Multiplex_analyzer("c3")
+    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
+    #     ANA._start_analysis(var_name = var)
+    #     fit_pic_folder = Data_manager().get_today_picFolder()
+    #     ANA._export_result(fit_pic_folder)
+    #     fit_packs = ANA.fit_packs
+
+    """ half PI-amp calibration """
+    halfpiamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H13M46S39.nc"
+    QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_file)
     QD_agent.QD_loader()
 
-    ds = rofcali_dataReducer(rof_cali_file)
-    qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
+    ds = piampcali_dataReducer(halfpiamp_cali_file)
+    qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "HalfPIcoef"]
     for var in qubit:
-        ANA = Multiplex_analyzer("c1")
-        ANA._import_data(ds,var_dimension=1)
+        ANA = Multiplex_analyzer("c4")
+        ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
         ANA._start_analysis(var_name = var)
-        fit_pic_folder = Data_manager().get_today_picFolder()
+        fit_pic_folder = None #Data_manager().get_today_picFolder()
         ANA._export_result(fit_pic_folder)
+        fit_packs = ANA.fit_packs
