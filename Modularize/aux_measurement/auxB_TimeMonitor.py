@@ -50,13 +50,13 @@ def timeMonitor_waiter(QD_agent:QDmanager,ro_element:dict, shots:int, time_pts:i
 if __name__ == "__main__":
 
     """ fill in """
-    QD_path = 'Modularize/QD_backup/20241105/DR2#10_SumInfo.pkl'
+    QD_path = 'Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl'
     ro_elements = {
-        "q0":{"T2detune":0.5e6,"freeTime":{"T1":100e-6,"T2":60e-6},"oneshot":True, "xy_IF":250e6, "spin_num":0}, # all the keies are required exist 
-        "q1":{"T2detune":0.5e6,"freeTime":{"T1":100e-6,"T2":60e-6},"oneshot":True, "xy_IF":250e6, "spin_num":0}
+        "q0":{"T2detune":0.1e6,"freeTime":{"T1":100e-6,"T2":60e-6},"oneshot":True, "xy_IF":250e6, "spin_num":0}, # all the keies are required exist 
+        "q1":{"T2detune":0.1e6,"freeTime":{"T1":100e-6,"T2":60e-6},"oneshot":True, "xy_IF":250e6, "spin_num":0}
     }
     couplers = []
-    tracking_time_min = 10        # if you wanna interupt it manually, set it 'free'
+    tracking_time_min = 30        # if you wanna interupt it manually, set it 'free'
 
     
     """ Optional paras """
@@ -72,8 +72,7 @@ if __name__ == "__main__":
     dr = os.path.split(QD_path)[-1].split("#")[0].lower()
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     T1_elements, T2_elements, OS_elements = timeMonitor_waiter(QD_agent,ro_elements,shot_num,time_pts)
-    print(T1_elements)
-    print(T2_elements)
+
 
     """ Running """
     if str(tracking_time_min).lower() == 'free':
