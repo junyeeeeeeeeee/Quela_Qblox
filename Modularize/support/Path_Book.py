@@ -1,30 +1,36 @@
 """
     Path_book keeps the path indecated to the directories, and the object will be saved in the folder named by date.
 """
-import os, datetime
+import os, datetime, sys
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from Modularize.support.UserFriend import eyeson_print
+
+root = os.getcwd()
 # The directory for measurement raw data
-meas_raw_dir = 'Modularize/Meas_raw'
+meas_raw_dir = os.path.join(root,'Modularize/Meas_raw')
 # The directory for qauntum device
-qdevice_backup_dir = 'Modularize/QD_backup'
+qdevice_backup_dir = os.path.join(root,'Modularize/QD_backup')
+
 
 def decode_datetime_2_foldername(date:datetime):
     latest = date.strftime("%Y%m%d")
     y = latest[:4]
-    m = latest[4:6] if latest[4] != '0' else latest[5]
-    d = latest[6:8] if latest[6] != '0' else latest[7]
-    folder_name =  y+"_"+m+"_"+d
+    m = latest[4:6]
+    d = latest[6:8]
+    folder_name =  y+m+d
     return folder_name
 
 def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
     folders = [name for name in os.listdir(qdevice_backup_dir) if os.path.isdir(os.path.join(qdevice_backup_dir,name))]
     date = []
     for name in folders:
-        year_str = name.split("_")[0]
-        mon_str  = "0"+name.split("_")[1] if len(name.split("_")[1])==1 else name.split("_")[1]
-        day_str  = "0"+name.split("_")[2] if len(name.split("_")[2])==1 else name.split("_")[2]
+        year_str = name[:4]
+        mon_str  = name[4:6]
+        day_str  = name[6:]
         date.append(datetime.datetime.strptime(day_str+mon_str+year_str, "%d%m%Y").date())
+
     date.sort(reverse=True)
+    
     for date_obj_idx in range(len(date)):
         date_folder = decode_datetime_2_foldername(date[date_obj_idx])
         date_folder_path = os.path.join(qdevice_backup_dir,date_folder)
@@ -70,5 +76,6 @@ def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
 
 if __name__ == "__main__":
     meas_dr_now = 'dr2'
-    which_ip_last = '11'
+    which_ip_last = '10'
     print(find_latest_QD_pkl_for_dr(meas_dr_now,which_ip_last))
+

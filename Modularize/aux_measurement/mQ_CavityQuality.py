@@ -5,7 +5,7 @@ import json, os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import arange, pi, mean, array, linspace
 from Modularize.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
-from Modularize.support.Experiment_setup import ip_register
+from Modularize.Configs.Experiment_setup import ip_register
 from qblox_instruments import Cluster
 from Modularize.support import Data_manager, QDmanager
 from Modularize.support.UserFriend import *

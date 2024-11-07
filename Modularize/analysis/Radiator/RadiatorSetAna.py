@@ -331,6 +331,7 @@ def sort_files(file_name_list:list):
         elif file_name.split("_")[1].split("(")[0] == 'T2':
             T2_file.append(file_name)
         elif file_name.split("_")[1].split("(")[0] == 'SingleShot':
+            print("xxxx")
             SS_file.append(file_name)
     
     sort_set(T1_file,3)
