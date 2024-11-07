@@ -5,7 +5,7 @@ Welcome to Quala_Qblox
 ---------------------------------
 ## Update
 ### 2024-11-07
- 1. All the SOP measurements (m), calibrations (c), ZgateT1 (auxA) and TimeMoniter (auxB) are multipled readout supported.
+ 1. All the SOP measurements (m), calibrations (c), ZgateT1 (auxA) and TimeMoniter (auxB) are multiplexed readout supported.
  2. Creating Readout setup for manually reset_time and integration_time setting.
  3. QD_backup folder remaned.
  4. Demolish the exp in to 3 parties, namely 'Waiter', 'Executor', and 'Analyzer'.
