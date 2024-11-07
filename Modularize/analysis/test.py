@@ -28,32 +28,7 @@ QD_agent = QDmanager(QD_file)
 QD_agent.QD_loader()
 
 refIQ = QD_agent.refIQ
-""" for pi-amp """
-# ds = open_dataset(file)
-# for var in ds.data_vars:
-#     if var.split("_")[-1] != "PIcoef":
-#         pi_amp_coef =  moveaxis(array(ds[f"{var}_PIcoef"]),1,0)[0][0]
-#         pi_pair_num = array(ds.coords["PiPairNum"])
-#         data = moveaxis(array(ds[var]),1,0)
-#         refined_data_folder = []
-#         for PiPairNum_dep_data in data:
-#             if len(refIQ[var]) == 2:
-#                 refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],refIQ[var][0],refIQ[var][1])
-#             else:
-#                 refined_data = rotate_data(PiPairNum_dep_data,refIQ[var][0])[0]
-#             refined_data_folder.append(cos_fit_analysis(refined_data,pi_amp_coef))
-#         fig, ax = plt.subplots()
-#         for idx, refined_data in enumerate(refined_data_folder):
-#             x = refined_data.coords['freeDu']
-#             x_fit = refined_data.coords['para_fit']  
-#             ax.plot(x,refined_data.data_vars['data'],'--',label=f"{pi_pair_num[idx]} PI pairs", alpha=0.8, ms=4)
-#             ax.plot(x_fit,refined_data.data_vars['fitting'],'-', alpha=1, lw=2)    
-            
-#         #     plt.plot(pi_amp_coef,refined_data,label=f"{pi_pair_num[idx]} pairs pi-pulses")
-#         plt.title(f"{var} PI-pulse amp coef calibration")
-#         plt.legend()
-#         plt.grid()
-#         plt.show()
+
 
 """ for half pi """
 ds = open_dataset(file)
