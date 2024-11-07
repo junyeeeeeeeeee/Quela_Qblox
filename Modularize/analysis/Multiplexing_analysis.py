@@ -437,12 +437,11 @@ class analysis_tools():
         self.plot_item = {"time":array(time_samples)*1e6}
         self.T1_fit = []
         for idx, data in enumerate(reshaped):
-            
             if len(ref) == 1:
-                data = rotate_data(data,ref[0])[0] # I
+                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
             else:
-                data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.plot_item["data"] = data
+                self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
+
             self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
             self.T1_fit.append(self.ans.params["tau"].value)
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
