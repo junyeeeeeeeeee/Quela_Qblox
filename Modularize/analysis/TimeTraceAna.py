@@ -8,6 +8,7 @@ from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_ar
 from datetime import datetime 
 from matplotlib.gridspec import GridSpec as GS
 from Modularize.analysis.Radiator.RadiatorSetAna import sort_set
+from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 
 def time_label_sort(nc_file_name:str):
     return datetime.strptime(nc_file_name.split("_")[-1].split(".")[0],"H%HM%MS%S")
@@ -79,6 +80,7 @@ def colormap(x:ndarray, y:ndarray, z:ndarray, fit_values:ndarray, ax:plt.Axes=No
     ax.set_xlabel('Time past (min)',fontsize=20)
     ax.set_ylabel("Free evolution time (us)",fontsize=20)
     plt.colorbar(c, ax=ax, label='Contrast (V)')
+    plt.title(os.path.split(fig_path)[-1].split(".")[0])
     plt.tight_layout()
     if fig_path is not None:
         plt.savefig(fig_path)
@@ -130,60 +132,133 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
 
 
 if __name__ == "__main__":
-    folder_paths = {"T1_folder_path":"Modularize/Meas_raw/T1_timeDep",
-                    "T2_folder_path":"Modularize/Meas_raw/T2_timeDep",
-                    "OS_folder_path":""
-                    }
-    QD_file_path = 'Modularize/QD_backup/2024_9_23/DR4#81_SumInfo.pkl'
-    qs = 'q4'
-    sort_mode = 'idx' # 'idx' or 'time'
-
+    folder_paths = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52"
+    QD_file_path = 'Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl'
+    save_every_fit_pic:bool=False
     QD_agent = QDmanager(QD_file_path)
     QD_agent.QD_loader()
 
-    for folder_name in folder_paths: 
-        folder = folder_paths[folder_name]
-        if folder_paths[folder_name] != '':
-            if sort_mode == 'time':
-                files = sorted([name for name in os.listdir(folder) if (os.path.isfile(os.path.join(folder,name)) and name.split(".")[-1] == "nc")],key=lambda name:time_label_sort(name))
-            elif sort_mode == 'idx':
-                files = [name for name in os.listdir(folder) if (os.path.isfile(os.path.join(folder,name)) and name.split(".")[-1] == "nc")]
-                sort_set(files,3)
-            else:
-                raise KeyError(f"Unsupported sort mode was given = '{sort_mode}'")
-            raw_data = []
-            ans = []
-            detu = []
-            for idx, file in enumerate(files) :
-                path = os.path.join(folder,file)
-                nc = open_dataset(path)
-                if folder_name.split("_")[0] in ["T1", "T2"]:
-                    samples = array(nc.x0)
-                    I,Q= dataset_to_array(dataset=nc,dims=1)
-                    data = IQ_data_dis(I,Q,ref_I=QD_agent.refIQ[qs][0],ref_Q=QD_agent.refIQ[qs][-1])
-                    raw_data.append(data)
-                    if folder_name.split("_")[0] == "T1":   
-                        data_fit= T1_fit_analysis(data=data,freeDu=samples,T1_guess=25e-6)
-                        ans.append(data_fit.attrs['T1_fit']*1e6)
-                    else:
-                        data_fit= T2_fit_analysis(data=data,freeDu=samples,T2_guess=10e-6)
-                        ans.append(data_fit.attrs['T2_fit']*1e6)
-                        detu.append(data_fit.attrs['f']*1e-6)
-                else:
-                    #　OS to build
-                    pass
-            
-            time_json_path = [os.path.join(folder,name) for name in os.listdir(folder) if (os.path.isfile(os.path.join(folder,name)) and name.split(".")[-1] == "json")][0]
-            with open(time_json_path) as time_record_file:
-                time_past_dict:dict = json.load(time_record_file)
-            time_array = array(list(time_past_dict.values())[0])
-            if folder_name.split("_")[0].lower() in ['t1','t2']:
-                colormap(time_array,samples*1e6,array(raw_data),array(ans),fig_path=os.path.join(folder,f"{qs}_{folder_name.split('_')[0]}_timeDep_colormap.png"))
+    files = [name for name in os.listdir(folder_paths) if (os.path.isfile(os.path.join(folder_paths,name)) and name.split(".")[-1] == "nc")]
 
-            if folder_name.split("_")[0].lower() == 't1':
-                plot_timeDepCohe(time_array, array(ans), folder_name.split("_")[0], units={"x":"min","y":"µs"}, fig_path=os.path.join(folder,f"{qs}_T1_timeDep.png"))
-            elif folder_name.split("_")[0].lower() == 't2':   
-                plot_timeDepCohe(time_array, array(ans), folder_name.split("_")[0], units={"x":"min","y":"µs"}, fig_path=os.path.join(folder,f"{qs}_T2_timeDep.png"))
-                plot_timeDepCohe(time_array, array(detu)-array(detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(folder,f"{qs}_Detune_timeDep.png"))
-            else:
-                pass
+    T1, T2, SS = 0, 0 , 0
+    T1_rec, detu_rec, T2_rec, SS_rec = {}, {}, {}, {}
+    T1_raw, T2_raw = {}, {}
+    T1_evo_time, T2_evo_time = {}, {}
+    for idx, file in enumerate(files) :
+        exp_type:str = file.split("_")[1].split("(")[0]
+        path = os.path.join(folder_paths,file)
+        ds = open_dataset(path)
+        match exp_type.lower():
+            case "t1":
+                T1 += 1
+                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                    if T1 == 1:
+                        T1_rec[var], T1_raw[var] = {}, {}
+                        if save_every_fit_pic:
+                            T1_picsave_folder = os.path.join(folder_paths,f"{var}_T1_pics")
+                            os.mkdir(T1_picsave_folder)
+                    time_data = array(ds[f"{var}_x"])[0][0]
+                    T1_evo_time[var] = time_data
+                    ANA = Multiplex_analyzer("m13")
+                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+                    ANA._import_2nddata(time_data)
+                    ANA._start_analysis()
+                    if save_every_fit_pic:
+                        ANA._export_result(T1_picsave_folder)
+                    T1_raw[var][ds.attrs["end_time"]] = ANA.plot_item["data"]
+                    T1_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T1"]
+            case "t2":
+                T2 += 1
+                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                    if T2 == 1:
+                        T2_rec[var], detu_rec[var], T2_raw[var] = {}, {}, {}
+                        if save_every_fit_pic:
+                            T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
+                            os.mkdir(T2_picsave_folder)
+                    time_data = array(ds[f"{var}_x"])[0][0]
+                    T2_evo_time[var] = time_data
+                    ANA = Multiplex_analyzer("m12")
+                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
+                    ANA._import_2nddata(time_data)
+                    ANA._start_analysis()
+                    if save_every_fit_pic:
+                        ANA._export_result(T2_picsave_folder)
+                    T2_raw[var][ds.attrs["end_time"]] = ANA.data_n
+                    detu_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["freq"]*1e-6
+                    T2_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T2"]
+            case "singleshot":
+                SS += 1
+                for var in ds.data_vars:
+                    if SS == 1:
+                        SS_rec[var] = {}
+                        if save_every_fit_pic:
+                            SS_picsave_folder = os.path.join(folder_paths,f"{var}_SingleShot_pics")
+                            os.mkdir(SS_picsave_folder)
+                    ANA = Multiplex_analyzer("m14")
+                    ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
+                    ANA._start_analysis()
+                    if save_every_fit_pic:
+                        pic_path = os.path.join(SS_picsave_folder,f"{var}_SingleShot_{ds.attrs['end_time'].replace(' ', '_')}")
+                        ANA._export_result(pic_path)
+                    SS_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["effT_mK"]
+
+    
+    if T1 != 0:
+        for q in T1_rec:
+            
+            sorted_item_ans = sorted(T1_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            sorted_item_raw = sorted(T1_raw[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            earliest_time = datetime.strptime(sorted_item_ans[0][0], "%Y-%m-%d %H:%M:%S")
+            time_diffs = []
+            sorted_values_ans, sorted_values_raw = [], []
+            for idx, item in enumerate(sorted_item_ans):
+                key = item[0]
+                value = item[1]
+                current_time = datetime.strptime(key, "%Y-%m-%d %H:%M:%S")
+                time_diff = round((current_time - earliest_time).total_seconds()/60,1)
+                time_diffs.append(time_diff)
+                sorted_values_ans.append(value)
+                sorted_values_raw.append(sorted_item_raw[idx][1])
+
+            
+            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_paths,f"{q}_T1_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_paths,f"{q}_T1_timeDep.png"))
+    if T2 != 0:
+        for q in T2_rec:
+            sorted_item_ans = sorted(T2_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            sorted_item_detu = sorted(detu_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            sorted_item_raw = sorted(T2_raw[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            earliest_time = datetime.strptime(sorted_item_ans[0][0], "%Y-%m-%d %H:%M:%S")
+            
+            time_diffs = []
+            sorted_values_ans, sorted_values_detu, sorted_values_raw = [], [], []
+            for idx, item in enumerate(sorted_item_ans):
+                key = item[0]
+                value = item[1]
+                current_time = datetime.strptime(key, "%Y-%m-%d %H:%M:%S")
+                time_diff = round((current_time - earliest_time).total_seconds()/60,1)
+                time_diffs.append(time_diff)
+                sorted_values_ans.append(value)
+                sorted_values_detu.append(sorted_item_detu[idx][1])
+                sorted_values_raw.append(sorted_item_raw[idx][1])
+
+            
+            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_paths,f"{q}_T2_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_paths,f"{q}_T2_timeDep.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(folder_paths,f"{q}_Detune_timeDep.png"))
+    if SS != 0:
+        for q in SS_rec:
+            sorted_item_ans = sorted(SS_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            earliest_time = datetime.strptime(sorted_item_ans[0][0], "%Y-%m-%d %H:%M:%S")
+            
+            time_diffs = []
+            sorted_values_ans = []
+            for key, value in sorted_item_ans:
+                current_time = datetime.strptime(key, "%Y-%m-%d %H:%M:%S")
+                time_diff = round((current_time - earliest_time).total_seconds()/60,1)
+                time_diffs.append(time_diff)
+                sorted_values_ans.append(value)
+
+
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_paths,f"{q}_effT_timeDep.png"))
+    

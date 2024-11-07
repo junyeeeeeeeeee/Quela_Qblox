@@ -353,8 +353,10 @@ class analysis_tools():
         self.gmm2d_fidelity._import_data(data)
         self.gmm2d_fidelity._start_analysis()
         g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+        
         p00 = g1d_fidelity.g1d_dist[0][0][0]
-        self.thermal_populations = g1d_fidelity.g1d_dist[0][0][1]
+        self.thermal_populations = self.gmm2d_fidelity.state_probability[0][1] #g1d_fidelity.g1d_dist[0][0][1]
+        print(self.thermal_populations)
         p11 = g1d_fidelity.g1d_dist[1][0][1]
         if self.fq is not None:
             self.effT_mK = p01_to_Teff(self.thermal_populations, self.fq)*1000
@@ -389,15 +391,15 @@ class analysis_tools():
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                data = rotate_data(data,ref[0])[0] # I
+                self.data_n = rotate_data(data,ref[0])[0]*1000 # I
             else:
-                data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
+                self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
             if not self.echo:
-                self.ans = T2_fit_analysis(data,array(time_samples))
+                self.ans = T2_fit_analysis(self.data_n,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
-                self.ans = T1_fit_analysis(data,array(time_samples))
+                self.ans = T1_fit_analysis(self.data_n,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
                 self.fit_packs["freq"] = 0
 
@@ -420,7 +422,7 @@ class analysis_tools():
         
 
     def T2_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
         if len(self.T2_fit) > 1:
@@ -449,7 +451,7 @@ class analysis_tools():
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
@@ -719,7 +721,7 @@ if __name__ == "__main__":
     # ds = fluxCoupler_dataReducer(m55_file)
     # for var in ds.data_vars:
     #     if var.split("_")[-1] != 'freq':
-    #         ANA = Multiplex_analyzer("m55")
+    #         ANA = Multiplex_analyzer("m5")
 
 
     """ Continuous wave 2 tone """
@@ -729,7 +731,7 @@ if __name__ == "__main__":
     # QD_agent.QD_loader()
 
     # dss = Conti2tone_dataReducer(m88_file)  
-    # ANA = Multiplex_analyzer("m88")      
+    # ANA = Multiplex_analyzer("m8")      
     # for q in dss:
     #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
     #     ANA._start_analysis()
@@ -743,7 +745,7 @@ if __name__ == "__main__":
     # QD_agent.QD_loader()
 
     # dss = fluxQub_dataReductor(m99_file)  
-    # ANA = Multiplex_analyzer("m99")      
+    # ANA = Multiplex_analyzer("m9")      
     # for q in dss:
     #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
     #     ANA._start_analysis()
@@ -757,21 +759,22 @@ if __name__ == "__main__":
     # QD_agent.QD_loader()
 
     # dss = Rabi_dataReducer(m1111_file)  
-    # ANA = Multiplex_analyzer("m1111")      
+    # ANA = Multiplex_analyzer("m11")      
     # for q in dss:
     #     ANA._import_data(dss[q],1,QD_agent.refIQ[q])
     #     ANA._start_analysis()
     #     ans = ANA._export_result()
 
     """ Single shot """
-    # m1414_file = "Modularize/Meas_raw/20241029/DR2multiQ_SingleShot(0)_H20M03S35.nc"
-    # QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
+    # m1414_file = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52/DR2multiQ_SingleShot(26)_H17M03S47.nc"
+    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
     # QD_agent = QDmanager(QD_file)
     # QD_agent.QD_loader()
 
     # ds = OneShot_dataReducer(m1414_file)
+    # print(ds.attrs)
     # for var in ds.data_vars:
-    #     ANA = Multiplex_analyzer("m1414")
+    #     ANA = Multiplex_analyzer("m14")
     #     ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
     #     ANA._start_analysis()
     #     pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
@@ -787,7 +790,7 @@ if __name__ == "__main__":
     # for var in ds.data_vars:
     #     if var.split("_")[-1] != 'x':
     #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m1212")
+    #         ANA = Multiplex_analyzer("m12")
     #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
     #         ANA._import_2nddata(time_data)
     #         ANA._start_analysis()
@@ -805,7 +808,7 @@ if __name__ == "__main__":
     # for var in ds.data_vars:
     #     if var.split("_")[-1] != 'x':
     #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m1313")
+    #         ANA = Multiplex_analyzer("m13")
     #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
     #         ANA._import_2nddata(time_data)
     #         ANA._start_analysis()
@@ -860,17 +863,17 @@ if __name__ == "__main__":
     #     fit_packs = ANA.fit_packs
 
     """ half PI-amp calibration """
-    halfpiamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H13M46S39.nc"
-    QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    QD_agent = QDmanager(QD_file)
-    QD_agent.QD_loader()
+    # halfpiamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H13M46S39.nc"
+    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
+    # QD_agent = QDmanager(QD_file)
+    # QD_agent.QD_loader()
 
-    ds = piampcali_dataReducer(halfpiamp_cali_file)
-    qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "HalfPIcoef"]
-    for var in qubit:
-        ANA = Multiplex_analyzer("c4")
-        ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
-        ANA._start_analysis(var_name = var)
-        fit_pic_folder = None #Data_manager().get_today_picFolder()
-        ANA._export_result(fit_pic_folder)
-        fit_packs = ANA.fit_packs
+    # ds = piampcali_dataReducer(halfpiamp_cali_file)
+    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "HalfPIcoef"]
+    # for var in qubit:
+    #     ANA = Multiplex_analyzer("c4")
+    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
+    #     ANA._start_analysis(var_name = var)
+    #     fit_pic_folder = None #Data_manager().get_today_picFolder()
+    #     ANA._export_result(fit_pic_folder)
+    #     fit_packs = ANA.fit_packs

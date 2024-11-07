@@ -168,7 +168,7 @@ if __name__ == '__main__':
                 ANA = Multiplex_analyzer("m14")
                 ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
                 ANA._start_analysis()
-                pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
+                pic_path = os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs["end_time"].replace(" ", "_")}")
                 ANA._export_result(pic_path)
                 highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
                 QD_agent.refIQ[var] = [ANA.fit_packs["RO_rotation_angle"]]
