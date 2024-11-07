@@ -4,7 +4,6 @@ from qblox_instruments import Cluster
 from utils.tutorial_utils import show_args
 from Modularize.support.UserFriend import *
 from qcodes.parameters import ManualParameter
-from Modularize.m7_RefIQ import refIQ_executor
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl

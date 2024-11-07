@@ -13,7 +13,7 @@ from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.Configs.Readout_setup import get_manully_integration_time, get_manully_reset_time, set_reset_time_by_T1
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
 from Modularize.support.Pulse_schedule_library import multi_Zgate_T1_sche, set_LO_frequency, pulse_preview
-from Modularize.m9_FluxQubit import z_pulse_amp_OVER_const_z
+from Modularize.SOP.m9_FluxQubit import z_pulse_amp_OVER_const_z
 from Modularize.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 

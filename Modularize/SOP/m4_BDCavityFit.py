@@ -4,8 +4,8 @@ Because the RO-freq is the bare cavity, the 'window_shift' should be 0 when the 
 On the other hand, the 'window_shift' will be a rough dispersive shift for the dressed cavity conditions. 
 """
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from Modularize.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
+from Modularize.SOP.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
 from Modularize.support import Data_manager, QDmanager, cds
 from Modularize.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl

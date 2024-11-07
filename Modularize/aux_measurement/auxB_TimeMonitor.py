@@ -1,9 +1,9 @@
 import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import arange
-from Modularize.m13_T1  import T1_executor
-from Modularize.m12_T2  import ramsey_executor, modify_time_point
-from Modularize.m14_SingleShot import SS_executor
+from Modularize.SOP.m13_T1  import T1_executor
+from Modularize.SOP.m12_T2  import ramsey_executor, modify_time_point
+from Modularize.SOP.m14_SingleShot import SS_executor
 from Modularize.support import init_meas, shut_down, init_system_atte, coupler_zctrl
 from Modularize.support.Pulse_schedule_library import set_LO_frequency
 from Modularize.support.QDmanager import QDmanager, Data_manager

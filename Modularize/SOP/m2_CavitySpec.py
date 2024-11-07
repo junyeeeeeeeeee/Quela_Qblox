@@ -2,7 +2,7 @@
 Use the results from m1 and a light attenuation (10 ~ 16 is recommended) to find the BARE cavity frequency.\n
 """
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import NaN
 from xarray import Dataset
 import matplotlib.pyplot as plt

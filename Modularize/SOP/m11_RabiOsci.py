@@ -1,6 +1,6 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
 import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_instruments import Cluster
 from Modularize.support.UserFriend import *
 from utils.tutorial_utils import show_args

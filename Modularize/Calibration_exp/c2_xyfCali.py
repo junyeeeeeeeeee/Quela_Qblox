@@ -6,7 +6,7 @@ from Modularize.support import QDmanager, Data_manager
 
 from Modularize.support.Path_Book import find_latest_QD_pkl_for_dr
 from Modularize.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from Modularize.m12_T2 import T2_waiter,ramsey_executor
+from Modularize.SOP.m12_T2 import T2_waiter,ramsey_executor
 from Modularize.analysis.raw_data_demolisher import T2_dataReducer
 from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 

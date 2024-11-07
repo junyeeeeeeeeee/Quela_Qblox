@@ -1,5 +1,5 @@
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import array, linspace, pi, arange, sqrt, NaN
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter

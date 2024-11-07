@@ -2,7 +2,7 @@
 Base on a BARE cavity observe a dispersive shift in RO-freq with the variable RO-amp.  
 """
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import array, linspace, sqrt, moveaxis, arange, cos, sin, deg2rad, real, imag
 from xarray import open_dataset, Dataset
 from utils.tutorial_utils import show_args
