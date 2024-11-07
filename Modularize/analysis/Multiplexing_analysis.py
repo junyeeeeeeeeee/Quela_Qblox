@@ -355,8 +355,7 @@ class analysis_tools():
         g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
         
         p00 = g1d_fidelity.g1d_dist[0][0][0]
-        self.thermal_populations = self.gmm2d_fidelity.state_probability[0][1] #g1d_fidelity.g1d_dist[0][0][1]
-        print(self.thermal_populations)
+        self.thermal_populations = g1d_fidelity.g1d_dist[0][0][1]
         p11 = g1d_fidelity.g1d_dist[1][0][1]
         if self.fq is not None:
             self.effT_mK = p01_to_Teff(self.thermal_populations, self.fq)*1000
@@ -391,9 +390,9 @@ class analysis_tools():
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                self.data_n = rotate_data(data,ref[0])[0]*1000 # I
+                self.data_n = rotate_data(data,ref[0])[0] # I
             else:
-                self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
+                self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             if not self.echo:
                 self.ans = T2_fit_analysis(self.data_n,array(time_samples))
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)

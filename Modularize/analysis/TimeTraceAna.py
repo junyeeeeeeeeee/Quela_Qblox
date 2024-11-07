@@ -1,13 +1,12 @@
 import os, sys, json 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from xarray import Dataset, open_dataset
+from xarray import open_dataset
 from Modularize.support import QDmanager,Data_manager
 import matplotlib.pyplot as plt
 from numpy import ndarray, array, median, std, mean
-from Modularize.support.Pulse_schedule_library import IQ_data_dis, dataset_to_array, T2_fit_analysis, T1_fit_analysis
 from datetime import datetime 
+from Modularize.support.UserFriend import *
 from matplotlib.gridspec import GridSpec as GS
-from Modularize.analysis.Radiator.RadiatorSetAna import sort_set
 from Modularize.analysis.Multiplexing_analysis import Multiplex_analyzer
 
 def time_label_sort(nc_file_name:str):
@@ -130,7 +129,6 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
 
 
 
-
 if __name__ == "__main__":
     folder_paths = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52"
     QD_file_path = 'Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl'
@@ -145,6 +143,7 @@ if __name__ == "__main__":
     T1_raw, T2_raw = {}, {}
     T1_evo_time, T2_evo_time = {}, {}
     for idx, file in enumerate(files) :
+        slightly_print(f"Analysis for the {idx}-th files ...")
         exp_type:str = file.split("_")[1].split("(")[0]
         path = os.path.join(folder_paths,file)
         ds = open_dataset(path)
@@ -152,13 +151,15 @@ if __name__ == "__main__":
             case "t1":
                 T1 += 1
                 for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                    T1_picsave_folder = os.path.join(folder_paths,f"{var}_T1_pics")
                     if T1 == 1:
                         T1_rec[var], T1_raw[var] = {}, {}
                         if save_every_fit_pic:
-                            T1_picsave_folder = os.path.join(folder_paths,f"{var}_T1_pics")
-                            os.mkdir(T1_picsave_folder)
+                            if not os.path.exists(T1_picsave_folder):
+                                os.mkdir(T1_picsave_folder)
                     time_data = array(ds[f"{var}_x"])[0][0]
                     T1_evo_time[var] = time_data
+                    ds[var].attrs['end_time'] = ds.attrs["end_time"]
                     ANA = Multiplex_analyzer("m13")
                     ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
                     ANA._import_2nddata(time_data)
@@ -170,13 +171,15 @@ if __name__ == "__main__":
             case "t2":
                 T2 += 1
                 for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                    T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
                     if T2 == 1:
                         T2_rec[var], detu_rec[var], T2_raw[var] = {}, {}, {}
                         if save_every_fit_pic:
-                            T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
-                            os.mkdir(T2_picsave_folder)
+                            if not os.path.exists(T2_picsave_folder):
+                                os.mkdir(T2_picsave_folder)
                     time_data = array(ds[f"{var}_x"])[0][0]
                     T2_evo_time[var] = time_data
+                    ds[var].attrs['end_time'] = ds.attrs["end_time"]
                     ANA = Multiplex_analyzer("m12")
                     ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
                     ANA._import_2nddata(time_data)
@@ -189,20 +192,21 @@ if __name__ == "__main__":
             case "singleshot":
                 SS += 1
                 for var in ds.data_vars:
+                    SS_picsave_folder = os.path.join(folder_paths,f"{var}_SingleShot_pics")
                     if SS == 1:
                         SS_rec[var] = {}
                         if save_every_fit_pic:
-                            SS_picsave_folder = os.path.join(folder_paths,f"{var}_SingleShot_pics")
-                            os.mkdir(SS_picsave_folder)
+                            if not os.path.exists(SS_picsave_folder):
+                                os.mkdir(SS_picsave_folder)
                     ANA = Multiplex_analyzer("m14")
-                    ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
+                    ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
                     ANA._start_analysis()
                     if save_every_fit_pic:
                         pic_path = os.path.join(SS_picsave_folder,f"{var}_SingleShot_{ds.attrs['end_time'].replace(' ', '_')}")
                         ANA._export_result(pic_path)
                     SS_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["effT_mK"]
 
-    
+    slightly_print(f"\nPlotting... ")
     if T1 != 0:
         for q in T1_rec:
             
@@ -262,3 +266,4 @@ if __name__ == "__main__":
 
             plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_paths,f"{q}_effT_timeDep.png"))
     
+    eyeson_print(f"\nProcedures done ! ")
