@@ -1,0 +1,14 @@
+# Measurement paras configs editor
+
+avg_n =  100      # type in  <class 'int'>
+exp_type =  's1'      # type in  <class 'str'>
+machine_IP =  '192.168.1.11'      # type in  <class 'str'>
+
+[q0]
+  freq_range = [4e9]       # type in list, rule: [ start, end, pts ] or [ fixed value ]
+
+
+[q1]
+  freq_range = [3e9,9e9,3000]       # type in list, rule: [ start, end, pts ] or [ fixed value ]
+
+

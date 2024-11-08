@@ -23,10 +23,23 @@ class Exp_Encyclopedia():
         """
         self.__exp__ = exp_type.lower()
         self.__expVarable_Reminder__()
-        self.__shared_attr__ = ["avg_n", "exp_type"]
+        self.__shared_attr__ = ["avg_n", "exp_type", "machine_IP"]
+
+    def __setMachineIP__(self):
+        """ `<class, 'str'>`, Single value """
+        self.machine_IP:str = ""
+
+    def __setExpAVGn__(self):
+        """ `<class, 'int'>`,  Single fixed value """
+        self.avg_n:int = 0
+
+    def __setFreqRange__(self):
+        """ `<class, 'list'>`,  rule: [freq_start, freq_end, freq_pts], or a single value inside a list like [4e9] """
+        self.freq_range = list([])
 
     def __expVarable_Reminder__(self):
         match self.__exp__:
             case "s1" | "broadbandcs" | "bbcs":
-                self.freq_range = list([])
-                self.avg_n:int = 100
+                self.__setMachineIP__()
+                self.__setFreqRange__()
+                self.__setExpAVGn__()
