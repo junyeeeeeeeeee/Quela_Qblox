@@ -16,12 +16,12 @@ setup(
         'quantify-core==0.7.4',
         'quantify-scheduler==0.20.0',
         'colorama',
-        'scikit-learn'
+        'scikit-learn',
         'scipy',
         'sympy',
         'numpy==1.26.2',
         'matplotlib>=3.9',
-        'xarray==2023.12.0'
+        'xarray==2024.10.10'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.10',

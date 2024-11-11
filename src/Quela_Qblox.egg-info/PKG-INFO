@@ -14,11 +14,12 @@ Requires-Dist: qblox-instruments==0.12.0
 Requires-Dist: quantify-core==0.7.4
 Requires-Dist: quantify-scheduler==0.20.0
 Requires-Dist: colorama
-Requires-Dist: scikit-learnscipy
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
 Requires-Dist: sympy
 Requires-Dist: numpy==1.26.2
 Requires-Dist: matplotlib>=3.9
-Requires-Dist: xarray==2023.12.0
+Requires-Dist: xarray==2024.10.10
 
 Welcome to Quala_Qblox
 =============================================
