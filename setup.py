@@ -20,7 +20,7 @@ setup(
         'sympy',
         'numpy==1.26.2',
         'matplotlib>=3.9',
-        'xarray==2024.10.10'
+        'xarray==2024.6.0'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.10',
