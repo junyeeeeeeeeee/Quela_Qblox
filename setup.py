@@ -9,7 +9,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/junyeeeeeeeeee/Quela_Qblox',
-    packages=find_packages(where='qblox'),          # Automatically find package directories
+    packages=find_packages(),          # Automatically find package directories
     install_requires=[                 # Optional, if you have dependencies
         'blox-instruments==0.12.0',
         'quantify-core==0.7.4',
