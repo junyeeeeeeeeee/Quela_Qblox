@@ -4,6 +4,7 @@ setup(
     name='Quela_Qblox',          # Replace with your package name
     version='2024.11.11',
     author='Dai-Jia, Wu',
+    package_dir={"":"src"},
     author_email='porkface0301@gmail.com',
     description='AS measurement software for Qblox',
     long_description=open('README.md').read(),
@@ -14,6 +15,13 @@ setup(
         'qblox-instruments==0.12.0',
         'quantify-core==0.7.4',
         'quantify-scheduler==0.20.0',
+        'colorama',
+        'scikit-learn'
+        'scipy',
+        'sympy',
+        'numpy==1.26.2',
+        'matplotlib>=3.9',
+        'xarray==2023.12.0'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.10',

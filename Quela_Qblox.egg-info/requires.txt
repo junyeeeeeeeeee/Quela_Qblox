@@ -1,3 +1,0 @@
-qblox-instruments==0.12.0
-quantify-core==0.7.4
-quantify-scheduler==0.20.0
