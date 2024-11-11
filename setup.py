@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='qblox',          # Replace with your package name
+    name='Quela_Qblox',          # Replace with your package name
     version='2024.11.11',
     author='Dai-Jia, Wu',
     author_email='porkface0301@gmail.com',
@@ -11,7 +11,7 @@ setup(
     url='https://github.com/junyeeeeeeeeee/Quela_Qblox',
     packages=find_packages(),          # Automatically find package directories
     install_requires=[                 # Optional, if you have dependencies
-        'blox-instruments==0.12.0',
+        'qblox-instruments==0.12.0',
         'quantify-core==0.7.4',
         'quantify-scheduler==0.20.0',
     ],

@@ -1,11 +1,11 @@
 README.md
 setup.py
+Quela_Qblox.egg-info/PKG-INFO
+Quela_Qblox.egg-info/SOURCES.txt
+Quela_Qblox.egg-info/dependency_links.txt
+Quela_Qblox.egg-info/requires.txt
+Quela_Qblox.egg-info/top_level.txt
 qblox/__init__.py
-qblox.egg-info/PKG-INFO
-qblox.egg-info/SOURCES.txt
-qblox.egg-info/dependency_links.txt
-qblox.egg-info/requires.txt
-qblox.egg-info/top_level.txt
 qblox/support/Chip_Data_Store.py
 qblox/support/FluxBiasDict.py
 qblox/support/Notebook.py
