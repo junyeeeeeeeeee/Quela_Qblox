@@ -4,7 +4,6 @@ setup(
     name='Quela_Qblox',          # Replace with your package name
     version='2024.11.11',
     author='Dai-Jia, Wu',
-    package_dir={"":"src"},
     author_email='porkface0301@gmail.com',
     description='AS measurement software for Qblox',
     long_description=open('README.md').read(),

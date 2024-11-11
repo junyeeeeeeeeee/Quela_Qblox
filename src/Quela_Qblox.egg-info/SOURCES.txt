@@ -1,7 +1,0 @@
-README.md
-setup.py
-src/Quela_Qblox.egg-info/PKG-INFO
-src/Quela_Qblox.egg-info/SOURCES.txt
-src/Quela_Qblox.egg-info/dependency_links.txt
-src/Quela_Qblox.egg-info/requires.txt
-src/Quela_Qblox.egg-info/top_level.txt
