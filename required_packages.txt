@@ -3,7 +3,8 @@ quantify-core==0.7.4
 quantify-scheduler==0.20.0
 colorama
 scikit-learn
-numpy==1.26.2
 scipy
+sympy
+numpy==1.26.2
 matplotlib>=3.9
 xarray==2023.12.0
