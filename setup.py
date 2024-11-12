@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Quela_Qblox',          # Replace with your package name
-    version='2024.11.11',
+    version='2024.11.12',
     author='Dai-Jia, Wu',
     author_email='porkface0301@gmail.com',
     description='AS measurement software for Qblox',
