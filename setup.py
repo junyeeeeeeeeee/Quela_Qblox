@@ -18,9 +18,9 @@ setup(
         'scikit-learn',
         'scipy',
         'sympy',
-        'numpy==1.26.2',
+        'numpy>=1.26.2',
         'matplotlib>=3.9',
-        'xarray==2024.6.0'
+        'xarray>=2024.6.0'
     ],
     classifiers=[
         'Programming Language :: Python :: 3.10',

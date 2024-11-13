@@ -17,9 +17,9 @@ Requires-Dist: colorama
 Requires-Dist: scikit-learn
 Requires-Dist: scipy
 Requires-Dist: sympy
-Requires-Dist: numpy==1.26.2
+Requires-Dist: numpy>=1.26.2
 Requires-Dist: matplotlib>=3.9
-Requires-Dist: xarray==2024.6.0
+Requires-Dist: xarray>=2024.6.0
 
 Welcome to Quala_Qblox
 =============================================
