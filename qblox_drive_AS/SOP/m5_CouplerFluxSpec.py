@@ -9,7 +9,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from qblox_drive_AS.Configs.Experiment_setup import get_CouplerController, ip_register
+from qblox_drive_AS.Configs.ClusterAddress_rec import ip_register
 from utils.tutorial_analysis_classes import ResonatorFluxSpectroscopyAnalysis
 from qblox_drive_AS.support.Pulse_schedule_library import RabiSplitting_multi_sche, pulse_preview
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
@@ -183,9 +183,8 @@ if __name__ == "__main__":
     
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',new_HCFG=True)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-    Cctrl = get_CouplerController(cluster, ip=ip_register[DRandIP["dr"]])
     ro_elements, bias_elements = fluxCoupler_waiter(QD_agent, freq_half_span, freq_shift, freq_data_points, cp_ctrl, flux_half_window_V, flux_data_points)
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
@@ -194,7 +193,7 @@ if __name__ == "__main__":
     """ Running """
     update = False
     FD_results = {}
-    nc_path = fluxCoupler_executor(QD_agent,meas_ctrl,ro_elements,bias_elements, run=execution, avg_n=avg_n)
+    nc_path = fluxCoupler_executor(QD_agent,meas_ctrl,ro_elements,bias_elements,run=execution, avg_n=avg_n)
     slightly_print(f" Nc saved located:\n{nc_path}")
     cluster.reset()
 
@@ -213,4 +212,4 @@ if __name__ == "__main__":
 
     """ Close """
     print('Flux dependence done!')
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)

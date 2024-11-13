@@ -87,24 +87,24 @@ if __name__ == "__main__":
             init_system_atte(QD_agent.quantum_device,[qubit],xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         
         # T1
-        Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         if len(list(T1_elements.keys())) != 0:
             _ = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,T1_elements,ith=set_idx,run=True,specific_folder=specific_folder,avg_times=n_avg)
         
         # T2
-        Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         if len(list(T2_elements.keys())) != 0:
             _ = ramsey_executor(QD_agent,cluster,meas_ctrl,Fctrl,T2_elements,ith=set_idx,run=True,specific_folder=specific_folder,avg_n=int(1.5*n_avg))
         
         # OneShot
-        Cctrl = coupler_zctrl(dr,cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         if len(list(OS_elements.keys())) != 0:
             _ = SS_executor(QD_agent,cluster,Fctrl,OS_elements,execution=True,data_folder=specific_folder,exp_label=set_idx,shots=shot_num)
             
 
         """ Close """
         cut_time = time.time()
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster)
         set_idx += 1
         
             

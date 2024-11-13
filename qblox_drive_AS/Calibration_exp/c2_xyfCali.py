@@ -47,7 +47,7 @@ if __name__ == "__main__":
     for idx, exp in enumerate(ana_target):
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         for q in ro_elements:
             init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         if idx == 0:
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
         """ Close """
         print('XYF calibration done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
 
     
 

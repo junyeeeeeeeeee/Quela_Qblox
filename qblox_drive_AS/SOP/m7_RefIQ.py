@@ -107,7 +107,7 @@ if __name__ == "__main__":
     check_mark = False
 
     """ Running """
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         if ro_elements[qubit]["ro_amp_factor"] != 1: check_mark = True
@@ -129,5 +129,5 @@ if __name__ == "__main__":
 
     """ Close """
     print('IQ ref checking done!')
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)
 

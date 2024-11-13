@@ -15,6 +15,7 @@ from quantify_core.measurement.control import MeasurementControl
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down
 from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_multiplexing
+from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
 
 
@@ -102,9 +103,6 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
 def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
         qubit = QD_agent.quantum_device.get_element(target_q)
-        qubit.reset.duration(250e-6)
-        qubit.measure.acq_delay(0)
-        qubit.measure.pulse_amp(0.15)
         qubit.measure.pulse_duration(100e-6)
         qubit.measure.integration_time(100e-6)
 
@@ -195,10 +193,10 @@ if __name__ == "__main__":
     """ fill in part """
     # Basic info of measuring instrument, chip
     # e.g. QD_path, dr, ip, mode, chip_name, chip_type = '', 'dr3', '13', 'n','20240430_8_5Q4C', '5Q4C'
-
-    QD_path, dr, mode, chip_name, chip_type = '', 'dr2', 'n','test', '5Q4C'
     execution:bool = 1
     chip_info_restore:bool = 0
+    DRandIP = {"dr":"dr2","last_ip":"10"}
+    
     # RO attenuation
     init_RO_DigiAtte = 16 # multiple of 2, 10 ~ 16 recommended
 
@@ -219,13 +217,8 @@ if __name__ == "__main__":
     n_avg: int = 100
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
-                                                        dr_loc=dr,
-                                                        mode=mode,
-                                                        chip_name=chip_name,
-                                                        chip_type=chip_type,
-                                                        qubit_number=qubit_num,
-                                                        coupler_number=coupler_number)
+    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     # Create or Load chip information
     chip_info = cds.Chip_file(QD_agent=QD_agent)
 

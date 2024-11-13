@@ -176,7 +176,7 @@ if __name__ == "__main__":
         QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()+adj_freq)
         
         """ Running """
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         slightly_print(f"Ramsey with detuning = {round(ro_elements[qubit]['detune']*1e-6,2)} MHz")
         ncs[qubit] = fringe_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,detune=ro_elements[qubit]["detune"],freq_pts=freq_pts,freeDura=ro_elements[qubit]["evoT"],ith=0,run=execution,pts=time_data_points,avg_n=avg_n,IF=xy_IF)
@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
         """ Close """
         print('Ramsey Fringe done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
         end_time = time.time()
         slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
             

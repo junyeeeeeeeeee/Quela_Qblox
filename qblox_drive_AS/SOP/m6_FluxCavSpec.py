@@ -183,7 +183,7 @@ if __name__ == "__main__":
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l',)
     chip_info = cds.Chip_file(QD_agent=QD_agent)
     ro_elements, bias_elements = FluxCav_waiter(QD_agent, ro_elements, freq_data_points, flux_half_window_V, flux_data_points)
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
+    Fctrl = coupler_zctrl(Fctrl,cp_ctrl)
     for qubit in ro_elements["freq_samples"]:
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
 
@@ -223,4 +223,4 @@ if __name__ == "__main__":
 
     """ Close """
     print('Flux dependence done!')
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)

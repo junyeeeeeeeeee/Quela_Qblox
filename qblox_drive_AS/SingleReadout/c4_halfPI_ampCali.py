@@ -139,7 +139,7 @@ if __name__ == "__main__":
     
             """Running """
             rabi_results = {}
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             data[str(pi_num)] = half_pi_amp_calibrator(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,avg_times=avg_n,pts=data_pts,XYamp_coef_span=pi_amp_coef_span,half_pi_quadruple_num=pi_num,IF=xy_IF)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
             if idx == len(half_pi_quadruple_num)-1:
                 plot_cali_results(data,linspace(1-pi_amp_coef_span,1+pi_amp_coef_span,data_pts))
             """ Close """
-            shut_down(cluster,Fctrl,Cctrl)
+            shut_down(cluster,Fctrl)
             end_time = time.time()
             slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
 

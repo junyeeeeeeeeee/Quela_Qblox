@@ -177,12 +177,12 @@ def T2_waiter(QD_agent:QDmanager,ro_element:dict,time_pts:int)->dict:
 if __name__ == "__main__":
     
     """ Fill in """
-    execution:bool = 1
+    execution:bool = 0
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
-        "q0":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':0, "xy_IF":250e6},
-        "q1":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':0, "xy_IF":250e6},
+        "q0":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':1, "xy_IF":250e6},
+        "q1":{"detune":0.5e6, 'evo_T':60e-6, 'spin_num':2, "xy_IF":250e6},
     }
     couplers = []
 
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         chip_info = cds.Chip_file(QD_agent=QD_agent)
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         new_ro_elements = T2_waiter(QD_agent,ro_elements,time_data_points)
     
         
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
         """ Close """
         print('T2 done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
         end_time = time.time()
         slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
         ith_histo += 1

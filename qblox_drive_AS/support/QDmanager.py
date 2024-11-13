@@ -22,6 +22,48 @@ def ret_c(dict_a):
             x.append(i)
     return x
 
+def find_path_by_clock(hardware_config, port, clock):
+    answers = {}
+    def recursive_find(hardware_config, port, clock, path) -> list | None:
+        
+        for k, v in hardware_config.items():
+            # If key is port, we are done
+            if k == "port":
+                if (
+                    port in hardware_config["port"]
+                    and hardware_config["clock"] == clock
+                ):
+                    answers[hardware_config["port"].split(":")[0]] = path[1:3]
+
+            # If value is list, append key to path and loop trough its elements.
+            elif isinstance(v, list):
+                path.append(k)  # Add list key to path.
+                for i, sub_config in enumerate(v):
+                    path.append(i)  # Add list element index to path.
+                    if isinstance(sub_config, dict):
+                        found_path = recursive_find(sub_config, port, clock, path)
+                        if found_path:
+                            return found_path
+                    path.pop()  # Remove list index if port-clock not found in element.
+                path.pop()  # Remove list key if port-clock not found in list.
+
+            # If dict append its key. If port is not found delete it
+            elif isinstance(v, dict):
+                path.append(k)
+                found_path = recursive_find(v, port, clock, path)
+                if found_path:
+                    return found_path
+                path.pop()  # Remove dict key if port-clock not found in this dict.
+        
+
+    _ = recursive_find(hardware_config, port, clock, path=[])
+    if len(list(answers.keys())) == 0 :
+        raise KeyError(
+            f"The combination of {port=} and {clock=} could not be found in {hardware_config=}."
+        )
+    else:
+        return answers
+
 class QDmanager():
     def __init__(self,QD_path:str=''):
         self.path = QD_path
@@ -33,8 +75,8 @@ class QDmanager():
         self.Identity=""
         self.chip_name = ""
         self.chip_type = ""
-        
-
+            
+    
     def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str='',chip_type = ''):
         """
         Register this QDmanager according to the cluster ip and in which dr and the chip name.
@@ -44,14 +86,15 @@ class QDmanager():
         self.chip_name = chip_name
         self.chip_type = chip_type
     
-    def made_mobileFctrl(self,Fctrl:dict):
+    def made_mobileFctrl(self):
         """ Turn attrs about `cluster.module.out0_offset` into str."""
+        ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
+
         self.Fctrl_str_ver = {}
-        for q in Fctrl:
-            output_path = find_port_clock_path(self.quantum_device.hardware_config(), port=f'{q}:fl', clock= "cl0.baseband")
-            cluster_name = output_path[0]
-            module_name = output_path[1].split("_")[-1]
-            func_name = f"out{output_path[2].split('_')[-1]}_offset"
+        for q in ans:
+            cluster_name = ans[q][0].split("_")[0]
+            module_name = ans[q][0].split("_")[1]
+            func_name = f"out{ans[q][1].split('_')[-1]}_offset"
 
             self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
         
@@ -82,7 +125,7 @@ class QDmanager():
         """
         self.Log = message
 
-    def QD_loader(self, new_Hcfg:bool=False):
+    def QD_loader(self, new_Hcfg:dict=None):
         """
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
@@ -104,11 +147,14 @@ class QDmanager():
         self.Notewriter.activate_from_dict(gift["Note"])
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
-        if new_Hcfg:
-            from qblox_drive_AS.Configs.Experiment_setup import hcfg_map
-            self.Hcfg = hcfg_map[self.Identity.split("#")[0].lower()]
+        if new_Hcfg is not None:
+            from qblox_drive_AS.support.UserFriend import slightly_print
+            self.Hcfg = new_Hcfg
+            slightly_print("Saved new given Hardware config.")
+            self.made_mobileFctrl()
         else:
             self.Hcfg = gift["Hcfg"]
+        
         self.refIQ:dict = gift["refIQ"]
         
         self.quantum_device.hardware_config(self.Hcfg)
@@ -124,7 +170,7 @@ class QDmanager():
             db.build_folder_today()
             self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
-        # TODO: Here is onlu for the hightlighs :)
+        # TODO: Here is only for the hightlighs :)
         merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
@@ -152,19 +198,7 @@ class QDmanager():
 
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
-        """ #for firmware v0.6.2
-        self.quantum_device = QuantumDevice("academia_sinica_device")
-        self.quantum_device.hardware_config(self.Hcfg)
         
-        # store references
-        self.quantum_device._device_elements = list()
-
-        for i in range(qubit_number):
-            qubit = BasicTransmonElement(f"q{i}")
-            qubit.measure.acq_channel(i)
-            self.quantum_device.add_element(qubit)
-            self.quantum_device._device_elements.append(qubit)
-        """
         # for firmware v0.7.0
         from qcodes.instrument import find_or_create_instrument
         self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
@@ -172,6 +206,15 @@ class QDmanager():
         for qb_idx in range(self.q_num):
             qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
             qubit.measure.acq_channel(qb_idx)
+            qubit.reset.duration(250e-6)
+            qubit.clock_freqs.readout(6e9)
+            qubit.measure.acq_delay(0)
+            qubit.measure.pulse_amp(0.15)
+            qubit.measure.pulse_duration(1e-6)
+            qubit.measure.integration_time(1e-6)
+            qubit.clock_freqs.f01(4e9)
+            qubit.rxy.amp180(0.05)
+            qubit.rxy.duration(40e-9)
             self.quantum_device.add_element(qubit)
         
     def keep_meas_option(self,target_q:str,z_bias:float,modi_idx:int):

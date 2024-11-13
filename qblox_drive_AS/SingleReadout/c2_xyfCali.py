@@ -33,7 +33,7 @@ if __name__ == "__main__":
             
 
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             if step == 0:
@@ -51,16 +51,16 @@ if __name__ == "__main__":
                     QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(original_xyf+trying_detune)
                     QD_agent.QD_keeper()
                 """ Close """
-                shut_down(cluster,Fctrl,Cctrl)
+                shut_down(cluster,Fctrl)
                 break
             elif step == 2 :
                 warning_print("Didn't find a good XYF !")
                 """ Close """
-                shut_down(cluster,Fctrl,Cctrl)
+                shut_down(cluster,Fctrl)
                 break
             else:
                 """ Close """
-                shut_down(cluster,Fctrl,Cctrl)
+                shut_down(cluster,Fctrl)
 
             step += 1
             

@@ -197,7 +197,7 @@ if __name__ == "__main__":
     """ Running """
     FQ_results = {}
     check_again =[]
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         if not QD_agent.Fluxmanager.get_offsweetspot_button(qubit):
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     print('Flux qubit done!')
     if len(check_again) != 0:
         warning_print(f"qubits to check again: {check_again}")
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)
 
   
     

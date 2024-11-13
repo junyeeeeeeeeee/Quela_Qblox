@@ -181,7 +181,7 @@ if __name__ == "__main__":
         QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()+adj_freq)
         """Running """
         rabi_results = {}
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
         rabi_results[qubit], trustable = rabi_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,run=execution,XYdura_max=pi_duration,XYamp_max=pi_amp_max,which_rabi=rabi_type,avg_times=avg_n,pts=data_pts)
         cluster.reset()
@@ -201,6 +201,6 @@ if __name__ == "__main__":
 
         """ Close """
         print('Rabi osci done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
         end_time = time.time()
         slightly_print(f"time cost: {round(end_time-start_time,1)} secs")

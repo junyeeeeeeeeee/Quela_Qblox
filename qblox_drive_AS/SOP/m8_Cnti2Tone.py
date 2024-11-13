@@ -229,7 +229,7 @@ if __name__ == "__main__":
     """ Preparations """
     QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
     chip_info = cds.Chip_file(QD_agent=QD_agent)
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in xyf_setup:
         QD_agent.Notewriter.save_DigiAtte_For(0,qubit,'xy')
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -268,4 +268,4 @@ if __name__ == "__main__":
 
     """ Close """
     print('2-tone done!')
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)

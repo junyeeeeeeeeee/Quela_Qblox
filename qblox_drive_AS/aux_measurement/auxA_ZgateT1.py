@@ -177,7 +177,7 @@ if __name__ == "__main__":
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         chip_info = cds.Chip_file(QD_agent=QD_agent)
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         new_ro_elements, bias_elements = zgateT1_waiter(QD_agent,ro_elements,flux_span_period_factor,flux_data_points, evotime_data_points)
         for q in new_ro_elements["time_samples"]:
             init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
@@ -200,7 +200,7 @@ if __name__ == "__main__":
 
         """ Close """
         print('Zgate T1 done!')
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
             
 
          

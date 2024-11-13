@@ -157,7 +157,7 @@ if __name__ == "__main__":
         # update = False
         # FD_results = {}
     
-        # Cctrl = coupler_zctrl(DRandIP["dr"],cluster,cp_ctrl)
+        # Fctrl = coupler_zctrl(Fctrl,cp_ctrl)
         # init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         # qu = QD_agent.quantum_device.get_element(qubit)
         # qu.clock_freqs.readout(qu.clock_freqs.readout()+freq_center_shift)
@@ -184,4 +184,4 @@ if __name__ == "__main__":
 
         # """ Close """
         # print('Flux dependence done!')
-        shut_down(cluster,Fctrl,Cctrl={})
+        shut_down(cluster,Fctrl)

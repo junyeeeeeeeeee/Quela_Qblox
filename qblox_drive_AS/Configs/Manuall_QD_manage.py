@@ -2,6 +2,7 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_drive_AS.support.QDmanager import QDmanager
+from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
 
 def set_reset_time_by_T1(QD_agent:QDmanager,target_q:str)->float:
     T1 = float(QD_agent.Notewriter.get_T1For(target_q))
@@ -12,6 +13,13 @@ def set_reset_time_by_T1(QD_agent:QDmanager,target_q:str)->float:
         reset_time = 250e-6
     
     return reset_time
+
+def set_roLO(QD_agent:QDmanager,target_q:str,LO_Hz:float):
+    """ ## *Warning*: 
+        Set the LO for those qubits who shares the same readout module with the `target_q`.
+    """
+    if LO_Hz is not None:
+        set_LO_frequency(QD_agent.quantum_device,target_q,'readout',LO_Hz)
 
 if __name__ == "__main__":
     #// Reset time can be set in str 'auto', which will use 10*T1 if there is the T1 record in the QD_agent. Otherwise, set it as 250e-6. 
@@ -44,5 +52,8 @@ if __name__ == "__main__":
                         QD_agent.Notewriter.save_xyIF_for(q,Revisers[q][item])
                     case _:
                         print(f"Unknown item was given for {q} as name = {item}")
+
+    # if you want changhe the RO LO freq, set LO in Hz as you want.
+    set_roLO(QD_agent, 'q0', LO_Hz=None)
 
     QD_agent.QD_keeper()

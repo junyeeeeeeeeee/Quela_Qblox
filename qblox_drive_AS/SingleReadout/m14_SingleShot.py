@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
 
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             if i == 0:
                 snr_rec[qubit], effT_rec[qubit], thermal_pop[qubit] = [], [], []
             init_system_atte(QD_agent.quantum_device,list([qubit]),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
@@ -182,7 +182,7 @@ if __name__ == '__main__':
                     
                 
             """ Close """    
-            shut_down(cluster,Fctrl,Cctrl)
+            shut_down(cluster,Fctrl)
             end_time = time.time()
             slightly_print(f"time cose: {round(end_time-start_time,1)} secs")
 

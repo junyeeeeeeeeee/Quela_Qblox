@@ -195,7 +195,7 @@ if __name__ == "__main__":
     
     """ Running """
     fit_error = []
-    Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+    Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in ro_elements:
         if QD_agent.Fluxmanager.get_offsweetspot_button(qubit): raise ValueError("m10 should be performed at sweet spot, now is deteced in off-sweetspot mode!")
         init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     """ Close """
     print('done!')
     print(f"fitting error occured at {fit_error}")
-    shut_down(cluster,Fctrl,Cctrl)
+    shut_down(cluster,Fctrl)
     
         
         

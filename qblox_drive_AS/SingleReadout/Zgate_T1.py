@@ -178,7 +178,7 @@ if __name__ == "__main__":
             chip_info = cds.Chip_file(QD_agent=QD_agent)
             
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             zgateT1_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,freeDura=ro_elements[qubit]["evoT"],z_span_period_factor=flux_span_period_factor,tpts=evotime_data_points,zpts=flux_data_points,run=execution,ith=ith_histo,pi_pulse=prepare_excited,specific_folder=specific_folder,n_avg=avg_times)
 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
             """ Close """
             
             print('Zgate T1 done!')
-            shut_down(cluster,Fctrl,Cctrl)
+            shut_down(cluster,Fctrl)
             
 
          

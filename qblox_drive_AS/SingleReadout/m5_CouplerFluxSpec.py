@@ -141,7 +141,7 @@ if __name__ == "__main__":
     chip_info = cds.Chip_file(QD_agent=QD_agent)
     
     """ Running """
-    from qblox_drive_AS.Configs.Experiment_setup import get_CouplerController, ip_register
+    from qblox_drive_AS.Configs.ClusterAddress_rec import get_CouplerController, ip_register
     update = False
     Cctrl = get_CouplerController(cluster, ip=ip_register[DRandIP["dr"]])
     FD_results = {}
@@ -158,8 +158,8 @@ if __name__ == "__main__":
             cluster.reset()
         
         """ Storing """
-        # empty
-
+        Fctrl.update(Cctrl)
     """ Close """
     print('Rabi-spliting done!')
-    shut_down(cluster,Fctrl,Cctrl)
+
+    shut_down(cluster,Fctrl)

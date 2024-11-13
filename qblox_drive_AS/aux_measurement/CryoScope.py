@@ -210,7 +210,8 @@ if __name__ == "__main__":
 
 
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             
             data[phase] = cryoscope_executor(QD_agent,cluster,meas_ctrl,Fctrl,qubit,artificial_detune=ro_elements[qubit]["detune"],freeDura=ro_elements[qubit]["evoT"],run=execution,pts=time_data_points,avg_n=avg_n,second_phase=phase)
@@ -223,7 +224,7 @@ if __name__ == "__main__":
 
             """ Close """
             print('T2 done!')
-            shut_down(cluster,Fctrl,Cctrl)
+            shut_down(cluster,Fctrl)
             end_time = time.time()
             slightly_print(f"time cost: {round(end_time-start_time,1)} secs")
 

@@ -118,7 +118,7 @@ if __name__ == "__main__":
     
 
     """ Fill in """
-    execution:bool = 1
+    execution:bool = 0
     chip_info_restore:bool = 1
     DRandIP = {"dr":"dr2","last_ip":"10"}
     ro_elements = {
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
         for q in ro_elements:
             init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-        Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         chip_info = cds.Chip_file(QD_agent=QD_agent)
         ro_elements = T1_waiter(QD_agent,ro_elements,time_data_points)
         
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         """ Close """
         print('T1 done!')
         every_end = time.time()
-        shut_down(cluster,Fctrl,Cctrl)
+        shut_down(cluster,Fctrl)
         slightly_print(f"time cost: {round(every_end-start_time,1)} secs")
         ith_histo += 1
         

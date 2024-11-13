@@ -145,7 +145,7 @@ if __name__ == "__main__":
             chip_info = cds.Chip_file(QD_agent=QD_agent)
             
             """ Running """
-            Cctrl = coupler_zctrl(DRandIP["dr"],cluster,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
+            Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
             init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
             evoT = ro_elements[qubit]["evoT"]
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
             """ Close """
             print('T1 done!')
             every_end = time.time()
-            shut_down(cluster,Fctrl,Cctrl)
+            shut_down(cluster,Fctrl)
             
             slightly_print(f"time cost: {round(every_end-every_start,1)} secs")
         

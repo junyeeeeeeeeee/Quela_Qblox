@@ -1,7 +1,6 @@
 import pickle, os
 from typing import Callable
-from qblox_drive_AS.Configs.Experiment_setup import get_FluxController, get_CouplerController
-from qblox_drive_AS.Configs.Experiment_setup import ip_register, port_register
+from qblox_drive_AS.Configs.ClusterAddress_rec import ip_register, port_register
 from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
 import ipywidgets as widgets
@@ -40,7 +39,7 @@ def find_nearest(ary:ndarray, value:float):
     return float(ary[idx])
 
 # initialize a measurement
-def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,coupler_number:int=4,mode:str='new',chip_name:str='',chip_type:str='', new_HCFG:bool=False)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
+def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementControl, InstrumentCoordinator, dict]:
     """
     Initialize a measurement by the following 2 cases:\n
     ### Case 1: QD_path isn't given, create a new QD accordingly.\n
@@ -52,32 +51,24 @@ def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,couple
     import quantify_core.data.handling as dh
     meas_datadir = '.data'
     dh.set_datadir(meas_datadir)
-    if mode.lower() in ['new', 'n']:
-        from qblox_drive_AS.Configs.Experiment_setup import hcfg_map
-        cfg, pth = hcfg_map[dr_loc.lower()], ''
-        cluster_ip = ip_register[dr_loc.lower()]
-        if dr_loc == '':
-            raise ValueError ("arg 'dr_loc' should not be ''!")
-    elif mode.lower() in ['load', 'l']:
-        cfg, pth = {}, QuantumDevice_path 
-        dr_loc = get_dr_loca(QuantumDevice_path)
-        cluster_ip = ip_register[dr_loc.lower()]
-    else:
-        raise KeyError("The given mode can not be recognized!")
+
+
+    cfg, pth = {}, QuantumDevice_path 
+    dr_loc = get_dr_loca(QuantumDevice_path)
+    cluster_ip = ip_register[dr_loc.lower()]
+
     
     if cluster_ip in list(port_register.keys()):
         # try maximum 3 connections to prevent connect timeout error 
         try:
             cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
         except:
-            
             try:
                 warning_print("First cluster connection trying")
                 cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
             except:
                 warning_print("Second cluster connection trying")
-                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
-                
+                cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))          
     else:
         try:
             warning_print("cluster IP connection trying")
@@ -90,14 +81,8 @@ def init_meas(QuantumDevice_path:str='', dr_loc:str='',qubit_number:int=5,couple
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
     QRM_nco_init(cluster)
     Qmanager = QDmanager(pth)
-    if pth == '':
-        Qmanager.build_new_QD(qubit_number,coupler_number,cfg,ip,dr_loc,chip_name=chip_name,chip_type=chip_type)
-        bias_controller = get_FluxController(cluster,ip)
-        Qmanager.made_mobileFctrl(bias_controller)
-        Qmanager.refresh_log("new-born!")
-    else:
-        Qmanager.QD_loader(new_Hcfg=new_HCFG)
-        bias_controller = Qmanager.activate_str_Fctrl(cluster)
+    Qmanager.QD_loader()
+    bias_controller = Qmanager.activate_str_Fctrl(cluster)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
     reset_offset(bias_controller)
@@ -175,13 +160,11 @@ def configure_measurement_control_loop(
 
 
 # close all instruments
-def shut_down(cluster:Cluster,flux_map:dict, cp_flux_map:dict={}):
+def shut_down(cluster:Cluster,flux_map:dict):
     '''
         Disconnect all the instruments.
     '''
     reset_offset(flux_map)
-    if cp_flux_map != {}:
-        reset_offset(cp_flux_map)
     cluster.reset() 
     Instrument.close_all() 
     print("All instr are closed and zeroed all flux bias!")
@@ -318,7 +301,7 @@ def check_QD_info(QD_agent:QDmanager,target_q:str):
     show_readout_args(qubit)
     show_drive_args(qubit)
 
-def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
+def coupler_zctrl(Fctrl:dict,cp_elements:dict)->dict:
     """
     control coupler Z bias.
     ------------------------------
@@ -329,13 +312,12 @@ def coupler_zctrl(dr:str,cluster:Cluster,cp_elements:dict)->dict:
     coupler_zctrl(dr2,cluster,cp_elements={"c0":0.2})
     ------------------------------
     """
-    ip = ip_register[dr.lower()]
-    Cctrl = get_CouplerController(cluster, ip)
+    
     for cp in cp_elements:
         slightly_print(f"{cp} biased @ {round(cp_elements[cp],2)} V")
-        Cctrl[cp](cp_elements[cp])
+        Fctrl[cp](cp_elements[cp])
     
-    return Cctrl
+    return Fctrl
 
 def compose_para_for_multiplexing(QD_agent:QDmanager,ro_elements,mode:str)->dict:
     """
@@ -413,5 +395,9 @@ def rotate_data(data:ndarray, angle_degree:float)->ndarray:
     return data_rotated
 
 
+
+
 if __name__ == "__main__":
-    pass
+    a = {"a1":10,"a2":12}
+    b = {}
+    print({**a,**b})
