@@ -183,7 +183,7 @@ if __name__ == "__main__":
     
     """ Preparations """
     QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
     chip_info = cds.Chip_file(QD_agent=QD_agent)
     ro_elements, bias_elements = fluxCoupler_waiter(QD_agent, freq_half_span, freq_shift, freq_data_points, cp_ctrl, flux_half_window_V, flux_data_points)
     for qubit in ro_elements:

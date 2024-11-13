@@ -150,9 +150,7 @@ if __name__ == "__main__":
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,
-                                                        dr_loc=dr,
-                                                        mode=mode)
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
     # Set the system attenuations
     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
     # Readout select

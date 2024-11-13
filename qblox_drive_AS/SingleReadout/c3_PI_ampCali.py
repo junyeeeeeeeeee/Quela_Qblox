@@ -154,7 +154,7 @@ if __name__ == "__main__":
             """ Preparations """
             start_time = time.time()
             QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
             chip_info = cds.Chip_file(QD_agent=QD_agent)
             
     

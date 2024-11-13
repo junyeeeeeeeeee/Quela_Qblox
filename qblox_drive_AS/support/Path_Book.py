@@ -11,6 +11,10 @@ meas_raw_dir = os.path.join(root,'qblox_drive_AS/Meas_raw')
 # The directory for qauntum device
 qdevice_backup_dir = os.path.join(root,'qblox_drive_AS/QD_backup')
 
+for i in [meas_raw_dir, qdevice_backup_dir]:
+    if not os.path.exists(i):
+        os.mkdir(i)
+
 
 def decode_datetime_2_foldername(date:datetime):
     latest = date.strftime("%Y%m%d")

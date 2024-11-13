@@ -227,7 +227,7 @@ if __name__ == "__main__":
     
         
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
     chip_info = cds.Chip_file(QD_agent=QD_agent)
     Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
     for qubit in xyf_setup:

@@ -60,7 +60,7 @@ if __name__ == "__main__":
                         with open(os.path.join(paths[idx],"timeInfo.json")) as recorded_file:
                             time_recs[list(time_recs.keys())[idx]] = json.load(recorded_file)[list(time_recs.keys())[idx]]
 
-                    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+                    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
                     init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
                     Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
                     Fctrl['c3'](0.13)

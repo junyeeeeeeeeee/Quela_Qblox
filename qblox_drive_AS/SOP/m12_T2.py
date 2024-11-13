@@ -210,7 +210,7 @@ if __name__ == "__main__":
         
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
         chip_info = cds.Chip_file(QD_agent=QD_agent)
         Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
         new_ro_elements = T2_waiter(QD_agent,ro_elements,time_data_points)

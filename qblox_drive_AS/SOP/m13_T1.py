@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
         for q in ro_elements:
             init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))

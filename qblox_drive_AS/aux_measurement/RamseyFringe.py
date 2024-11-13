@@ -172,7 +172,7 @@ if __name__ == "__main__":
         start_time = time.time()
         """ Preparations """
         QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
         QD_agent.quantum_device.get_element(qubit).clock_freqs.f01(QD_agent.quantum_device.get_element(qubit).clock_freqs.f01()+adj_freq)
         
         """ Running """

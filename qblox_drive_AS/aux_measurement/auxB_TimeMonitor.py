@@ -70,7 +70,7 @@ if __name__ == "__main__":
     cut_time = time.time()
     specific_folder = Data_manager().creat_datafolder_today(f"TimeMonitor_MultiQ_{Data_manager().get_time_now()}")
     dr = os.path.split(QD_path)[-1].split("#")[0].lower()
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
     T1_elements, T2_elements, OS_elements = timeMonitor_waiter(QD_agent,ro_elements,shot_num,time_pts)
 
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     while (cut_time-start)/60 < tracking_time_min:
         if set_idx != 0:
             # avoid error on open quantum_device twice 
-            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path,mode='l')
+            QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
         for qubit in ro_elements:
             init_system_atte(QD_agent.quantum_device,[qubit],xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'))
         
