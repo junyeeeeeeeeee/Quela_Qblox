@@ -338,7 +338,20 @@ class Data_manager:
             os.mkdir(tuid_folder_path) 
             print(f"TUID Folder created at:\n{tuid_folder_path}")
 
-    
+    def build_packs_folder(self,special_name:str=None)->str:
+        if self.raw_folder is None:
+            self.build_folder_today(self.raw_data_dir)
+        
+        if special_name is None:
+            special_name = self.get_time_now()
+        
+        pack_path = os.path.join(self.raw_folder)
+        os.makedirs(pack_path,exist_ok=True)
+
+        return pack_path
+
+
+
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
         """
         If the arg `specific_dataFolder` was given, the raw nc will be saved into that given path. 

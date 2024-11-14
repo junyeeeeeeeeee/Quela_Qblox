@@ -3,9 +3,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.signal
+from xarray import Dataset
 from qblox_instruments import Cluster
-from quantify_scheduler.helpers.collections import find_port_clock_path
+
 
 def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data:int):
 
@@ -109,60 +109,39 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     I_data = np.asarray(I_data)
     Q_data = np.asarray(Q_data)
 
+    
+    dataset = Dataset({"data":(["mixer","freq"],np.array([I_data,Q_data]))},coords={"mixer":np.array(["I","Q"]),"freq":lo_sweep_range + nco_freq})
+
+    return dataset
+
+def plot_S21(dataset:Dataset,save_path:str=None):
+    I_data = dataset.data_vars["data"][0].values()
+    Q_data = dataset.data_vars["data"][1].values()
+    f = dataset.coords["freq"].values()
+    
     amplitude = np.sqrt(I_data**2 + Q_data**2)
     phase = np.arctan2(Q_data, I_data) * 180 / np.pi
 
-    mean_amp = np.mean(amplitude)
-    
     plt.rcParams["axes.labelsize"] = 18
     plt.rcParams["xtick.labelsize"] = 16
     plt.rcParams["ytick.labelsize"] = 16
 
-    fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
+    fig, axs = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
+    plt.grid()
 
-    cav_freq = scipy.signal.argrelmin(amplitude, order = round(num_data/8))
-    cav_freq = cav_freq[0]
-    for i in cav_freq:
-        if amplitude[i] > mean_amp*2/3:        # Discard the local minimum which is caused by noise
-            cav_freq = np.delete(cav_freq, np.where(cav_freq == i))
-
-    ax1.plot((lo_sweep_range + nco_freq) / 1e9, amplitude, color="#00839F", linewidth=2)
-    ax1.plot(((cav_freq / num_data)*(lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9, amplitude[cav_freq], "x")
-    print(((cav_freq / num_data)*(lo_stop_freq - lo_start_freq) + lo_start_freq + nco_freq) /1e9)
+    ax1:plt.Axes = axs[0]
+    ax1.plot(f / 1e9, amplitude, color="#00839F", linewidth=2)
     ax1.set_ylabel("Amplitude (V)")
-
-    ax2.plot((lo_sweep_range + nco_freq) / 1e9, np.diff(np.unwrap(phase,180,period=360),append=np.unwrap(phase,180,period=360)[-1]), color="#00839F", linewidth=2)
+    ax2:plt.Axes = axs[1]
+    ax2.plot(f / 1e9, np.diff(np.unwrap(phase,180,period=360),append=np.unwrap(phase,180,period=360)[-1]), color="#00839F", linewidth=2)
     ax2.set_ylabel("Phase ($\circ$)")
     ax2.set_xlabel("Frequency (GHz)")
     fig.tight_layout()
-    plt.show()
-
-if __name__ == "__main__":
-    from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, QRM_nco_init
-    from qblox_drive_AS.support.UI_Window import init_meas_window
-    
-    """ Fill in """
-    QD_path = ""
-    target_qs = ['q0']
-    lo_start_freq:float = 5.8  * 1e9
-    lo_stop_freq:float = 6.2 * 1e9
-    num_data:int = 800
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path)
+        plt.close()
 
 
-    """ Preparations """
-    for target_q in target_qs:
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
-        # Set the system attenuations
-        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q, 'ro'))
-        # Readout select
-        qrmRF_slot_idx = int(find_port_clock_path(QD_agent.quantum_device.hardware_config,"q:res",f"{target_q}.ro")[1][-1])
-        readout_module = cluster.modules[qrmRF_slot_idx-1]
-
-
-        """ Running """
-        wideCS(readout_module=readout_module, lo_start_freq=lo_start_freq, lo_stop_freq=lo_stop_freq, num_data=num_data)
-
-
-        """ Close """
-        shut_down(cluster,Fctrl)
     
