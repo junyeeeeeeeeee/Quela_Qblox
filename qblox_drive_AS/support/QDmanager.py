@@ -345,7 +345,7 @@ class Data_manager:
         if special_name is None:
             special_name = self.get_time_now()
         
-        pack_path = os.path.join(self.raw_folder)
+        pack_path = os.path.join(self.raw_folder,special_name)
         os.makedirs(pack_path,exist_ok=True)
 
         return pack_path

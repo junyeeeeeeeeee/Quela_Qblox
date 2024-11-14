@@ -4,13 +4,13 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support import QDmanager
 
 
-cluster_IP:str = "192.168.1.10"
-dr_name:str = "dr2"
-qubit_number_onChip:int = 5
-coupler_number_onChip:int = 4
+cluster_IP:str = "192.168.1.11"
+dr_name:str = "dr1"
+qubit_number_onChip:int = 2
+coupler_number_onChip:int = 2
 chip_name:str = "5Q4C_Test"
 chip_type:str = "5Q4C"
-old_QD_path:str = "qblox_drive_AS/QD_backup/20241113/DR2#10_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
+old_QD_path:str = "" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 Hcfg = {
@@ -20,7 +20,7 @@ Hcfg = {
         "ref": "internal",  # Use shared clock reference of the cluster
         "instrument_type": "Cluster",
         # ============ DRIVE ============#
-        f"cluster{dr_name}_module12": {
+        f"cluster{dr_name}_module4": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -62,7 +62,7 @@ Hcfg = {
         },
         
         # ============ READOUT ============#
-        f"cluster{dr_name}_module8": {
+        f"cluster{dr_name}_module6": {
             "instrument_type": "QRM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -82,25 +82,7 @@ Hcfg = {
                         "clock": "q1.ro",
                         "mixer_amp_ratio": 1.0,
                         "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q:res",
-                        "clock": "q2.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q:res",
-                        "clock": "q3.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
-                    {
-                        "port": "q:res",
-                        "clock": "q4.ro",
-                        "mixer_amp_ratio": 1.0,
-                        "mixer_phase_error_deg": 0.0,
-                    },
+                    }
                 ],
             },
         },

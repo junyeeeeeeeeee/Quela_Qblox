@@ -3,5 +3,5 @@
 **/.ipynb_checkpoints/
 **/Data/
 .data/
-Modularize/Meas_raw/
+qblox_drive_AS/Meas_raw/
 chip_information/Timestamp/

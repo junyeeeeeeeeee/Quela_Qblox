@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from xarray import Dataset
+from xarray import Dataset, open_dataset
 from qblox_instruments import Cluster
 
 
@@ -115,9 +115,9 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     return dataset
 
 def plot_S21(dataset:Dataset,save_path:str=None):
-    I_data = dataset.data_vars["data"][0].values()
-    Q_data = dataset.data_vars["data"][1].values()
-    f = dataset.coords["freq"].values()
+    I_data = dataset.data_vars["data"][0]
+    Q_data = dataset.data_vars["data"][1]
+    f = dataset.coords["freq"]
     
     amplitude = np.sqrt(I_data**2 + Q_data**2)
     phase = np.arctan2(Q_data, I_data) * 180 / np.pi
@@ -127,21 +127,27 @@ def plot_S21(dataset:Dataset,save_path:str=None):
     plt.rcParams["ytick.labelsize"] = 16
 
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(15, 7))
-    plt.grid()
 
     ax1:plt.Axes = axs[0]
+    ax1.grid()
     ax1.plot(f / 1e9, amplitude, color="#00839F", linewidth=2)
     ax1.set_ylabel("Amplitude (V)")
     ax2:plt.Axes = axs[1]
     ax2.plot(f / 1e9, np.diff(np.unwrap(phase,180,period=360),append=np.unwrap(phase,180,period=360)[-1]), color="#00839F", linewidth=2)
     ax2.set_ylabel("Phase ($\circ$)")
     ax2.set_xlabel("Frequency (GHz)")
+    ax2.grid()
     fig.tight_layout()
     if save_path is None:
         plt.show()
     else:
         plt.savefig(save_path)
         plt.close()
+
+
+if __name__ == "__main__":
+    ds = open_dataset(r"C:\GitHub\Quela_Qblox\qblox_drive_AS\Meas_raw\20241114\BroadBandCS_20241114215922.nc")
+    plot_S21(ds)
 
 
     
