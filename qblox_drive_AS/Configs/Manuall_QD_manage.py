@@ -1,8 +1,9 @@
 """ Set the readout parameters here about (1) integration time, (2) reset time (3) Driving IF """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from qblox_drive_AS.support.QDmanager import QDmanager
+from qblox_drive_AS.support import QDmanager, init_system_atte
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
+
 
 def set_reset_time_by_T1(QD_agent:QDmanager,target_q:str)->float:
     T1 = float(QD_agent.Notewriter.get_T1For(target_q))
@@ -14,12 +15,14 @@ def set_reset_time_by_T1(QD_agent:QDmanager,target_q:str)->float:
     
     return reset_time
 
-def set_roLO(QD_agent:QDmanager,target_q:str,LO_Hz:float):
+def set_roLOfreq_atte(QD_agent:QDmanager,target_q:str,LO_Hz:float,ro_atte:int=None):
     """ ## *Warning*: 
-        Set the LO for those qubits who shares the same readout module with the `target_q`.
+        Set the LO or ro atte for those qubits who shares the same readout module with the `target_q`.
     """
     if LO_Hz is not None:
         set_LO_frequency(QD_agent.quantum_device,target_q,'readout',LO_Hz)
+    if ro_atte is not None:
+        init_system_atte(QD_agent.quantum_device,list([target_q]),ro_out_att=ro_atte)
 
 if __name__ == "__main__":
     #// Reset time can be set in str 'auto', which will use 10*T1 if there is the T1 record in the QD_agent. Otherwise, set it as 250e-6. 
@@ -54,6 +57,7 @@ if __name__ == "__main__":
                         print(f"Unknown item was given for {q} as name = {item}")
 
     # if you want changhe the RO LO freq, set LO in Hz as you want.
-    set_roLO(QD_agent, 'q0', LO_Hz=None)
-
+    # if you want change the RO attenuation, set ro_atte as you want with multiples of 2 and in the range [0,60]
+    
+    set_roLOfreq_atte(QD_agent, 'q0', LO_Hz=None, ro_atte=None)
     QD_agent.QD_keeper()

@@ -1,3 +1,4 @@
+""" Thsi script helps you build a new QD_file """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_drive_AS.support import QDmanager
@@ -9,7 +10,7 @@ qubit_number_onChip:int = 5
 coupler_number_onChip:int = 4
 chip_name:str = "5Q4C_Test"
 chip_type:str = "5Q4C"
-old_QD_path:str = "qblox_drive_AS/QD_backup/20241113/DR2#10_SumInfo.pkl" # set the path in string When you want to update the Hcfg
+old_QD_path:str = "qblox_drive_AS/QD_backup/20241113/DR2#10_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 Hcfg = {
@@ -106,7 +107,7 @@ Hcfg = {
     },
 }
 
-if old_QD_path is None:
+if old_QD_path is None or str(old_QD_path) == "" :
     QD_agent = QDmanager()
     QD_agent.build_new_QD(qubit_number_onChip,coupler_number_onChip,Hcfg,cluster_IP,dr_name,chip_name,chip_type)
 else:

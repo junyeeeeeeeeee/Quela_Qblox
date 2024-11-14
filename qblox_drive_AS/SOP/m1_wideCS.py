@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 from qblox_instruments import Cluster
+from quantify_scheduler.helpers.collections import find_port_clock_path
 
 def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data:int):
 
@@ -112,8 +113,7 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     phase = np.arctan2(Q_data, I_data) * 180 / np.pi
 
     mean_amp = np.mean(amplitude)
-    print(mean_amp)
-
+    
     plt.rcParams["axes.labelsize"] = 18
     plt.rcParams["xtick.labelsize"] = 16
     plt.rcParams["ytick.labelsize"] = 16
@@ -142,25 +142,27 @@ if __name__ == "__main__":
     from qblox_drive_AS.support.UI_Window import init_meas_window
     
     """ Fill in """
-    QD_path, dr, mode = "", "dr2","n" #init_meas_window()
-    qrmRF_slot_idx:int  = 8
+    QD_path = ""
+    target_qs = ['q0']
     lo_start_freq:float = 5.8  * 1e9
     lo_stop_freq:float = 6.2 * 1e9
     num_data:int = 800
 
 
     """ Preparations """
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
-    # Set the system attenuations
-    init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=0)
-    # Readout select
-    readout_module = cluster.modules[qrmRF_slot_idx-1]
+    for target_q in target_qs:
+        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
+        # Set the system attenuations
+        init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q, 'ro'))
+        # Readout select
+        qrmRF_slot_idx = int(find_port_clock_path(QD_agent.quantum_device.hardware_config,"q:res",f"{target_q}.ro")[1][-1])
+        readout_module = cluster.modules[qrmRF_slot_idx-1]
 
 
-    """ Running """
-    wideCS(readout_module=readout_module, lo_start_freq=lo_start_freq, lo_stop_freq=lo_stop_freq, num_data=num_data)
+        """ Running """
+        wideCS(readout_module=readout_module, lo_start_freq=lo_start_freq, lo_stop_freq=lo_stop_freq, num_data=num_data)
 
 
-    """ Close """
-    shut_down(cluster,Fctrl)
+        """ Close """
+        shut_down(cluster,Fctrl)
     
