@@ -165,10 +165,11 @@ class QDmanager():
         Save the merged dictionary to a json file with the given path. \n
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
-        if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
-            db = Data_manager()
-            db.build_folder_today()
-            self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
+        if self.path == '':
+            if os.path.split(os.path.split(self.path)[0])[-1].split("_")[-1] != Data_manager().get_date_today():
+                db = Data_manager()
+                db.build_folder_today()
+                self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is only for the hightlighs :)
         merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}

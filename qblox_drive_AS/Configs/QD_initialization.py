@@ -4,8 +4,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support import QDmanager
 
 
-cluster_IP:str = "192.168.1.11"
-dr_name:str = "dr1"
+cluster_IP:str = "192.168.1.10"
+dr_name:str = "dr2"
 qubit_number_onChip:int = 2
 coupler_number_onChip:int = 2
 chip_name:str = "5Q4C_Test"
@@ -20,7 +20,7 @@ Hcfg = {
         "ref": "internal",  # Use shared clock reference of the cluster
         "instrument_type": "Cluster",
         # ============ DRIVE ============#
-        f"cluster{dr_name}_module4": {
+        f"cluster{dr_name}_module12": {
             "instrument_type": "QCM_RF",
             "complex_output_0": {
                 "output_att": 0,
@@ -62,7 +62,7 @@ Hcfg = {
         },
         
         # ============ READOUT ============#
-        f"cluster{dr_name}_module6": {
+        f"cluster{dr_name}_module8": {
             "instrument_type": "QRM_RF",
             "complex_output_0": {
                 "output_att": 0,

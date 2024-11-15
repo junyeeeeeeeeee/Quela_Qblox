@@ -159,34 +159,32 @@ def multiplexing_CS_ana(QD_agent:QDmanager, q_label_inorder:list, ds:Dataset, sa
     return fit_results
 
 # execution pack
-def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101,avg_times:int=10)->dict:
+def cavitySpectro_executor(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_bare_guess:dict,ro_span_Hz:float=10e6,run:bool=True,fpts:int=101,avg_times:int=10)->tuple[dict,Dataset]:
     ro_elements = {}
-    Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
-    Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
-    
     for qb in list(ro_bare_guess.keys()):
         ro_elements[qb] = linspace(ro_bare_guess[qb]-ro_span_Hz, ro_bare_guess[qb]+ro_span_Hz, fpts)
+    
     if run:
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,n_avg=avg_times)
-        CS_results = multiplexing_CS_ana(QD_agent, list(ro_elements.keys()),cs_ds, ro_elements)
-        for qubit in CS_results:
-            qu = QD_agent.quantum_device.get_element(qubit)
-            qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
-            
-            print(f"{qubit}:")
-            print("Res @ ",round(qu.clock_freqs.readout()*1e-9,4)," GHz")
-            for Qua_idx, Qua in enumerate(Quality_values):
-                print(f"{Qua[:2]} = {round(float(CS_results[qubit][Qua])/1000,2)} 土 {round(float(CS_results[qubit][Quality_errors[Qua_idx]])/1000,2)} k")
-            
-            
-
     else:
         # For pulse preview
         cs_ds = Cavity_spec(QD_agent,meas_ctrl,ro_elements,run=False)
-        CS_results = {}
-        
-    return CS_results
 
+        
+    return ro_elements, cs_ds
+
+def CS_ana(QD_agent:QDmanager, ro_elements:dict, cs_ds:Dataset):
+    Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
+    Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
+    CS_results = multiplexing_CS_ana(QD_agent, list(ro_elements.keys()),cs_ds, ro_elements)
+    for qubit in CS_results:
+        qu = QD_agent.quantum_device.get_element(qubit)
+        qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
+        
+        print(f"{qubit}:")
+        print("Res @ ",round(qu.clock_freqs.readout()*1e-9,4)," GHz")
+        for Qua_idx, Qua in enumerate(Quality_values):
+            print(f"{Qua[:2]} = {round(float(CS_results[qubit][Qua])/1000,2)} 土 {round(float(CS_results[qubit][Quality_errors[Qua_idx]])/1000,2)} k")
 
 if __name__ == "__main__":
     
@@ -229,11 +227,18 @@ if __name__ == "__main__":
     
     
     """ Measurements """
-    CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points,avg_times=n_avg)
+    ro_elements, CS_results = cavitySpectro_executor(QD_agent=QD_agent,meas_ctrl=meas_ctrl,ro_bare_guess=ro_bare,run = execution,ro_span_Hz=half_freq_window_Hz,fpts=freq_data_points,avg_times=n_avg)
     
-    
+    """ Close """
+    shut_down(cluster,Fctrl)
+
+
     """ Storing """
+    QD_agent = QDmanager(QD_path)
+    QD_agent.QD_loader()
+
     if execution:
+        CS_ana(QD_agent, ro_elements, CS_results)
         QD_agent.refresh_log("After cavity search")
         QD_agent.QD_keeper()
         print('CavitySpectro done!')
@@ -243,7 +248,6 @@ if __name__ == "__main__":
             chip_info.update_CavitySpec(result=CS_results)
 
 
-    """ Close """
-    shut_down(cluster,Fctrl)
+    
     
 
