@@ -5,7 +5,7 @@ On the other hand, the 'window_shift' will be a rough dispersive shift for the d
 """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from qblox_drive_AS.SOP.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
+from qblox_drive_AS.SOP.CavitySpec import Cavity_spec, multiplexing_CS_ana
 from qblox_drive_AS.support import Data_manager, QDmanager, cds
 from qblox_drive_AS.support.UserFriend import *
 from quantify_core.measurement.control import MeasurementControl

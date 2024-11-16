@@ -4,7 +4,7 @@
 import json, os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import arange, pi, mean, array, linspace
-from qblox_drive_AS.SOP.m2_CavitySpec import Cavity_spec, multiplexing_CS_ana
+from qblox_drive_AS.SOP.CavitySpec import Cavity_spec, multiplexing_CS_ana
 from qblox_drive_AS.Configs.ClusterAddress_rec import ip_register
 from qblox_instruments import Cluster
 from qblox_drive_AS.support.QDmanager import Data_manager, QDmanager

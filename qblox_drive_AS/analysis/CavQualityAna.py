@@ -138,7 +138,7 @@ def plot_qualities(result_folder:str):
 
 
 def a_stte_cavFit(nc_file:str, ro_elements:dict):
-    from qblox_drive_AS.SOP.m2_CavitySpec import multiplexing_CS_ana
+    from qblox_drive_AS.SOP.CavitySpec import multiplexing_CS_ana
     ds = open_dataset(nc_file)
     multiplexing_CS_ana(None, ds, ro_elements)
 
@@ -172,7 +172,7 @@ def plot_raw_amp(folder_path:str):
 def normally_show_qualities(nc_path:str):
     Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
     Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
-    from qblox_drive_AS.SOP.m2_CavitySpec import multiplexing_CS_ana
+    from qblox_drive_AS.SOP.CavitySpec import multiplexing_CS_ana
     ds = open_dataset(nc_path)
     CS_results = multiplexing_CS_ana('',ds,False)
     for qubit in CS_results:
