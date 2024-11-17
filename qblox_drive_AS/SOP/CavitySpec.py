@@ -15,7 +15,7 @@ from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_mul
 from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
 
 
-def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=10,run:bool=True,ro_amps:dict={})->Dataset:
+def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=10,run:bool=True)->Dataset:
     """
         Doing the multiplexing cavity search according to the arg `ro_elements`\n
         Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay!\n
@@ -37,21 +37,10 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True
 
-    amps = {}
-    if ro_amps != {}:
-        init = compose_para_for_multiplexing(QD_agent,ro_elements,'r1')
-        for q in ro_elements:
-            if q in list(ro_amps.keys()):
-                amps[q] = ro_amps[q]
-            else:
-                amps[q] = init[q]
-    else:
-        amps = compose_para_for_multiplexing(QD_agent,ro_elements,'r1')
-
 
     spec_sched_kwargs = dict(   
         frequencies=ro_elements,
-        R_amp=amps,
+        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
         R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
         R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
         R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
@@ -155,14 +144,15 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, save_pic_folder:str=None
     return fit_results
 
 
-def CS_ana(QD_agent:QDmanager, cs_ds:Dataset, pic_save_folder:str=None):
+def CS_ana(QD_agent:QDmanager, cs_ds:Dataset, pic_save_folder:str=None, keep_bare:bool=True):
     Quality_values = ["Qi_dia_corr", "Qc_dia_corr", "Ql"]
     Quality_errors = ["Qi_dia_corr_err", "absQc_err", "Ql_err"]
     CS_results = multiplexing_CS_ana(QD_agent,cs_ds, Data_manager().get_today_picFolder() if pic_save_folder is None else pic_save_folder)
     for qubit in CS_results:
         qu = QD_agent.quantum_device.get_element(qubit)
         qu.clock_freqs.readout(float(CS_results[qubit]['fr']))
-        
+        if keep_bare:
+            QD_agent.Notewriter.save_bareFreq_for(target_q=qubit,bare_freq=CS_results[qubit]['fr'])
         print(f"{qubit}:")
         print("Res @ ",round(qu.clock_freqs.readout()*1e-9,4)," GHz")
         for Qua_idx, Qua in enumerate(Quality_values):

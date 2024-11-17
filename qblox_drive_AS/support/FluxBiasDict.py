@@ -34,10 +34,10 @@ class FluxBiasDict():
         Return the ROF curve data fit by the Quantify's sin model about the target_q with the bias array. 
         """
         
-        def Sin(x,amp,w,phs,offset):
-            return sin(float(w)*x+float(phs))*float(amp)+float(offset)
+        def Cos(x,amp,w,phs,offset):
+            return cos(2*pi*float(w)*x+float(phs))*float(amp)+float(offset)
         
-        return Sin(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
+        return Cos(bias_ary,*self.__bias_dict[target_q]["cavFitParas"])
     
     def fqEqn_for_qub(self,target_q:str,bias_ary:ndarray):
         """
@@ -114,7 +114,7 @@ class FluxBiasDict():
     def save_cavFittingParas_for(self,target_q:str,amp:float,f:float,phi:float,offset:float):
         """
         Save the fitting fuction parameters for flux dep cavity, includes amplitude, frequency, phase and offset for a sin in the form:\n
-        `A*sin(fx+phi)+offset`
+        `A*cos(2πfx+phi)+offset`
         """
         self.__bias_dict[target_q]["cavFitParas"] = [amp,f,phi,offset]
 
@@ -268,7 +268,10 @@ class FluxBiasDict():
 
         dict_for_Cctrl = {}
         for cp_name in cp_names:
-            dict_for_Cctrl[cp_name] = self.__bias_dict[cp_name][cata]
+            if cp_name in self.__bias_dict:
+                dict_for_Cctrl[cp_name] = self.__bias_dict[cp_name][cata]
+            else:
+                dict_for_Cctrl[cp_name] = 0
         
         return dict_for_Cctrl
 

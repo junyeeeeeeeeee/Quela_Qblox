@@ -19,7 +19,7 @@ class Notebook():
                 else: # dict type
                     self.__InfoDict[f"q{i}"][cata] = {}
                     self.__InfoDict[f"q{i}"][cata]['xy'] = 0
-                    self.__InfoDict[f"q{i}"][cata]['ro'] = 0
+                    self.__InfoDict[f"q{i}"][cata]['ro'] = 16 if cata == 'digitalAtte' else 0
 
 
     ## About get
@@ -34,6 +34,7 @@ class Notebook():
         """ Always save the minus IF freq """
         self.__InfoDict[target_q]["xy_if"] = -abs(driving_if)
     def get_xyIFFor(self, target_q:str):
+        """ Get the driving IF in Hz for `target_q`, and it's negative."""
         return self.__InfoDict[target_q]["xy_if"]
 
     ## About write and save 

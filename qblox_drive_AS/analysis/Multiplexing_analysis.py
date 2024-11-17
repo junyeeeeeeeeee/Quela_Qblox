@@ -13,9 +13,11 @@ from qblox_drive_AS.analysis.raw_data_demolisher import fluxCoupler_dataReducer,
 from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis
 from qblox_drive_AS.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
+from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
 from qcat.analysis.qubit.relaxation import qubit_relaxation_fitting
@@ -215,16 +217,67 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def conti2tone_ana(self, fit_func:callable=None, refIQ:list=[]):
-        
-        dataset_processed = dh.to_gridded_dataset(self.ds)
-        self.target_q = self.ds.attrs['target_q']
-        self.xyf = array(dataset_processed['x0'])
-        self.xyl = array(dataset_processed['x1'])
-        ii = array(self.ds["y0"])
-        qq = array(self.ds["y1"])
+    def fluxCavity_ana(self, var_name:str):
+        self.qubit = var_name
+        self.freqs = array(self.ds.data_vars[f"{var_name}_freq"])[0][0]
+        self.bias = array(self.ds.coords["bias"])
 
-        self.contrast = sqrt((ii-refIQ[0])**2+(qq-refIQ[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
+        S21 = array(self.ds.data_vars[self.qubit])[0] + 1j * array(self.ds.data_vars[self.qubit])[1]
+        self.mags:ndarray = abs(S21)
+        freq_fit = []
+        fit_err = []
+        for idx, _ in enumerate(S21):
+            res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
+            result, _ = res_er.fit()
+            freq_fit.append(result['fr'])
+            fit_err.append(result['fr_err'])
+
+        _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
+        collected_freq = []
+        collected_flux = []
+        for i in indexs:
+            collected_freq.append(freq_fit[i])
+            collected_flux.append(list(self.bias)[i])
+        self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
+        paras = array(self.fit_results.attrs['coefs'])
+
+        from scipy.optimize import minimize
+        from qblox_drive_AS.support.Pulse_schedule_library import Cosine_func
+        def cosine(x):
+            return -Cosine_func(x,*paras)
+
+        sweet_spot = minimize(cosine,x0=0,bounds=[(min(self.bias),max(self.bias))])
+
+
+        sweet_flux = float(sweet_spot.x[0])
+        sweet_freq = -sweet_spot.fun
+
+        self.fit_packs = {"A":paras[0],"f":paras[1],"phi":paras[2],"offset":paras[3],"sweet_freq":sweet_freq,"sweet_flux":sweet_flux}
+
+    def fluxCavity_plot(self,save_pic_folder):
+        fit_x = self.fit_results.coords['para_fit']
+        fit_y = self.fit_results.data_vars['fitting']
+        Plotter = Artist(pic_title=f"FluxCavity-{self.qubit}")
+        fig, axs = Plotter.build_up_plot_frame([1,1])
+        ax = Plotter.add_colormesh_on_ax(self.bias,self.freqs,self.mags,fig,axs[0])
+        ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
+        ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
+        Plotter.pic_save_path = os.path.join(save_pic_folder,f"FluxCavity_{self.qubit}.png")
+        Plotter.export_results()
+
+
+    def conti2tone_ana(self, var, fit_func:callable=None, ref:list=[]):
+        self.target_q = var
+        self.xyf = array(self.ds[f"{self.target_q}_freq"])[0][0]
+        self.xyl = array(self.ds.coords["xy_amp"])
+        ii = array(self.ds[self.target_q])[0]
+        qq = array(self.ds[self.target_q])[1]
+        if len(ref) == 2:
+            self.contrast = sqrt((ii-ref[0])**2+(qq-ref[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
+        else:
+            self.contrast = rotate_data(array([ii,qq]),ref[0])[0]
         self.fit_f01s = []
         self.fif_amps = []
         if fit_func is not None and self.xyl.shape[0] != 1:
@@ -639,6 +692,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         QCATAna.__init__(self)
         analysis_tools.__init__(self)
         self.exp_name = analyze_for_what_exp.lower()
+        self.fit_packs = {}
 
 
     def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
@@ -655,8 +709,10 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_ana(kwargs["var_name"],self.refIQ)
+            case 'm6':
+                self.fluxCavity_ana(kwargs["var_name"])
             case 'm8': 
-                self.conti2tone_ana(self.fit_func,self.refIQ)
+                self.conti2tone_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm9': 
                 self.fluxQb_ana(self.fit_func,self.refIQ)
             case 'm11': 
@@ -684,6 +740,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_plot(pic_save_folder)
+            case 'm6':
+                self.fluxCavity_plot(pic_save_folder)
             case 'm8':
                 self.conti2tone_plot(pic_save_folder)
             case 'm9':

@@ -124,8 +124,8 @@ def cos_fit_analysis(data:np.ndarray,freeDu:np.ndarray):
     para_fit= np.linspace(freeDu.min(),freeDu.max(),50*len(data))
 
     fitting= Cosine_func(para_fit,A_fit,f_fit,phase_fit,offset_fit)
-
-    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="xyfcali",f=f_fit,phase=phase_fit))
+    paras = [A_fit,f_fit,phase_fit,offset_fit]
+    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="xyfcali",f=f_fit,phase=phase_fit,coefs=paras))
 
 
 

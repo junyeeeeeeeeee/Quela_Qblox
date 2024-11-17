@@ -1,8 +1,8 @@
 from numpy import array
 from qblox_instruments import Cluster
 from qblox_drive_AS.support.QDmanager import QDmanager
-from qblox_drive_AS.SOP.m8_Cnti2Tone import Two_tone_spec
-from qblox_drive_AS.SOP.m7_RefIQ import Single_shot_ref_spec
+from qblox_drive_AS.SOP.Cnti2Tone import Two_tone_spec
+from qblox_drive_AS.SOP.RefIQ import Single_shot_ref_spec
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down
 from qblox_drive_AS.support.Pulse_schedule_library import twotone_comp_plot

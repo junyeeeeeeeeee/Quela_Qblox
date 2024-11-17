@@ -69,6 +69,7 @@ class QDmanager():
         self.path = QD_path
         self.machine_IP = ""
         self.refIQ = {}
+        self.rotate_angle = {}
         self.Hcfg = {}
         self.Fctrl_str_ver = {}
         self.Log = "" 
@@ -118,6 +119,14 @@ class QDmanager():
         """
         for q in ref_dict:
             self.refIQ[q] = ref_dict[q]
+
+    def memo_rotate_angle(self,angle_dict:dict):
+       """
+        Memorize the rotating angle according to the given angle_dict, which the key named in "q0"..., and the value is the angle in degree.\n
+        Ex. angle_dict={"q0":75.3, ...} 
+        """ 
+       for q in angle_dict:
+           self.rotate_angle[q] = angle_dict[q]
     
     def refresh_log(self,message:str):
         """
@@ -156,6 +165,7 @@ class QDmanager():
             self.Hcfg = gift["Hcfg"]
         
         self.refIQ:dict = gift["refIQ"]
+        self.rotate_angle = gift["rota_angle"]
         
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
@@ -172,7 +182,7 @@ class QDmanager():
                 self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is only for the hightlighs :)
-        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"rota_angle":self.rotate_angle,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
@@ -205,6 +215,7 @@ class QDmanager():
         self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
         self.quantum_device.hardware_config(self.Hcfg)
         for qb_idx in range(self.q_num):
+            self.rotate_angle[f"q{qb_idx}"] = 0
             qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
             qubit.measure.acq_channel(qb_idx)
             qubit.reset.duration(250e-6)
