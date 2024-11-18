@@ -22,7 +22,7 @@ def round_to_nearest_multiple_of_4ns(x):
     return 4 * round(x / 4)
 
 
-def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=300,run:bool=True,OSmode:bool=False,specific_data_folder:str=''):
+def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):
     nc_path = ''
     sche_func= multi_Rabi_sche
     pulse_review_paras = {}
@@ -93,9 +93,7 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=30
             rabi_ds[f'x{idx}'].attrs['long_name'] = name_dict[list(ds_restore[q].keys())[0]]["long_name"]
             rabi_ds[f'x{idx}'].attrs['unit'] = name_dict[list(ds_restore[q].keys())[0]]["unit"]
         
-                
-        # Save the raw data into netCDF
-        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=rabi_ds,qb="multiQ",exp_type="Rabi",specific_dataFolder=specific_data_folder,get_data_loc=True)
+
         
         
     else:

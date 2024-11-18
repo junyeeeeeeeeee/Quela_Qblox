@@ -740,3 +740,121 @@ class PowerConti2tone(ExpGovernment):
 
         self.CloseMeasurement() 
 
+class FluxQubit(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, freq_span_range:dict, bias_targets:list,z_amp_range:list, z_amp_sampling_func:str, freq_pts:int=100, avg_n:int=100, execution:bool=True):
+        """ ### Args:
+            * freq_span_range: {"q0":[freq_span_start, freq_span_end], ...}, sampling function use linspace\n
+            * flux_range: [amp_start, amp_end, pts]\n
+            * flux_sampling_func (str): 'linspace', 'arange', 'logspace'
+        """
+        self.freq_range = {}
+        self.bias_elements = bias_targets
+        self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
+        self.avg_n = avg_n
+        self.execution = execution
+        self.target_qs = list(freq_span_range.keys())
+        if z_amp_sampling_func in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(z_amp_sampling_func)
+        else:
+            sampling_func:callable = linspace
+        self.z_amp_samples = sampling_func(*z_amp_range)
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # Set the system attenuations
+        init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias
+        self.z_ref = {}
+        for q in self.target_qs:
+            self.z_ref[q] = float(self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            self.Fctrl[q](self.z_ref[q])
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.FluxQubit import Zgate_two_tone_spec
+        
+        # set self.freq_range
+        for q in self.target_qs:
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            if abs(self.tempor_freq[0][q][0]-self.tempor_freq[0][q][1]) >500e6:
+                raise ValueError(f"Attempting to span over 500 MHz for driving on {q}")
+            self.freq_range[q] = linspace(xyf+self.tempor_freq[0][q][0],xyf+self.tempor_freq[0][q][1],self.tempor_freq[1])
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
+                
+        dataset = Zgate_two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_elements,self.z_amp_samples,self.avg_n,self.execution)
+        for q in self.z_ref:
+            dataset.attrs[f"{q}_z_ref"] = self.z_ref[q]
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"FluxQubit_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_dir:str=None):
+        """ User callable analysis function pack """
+        from qblox_drive_AS.SOP.FluxQubit import update_by_fluxQubit
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+
+            ds = open_dataset(self.__raw_data_location)
+            answer = {}
+            for var in ds.data_vars:
+                if str(var).split("_")[-1] != 'freq':
+                    ANA = Multiplex_analyzer("m9") 
+                    ANA.target_q = q
+                    ANA._import_data(ds,2,QD_savior.refIQ[q],QS_fit_analysis)
+                    ANA._start_analysis(var_name=q)
+                    ANA._export_result(self.save_dir)
+                    if len(list(ANA.fit_packs[q].keys())) != 0: answer[q] = ANA.fit_packs        
+            ds.close()
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no :").lower()
+            if permi in list(answer.keys()):
+                update_by_fluxQubit(QD_savior,answer[q],q)
+                QD_savior.QD_keeper(new_QD_dir)
+            elif permi in ["all",'y','yes']:
+                for q in list(answer.keys()):
+                    update_by_fluxQubit(QD_savior,answer[q],q)
+                QD_savior.QD_keeper(new_QD_dir)
+            else:
+                print("Updating got denied ~")
+
+
+
+    def WorkFlow(self):
+    
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement()   
+
+
+
+
+
+
+

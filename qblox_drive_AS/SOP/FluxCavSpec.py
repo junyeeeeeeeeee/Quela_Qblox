@@ -7,7 +7,7 @@ from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_mul
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
-from qblox_drive_AS.SOP.m9_FluxQubit import z_pulse_amp_OVER_const_z
+from qblox_drive_AS.SOP.FluxQubit import z_pulse_amp_OVER_const_z
 from xarray import Dataset
 
 def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_elements:dict,flux_samples:ndarray,n_avg:int=300,run:bool=True)->Dataset:

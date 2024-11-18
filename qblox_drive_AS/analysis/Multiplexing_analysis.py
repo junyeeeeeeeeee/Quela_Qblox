@@ -316,16 +316,19 @@ class analysis_tools():
 
         plt.show()
 
-    def fluxQb_ana(self, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
-        self.qubit = self.ds.attrs['target_q']
+    def fluxQb_ana(self, var, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
+        self.qubit = var
         self.filtered_z, self.filtered_f = [], []
-        if self.qubit in self.ds.attrs["ref_z"].split("_"):
-            self.ref_z = float(self.ds.attrs["ref_z"].split("_")[int(self.ds.attrs["ref_z"].split("_").index(self.qubit))+1])
-        else:
-            self.ref_z = 0
+        self.ref_z = float(self.ds.attrs[f"{self.qubit}_z_ref"])
+        self.f = array(self.ds[f"{self.qubit}_freq"])[0][0]
+        self.z = array(self.ds.coords["bias"])
+        IQarray = array(self.ds[f"{self.qubit}"])
 
-        self.f,self.z,i,q = convert_netCDF_2_arrays(self.ds)
-        self.contrast = array(sqrt((i-refIQ[0])**2+(q-refIQ[1])**2))
+
+        if len(refIQ) == 2:
+            self.contrast = array(sqrt((IQarray[0]-refIQ[0])**2+(IQarray[1]-refIQ[1])**2))
+        else:
+            self.contrast = rotate_data(IQarray,refIQ[0])[0]
         if fit_func is not None:
             # try:
             self.fit_z = []
@@ -714,7 +717,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm8': 
                 self.conti2tone_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm9': 
-                self.fluxQb_ana(self.fit_func,self.refIQ)
+                self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
                 self.rabi_ana()
             case 'm14': 

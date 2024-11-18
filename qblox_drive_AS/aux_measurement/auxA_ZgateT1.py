@@ -12,7 +12,7 @@ from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
 from qblox_drive_AS.support.Pulse_schedule_library import multi_Zgate_T1_sche, set_LO_frequency, pulse_preview
-from qblox_drive_AS.SOP.m9_FluxQubit import z_pulse_amp_OVER_const_z
+from qblox_drive_AS.SOP.FluxQubit import z_pulse_amp_OVER_const_z
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 
