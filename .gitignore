@@ -1,4 +1,7 @@
-/.DS_Store
+**/.DS_Store
+**/__pycache__/
+**/.ipynb_checkpoints/
+**/Data/
 .data/
-__pycache__/
-.ipynb_checkpoint/
+Modularize/Meas_raw/
+chip_information/Timestamp/
