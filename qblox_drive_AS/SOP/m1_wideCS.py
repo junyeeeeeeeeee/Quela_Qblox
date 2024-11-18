@@ -138,8 +138,7 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     plt.show()
 
 if __name__ == "__main__":
-    from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, QRM_nco_init
-    from qblox_drive_AS.support.UI_Window import init_meas_window
+    from qblox_drive_AS.support import init_meas, init_system_atte, shut_down
     
     """ Fill in """
     QD_path = ""
@@ -155,7 +154,7 @@ if __name__ == "__main__":
         # Set the system attenuations
         init_system_atte(QD_agent.quantum_device,list(Fctrl.keys()),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(target_q, 'ro'))
         # Readout select
-        qrmRF_slot_idx = int(find_port_clock_path(QD_agent.quantum_device.hardware_config,"q:res",f"{target_q}.ro")[1][-1])
+        qrmRF_slot_idx = int(find_port_clock_path(QD_agent.quantum_device.hardware_config,"q:res",f"{target_q}.ro")[1].split("_")[-1][6:])
         readout_module = cluster.modules[qrmRF_slot_idx-1]
 
 

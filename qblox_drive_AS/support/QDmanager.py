@@ -195,7 +195,7 @@ class QDmanager():
         self.chip_name = chip_name
         self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
-
+        self.made_mobileFctrl()
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         
