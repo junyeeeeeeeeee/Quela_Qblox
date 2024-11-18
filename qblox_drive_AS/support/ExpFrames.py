@@ -152,13 +152,14 @@ class Zoom_CavitySearching(ExpGovernment):
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, Cavity_spec
         QD_RO_init(self.QD_agent,self.freq_range)
         dataset = Cavity_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"zoomCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"zoomCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -167,18 +168,19 @@ class Zoom_CavitySearching(ExpGovernment):
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.CavitySpec import CS_ana
-        ds = open_dataset(self.__raw_data_location)
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
 
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
 
-        CS_ana(QD_savior,ds,self.save_dir)
-        ds.close()
-        QD_savior.QD_keeper(new_QD_dir)
+            CS_ana(QD_savior,ds,self.save_dir)
+            ds.close()
+            QD_savior.QD_keeper(new_QD_dir)
 
 
     def WorkFlow(self):
@@ -186,7 +188,7 @@ class Zoom_CavitySearching(ExpGovernment):
         self.PrepareHardware()
 
         self.RunMeasurement()
-
+        
         self.CloseMeasurement()
         
 class PowerCavity(ExpGovernment):
@@ -223,22 +225,25 @@ class PowerCavity(ExpGovernment):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
         # Set the system attenuations
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
-
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.PowCavSpec import PowerDep_spec
+        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
+        
         # set self.freq_range
         for q in self.tempor_freq[0]:
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+        QD_RO_init(self.QD_agent,self.freq_range)
         dataset = PowerDep_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.roamp_samples,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"PowerCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"PowerCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -247,17 +252,18 @@ class PowerCavity(ExpGovernment):
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.PowCavSpec import plot_powerCavity_S21
-        ds = open_dataset(self.__raw_data_location)
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
 
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
 
-        plot_powerCavity_S21(ds,QD_savior,self.save_dir)
-        ds.close()
+            plot_powerCavity_S21(ds,QD_savior,self.save_dir)
+            ds.close()
         # QD_savior.QD_keeper(new_QD_dir)
 
 
@@ -304,17 +310,19 @@ class Dressed_CavitySearching(ExpGovernment):
         
     
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.CavitySpec import Cavity_spec
+        from qblox_drive_AS.SOP.CavitySpec import Cavity_spec, QD_RO_init
+        QD_RO_init(self.QD_agent,self.freq_range)
         for q in self.ro_amp:
             self.QD_agent.quantum_device.get_element(q).measure.pulse_amp(self.ro_amp[q])
         dataset = Cavity_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"dressedCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"dressedCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -323,18 +331,20 @@ class Dressed_CavitySearching(ExpGovernment):
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.CavitySpec import CS_ana
-        ds = open_dataset(self.__raw_data_location)
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
 
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
-
-        CS_ana(QD_savior,ds,self.save_dir,keep_bare=False)
-        ds.close()
-        QD_savior.QD_keeper(new_QD_dir)
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+            for q in self.ro_amp:
+                QD_savior.quantum_device.get_element(q).measure.pulse_amp(self.ro_amp[q])
+            CS_ana(QD_savior,ds,self.save_dir,keep_bare=False)
+            ds.close()
+            QD_savior.QD_keeper(new_QD_dir)
 
 
     def WorkFlow(self):
@@ -384,18 +394,21 @@ class FluxCoupler(ExpGovernment):
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.CouplerFluxSpec import fluxCoupler_spec
+        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         # set self.freq_range
         for q in self.tempor_freq[0]:
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+        QD_RO_init(self.QD_agent,self.freq_range)
         dataset = fluxCoupler_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_targets,self.flux_samples,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"FluxCoupler_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"FluxCoupler_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -403,15 +416,15 @@ class FluxCoupler(ExpGovernment):
 
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
-        
-        ds = open_dataset(self.__raw_data_location)
-        for var in ds.data_vars:
-            ANA = Multiplex_analyzer("m5")
-            if var.split("_")[-1] != 'freq':
-                ANA._import_data(ds,2)
-                ANA._start_analysis(var_name=var)
-                ANA._export_result(self.save_dir)
-        ds.close()
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
+            for var in ds.data_vars:
+                ANA = Multiplex_analyzer("m5")
+                if var.split("_")[-1] != 'freq':
+                    ANA._import_data(ds,2)
+                    ANA._start_analysis(var_name=var)
+                    ANA._export_result(self.save_dir)
+            ds.close()
 
 
 
@@ -461,18 +474,21 @@ class FluxCavity(ExpGovernment):
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.FluxCavSpec import FluxCav_spec
+        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         # set self.freq_range
         for q in self.tempor_freq[0]:
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+        QD_RO_init(self.QD_agent,self.freq_range)
         dataset = FluxCav_spec(self.QD_agent,self.meas_ctrl,self.Fctrl,self.freq_range,self.flux_samples,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"FluxCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"FluxCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -481,33 +497,34 @@ class FluxCavity(ExpGovernment):
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.FluxCavSpec import update_flux_info_in_results_for
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
 
-        ds = open_dataset(self.__raw_data_location)
-        answer = {}
-        for var in ds.data_vars:
-            if str(var).split("_")[-1] != 'freq':
-                ANA = Multiplex_analyzer("m6")
-                ANA._import_data(ds,2)
-                ANA._start_analysis(var_name=var)
-                ANA._export_result(self.save_dir)
-                answer[var] = ANA.fit_packs
-        ds.close()
-        permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
-        if permi in list(answer.keys()):
-            update_flux_info_in_results_for(QD_savior,permi,answer[permi])
-            QD_savior.QD_keeper(new_QD_dir)
-        elif permi in ["all",'y','yes']:
-            for q in list(answer.keys()):
-                update_flux_info_in_results_for(QD_savior,q,answer[q])
-            QD_savior.QD_keeper(new_QD_dir)
-        else:
-            print("Updating got denied ~")
+            ds = open_dataset(self.__raw_data_location)
+            answer = {}
+            for var in ds.data_vars:
+                if str(var).split("_")[-1] != 'freq':
+                    ANA = Multiplex_analyzer("m6")
+                    ANA._import_data(ds,2)
+                    ANA._start_analysis(var_name=var)
+                    ANA._export_result(self.save_dir)
+                    answer[var] = ANA.fit_packs
+            ds.close()
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                update_flux_info_in_results_for(QD_savior,permi,answer[permi])
+                QD_savior.QD_keeper(new_QD_dir)
+            elif permi in ["all",'y','yes']:
+                for q in list(answer.keys()):
+                    update_flux_info_in_results_for(QD_savior,q,answer[q])
+                QD_savior.QD_keeper(new_QD_dir)
+            else:
+                print("Updating got denied ~")
 
 
 
@@ -553,19 +570,21 @@ class IQ_references(ExpGovernment):
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro')) 
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
-        
+        for q in self.ro_amp:
+            self.Fctrl[q](float(self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q)))
     
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.RefIQ import Single_shot_ref_spec
        
 
         dataset = Single_shot_ref_spec(self.QD_agent,self.ro_amp,self.avg_n,self.execution)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"IQref_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"IQref_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
@@ -574,31 +593,32 @@ class IQ_references(ExpGovernment):
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.RefIQ import IQ_ref_ana
-        ds = open_dataset(self.__raw_data_location)
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
 
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
-        
-        answer = {}
-        for q in ds.data_vars:
-            answer[q] = IQ_ref_ana(ds,q,self.save_dir)
-        ds.close()
-        if self.ask_save:
-            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
-            if permi in list(answer.keys()):
-                QD_savior.memo_refIQ({permi:answer[permi]})
-                QD_savior.QD_keeper(new_QD_dir)
-            elif permi in ["all",'y','yes']:
-                QD_savior.memo_refIQ(answer)
-                QD_savior.QD_keeper(new_QD_dir)
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
             else:
-                print("Updating got denied ~")
-        else:
-            QD_savior.QD_keeper(new_QD_dir)
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+            
+            answer = {}
+            for q in ds.data_vars:
+                answer[q] = IQ_ref_ana(ds,q,self.save_dir)
+            ds.close()
+            if self.ask_save:
+                permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+                if permi in list(answer.keys()):
+                    QD_savior.memo_refIQ({permi:answer[permi]})
+                    QD_savior.QD_keeper(new_QD_dir)
+                elif permi in ["all",'y','yes']:
+                    QD_savior.memo_refIQ(answer)
+                    QD_savior.QD_keeper(new_QD_dir)
+                else:
+                    print("Updating got denied ~")
+            else:
+                QD_savior.QD_keeper(new_QD_dir)
 
 
     def WorkFlow(self):
@@ -632,7 +652,7 @@ class PowerConti2tone(ExpGovernment):
         self.overlap:bool = ro_xy_overlap
         self.f_pts = freq_pts
         for q in freq_range:
-            if len(freq_range[q]) != 1 and freq_range[q][0] == 0:
+            if len(freq_range[q]) == 1 and freq_range[q][0] == 0:
                 self.freq_range[q] = freq_range[q][0]
             else:
                 self.freq_range[q] = linspace(freq_range[q][0],freq_range[q][1],freq_pts)
@@ -655,9 +675,11 @@ class PowerConti2tone(ExpGovernment):
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
-        # set driving LO
+        # set driving LO and offset bias
         for q in self.freq_range:
+            self.Fctrl[q](float(self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q)))
             if isinstance(self.freq_range[q],ndarray):
+                print(f"{q} LO @ {max(self.freq_range[q])}")
                 set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
         
     def RunMeasurement(self):
@@ -674,42 +696,41 @@ class PowerConti2tone(ExpGovernment):
                 self.freq_range[q] = linspace(advised_fq-IF_minus-500e6,advised_fq-IF_minus,self.f_pts)
 
         dataset = Two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.xyl_samples,self.avg_n,self.execution,self.overlap)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"PowerCnti2tone_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            
-        else:
-            self.save_fig_path = None
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"PowerCnti2tone_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
 
-
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
         from qblox_drive_AS.SOP.Cnti2Tone import update_2toneResults_for
-        QD_savior = QDmanager(self.QD_path)
-        QD_savior.QD_loader()
-        if new_QD_dir is None:
-            new_QD_dir = self.QD_path
-        else:
-            new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
 
-        ds = open_dataset(self.__raw_data_location)
-        for var in ds.data_vars:
-            if str(var).split("_")[-1] != 'freq':
-                ANA = Multiplex_analyzer("m8")     
-                ANA._import_data(ds,2,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]],QS_fit_analysis)
-                ANA._start_analysis(var_name=var)
-                ANA._export_result(self.save_dir)
-                if ANA.fit_packs != {}:
-                    analysis_result = QS_fit_analysis(ANA.fit_packs[var]["contrast"],f=ANA.fit_packs[var]["xyf_data"])
-                    update_2toneResults_for(QD_savior,var,{str(var):analysis_result},ANA.xyl[0])
-        ds.close()
-        QD_savior.QD_keeper(new_QD_dir)
-
-
+            ds = open_dataset(self.__raw_data_location)
+            for var in ds.data_vars:
+                if str(var).split("_")[-1] != 'freq':
+                    ANA = Multiplex_analyzer("m8")     
+                    ANA._import_data(ds,2,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]],QS_fit_analysis)
+                    ANA._start_analysis(var_name=var)
+                    ANA._export_result(self.save_dir)
+                    if ANA.fit_packs != {}:
+                        analysis_result = QS_fit_analysis(ANA.fit_packs[var]["contrast"],f=ANA.fit_packs[var]["xyf_data"])
+                        update_2toneResults_for(QD_savior,var,{str(var):analysis_result},ANA.xyl[0])
+            ds.close()
+            QD_savior.QD_keeper(new_QD_dir)
 
     def WorkFlow(self):
     

@@ -67,10 +67,10 @@ def Single_shot_fit_plot(results:dict,title_qubit:str=None,save_pic_folder:str=N
     x = c_I + radius * cos(theta)
     y = c_Q + radius * sin(theta)
 
-    fig, ax = plt.subplots(nrows =1,figsize =(3,3),dpi =200)
+    fig, ax = plt.subplots(nrows =1,figsize =(8,8),dpi =200)
     ax.scatter(1000*I, 1000*Q, color="blue", alpha=0.5, s=5)       
     ax.scatter(c_I,c_Q,c='k',s=15)
-    ax.plot(x, y, linewidth=0.8, linestyle='--')
+    ax.plot(x, y, linewidth=0.8, linestyle='--', c='red')
     ax.set_xlabel(r"$I\ $(mV)",size ='15')
     ax.set_ylabel(r"$Q\ $(mV)",size ='15')
     ax.set_title(f'{title_qubit if title_qubit is not None else ""} Single shot raw data')

@@ -228,7 +228,7 @@ class analysis_tools():
         fit_err = []
         for idx, _ in enumerate(S21):
             res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
-            result, _ = res_er.fit()
+            result, _, _ = res_er.fit()
             freq_fit.append(result['fr'])
             fit_err.append(result['fr_err'])
 

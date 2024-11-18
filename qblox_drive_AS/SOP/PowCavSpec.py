@@ -23,6 +23,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
      
     from numpy import NaN
     for q in ro_elements:
+        
         qubit_info = QD_agent.quantum_device.get_element(q)
         original_rof[q] = qubit_info.clock_freqs.readout()
         # avoid frequency conflicts
@@ -63,12 +64,12 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
         
         rp_ds = meas_ctrl.run("One-tone-powerDep")
         dict_ = {}
-        for q, q_idx in enumerate(ro_elements):
+        for q_idx, q in enumerate(ro_elements):
             i_data = array(rp_ds[f'y{2*q_idx}']).reshape(power_samples.shape[0],ro_elements[q].shape[0])
             q_data = array(rp_ds[f'y{2*q_idx+1}']).reshape(power_samples.shape[0],ro_elements[q].shape[0])
             dict_[q] = (["mixer","ro_amp","freq"],array([i_data,q_data]))
             dict_[f'{q}_freq'] = (["mixer","ro_amp","freq"],array(list(ro_elements[q])*2*power_samples.shape[0]).reshape(2,power_samples.shape[0],ro_elements[q].shape[0]))
-        
+            
         DS = Dataset(dict_,coords={"mixer":array(["I","Q"]),"ro_amp":power_samples,"freq":freq_datapoint_idx})
 
         
@@ -81,7 +82,7 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
             preview_para[q] = ro_elements[q][:n_s]
         sweep_para2 = array(power_samples[:2])
         spec_sched_kwargs['frequencies']= preview_para
-        spec_sched_kwargs['R_amp']= {q:sweep_para2.reshape(sweep_para2.shape or (1,))[0]}
+        spec_sched_kwargs['R_amp']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
         pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
         DS = {}
     
@@ -91,11 +92,10 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
 
     return DS
 
-def plot_powerCavity_S21(PC_nc_file:str, QD_agent:QDmanager=None, save_fig_folder:str=None):
+def plot_powerCavity_S21(ds:Dataset, QD_agent:QDmanager=None, save_fig_folder:str=None):
     """
     Plot |S21| from a given power cavity nc file and save it in the pic folder within the same day.
     """
-    ds = open_dataset(PC_nc_file)
     power = array(ds.coords['ro_amp'])
     # ds.x0 = freq. ; ds.x1 = power
     for idx, q in enumerate(ds.data_vars):
@@ -106,11 +106,12 @@ def plot_powerCavity_S21(PC_nc_file:str, QD_agent:QDmanager=None, save_fig_folde
                 s21.append(list(array(amp[i])/power[i]))
             s21 = array(s21)
             freq = array(ds[f"{q}_freq"])[0][0]
+
             fig, ax = plt.subplots()
             ax:plt.Axes
             d = ax.pcolormesh(freq*1e-9, power, s21, shading='gouraud',cmap='RdBu')
            
-            ax.vlines(mean(freq) if QD_agent is None else QD_agent.quantum_device.get_element(q).clock_freqs.readout(),ymin=min(power),ymax=max(power),linestyles='--',colors='#FF00FF',label='window_shift_baseline')
+            ax.vlines(mean(freq)*1e-9 if QD_agent is None else QD_agent.quantum_device.get_element(q).clock_freqs.readout()*1e-9,ymin=min(power),ymax=max(power),linestyles='--',colors='#FF00FF',label='window_shift_baseline')
             fig.colorbar(d, ax=ax)
             plt.xlabel("frequency (GHz)")
             plt.ylabel("Power (V)")
@@ -126,7 +127,7 @@ def plot_powerCavity_S21(PC_nc_file:str, QD_agent:QDmanager=None, save_fig_folde
             plt.legend()
 
             if save_fig_folder is not None:
-                plt.savefig(os.path.join(save_fig_folder,f"PowerCavity_{q}{ro_atte}_{os.path.split(PC_nc_file)[-1].split(".")[0].split("_")[-1]}.png"))
+                plt.savefig(os.path.join(save_fig_folder,f"PowerCavity_{q}{ro_atte}.png"))
                 plt.close()
             else:
                 plt.show()

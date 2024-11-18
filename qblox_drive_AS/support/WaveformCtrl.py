@@ -68,4 +68,3 @@ class Waveformer():
     
     def activate(self, old_log:dict):
         self.__log = old_log
-    

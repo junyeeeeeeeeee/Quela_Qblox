@@ -90,9 +90,9 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
         preview_para = {}
         for q in xyf_guess:
             preview_para[q] = xyf_guess[q][:n_s]
-        sweep_para2 = array(xyl_guess[:2])
+        sweep_para2 = array(xyl_guess[0])
         spec_sched_kwargs['frequencies']= preview_para
-        spec_sched_kwargs['spec_amp']= {q:sweep_para2.reshape(sweep_para2.shape or (1,))[0]}
+        spec_sched_kwargs['spec_amp']= sweep_para2.reshape(sweep_para2.shape or (1,))[0]
         pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
         ds = ""
     

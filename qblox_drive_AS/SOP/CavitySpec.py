@@ -8,7 +8,7 @@ from xarray import Dataset
 import matplotlib.pyplot as plt
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
-from numpy import array, arange, real, imag, arctan2
+from numpy import array, arange, real, imag, arctan2,column_stack
 from quantify_core.measurement.control import MeasurementControl
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_multiplexing
@@ -67,7 +67,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
             i_data = array(rs_ds[f'y{2*q_idx}'])
             q_data = array(rs_ds[f'y{2*q_idx+1}'])
             dict_[q] = (["mixer","freq"],array([i_data,q_data]))
-            dict_[f'{q}_freq'] = (["mixer","freq"],array(list(ro_elements[q])*2))
+            dict_[f'{q}_freq'] = (["mixer","freq"],array([ro_elements[q],ro_elements[q]]))
         
         DS = Dataset(dict_,coords={"mixer":array(["I","Q"]),"freq":datapoint_idx})
       

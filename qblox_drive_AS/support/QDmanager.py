@@ -22,7 +22,51 @@ def ret_c(dict_a):
             x.append(i)
     return x
 
+def find_path_by_port(hardware_config, port):
+    """ By a port name, return a dict = {elements:[paths]} who use that port """
+    answers = {}
+    def recursive_find(hardware_config, port,  path) -> list | None:
+        
+        for k, v in hardware_config.items():
+            # If key is port, we are done
+            if k == "port":
+                
+                if (
+                    port in hardware_config["port"]
+                ):
+                    answers[hardware_config["clock"].split(".")[0]] = path[1:3]
+
+            # If value is list, append key to path and loop trough its elements.
+            elif isinstance(v, list):
+                path.append(k)  # Add list key to path.
+                for i, sub_config in enumerate(v):
+                    path.append(i)  # Add list element index to path.
+                    if isinstance(sub_config, dict):
+                        found_path = recursive_find(sub_config, port, path)
+                        if found_path:
+                            return found_path
+                    path.pop()  # Remove list index if port-clock not found in element.
+                path.pop()  # Remove list key if port-clock not found in list.
+
+            # If dict append its key. If port is not found delete it
+            elif isinstance(v, dict):
+                path.append(k)
+                found_path = recursive_find(v, port, path)
+                if found_path:
+                    return found_path
+                path.pop()  # Remove dict key if port-clock not found in this dict.
+        
+
+    _ = recursive_find(hardware_config, port,path=[])
+    if len(list(answers.keys())) == 0 :
+        raise KeyError(
+            f"The combination of {port=} could not be found in {hardware_config=}."
+        )
+    else:
+        return answers
+
 def find_path_by_clock(hardware_config, port, clock):
+    """ By port and clock name, return a dict = {elements:[paths]} who use that port and the same clock """
     answers = {}
     def recursive_find(hardware_config, port, clock, path) -> list | None:
         
@@ -203,6 +247,7 @@ class QDmanager():
         self.q_num = qubit_number
         self.cp_num = coupler_number
         self.Hcfg = Hcfg
+        self.made_mobileFctrl()
         self.chip_name = chip_name
         self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
