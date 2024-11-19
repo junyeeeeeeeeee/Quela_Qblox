@@ -2150,6 +2150,3 @@ class ROLcali(ExpGovernment):
         self.RunMeasurement()
 
         self.CloseMeasurement() 
-
-
-
