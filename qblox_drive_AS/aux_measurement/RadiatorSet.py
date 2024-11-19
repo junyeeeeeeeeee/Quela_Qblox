@@ -2,8 +2,8 @@ import os, sys, json, time
 from datetime import datetime
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_drive_AS.support.Path_Book import meas_raw_dir
-from qblox_drive_AS.SOP.m13_T1  import T1_executor
-from qblox_drive_AS.SOP.m12_T2  import ramsey_executor
+from qblox_drive_AS.SOP.T1  import T1_executor
+from qblox_drive_AS.SOP.T2  import ramsey_executor
 from qblox_drive_AS.SOP.SingleShot import SS_executor
 from qblox_drive_AS.support import init_meas, shut_down, init_system_atte, coupler_zctrl
 

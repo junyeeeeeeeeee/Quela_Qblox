@@ -6,7 +6,7 @@ from qblox_drive_AS.support import QDmanager, Data_manager
 
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl
-from qblox_drive_AS.SOP.m12_T2 import T2_waiter,ramsey_executor
+from qblox_drive_AS.SOP.T2 import T2_waiter,ramsey_executor
 from qblox_drive_AS.analysis.raw_data_demolisher import T2_dataReducer
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 

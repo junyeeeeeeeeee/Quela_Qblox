@@ -1202,7 +1202,6 @@ def Ramsey_sche(
     return sched
 
 def multi_ramsey_sche(
-    New_fxy:dict,
     freeduration:dict,
     pi_amp: dict,
     pi_dura:dict,
@@ -1221,8 +1220,6 @@ def multi_ramsey_sche(
     for acq_idx in range(sameple_idx):   
         for qubit_idx, q in enumerate(qubits2read):
             freeDu = freeduration[q][acq_idx]
-            if acq_idx == 0:
-                sched.add(SetClockFrequency(clock=q+ ".01", clock_freq_new= New_fxy[q]))
             sched.add(Reset(q))
 
             if qubit_idx == 0:

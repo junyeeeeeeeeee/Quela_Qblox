@@ -101,6 +101,10 @@ def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarr
     ax[2].legend()
     plt.show()
 
+def sort_timeLabel(files):
+    sorted_files = sorted(files, key=lambda x: datetime.strptime(x.split("_")[-1].split(".")[0], "%Y%m%d%H%M%S"))
+    return sorted_files
+
 
 
 class Artist():

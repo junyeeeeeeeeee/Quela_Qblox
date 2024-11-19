@@ -15,14 +15,13 @@ from qblox_drive_AS.support.Pulse_schedule_library import multi_T1_sche, set_LO_
 from qblox_drive_AS.analysis.raw_data_demolisher import T1_dataReducer
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 
-def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:int=1,n_avg:int=300,run:bool=True,exp_idx:int=0,data_folder:str=''):
+def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict,repeat:int=1,n_avg:int=300,run:bool=True):
     sche_func= multi_T1_sche
-    nc_path = ""
 
-    for q in ro_elements["time_samples"]:
+    for q in time_samples:
         qubit_info = QD_agent.quantum_device.get_element(q)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
-        time_data_idx = arange(ro_elements["time_samples"][q].shape[0])
+        time_data_idx = arange(time_samples[q].shape[0])
     
     Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
     Para_free_Du.batched = True
@@ -31,13 +30,13 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
     repeat_data_idx = arange(repeat)
 
     sched_kwargs = dict(
-        freeduration=ro_elements["time_samples"],
-        pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'d1'),
-        pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'d3'),
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r2'),
+        freeduration=time_samples,
+        pi_amp=compose_para_for_multiplexing(QD_agent,time_samples,'d1'),
+        pi_dura=compose_para_for_multiplexing(QD_agent,time_samples,'d3'),
+        R_amp=compose_para_for_multiplexing(QD_agent,time_samples,'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,time_samples,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,time_samples,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,time_samples,'r2'),
         )
     
     if run:
@@ -47,7 +46,7 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
-            num_channels=len(list(ro_elements["time_samples"].keys())),
+            num_channels=len(list(time_samples.keys())),
             )
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
@@ -56,29 +55,26 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,repeat:i
 
         ds = meas_ctrl.run('T1')
         dict_ = {}
-        for q_idx, q in enumerate(ro_elements["time_samples"]):
-            i_data = array(ds[f'y{2*q_idx}']).reshape(repeat,ro_elements["time_samples"][q].shape[0])
-            q_data = array(ds[f'y{2*q_idx+1}']).reshape(repeat,ro_elements["time_samples"][q].shape[0])
+        for q_idx, q in enumerate(time_samples):
+            i_data = array(ds[f'y{2*q_idx}']).reshape(repeat,time_samples[q].shape[0])
+            q_data = array(ds[f'y{2*q_idx+1}']).reshape(repeat,time_samples[q].shape[0])
             dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
-            time_values = list(ro_elements["time_samples"][q])*2*repeat
-            dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,repeat,ro_elements["time_samples"][q].shape[0]))
+            time_values = list(time_samples[q])*2*repeat
+            dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,repeat,time_samples[q].shape[0]))
         
         T1_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":repeat_data_idx,"idx":time_data_idx})
         T1_ds.attrs["execution_time"] = Data_manager().get_time_now()
         T1_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 
-        # Save the raw data into netCDF
-        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=T1_ds,label=exp_idx,qb="multiQ",exp_type='T1',specific_dataFolder=data_folder,get_data_loc=True)
-        
-
     else:
         preview_para = {}
-        for q in ro_elements["time_samples"]:
-            preview_para[q] = array([ro_elements["time_samples"][q][0],ro_elements["time_samples"][q][-1]])
+        for q in time_samples:
+            preview_para[q] = array([time_samples[q][0],time_samples[q][-1]])
         sched_kwargs['freeduration']= preview_para
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
+        T1_ds = ''
     
-    return nc_path
+    return T1_ds
 
 
 def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,run:bool=True,repeat:int=1,specific_folder:str='',ith:int=0,avg_times:int=500):

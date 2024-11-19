@@ -18,8 +18,10 @@ from xarray import Dataset
 
 #? The way to merge two dict a and b : c = {**a,**b}
 
-def round_to_nearest_multiple_of_4ns(x):
-    return 4 * round(x / 4)
+def round_to_nearest_multiple_of_multipleNS(x, specific_multiple:int=None):
+    if specific_multiple is None:
+        specific_multiple = 4
+    return specific_multiple * round(x / specific_multiple)
 
 
 def PowerRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dura:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):

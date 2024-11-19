@@ -17,13 +17,13 @@ from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.analysis.raw_data_demolisher import piampcali_dataReducer
 
 
-def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, ro_elements:dict, pi_pair_num:list=[3,5],n_avg:int=300,run:bool=True,specific_data_folder:str=''):
+def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, roamp_samples:dict, pi_pair_num:list=[3,5],n_avg:int=300,run:bool=True):
     results = {}
     sche_func= multi_PI_amp_cali_sche
-    nc_path = ""
-    for q in ro_elements["amp_samples"]:
+    dataset_2_nc = ""
+    for q in roamp_samples:
         results[q], results[f"{q}_PIcoef"] = [], []
-        data_sample_idx = arange(ro_elements["amp_samples"][q].shape[0])
+        data_sample_idx = arange(roamp_samples[q].shape[0])
         qubit_info = QD_agent.quantum_device.get_element(q)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
 
@@ -34,14 +34,14 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, ro_elements:dic
     def pi_pair_dep_exe(pi_pair_num:int)->dict:
         dict_ = {}
         sched_kwargs = dict(
-            pi_amp_coefs=ro_elements["amp_samples"],
+            pi_amp_coefs=roamp_samples,
             pi_pair_num=pi_pair_num,
-            XY_amp=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'d1'),
-            XY_duration=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'d3'),
-            R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'r1'),
-            R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'r3'),
-            R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'r4'),
-            R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["amp_samples"],'r2'),
+            XY_amp=compose_para_for_multiplexing(QD_agent,roamp_samples,'d1'),
+            XY_duration=compose_para_for_multiplexing(QD_agent,roamp_samples,'d3'),
+            R_amp=compose_para_for_multiplexing(QD_agent,roamp_samples,'r1'),
+            R_duration=compose_para_for_multiplexing(QD_agent,roamp_samples,'r3'),
+            R_integration=compose_para_for_multiplexing(QD_agent,roamp_samples,'r4'),
+            R_inte_delay=compose_para_for_multiplexing(QD_agent,roamp_samples,'r2'),
             )
         
         
@@ -52,7 +52,7 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, ro_elements:dic
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
-            num_channels=len(list(ro_elements["amp_samples"].keys())),
+            num_channels=len(list(roamp_samples.keys())),
             )
             
     
@@ -64,14 +64,14 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, ro_elements:dic
         
             ds = meas_ctrl.run("Pi amp calibration")
             
-            for q_idx, q in enumerate(ro_elements["amp_samples"]):
+            for q_idx, q in enumerate(roamp_samples):
                 I_data, Q_data = array(ds[f"y{2*q_idx}"]).tolist(), array(ds[f"y{2*q_idx+1}"]).tolist()
                 dict_[q] = [I_data,Q_data] # shape in (mixer, pi_amp)
-                dict_[f"{q}_PIcoef"] = [list(ro_elements["amp_samples"][q])]*2
+                dict_[f"{q}_PIcoef"] = [list(roamp_samples[q])]*2
         else:
             preview_para = {}
-            for q in ro_elements["amp_samples"]:
-                preview_para[q] = array([ro_elements["amp_samples"][q][0],ro_elements["amp_samples"][q][-1]])
+            for q in roamp_samples:
+                preview_para[q] = array([roamp_samples[q][0],roamp_samples[q][-1]])
             sched_kwargs['pi_amp_coefs']= preview_para
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 
@@ -88,9 +88,8 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, ro_elements:dic
     if run:
         dataset_2_nc = Dataset(results,coords={"mixer":array(["I","Q"]),"PiPairNum":array(pi_pair_num),"PiAmpCoef":data_sample_idx})
         dataset_2_nc.attrs["execution_time"] = Data_manager().get_time_now()
-        nc_path = Data_manager().save_raw_data(QD_agent=QD_agent,ds=dataset_2_nc,qb="multiQ",exp_type="xylcali",specific_dataFolder=specific_data_folder,get_data_loc=True)
    
-    return nc_path
+    return dataset_2_nc
 
 
 def pi_amp_calibrator(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,pi_pair_num:list=[3,5],run:bool=True,avg_times:int=500,data_folder:str=''):

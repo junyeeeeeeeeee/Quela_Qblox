@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if"] # all in float
+        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if"] # all in float
 
         self.init_dict()
 
@@ -10,7 +10,7 @@ class Notebook():
         for i in range(self.q_num):
             self.__InfoDict[f"q{i}"] = {}
             for cata in self.cata:
-                if cata in ["bareF","T1","T2","CoefInG","sweetG","2tone_piamp"]: # float type
+                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp"]: # float type
                     self.__InfoDict[f"q{i}"][cata] = 0.0
                 elif cata in ["meas_options"]: # list type
                     self.__InfoDict[f"q{i}"][cata] = []  
@@ -59,7 +59,12 @@ class Notebook():
         self.__InfoDict[target_q]["T2"] = T2
     def get_T2For(self,target_q:str="q1"):
         return self.__InfoDict[target_q]["T2"]
-    
+    # For echo T2
+    def save_echoT2_for(self,T2e:float,target_q:str="q1"):
+        self.__InfoDict[target_q]["T2*"] = T2e
+    def get_echoT2For(self,target_q:str="q1"):
+        return self.__InfoDict[target_q]["T2*"]
+
     # For coef A in g formula: g(MHz) = coefA*sqrt(fb*fq)/1000, fb and fq in GHz
     def save_CoefInG_for(self,A:float,target_q:str='q0'):
         """
@@ -151,7 +156,7 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata in ["bareF","T1","T2","CoefInG","sweetG","2tone_piamp"]:
+                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp"]:
                             self.__InfoDict[qu][cata] = 0.0
                         elif cata in ["meas_options"]:
                             self.__InfoDict[qu][cata] = []
