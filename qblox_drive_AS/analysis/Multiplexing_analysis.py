@@ -10,7 +10,7 @@ import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
 from qblox_drive_AS.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer, rofcali_dataReducer, piampcali_dataReducer
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
 from qblox_drive_AS.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
@@ -118,9 +118,6 @@ class Artist():
         import warnings
         warnings.filterwarnings("ignore", message="No artists with labels found to put in legend")
         plt.legend()
-        for ax in self.axs:
-            ax:plt.Axes
-            ax.grid()
         plt.tight_layout()
         if self.pic_save_path is not None:
             slightly_print(f"pic saved located:\n{self.pic_save_path}")
@@ -151,6 +148,7 @@ class Artist():
             axs = [axs]
         for ax in axs:
             ax:plt.Axes
+            ax.grid()
             ax.xaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.yaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.xaxis.label.set_size(self.axis_label_fontsize) 
@@ -291,30 +289,26 @@ class analysis_tools():
             self.fit_packs[self.target_q] = {"xyf_data":self.xyf,"contrast":self.contrast[0]}
     
     def conti2tone_plot(self, save_pic_path:str=None):
+        Plotter = Artist(pic_title=f"2Tone-{self.target_q}")
+        fig, axs = Plotter.build_up_plot_frame([1,1])
+
         if self.xyl.shape[0] != 1:
-            plt.pcolormesh(self.xyf,self.xyl,self.contrast)
+            ax = Plotter.add_colormesh_on_ax(self.xyf,self.xyl,self.contrast,axs[0])
             if len(self.fit_f01s) != 0 :
-                plt.scatter(self.fit_f01s,self.fif_amps,marker="*",c='red')
-            plt.title(f"{self.target_q} power-dep 2tone")
-            plt.ylabel("XY power (V)")
-            
+                ax = Plotter.add_scatter_on_ax(self.fit_f01s,self.fif_amps,ax,marker="*",c='red')
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} XYF (Hz)","ylabel":"XY Power (V)"}])
         else:
-            plt.plot(self.xyf,self.contrast[0])
-            plt.ylabel("Contrast")
-            plt.title(f"{self.target_q} 2tone with XY power {self.xyl[0]} V")
-        plt.xlabel("XY frequency (Hz)")
-        plt.grid()
+            res = QS_fit_analysis(self.fit_packs[self.target_q]["contrast"],f=self.fit_packs[self.target_q]["xyf_data"])
+            ax = Plotter.add_verline_on_ax(x=res.attrs['f01_fit']*1e-9, y_data=res.data_vars['data'].to_numpy()*1000, ax=axs[0], color='green',linestyle='dashed', alpha=0.8,lw=1)
+            ax = Plotter.add_plot_on_ax(res.coords['f']*1e-9,res.data_vars['data']*1000,ax,linestyle='-', color="red", alpha=0.75, ms=4)
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"XYF (GHz)","ylabel":"Contrast (mV)"}])
+        
+    
+        Plotter.pic_save_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+        Plotter.export_results()
 
-        if save_pic_path is None:
-            plt.show()
-        else:
-            pic_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
-            slightly_print(f"pic saved located:\n{pic_path}")
-            plt.savefig(pic_path)
-            plt.close()
-
-
-        plt.show()
 
     def fluxQb_ana(self, var, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
         self.qubit = var
@@ -377,29 +371,35 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self):
-        self.qubit = self.ds.attrs["target_q"]
-        x_data = array(self.ds['x0'])
-        title = self.ds['x0'].attrs["long_name"]
-
-        i_data = array(self.ds['y0'])
-        q_data = array(self.ds['y1'])
+    def rabi_ana(self,var:str):
+        self.qubit = var
+        self.rabi_type = self.ds.attrs["rabi_type"]
+        i_data = array(self.ds[var])[0]
+        q_data = array(self.ds[var])[1]
 
         if not self.ds.attrs["OS_mode"]:
-            if len(self.refIQ[self.qubit]) == 2:
-                data_to_fit = sqrt((i_data-self.refIQ[self.qubit][0])**2+(q_data-self.refIQ[self.qubit][1])**2)
+            if len(self.refIQ) == 2:
+                data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
             else:
                 iq_data = column_stack((i_data,q_data)).T
-                data_to_fit = rotate_data(iq_data,float(self.refIQ[self.qubit][0]))[0]
+                data_to_fit = rotate_data(iq_data,float(self.refIQ[0]))[0]
         else:
             # wait GMM
             pass
 
-        self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,title)
+        if self.rabi_type.lower() == 'powerrabi':
+            x_data = array(self.ds[f"{var}_piamp"])[0]
+            fixed = self.ds.attrs[f'{var}_pidura']
+        else:
+            x_data = array(self.ds[f"{var}_pidura"])[0]
+            fixed = self.ds.attrs[f'{var}_piamp']
+    
+        self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
+        self.fit_packs.attrs["fix_variable"] = fixed
         
 
     def rabi_plot(self, save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
@@ -719,7 +719,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm9': 
                 self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana()
+                self.rabi_ana(kwargs["var_name"])
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':

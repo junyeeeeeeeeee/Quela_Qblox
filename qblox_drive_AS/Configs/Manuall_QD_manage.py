@@ -102,7 +102,7 @@ if __name__ == "__main__":
     # If you don't want to modify it, set it with None.
     
     set_roLOfreq(QD_agent, LO_Hz=None, target_q='q0') # LO is global in the same QRM-RF module
-    set_roAtte(QD_agent, ro_atte=None, target_q='q0') # RO-attenuation is global in the same QRM-RF module
+    set_roAtte(QD_agent, ro_atte=40, target_q='q0') # RO-attenuation is global in the same QRM-RF module
 
     """ Set coupler bias """
     # Memorize the coupler offset
@@ -110,6 +110,6 @@ if __name__ == "__main__":
     update_coupler_bias(QD_agent,cp_elements={})  # cp_elements = {"c0":0.1, "c2":0.05, ...}
     
     """ Set grq for sweet spot """
-    set_sweet_g(QD_agent,g_dict={"q0":90e6,"q1":90e6})
+    set_sweet_g(QD_agent,g_dict={})
     
     QD_agent.QD_keeper()

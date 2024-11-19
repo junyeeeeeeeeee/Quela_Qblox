@@ -792,11 +792,11 @@ class FluxQubit(ExpGovernment):
                 raise ValueError(f"Attempting to span over 500 MHz for driving on {q}")
             self.freq_range[q] = linspace(xyf+self.tempor_freq[0][q][0],xyf+self.tempor_freq[0][q][1],self.tempor_freq[1])
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
-                
+            
         dataset = Zgate_two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_elements,self.z_amp_samples,self.avg_n,self.execution)
-        for q in self.z_ref:
-            dataset.attrs[f"{q}_z_ref"] = self.z_ref[q]
         if self.execution:
+            for q in self.z_ref:
+                dataset.attrs[f"{q}_z_ref"] = self.z_ref[q]
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"FluxQubit_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                 self.__raw_data_location = self.save_path + ".nc"
@@ -825,11 +825,10 @@ class FluxQubit(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'freq':
                     ANA = Multiplex_analyzer("m9") 
-                    ANA.target_q = q
-                    ANA._import_data(ds,2,QD_savior.refIQ[q],QS_fit_analysis)
-                    ANA._start_analysis(var_name=q)
+                    ANA._import_data(ds,2,QD_savior.refIQ[var],QS_fit_analysis)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
-                    if len(list(ANA.fit_packs[q].keys())) != 0: answer[q] = ANA.fit_packs        
+                    if len(list(ANA.fit_packs.keys())) != 0: answer[var] = ANA.fit_packs        
             ds.close()
             permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no :").lower()
             if permi in list(answer.keys()):
@@ -852,9 +851,206 @@ class FluxQubit(ExpGovernment):
 
         self.CloseMeasurement()   
 
+class PowerRabiOsci(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, pi_amp:dict, pi_dura:dict, pi_amp_sampling_func:str, pi_amp_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
+        """ ### Args:
+            * pi_amp: {"q0":[pi_amp_start, pi_amp_end], ...}\n
+            * pi_dura: {"q0":pi_duration_in_seconds, ...}\n
+            * pi_amp_sampling_func (str): 'linspace', 'arange', 'logspace'\n
+            * pi_amp_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
+        """
+        if pi_amp_sampling_func in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(pi_amp_sampling_func)
+        else:
+            sampling_func:callable = linspace
+        
+        self.pi_amp_samples = {}
+        for q in pi_amp:
+            self.pi_amp_samples[q] = sampling_func(*pi_amp[q],pi_amp_pts_or_step)
+
+        self.pi_dura = pi_dura
+        self.avg_n = avg_n
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(pi_amp.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and driving atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.RabiOsci import PowerRabi
+    
+        dataset = PowerRabi(self.QD_agent,self.meas_ctrl,self.pi_amp_samples,self.pi_dura,self.avg_n,self.execution,self.OSmode)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"PowerRabi_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_dir:str=None):
+        """ User callable analysis function pack """
+        from qblox_drive_AS.SOP.RabiOsci import conditional_update_qubitInfo
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+
+            ds = open_dataset(self.__raw_data_location)
+            for var in ds.data_vars:
+                if str(var).split("_")[-1] != 'piamp':
+                    ANA = Multiplex_analyzer("m11")      
+                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]])
+                    ANA._start_analysis(var_name=var)
+                    ANA._export_result(self.save_dir)
+                    conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
+
+            ds.close()
+            QD_savior.QD_keeper(new_QD_dir)
+            
 
 
 
+    def WorkFlow(self):
+    
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement()   
+
+class TimeRabiOsci(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, pi_dura:dict, pi_amp:dict, pi_dura_sampling_func:str, pi_dura_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
+        """ ### Args:
+            * pi_amp: {"q0":[pi_amp_start, pi_amp_end], ...}\n
+            * pi_dura: {"q0":pi_duration_in_seconds, ...}\n
+            * pi_amp_sampling_func (str): 'linspace', 'arange', 'logspace'\n
+            * pi_amp_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
+        """
+        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_4ns
+        if pi_dura_sampling_func in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(pi_dura_sampling_func)
+        else:
+            sampling_func:callable = linspace
+        
+        self.pi_dura_samples = {}
+        for q in pi_dura:
+            time_sample_sec = list(set([round_to_nearest_multiple_of_4ns(x) for x in sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9]))
+            time_sample_sec.sort()
+            self.pi_dura_samples[q] = array(time_sample_sec)*1e-9
+    
+
+        self.pi_amp = pi_amp
+        self.avg_n = avg_n
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(pi_dura.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.RabiOsci import TimeRabi
+    
+        dataset = TimeRabi(self.QD_agent,self.meas_ctrl,self.pi_amp,self.pi_dura_samples,self.avg_n,self.execution,self.OSmode)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"TimeRabi_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_dir:str=None):
+        """ User callable analysis function pack """
+        from qblox_drive_AS.SOP.RabiOsci import conditional_update_qubitInfo
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+
+            ds = open_dataset(self.__raw_data_location)
+            for var in ds.data_vars:
+                if str(var).split("_")[-1] != 'pidura':
+                    ANA = Multiplex_analyzer("m11")      
+                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]])
+                    ANA._start_analysis(var_name=var)
+                    ANA._export_result(self.save_dir)
+                    conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
+                    
+            ds.close()
+            # QD_savior.QD_keeper(new_QD_dir)
+            
+
+
+
+    def WorkFlow(self):
+    
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement()   
 
 
 

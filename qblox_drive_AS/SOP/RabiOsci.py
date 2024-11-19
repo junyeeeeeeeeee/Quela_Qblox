@@ -11,7 +11,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
-from qblox_drive_AS.support.Pulse_schedule_library import multi_Rabi_sche, set_LO_frequency, pulse_preview
+from qblox_drive_AS.support.Pulse_schedule_library import multi_PowerRabi_sche, multi_TimeRabi_sche, set_LO_frequency, pulse_preview
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.analysis.raw_data_demolisher import Rabi_dataReducer
 from xarray import Dataset
@@ -22,40 +22,28 @@ def round_to_nearest_multiple_of_4ns(x):
     return 4 * round(x / 4)
 
 
-def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):
-    nc_path = ''
-    sche_func= multi_Rabi_sche
-    pulse_review_paras = {}
-    ds_restore = {}
+def PowerRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dura:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):
+    
+    sche_func= multi_PowerRabi_sche
 
-    for q in Paras:
-        pulse_review_paras[q],ds_restore[q] = {}, {}
+    for q in pi_amp:
         qubit_info = QD_agent.quantum_device.get_element(q)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
-        if isinstance(Paras[q]["XY_amp"],ndarray):
-            dummy_sweep_varabel = arange(0,Paras[q]["XY_amp"].shape[0])
-            pulse_review_paras[q]["XY_amp"] = Paras[q]["XY_amp"][-2:]
-            pulse_review_paras[q]["XY_duration"] = Paras[q]["XY_duration"]
-            ds_restore[q]["XY_amp"] = Paras[q]["XY_amp"]
-        elif isinstance(Paras[q]["XY_duration"],ndarray):
-            dummy_sweep_varabel = arange(0,Paras[q]["XY_duration"].shape[0])
-            pulse_review_paras[q]["XY_amp"] = Paras[q]["XY_amp"]
-            pulse_review_paras[q]["XY_duration"] = Paras[q]["XY_duration"][-2:]
-            ds_restore[q]["XY_duration"] = Paras[q]["XY_duration"]
-        else:
-            pass
+        pi_amp_idxes = arange(0,pi_amp[q].shape[0])
+        
     
-    Sweep_para = ManualParameter(name="RabiVarable", unit="SecOrVolt", label="TimeOrAmp")
+    Sweep_para = ManualParameter(name="PowerRabi", unit="Volt", label="Amp")
     Sweep_para.batched = True
     
     
     sched_kwargs = dict(
-        Paras = Paras if run else pulse_review_paras,
-        R_amp=compose_para_for_multiplexing(QD_agent,Paras,'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,Paras,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,Paras,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,Paras,'r2'),
+        pi_amp = pi_amp,
+        pi_dura=pi_dura,
+        R_amp=compose_para_for_multiplexing(QD_agent,pi_amp,'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,pi_amp,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,pi_amp,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,pi_amp,'r2'),
         XY_theta='X_theta',
         OS_or_not=OSmode
         )
@@ -68,67 +56,131 @@ def Rabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,Paras:dict,n_avg:int=30
         schedule_kwargs=sched_kwargs,
         real_imag=True,
         batched=True,
-        num_channels=len(list(Paras.keys())),
+        num_channels=len(list(pi_amp.keys())),
         )
         
    
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables(Sweep_para)
-        meas_ctrl.setpoints(dummy_sweep_varabel)
+        meas_ctrl.setpoints(pi_amp_idxes)
     
        
         rabi_ds = meas_ctrl.run("RabiOsci")
-        rabi_ds.attrs["RO_qs"] = ""
-        rabi_ds.attrs["OS_mode"] = OSmode
-        rabi_ds.attrs["execution_time"] = Data_manager().get_time_now()
-        name_dict = {"XY_duration":{"name":"Time","long_name":"TimeRabi","unit":"s"},"XY_amp":{"name":"Amplitude","long_name":"PowerRabi","unit":"V"}}
 
-        for idx, q in enumerate(list(ro_elements.keys())):
-            rabi_ds.attrs["RO_qs"] += f" {q}"
-            attr = rabi_ds['x0'].attrs
-            rabi_ds[f'x{idx}'] = array(list(ds_restore[q].values())[0])
-            rabi_ds[f'x{idx}'].attrs = attr
-            rabi_ds[f'x{idx}'].attrs['name'] = name_dict[list(ds_restore[q].keys())[0]]["name"]
-            rabi_ds[f'x{idx}'].attrs['long_name'] = name_dict[list(ds_restore[q].keys())[0]]["long_name"]
-            rabi_ds[f'x{idx}'].attrs['unit'] = name_dict[list(ds_restore[q].keys())[0]]["unit"]
-        
+        dict_ = {}
+        for idx, q in enumerate(list(pi_amp.keys())):
+            I = array(rabi_ds[f'y{2*idx}'])
+            Q = array(rabi_ds[f'y{2*idx+1}'])
+            dict_[q] = (['mixer','pi_amp'],array([I,Q]))
+            dict_[f"{q}_piamp"] = (['mixer','pi_amp'],array(2*list(pi_amp[q])).reshape(2,pi_amp[q].shape[0]))
+        ds = Dataset(dict_, coords={"mixer":array(["I","Q"]),"pi_amp":pi_amp_idxes})
+        ds.attrs["execution_time"] = Data_manager().get_time_now()
+        ds.attrs["rabi_type"] = "PowerRabi"
+        ds.attrs["OS_mode"] = OSmode
+        for q in pi_dura:
+            ds.attrs[f"{q}_pidura"] = pi_dura[q]
 
-        
-        
+     
     else:
-        sched_kwargs = sched_kwargs
+
+        preview_para_pi_amp = {}
+        preview_para_pi_dura = {}
+        for q in pi_amp:
+            preview_para_pi_amp[q] = array([pi_amp[q][0],pi_amp[q][-1]])
+            preview_para_pi_dura[q] = pi_dura[q]
+        
+        sched_kwargs['pi_amp']= preview_para_pi_amp
+        sched_kwargs['pi_dura']= preview_para_pi_dura
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
+        ds = ""
 
-
-    return nc_path
+    return ds
     
+def TimeRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dura:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):
+    
+    sche_func= multi_TimeRabi_sche
 
-def rabi_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,run:bool=True,OneShot:bool=False,avg_times:int=500,data_folder:str=''):
+    for q in pi_dura:
+        qubit_info = QD_agent.quantum_device.get_element(q)
+        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+        eyeson_print(f"XYF = {round(qubit_info.clock_freqs.f01()*1e-9,3)} GHz")
+        pi_dura_idxes = arange(0,pi_dura[q].shape[0])
+        
+    
+    Sweep_para = ManualParameter(name="TimeRabi", unit="Sec", label="time")
+    Sweep_para.batched = True
+    
+    
+    sched_kwargs = dict(
+        pi_amp = pi_amp,
+        pi_dura=pi_dura,
+        R_amp=compose_para_for_multiplexing(QD_agent,pi_dura,'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,pi_dura,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,pi_dura,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,pi_dura,'r2'),
+        XY_theta='X_theta',
+        OS_or_not=OSmode
+        )
+    
     
     if run:
-        for q in ro_elements:
-            Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
+        gettable = ScheduleGettable(
+        QD_agent.quantum_device,
+        schedule_function=sche_func,
+        schedule_kwargs=sched_kwargs,
+        real_imag=True,
+        batched=True,
+        num_channels=len(list(pi_dura.keys())),
+        )
         
-        nc_path = Rabi(QD_agent,meas_ctrl,ro_elements,run=True,n_avg=avg_times,specific_data_folder=data_folder,OSmode=OneShot)
-        reset_offset(Fctrl)
-        cluster.reset()
-        
-    else:
-        nc_path = Rabi(QD_agent,meas_ctrl,ro_elements,run=False,n_avg=avg_times,specific_data_folder=data_folder,OSmode=OneShot)
+   
+        QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
+        meas_ctrl.gettables(gettable)
+        meas_ctrl.settables(Sweep_para)
+        meas_ctrl.setpoints(pi_dura_idxes)
     
-    return nc_path
+       
+        rabi_ds = meas_ctrl.run("RabiOsci")
 
+        dict_ = {}
+        for idx, q in enumerate(list(pi_dura.keys())):
+            I = array(rabi_ds[f'y{2*idx}'])
+            Q = array(rabi_ds[f'y{2*idx+1}'])
+            dict_[q] = (['mixer','pi_dura'],array([I,Q]))
+            dict_[f"{q}_pidura"] = (['mixer','pi_dura'],array(2*list(pi_dura[q])).reshape(2,pi_dura[q].shape[0]))
+        ds = Dataset(dict_, coords={"mixer":array(["I","Q"]),"pi_dura":pi_dura_idxes})
+        ds.attrs["execution_time"] = Data_manager().get_time_now()
+        ds.attrs["rabi_type"] = "TimeRabi"
+        ds.attrs["OS_mode"] = OSmode
+        for q in pi_amp:
+            ds.attrs[f"{q}_piamp"] = pi_amp[q]
 
-def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,ro_elements:dict,target_q:str):
+     
+    else:
+
+        preview_para_pi_amp = {}
+        preview_para_pi_dura = {}
+        for q in pi_amp:
+            preview_para_pi_dura[q] = array([pi_dura[q][0],pi_dura[q][-1]])
+            preview_para_pi_amp[q] = pi_amp[q]
+        
+        sched_kwargs['pi_amp']= preview_para_pi_amp
+        sched_kwargs['pi_dura']= preview_para_pi_dura
+        pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
+        ds = ""
+
+    return ds
+
+def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,target_q:str):
     if fit_results.attrs['pi_2'] >= min(fit_results.coords['samples']) and fit_results.attrs['pi_2'] <= max(fit_results.coords['samples']) :
         qubit = QD_agent.quantum_device.get_element(target_q)
         match str(fit_results.attrs['Rabi_type']).lower():
             case 'powerrabi':
                 qubit.rxy.amp180(fit_results.attrs['pi_2'])
-                qubit.rxy.duration(ro_elements[target_q]["XY_duration"])
+                qubit.rxy.duration(fit_results.attrs["fix_variable"])
             case 'timerabi':
-                qubit.rxy.amp180(ro_elements[target_q]["XY_amp"])
+                qubit.rxy.amp180(fit_results.attrs["fix_variable"])
                 qubit.rxy.duration(fit_results.attrs['pi_2'])
     else:
         warning_print(f"Results for {target_q} didn't satisfy the update condition !")

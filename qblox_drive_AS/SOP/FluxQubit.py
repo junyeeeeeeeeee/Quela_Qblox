@@ -60,7 +60,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables([freq,Z_bias])
-        meas_ctrl.setpoints_grid((freq_datapoint_idx,Bias_samples))
+        meas_ctrl.setpoints_grid((freq_datapoint_idx,Bias_samples*z_pulse_amp_OVER_const_z))
         qs_ds = meas_ctrl.run("Zgate-two-tone")
         
         dict_ = {}

@@ -782,8 +782,9 @@ def Rabi_sche(
     
     return sched
 
-def multi_Rabi_sche(
-    Paras:dict,
+def multi_PowerRabi_sche(
+    pi_amp:dict,
+    pi_dura:dict,
     R_amp: dict,
     R_duration: dict,
     R_integration:dict,
@@ -793,30 +794,66 @@ def multi_Rabi_sche(
     OS_or_not:bool=False
 ) -> Schedule:
     
-    qubits2read = list(Paras.keys())
+    qubits2read = list(pi_amp.keys())
+    sample_len = pi_amp[qubits2read[0]].shape[0]
     sched = Schedule("RabiOscillation",repetitions=repetitions)
-    
-    if isinstance(Paras[qubits2read[0]]["XY_duration"],np.ndarray):
-        sample_len = Paras[qubits2read[0]]["XY_duration"].shape[0]
-    else:
-        sample_len = Paras[qubits2read[0]]["XY_amp"].shape[0]
-    
+
     match XY_theta:
         case 'Y_theta':
             gate:callable = Y_theta
         case _:
-            gate:callable = Y_theta
+            gate:callable = X_theta
 
     
     for acq_idx in range(sample_len):    
         for qubit_idx, q in enumerate(qubits2read):
             sched.add(Reset(q))
-            spec_pulse = Readout(sched,q,R_amp,R_duration)
-            
-            if isinstance(Paras[q]["XY_duration"],np.ndarray):
-                gate(sched,Paras[q]["XY_amp"],Paras[q]["XY_duration"][acq_idx],q,spec_pulse,freeDu=electrical_delay)
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
             else:
-                gate(sched,Paras[q]["XY_amp"][acq_idx],Paras[q]["XY_duration"],q,spec_pulse,freeDu=electrical_delay)
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+            
+            
+            gate(sched,pi_amp[q][acq_idx],pi_dura[q],q,spec_pulse,freeDu=electrical_delay)
+           
+        
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
+    
+    return sched
+
+def multi_TimeRabi_sche(
+    pi_amp:dict,
+    pi_dura:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    XY_theta:str,
+    repetitions:int=1,
+    OS_or_not:bool=False
+) -> Schedule:
+    
+    qubits2read = list(pi_dura.keys())
+    sample_len = pi_dura[qubits2read[0]].shape[0]
+    sched = Schedule("RabiOscillation",repetitions=repetitions)
+
+    match XY_theta:
+        case 'Y_theta':
+            gate:callable = Y_theta
+        case _:
+            gate:callable = X_theta
+
+    
+    for acq_idx in range(sample_len):    
+        for qubit_idx, q in enumerate(qubits2read):
+            sched.add(Reset(q))
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
+            
+            
+            gate(sched,pi_amp[q],pi_dura[q][acq_idx],q,spec_pulse,freeDu=electrical_delay)
            
         
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
