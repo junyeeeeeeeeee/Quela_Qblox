@@ -699,7 +699,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
 
 
     def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
-        self.ds = data
+        self.ds = data*1000
         self.dim = var_dimension
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func

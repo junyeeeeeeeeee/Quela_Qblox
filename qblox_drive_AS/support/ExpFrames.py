@@ -1052,5 +1052,92 @@ class TimeRabiOsci(ExpGovernment):
 
         self.CloseMeasurement()   
 
+class SingleShot(ExpGovernment):
+    """ Helps you get the **Dressed** cavities. """
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
 
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, target_qs:list, shots:int=10000, execution:bool=True):
+        """ 
+        ### Args:\n
+        * ro_amp_factor: {"q0":1.2, "q2":.... }, new ro amp = ro_amp*ro_amp_factor
+        """
+
+        self.avg_n = shots
+        self.execution = execution
+        self.target_qs = target_qs
+
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and driving atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.SingleShot import Qubit_state_single_shot
+       
+
+        dataset = Qubit_state_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_dir:str=None):
+        """ User callable analysis function pack """
+        from qblox_drive_AS.SOP.RefIQ import IQ_ref_ana
+        if self.execution:
+            ds = open_dataset(self.__raw_data_location)
+
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+            
+            
+            for var in ds.data_vars:
+                ANA = Multiplex_analyzer("m14")
+                ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                ANA._start_analysis()
+                pic_path = os.path.join(self.save_dir,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                ANA._export_result(pic_path)
+                highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
+                QD_savior.rotate_angle[var] = [ANA.fit_packs["RO_rotation_angle"]]
+            ds.close()
+            
+            QD_savior.QD_keeper(new_QD_dir)
+
+
+    def WorkFlow(self):
+    
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
 

@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support.Path_Book import meas_raw_dir
 from qblox_drive_AS.SOP.m13_T1  import T1_executor
 from qblox_drive_AS.SOP.m12_T2  import ramsey_executor
-from qblox_drive_AS.SOP.m14_SingleShot import SS_executor
+from qblox_drive_AS.SOP.SingleShot import SS_executor
 from qblox_drive_AS.support import init_meas, shut_down, init_system_atte, coupler_zctrl
 
 def create_set_folder(parent_dir:str,folder_idx:int):
