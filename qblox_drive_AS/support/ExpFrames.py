@@ -1064,16 +1064,25 @@ class SingleShot(ExpGovernment):
     @property
     def RawDataPath(self):
         return self.__raw_data_location
+    
+    @RawDataPath.setter
+    def RawDataPath(self,path:str):
+        self.__raw_data_location = path
 
-    def SetParameters(self, target_qs:list, shots:int=10000, execution:bool=True):
+    def SetParameters(self, target_qs:list, histo_counts:int=1, shots:int=10000, execution:bool=True):
         """ 
         ### Args:\n
         * ro_amp_factor: {"q0":1.2, "q2":.... }, new ro amp = ro_amp*ro_amp_factor
         """
-
+        self.use_time_label:bool = False
         self.avg_n = shots
         self.execution = execution
         self.target_qs = target_qs
+        self.histos = histo_counts
+        self.counter:int = 0
+        if self.histos > 0:
+            self.use_time_label = True
+
 
 
     def PrepareHardware(self):
@@ -1093,10 +1102,10 @@ class SingleShot(ExpGovernment):
         from qblox_drive_AS.SOP.SingleShot import Qubit_state_single_shot
        
 
-        dataset = Qubit_state_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.execution)
+        dataset = Qubit_state_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.execution,exp_idx=self.counter)
         if self.execution:
             if self.save_dir is not None:
-                self.save_path = os.path.join(self.save_dir,f"SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.save_path = os.path.join(self.save_dir,f"SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
                 self.__raw_data_location = self.save_path + ".nc"
                 dataset.to_netcdf(self.__raw_data_location)
             else:
@@ -1108,7 +1117,7 @@ class SingleShot(ExpGovernment):
 
     def RunAnalysis(self,new_QD_dir:str=None):
         """ User callable analysis function pack """
-        from qblox_drive_AS.SOP.RefIQ import IQ_ref_ana
+    
         if self.execution:
             ds = open_dataset(self.__raw_data_location)
 
@@ -1134,10 +1143,12 @@ class SingleShot(ExpGovernment):
 
 
     def WorkFlow(self):
-    
-        self.PrepareHardware()
+        for i in range(self.histos):
+            self.PrepareHardware()
 
-        self.RunMeasurement()
+            self.RunMeasurement()
 
-        self.CloseMeasurement() 
+            self.CloseMeasurement() 
+
+            self.counter += 1
 
