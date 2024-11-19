@@ -1788,7 +1788,6 @@ class ROFcali(ExpGovernment):
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.spin_num = {}
         self.target_qs = list(freq_span_range.keys())
         
 
@@ -1878,7 +1877,7 @@ class PiAcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, roamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, pi_pair_num:list=[2,3], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, pi_pair_num:list=[2,3], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * roamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
         """
@@ -1888,13 +1887,13 @@ class PiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in roamp_coef_range:
-           self.amp_coef_samples[q] = sampling_func(*roamp_coef_range[q],coef_ptsORstep)
+        for q in piamp_coef_range:
+           self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
         self.pi_pair_num = pi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(roamp_coef_range.keys())
+        self.target_qs = list(piamp_coef_range.keys())
         
 
     def PrepareHardware(self):
@@ -1975,7 +1974,7 @@ class hPiAcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, roamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * roamp_coef_range: {"q0":[0.4, 0.6], "q1":[0.38, 0.46], ...]\n
         """
@@ -1985,13 +1984,13 @@ class hPiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in roamp_coef_range:
-           self.amp_coef_samples[q] = sampling_func(*roamp_coef_range[q],coef_ptsORstep)
+        for q in piamp_coef_range:
+           self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
         self.halfPi_pair_num = halfPi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(roamp_coef_range.keys())
+        self.target_qs = list(piamp_coef_range.keys())
         
 
     def PrepareHardware(self):
@@ -2060,6 +2059,97 @@ class hPiAcali(ExpGovernment):
 
         self.CloseMeasurement() 
 
+class ROLcali(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, roamp_coef_range:dict, coef_sampling_func:str, ro_coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+        """ ### Args:
+            * target_qs: ["q0", "q1", ...]\n
+        """
+        if coef_sampling_func in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(coef_sampling_func)
+        else:
+            raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_func}")
+        
+        self.amp_coef_samples = {}
+        for q in roamp_coef_range:
+           self.amp_coef_samples[q] = sampling_func(*roamp_coef_range[q],ro_coef_ptsORstep)
+
+        self.avg_n = avg_n
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(roamp_coef_range.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.Calibration_exp.RO_ampCali import rolCali
+    
+        dataset = rolCali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.avg_n,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"ROLcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_dir:str=None):
+        """ User callable analysis function pack """
+        
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
+
+            ds = open_dataset(self.__raw_data_location)
+            
+            for var in ds.data_vars:
+                if var.split("_")[-1] != 'rol':
+                    ANA = Multiplex_analyzer("c5")
+                    ANA._import_data(ds,var_dimension=1)
+                    ANA._start_analysis(var_name = var)
+                    ANA._export_result(self.save_dir)
+                    
+            ds.close()
+
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
 
 
 

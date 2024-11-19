@@ -1,16 +1,15 @@
-import os, sys, time
+import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_instruments import Cluster
-from utils.tutorial_utils import show_args
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
-from numpy import linspace, array, where, max, ndarray, sqrt, arctan2,NaN, arange, moveaxis
+from numpy import linspace, array, NaN, arange, moveaxis
 from qblox_drive_AS.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte,coupler_zctrl, reset_offset, compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array
+from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, set_LO_frequency, pulse_preview
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.analysis.raw_data_demolisher import rofcali_dataReducer
 
@@ -94,6 +93,7 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
         rofcali_ds.attrs["execution_time"] = Data_manager().get_time_now()
 
         for q in ro_f_origin:
+            rofcali_ds.attrs[f"{q}_ori_rof"] = ro_f_origin[q]
             qubit_info = QD_agent.quantum_device.get_element(q)
             qubit_info.clock_freqs.readout(ro_f_origin[q])
     

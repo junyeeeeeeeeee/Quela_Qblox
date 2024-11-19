@@ -590,7 +590,7 @@ class analysis_tools():
         Plotter.export_results()
     
     def ROF_cali_ana(self,var:str):
-        self.fit_packs = {}
+        self.qubit = var
         IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
         self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
         self.I_g, self.I_e = IQ_data[0][0], IQ_data[1][0]
@@ -601,9 +601,9 @@ class analysis_tools():
         self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
 
     def ROF_cali_plot(self,save_pic_folder:str=None):
-        q = list(self.fit_packs.keys())[0]
-        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{q}_ROF_cali_{self.ds.attrs['execution_time']}.png")
-        Plotter = Artist(pic_title=f"{q}_ROF_calibration",save_pic_path=save_pic_folder)
+        
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_ROF_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_ROF_calibration",save_pic_path=save_pic_folder)
         fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
         ax0:plt.Axes = axs[0]
         Plotter.add_plot_on_ax(self.rof,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|0>")
@@ -613,8 +613,8 @@ class analysis_tools():
         Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|1>")
         ax2:plt.Axes = axs[2]
         Plotter.add_plot_on_ax(self.rof,self.dis_diff,ax2,label='diff')
-        Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
-        Plotter.add_verline_on_ax(mean(self.rof),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
+        Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         
         Plotter.includes_axes([ax0,ax1,ax2])
         Plotter.set_LabelandSubtitles(
@@ -623,6 +623,40 @@ class analysis_tools():
                 {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Diff (V)"}]
         )
         Plotter.export_results()
+
+    def ROL_cali_ana(self,var:str):
+        self.qubit = var
+        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
+        self.rol = moveaxis(array(self.ds[f"{var}_rol"]),0,1)[0][0]
+        self.I_g, self.I_e = IQ_data[0][0], IQ_data[1][0]
+        self.Q_g, self.Q_e = IQ_data[0][1], IQ_data[1][1]
+        I_diff = self.I_e-self.I_g
+        Q_diff = self.Q_e-self.Q_g
+        self.dis_diff = sqrt((I_diff)**2+(Q_diff)**2)
+
+    def ROL_cali_plot(self,save_pic_folder:str=None):
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_ROL_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_ROL_calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
+        ax0:plt.Axes = axs[0]
+        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|0>")
+        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_e**2+self.Q_e**2),ax0,label="|1>")
+        ax1:plt.Axes = axs[1]
+        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_g,self.I_g)/pi,ax1,label="|0>")
+        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|1>")
+        ax2:plt.Axes = axs[2]
+        Plotter.add_plot_on_ax(self.rol,self.dis_diff,ax2,label='diff')
+        # Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rol"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
+        # Plotter.add_verline_on_ax(mean(self.rol),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        
+        Plotter.includes_axes([ax0,ax1,ax2])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Magnitude (V)"},
+                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Phase (π)"},
+                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Diff (V)"}]
+        )
+        Plotter.export_results()
+
 
     def piamp_cali_ana(self,var:str):
         self.qubit = var
@@ -738,6 +772,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.piamp_cali_ana(kwargs["var_name"])
             case 'c4':
                 self.halfpiamp_cali_ana(kwargs["var_name"])
+            case 'c5':
+                self.ROL_cali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
             case _:
@@ -769,6 +805,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.piamp_cali_plot(pic_save_folder)
             case 'c4':
                 self.halfpiamp_cali_plot(pic_save_folder)
+            case 'c5':
+                self.ROL_cali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
 

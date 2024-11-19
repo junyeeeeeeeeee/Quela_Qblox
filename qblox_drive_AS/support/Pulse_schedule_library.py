@@ -1506,6 +1506,40 @@ def multi_ROF_Cali_sche(
           
     return sched
 
+def multi_ROL_Cali_sche(
+    R_amp_coefs: dict,
+    ini_state:str,
+    pi_amp: dict,
+    pi_dura:dict,
+    R_duration: dict,
+    R_amp: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+) -> Schedule:
+    qubits2read = list(R_amp_coefs.keys())
+    sameple_idx = array(R_amp_coefs[qubits2read[0]]).shape[0]
+    sched = Schedule("ROL calibration", repetitions=repetitions)
+    
+    for acq_idx in range(sameple_idx):    
+
+        for qubit_idx, q in enumerate(qubits2read):
+            rol_coef = R_amp_coefs[q][acq_idx]
+            
+            sched.add(Reset(q))
+    
+            if qubit_idx == 0:
+                spec_pulse = Readout(sched,q,{q:R_amp[q]*rol_coef},R_duration)
+            else:
+                Multi_Readout(sched,q,spec_pulse,{q:R_amp[q]*rol_coef},R_duration)
+
+            if ini_state=='e': 
+                X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+                
+            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+          
+    return sched
+
 def PI_amp_cali_sche(
     q:str,
     XY_amp: dict,
