@@ -1640,9 +1640,11 @@ def pi_half_cali_sche(
     return sched
 
 def drag_coef_cali():
+    """ (X,Y/2) and (Y,X/2)"""
     pass
 
 def StarkShift_cali():
+    """ N * (X,-X)"""
     pass
 
 def Qubit_amp_SS_sche(
