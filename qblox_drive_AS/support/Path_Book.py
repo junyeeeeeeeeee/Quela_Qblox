@@ -1,7 +1,7 @@
 """
     Path_book keeps the path indecated to the directories, and the object will be saved in the folder named by date.
 """
-import os, datetime, sys
+import os, datetime, sys, shutil
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from qblox_drive_AS.support.UserFriend import eyeson_print
 
@@ -72,7 +72,16 @@ def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
             pass
         if date_obj_idx == len(date) - 1:
             raise ValueError(f"No QD.pkl for the target_dr={which_dr}")
+        
     
+    current_time = datetime.datetime.now()
+    if os.path.split(os.path.split(wanted_QD_pkl_path)[0])[-1] != f"{current_time.year:02d}{current_time.month:02d}{current_time.day:02d}":
+        today_qd_folder = os.path.join(qdevice_backup_dir,f"{current_time.year:02d}{current_time.month:02d}{current_time.day:02d}")
+        os.makedirs(today_qd_folder, exist_ok=True)
+        copied_QD_file = os.path.join(today_qd_folder, os.path.split(wanted_QD_pkl_path)[-1])
+        shutil.copy(wanted_QD_pkl_path, copied_QD_file)
+        wanted_QD_pkl_path = copied_QD_file
+        print("Today QD built up.")
     return wanted_QD_pkl_path
 
 

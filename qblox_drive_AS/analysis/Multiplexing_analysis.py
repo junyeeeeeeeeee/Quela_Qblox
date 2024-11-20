@@ -9,9 +9,9 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer, rofcali_dataReducer, piampcali_dataReducer
+from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
-from qblox_drive_AS.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
+from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
@@ -204,7 +204,6 @@ class analysis_tools():
         self.bias = array(self.ds.coords["bias"])
         self.refIQ = refIQ
         
-
     def fluxCoupler_plot(self, save_pic_path:str=None):
         I_data = array(self.ds.data_vars[self.qubit])[0]
         Q_data = array(self.ds.data_vars[self.qubit])[1]
@@ -271,7 +270,6 @@ class analysis_tools():
         Plotter.pic_save_path = os.path.join(save_pic_folder,f"FluxCavity_{self.qubit}.png")
         Plotter.export_results()
 
-
     def conti2tone_ana(self, var, fit_func:callable=None, ref:list=[]):
         self.target_q = var
         self.xyf = array(self.ds[f"{self.target_q}_freq"])[0][0]
@@ -314,7 +312,6 @@ class analysis_tools():
     
         Plotter.pic_save_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
         Plotter.export_results()
-
 
     def fluxQb_ana(self, var, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
         self.qubit = var
@@ -441,7 +438,6 @@ class analysis_tools():
         plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
         plt.close()
 
-    
     def T2_ana(self,var:str,ref:list):
         raw_data = self.ds[var]
         time_samples = array(self.ds[f"{var}_x"])[0][0]
@@ -458,12 +454,12 @@ class analysis_tools():
                 self.data_n = rotate_data(iq_data,ref[0])[0]
             else:
                 self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
+            self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
             if not self.echo:
-                self.ans = T2_fit_analysis(self.data_n,array(time_samples))
+                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1000)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
-                self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
                 self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
                 self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
@@ -472,6 +468,7 @@ class analysis_tools():
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
+    
     def XYF_cali_ana(self,var:str,ref:list):
         raw_data = self.ds[f'{var}']
         time_samples =  array(self.ds[f'{var}_x'])[0][0]
@@ -488,7 +485,6 @@ class analysis_tools():
             self.ans = cos_fit_analysis(data,array(time_samples))
             self.fit_packs["freq"] = self.ans.attrs['f']
         
-
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
@@ -661,26 +657,20 @@ class analysis_tools():
     def ROL_cali_plot(self,save_pic_folder:str=None):
         if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_ROL_cali_{self.ds.attrs['execution_time']}.png")
         Plotter = Artist(pic_title=f"{self.qubit}_ROL_calibration",save_pic_path=save_pic_folder)
-        fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
+        fig, axs = Plotter.build_up_plot_frame((2,1),fig_size=(12,9))
         ax0:plt.Axes = axs[0]
-        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|0>")
-        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_e**2+self.Q_e**2),ax0,label="|1>")
+        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_e**2+self.Q_e**2)-sqrt(self.I_g**2+self.Q_g**2),ax0,label="|1>-|0>")
         ax1:plt.Axes = axs[1]
-        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_g,self.I_g)/pi,ax1,label="|0>")
-        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|1>")
-        ax2:plt.Axes = axs[2]
-        Plotter.add_plot_on_ax(self.rol,self.dis_diff,ax2,label='diff')
+        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi-arctan2(self.Q_g,self.I_g)/pi,ax1,label="|1>-|0>")
         # Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rol"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
         # Plotter.add_verline_on_ax(mean(self.rol),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         
-        Plotter.includes_axes([ax0,ax1,ax2])
+        Plotter.includes_axes([ax0,ax1])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Magnitude (V)"},
-                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Phase (π)"},
-                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Diff (V)"}]
+                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Phase (π)"},]
         )
         Plotter.export_results()
-
 
     def piamp_cali_ana(self,var:str):
         self.qubit = var

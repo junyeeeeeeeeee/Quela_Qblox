@@ -1,17 +1,13 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from qblox_instruments import Cluster
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
-from numpy import linspace, array, NaN, arange, moveaxis
-from qblox_drive_AS.support import QDmanager, Data_manager, init_meas, shut_down, init_system_atte,coupler_zctrl, reset_offset, compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, set_LO_frequency, pulse_preview
-from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
-from qblox_drive_AS.analysis.raw_data_demolisher import rofcali_dataReducer
+from numpy import array, NaN, arange, moveaxis
+from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
+from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, pulse_preview
 
 def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_avg:int=500,run:bool=True)->Dataset:
     sche_func= multi_ROF_Cali_sche
@@ -98,94 +94,3 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
             qubit_info.clock_freqs.readout(ro_f_origin[q])
     
     return rofcali_ds
-
-
-def rofCali_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,execution:bool=True,n_avg:int=300):
-    if execution:
-        for q in ro_elements["rof_samples"]:
-            Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_elements,run=execution,n_avg=n_avg)
-        reset_offset(Fctrl)
-        cluster.reset()
-    else:
-        optimal_rof = rofCali(QD_agent,meas_ctrl,ro_elements,run=execution,n_avg=n_avg)
-
-    return optimal_rof
-
-
-def rofCali_waiter(QD_agent:QDmanager,ro_element:dict,fpts:int=100)->dict:
-    ro_elements = {"rof_samples":{}}
-    for q in ro_element:
-        # rof samples settings
-        ro_f_origin= QD_agent.quantum_device.get_element(q).clock_freqs.readout()
-        ro_elements["rof_samples"][q] = linspace(ro_f_origin-ro_element[q]["span_Hz"],ro_f_origin+ro_element[q]["span_Hz"],fpts)
-        # driving LO settings
-        set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=QD_agent.quantum_device.get_element(q).clock_freqs.f01()+250e6)
-
-    return ro_elements
-
-
-
-
-
-if __name__ == '__main__':
-
-    """ Fill in """
-    execute:bool = True
-    DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {'q0':{"span_Hz":8e6}}
-    couplers = []
-
-    """ Optional paras """
-    freq_pts:int = 100
-    avg_n:int = 300
-
-
-    """ Preparation """
-    keep = False
-    QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-    QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
-    Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-    ro_elements = rofCali_waiter(QD_agent,ro_elements,freq_pts)
-    for qubit in ro_elements["rof_samples"]:
-        init_system_atte(QD_agent.quantum_device,list([qubit]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(qubit,'xy'))
-    
-
-
-    """ Running """
-    nc_path = rofCali_executor(QD_agent,cluster,meas_ctrl,Fctrl,ro_elements,execution=execute,n_avg=avg_n)
-    slightly_print(f"data saved located:\n{nc_path}")
-    if execute:
-        ds = rofcali_dataReducer(nc_path)
-        qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
-        optimal_rof = {}
-        for var in qubit:
-            ANA = Multiplex_analyzer("c1")
-            ANA._import_data(ds,var_dimension=1)
-            ANA._start_analysis(var_name = var)
-            fit_pic_folder = Data_manager().get_today_picFolder()
-            ANA._export_result(fit_pic_folder)
-            optimal_rof[var] = ANA.fit_packs[var]["optimal_rof"]
-        
-        permission = mark_input(f"Update the optimal ROF for {qubit}?[y/n] or a qubit name to update... ")
-        match permission.lower()[0]:
-            case 'y':
-                for qubit in ro_elements["rof_samples"]:
-                    QD_agent.quantum_device.get_element(qubit).clock_freqs.readout(optimal_rof[qubit])
-                keep = True
-            case 'q':
-                QD_agent.quantum_device.get_element(permission.lower()).clock_freqs.readout(optimal_rof[permission.lower()])
-                keep = True
-            case _:
-                warning_print("QD updates got denied !")
-
-
-    """ Storing """ 
-    if execute:
-        if keep:
-            QD_agent.QD_keeper()
-
-
-    """ Close """    
-    shut_down(cluster,Fctrl)
-    

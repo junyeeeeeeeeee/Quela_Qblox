@@ -5,7 +5,7 @@ from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from numpy import array, NaN, arange, moveaxis
+from numpy import array, arange, moveaxis
 from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
 from qblox_drive_AS.support.Pulse_schedule_library import multi_ROL_Cali_sche, pulse_preview
 

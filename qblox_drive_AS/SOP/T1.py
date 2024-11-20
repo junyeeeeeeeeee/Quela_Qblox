@@ -1,19 +1,15 @@
 import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from qblox_instruments import Cluster
 from xarray import Dataset
-from numpy import mean, array, arange, std
-from utils.tutorial_utils import show_args
+from numpy import array, arange
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
-from qblox_drive_AS.support import QDmanager, Data_manager, multiples_of_x, cds
+from qblox_drive_AS.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
-from qblox_drive_AS.support.Pulse_schedule_library import multi_T1_sche, set_LO_frequency, pulse_preview, IQ_data_dis, dataset_to_array, T1_fit_analysis, Fit_analysis_plot
-from qblox_drive_AS.analysis.raw_data_demolisher import T1_dataReducer
-from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
+from qblox_drive_AS.support import compose_para_for_multiplexing
+from qblox_drive_AS.support.Pulse_schedule_library import multi_T1_sche, pulse_preview
+
 
 def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict,repeat:int=1,n_avg:int=300,run:bool=True):
     sche_func= multi_T1_sche
@@ -77,123 +73,3 @@ def T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict,repeat:
     return T1_ds
 
 
-def T1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,run:bool=True,repeat:int=1,specific_folder:str='',ith:int=0,avg_times:int=500):
-    if run:
-        slightly_print(f"The {ith}-th T1:")
-        for q in ro_elements["time_samples"]:
-            Fctrl[q](float(QD_agent.Fluxmanager.get_proper_zbiasFor(q)))
-        
-        nc_path = T1(QD_agent,meas_ctrl,ro_elements,repeat,run=True,exp_idx=ith,data_folder=specific_folder,n_avg=avg_times)
-        reset_offset(Fctrl)
-        cluster.reset()
-
-    else:
-        nc_path = T1(QD_agent,meas_ctrl,ro_elements,repeat=1,run=False,exp_idx=ith,data_folder=specific_folder,n_avg=avg_times)
-        
-
-    return nc_path
-
-def T1_waiter(QD_agent:QDmanager,ro_element:dict,time_pts:int=100)->dict:
-    """ `'evoT'` and `'xy_IF'` should be there in the ro_element """
-    ro_elements = {"time_samples":{}}
-    
-    for q in ro_element:
-        # LO settings
-        IF_key = [name for name in list(ro_element[q].keys()) if str(name).lower() == 'xy_if'][0] if len([name for name in list(ro_element[q].keys()) if str(name).lower() == 'xy_if'])==1 else ""      
-        IF = ro_element[q][IF_key] if IF_key != "" else 150e6
-        set_LO_frequency(QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=QD_agent.quantum_device.get_element(q).clock_freqs.f01()+IF)
-
-        # evolution time settings 
-        gap = (ro_element[q]["evoT"]*1e9 // time_pts) + ((ro_element[q]["evoT"]*1e9 // time_pts)%4)
-        ro_elements["time_samples"][q] = arange(0,ro_element[q]["evoT"],gap*1e-9)
-
-    return ro_elements
-
-
-if __name__ == "__main__":
-    
-
-    """ Fill in """
-    execution:bool = 0
-    chip_info_restore:bool = 1
-    DRandIP = {"dr":"dr2","last_ip":"10"}
-    ro_elements = {
-        "q0":{"evoT":120e-6,"xy_IF":250e6},
-        "q1":{"evoT":100e-6,"xy_IF":250e6},
-    }
-    couplers = []
-
-    """ Optional paras """
-    histo_counts:int = 1 # > 100 use while loop outside the FPGA
-    time_data_points:int = 100
-    avg_n = 500
-  
-
-    """ Iterations """
-    if histo_counts > 100: # use while loop
-        repeat = 1
-        DM = Data_manager()
-        repeat_folder_path = DM.creat_datafolder_today(f"MultiQ_T1collections_{DM.get_time_now()}")
-    
-    ith_histo = 0
-    dont_stop = True
-    while dont_stop:
-        if histo_counts <= 100 :
-            repeat = histo_counts # repeat into FPGA
-            dont_stop = False
-            repeat_folder_path = ''
-        start_time = time.time()
-
-
-        """ Preparations """
-        QD_path = find_latest_QD_pkl_for_dr(which_dr=DRandIP["dr"],ip_label=DRandIP["last_ip"])
-        QD_agent, cluster, meas_ctrl, ic, Fctrl = init_meas(QuantumDevice_path=QD_path)
-        for q in ro_elements:
-            init_system_atte(QD_agent.quantum_device,list([q]),ro_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'ro'),xy_out_att=QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-        Fctrl = coupler_zctrl(Fctrl,QD_agent.Fluxmanager.build_Cctrl_instructions(couplers,'i'))
-        chip_info = cds.Chip_file(QD_agent=QD_agent)
-        ro_elements = T1_waiter(QD_agent,ro_elements,time_data_points)
-        
-
-        """ Running """
-        nc_path = T1_executor(QD_agent,cluster,meas_ctrl,Fctrl,ro_elements,run=execution,repeat=repeat,ith=ith_histo,avg_times=avg_n,specific_folder=repeat_folder_path)
-        slightly_print(f"T1 data saved located:\n{nc_path}")
-
-        
-        """ Analysis """
-        if not dont_stop:
-            ds = T1_dataReducer(nc_path)
-            for var in ds.data_vars:
-                if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
-                    ANA = Multiplex_analyzer("m13")
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
-
-                    fit_pic_folder = Data_manager().get_today_picFolder()
-                    ANA._export_result(fit_pic_folder)
-
-                    """ Storing """
-                    if histo_counts >= 50:
-                        QD_agent.Notewriter.save_T1_for(ANA.fit_packs["median_T1"],var)
-                        QD_agent.QD_keeper()
-                        if chip_info_restore:
-                            chip_info.update_T1(qb=var, T1=f'{ANA.fit_packs["median_T1"]} +- {ANA.fit_packs["std_T1"]}')
-
-                
-        """ Close """
-        print('T1 done!')
-        every_end = time.time()
-        shut_down(cluster,Fctrl)
-        slightly_print(f"time cost: {round(every_end-start_time,1)} secs")
-        ith_histo += 1
-        
-        
-
-
-            
-       
-
-    
-        

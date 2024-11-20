@@ -103,7 +103,10 @@ def plot_powerCavity_S21(ds:Dataset, QD_agent:QDmanager=None, save_fig_folder:st
             amp:ndarray = sqrt(array(ds[q])[0]**2+array(ds[q])[1]**2)
             s21 = []
             for i in range(amp.shape[0]):
-                s21.append(list(array(amp[i])/power[i]))
+                if power[i] != 0:
+                    s21.append(list(array(amp[i])/power[i]))
+                else:
+                    s21.append(list(amp[i]))
             s21 = array(s21)
             freq = array(ds[f"{q}_freq"])[0][0]
 

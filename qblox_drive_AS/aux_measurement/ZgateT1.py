@@ -16,16 +16,16 @@ from qblox_drive_AS.SOP.FluxQubit import z_pulse_amp_OVER_const_z
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 
-def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,bias_elements:dict,n_avg:int=500,run:bool=True,exp_idx:int=0,no_pi_pulse:bool=False,data_folder:str=''):
+def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict,z_samples:ndarray,n_avg:int=500,run:bool=True,no_pi_pulse:bool=False):
     sche_func= multi_Zgate_T1_sche
     origin_pi_amp = {}
-    for q in ro_elements["time_samples"]:
+    for q in time_samples:
         qubit_info = QD_agent.quantum_device.get_element(q)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         origin_pi_amp[q] = qubit_info.rxy.amp180()
         if no_pi_pulse:
             qubit_info.rxy.amp180(0)
-        time_data_idx = arange(ro_elements["time_samples"][q].shape[0])
+        time_data_idx = arange(time_samples[q].shape[0])
     
 
     
@@ -33,17 +33,17 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,bi
     Para_free_Du.batched = True
     Z_bias = ManualParameter(name="Z", unit="V", label="Z bias")
     Z_bias.batched = False
-    Z_samples:ndarray = bias_elements["flux_samples"]
+    Z_samples:ndarray = z_samples
     
     sched_kwargs = dict(
-        freeduration=ro_elements["time_samples"],
+        freeduration=time_samples,
         Z_amp=Z_bias,
-        pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'d1'),
-        pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'d3'),
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements["time_samples"],'r2'),
+        pi_amp=compose_para_for_multiplexing(QD_agent,time_samples,'d1'),
+        pi_dura=compose_para_for_multiplexing(QD_agent,time_samples,'d3'),
+        R_amp=compose_para_for_multiplexing(QD_agent,time_samples,'r1'),
+        R_duration=compose_para_for_multiplexing(QD_agent,time_samples,'r3'),
+        R_integration=compose_para_for_multiplexing(QD_agent,time_samples,'r4'),
+        R_inte_delay=compose_para_for_multiplexing(QD_agent,time_samples,'r2'),
         )
     
     if run:
@@ -53,47 +53,50 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,bi
             schedule_kwargs=sched_kwargs,
             real_imag=True,
             batched=True,
-            num_channels=len(list(ro_elements["time_samples"].keys())),
+            num_channels=len(list(time_samples.keys())),
         )
         
         QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
         meas_ctrl.gettables(gettable)
         meas_ctrl.settables([Para_free_Du,Z_bias])
-        meas_ctrl.setpoints_grid((time_data_idx,Z_samples))
+        meas_ctrl.setpoints_grid((time_data_idx,Z_samples*z_pulse_amp_OVER_const_z))
 
 
         ds = meas_ctrl.run('Zgate_T1')
         dict_ = {}
         ref_bias = ""
-        for q_idx, q in enumerate(ro_elements["time_samples"]):   
-            i_data = array(ds[f'y{2*q_idx}']).reshape(Z_samples.shape[0],ro_elements["time_samples"][q].shape[0])
-            q_data = array(ds[f'y{2*q_idx+1}']).reshape(Z_samples.shape[0],ro_elements["time_samples"][q].shape[0])
+        for q_idx, q in enumerate(time_samples):   
+            i_data = array(ds[f'y{2*q_idx}']).reshape(Z_samples.shape[0],time_samples[q].shape[0])
+            q_data = array(ds[f'y{2*q_idx+1}']).reshape(Z_samples.shape[0],time_samples[q].shape[0])
             dict_[q] = (["mixer","z_voltage","idx"],array([i_data,q_data]))
 
-            time_values = list(ro_elements["time_samples"][q])*2*Z_samples.shape[0]
-            dict_[f"{q}_time"] = (["mixer","z_voltage","time"],array(time_values).reshape(2,Z_samples.shape[0],array(ro_elements["time_samples"][q]).shape[0]))
-            ref_bias += f"_{q}_{round(QD_agent.Fluxmanager.get_proper_zbiasFor(q),3)}"
-        
-        zT1_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"z_voltage":Z_samples/z_pulse_amp_OVER_const_z,"time":arange(time_data_idx.shape[0])})
-        zT1_ds.attrs["execution_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()) # '2024-10-25 13:02:39'
+            time_values = list(time_samples[q])*2*Z_samples.shape[0]
+            dict_[f"{q}_time"] = (["mixer","z_voltage","time"],array(time_values).reshape(2,Z_samples.shape[0],array(time_samples[q]).shape[0]))
+            
+        zT1_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"z_voltage":Z_samples,"time":arange(time_data_idx.shape[0])})
+
+        for q in time_samples:
+            zT1_ds[f"{q}_ref_bias"] = round(QD_agent.Fluxmanager.get_proper_zbiasFor(q),3)
+
+        zT1_ds.attrs["execution_time"] = Data_manager().get_time_now()
+        zT1_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         zT1_ds.attrs["ref_bias"] = ref_bias
         zT1_ds.attrs["prepare_excited"] = not no_pi_pulse
 
-        Data_manager().save_raw_data(QD_agent=QD_agent,ds=zT1_ds,label=exp_idx,qb="multiQ",exp_type='zT1',specific_dataFolder=data_folder)
-
     else:
         preview_para = {}
-        for q in ro_elements["time_samples"]:
-            preview_para[q] = ro_elements["time_samples"][q][:2]
-        sweep_para2 = array([bias_elements["flux_samples"][0],bias_elements["flux_samples"][-1]])
+        for q in time_samples:
+            preview_para[q] = time_samples[q][:2]
+        sweep_para2 = array([z_samples[0],z_samples[-1]])
         sched_kwargs['freeduration']= preview_para
         sched_kwargs['Z_amp']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
-        
+        zT1_ds = ''
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 
     for q in origin_pi_amp:
         QD_agent.quantum_device.get_element(q).rxy.amp180(origin_pi_amp[q])
     
+    return zT1_ds
 
 def zgateT1_executor(QD_agent:QDmanager,cluster:Cluster,meas_ctrl:MeasurementControl,Fctrl:dict,ro_elements:dict,bias_elements:dict,run:bool=True,specific_folder:str='',ith:int=0,pi_pulse:bool=True,n_avg:int=300):
     flux_guard_Volt = 0.4

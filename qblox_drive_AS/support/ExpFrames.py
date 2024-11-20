@@ -12,6 +12,7 @@ from abc import abstractmethod
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
 from quantify_scheduler.helpers.collections import find_port_clock_path
+from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 
 
 class ExpGovernment(ABC):
@@ -1141,7 +1142,7 @@ class SingleShot(ExpGovernment):
                     for var in ds.data_vars:
                         if nc_idx == 0: eff_T[var], thermal_pop[var] = [], []
                         ANA = Multiplex_analyzer("m14")
-                        ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                        ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                         ANA._start_analysis()
                         eff_T[var].append(ANA.fit_packs["effT_mK"])
                         thermal_pop[var].append(ANA.fit_packs["thermal_population"]*100)
@@ -1271,9 +1272,13 @@ class Ramsey(ExpGovernment):
             QD_savior.QD_keeper(new_QD_dir)
             
 
-    def WorkFlow(self):
+    def WorkFlow(self,freq_detune_Hz:float=None):
         while True:
             self.PrepareHardware()
+
+            if freq_detune_Hz is not None:
+                for q in self.target_qs:
+                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+freq_detune_Hz)
 
             self.RunMeasurement()
 
@@ -1515,9 +1520,13 @@ class CPMG(ExpGovernment):
             QD_savior.QD_keeper(new_QD_dir)
             
 
-    def WorkFlow(self):
+    def WorkFlow(self, freq_detune_Hz:float=None):
         while True:
             self.PrepareHardware()
+            
+            if freq_detune_Hz is not None:
+                for q in self.target_qs:
+                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+freq_detune_Hz)
 
             self.RunMeasurement()
 
@@ -2141,7 +2150,116 @@ class ROLcali(ExpGovernment):
 
         self.CloseMeasurement() 
 
+class ZgateEnergyRelaxation(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, time_range:dict, time_sampling_func:str, bias_range:list, prepare_excited:bool=True, bias_sample_func:str='linspace', time_pts_or_step:int|float=100,Whileloop:bool=False, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+        """ ### Args:
+            * time_range: {"q0":[time_start, time_end], ...}\n
+            * whileloop: bool, use while loop or not.\n
+            * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
+            * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step.\n
+            * bias_range:list, [z_amp_start, z_amp_end, pts/step]\n
+            * bias_sampling_func:str, `linspace`(default) or `arange`. 
+        """
+        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        if time_sampling_func in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(time_sampling_func)
+        else:
+            raise ValueError(f"Can't recognize the given sampling function name = {time_sampling_func}")
+        
+        self.time_samples = {}
+        if sampling_func in [linspace, logspace]:
+            for q in time_range:
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+        else:
+            for q in time_range:
+                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+
+        self.avg_n = avg_n
+        if bias_sample_func in ['linspace', 'arange']:
+            self.bias_samples = eval(bias_sample_func)(*bias_range)
+        else:
+            raise ValueError(f"bias sampling function must be 'linspace' or 'arange' !")
+        self.want_while = Whileloop
+        self.prepare_1 = prepare_excited
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(time_range.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.aux_measurement.ZgateT1 import Zgate_T1
+    
+        dataset = Zgate_T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.bias_samples,self.avg_n,self.execution,no_pi_pulse= not self.prepare_1)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"zgateT1_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
 
 
+    def RunAnalysis(self, new_QD_dir:str=None, time_dep_plot:bool=False):
+        """ User callable analysis function pack """
+        
+        if self.execution:
+            QD_savior = QDmanager(self.QD_path)
+            QD_savior.QD_loader()
+            if new_QD_dir is None:
+                new_QD_dir = self.QD_path
+            else:
+                new_QD_dir = os.path.join(new_QD_dir,os.path.split(self.QD_path)[-1])
 
+            nc_paths = ZgateT1_dataReducer(self.save_dir)
+            for q in nc_paths:
+                if QD_savior.rotate_angle[q][0] != 0:
+                    ref = QD_savior.rotate_angle[q]
+                else:
+                    eyeson_print(f"{q} rotation angle is 0, use contrast to analyze.")
+                    ref = QD_savior.refIQ[q]
+
+                ds = open_dataset(nc_paths[q])
+                ANA = Multiplex_analyzer("auxA")
+                ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                ANA._start_analysis(time_sort=time_dep_plot)
+                ANA._export_result(nc_paths[q])
+                ds.close()
+            
+
+    def WorkFlow(self):
+        while True:
+            self.PrepareHardware()
+
+            self.RunMeasurement()
+
+            self.CloseMeasurement()   
+            if not self.want_while:
+                break
 

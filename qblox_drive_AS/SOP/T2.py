@@ -8,7 +8,7 @@ from numpy import arange, array, arange
 from quantify_core.measurement.control import MeasurementControl
 from qblox_drive_AS.support import compose_para_for_multiplexing, QDmanager, Data_manager
 from qblox_drive_AS.support.Pulse_schedule_library import multi_ramsey_sche, pulse_preview
-import matplotlib.pyplot as plt
+
 def Ramsey(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict, spin_num:dict={},repeat:int=1,n_avg:int=1000,run:bool=True, second_phase:str='x'):
     
     sche_func= multi_ramsey_sche
