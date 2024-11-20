@@ -1639,6 +1639,12 @@ def pi_half_cali_sche(
 
     return sched
 
+def drag_coef_cali():
+    pass
+
+def StarkShift_cali():
+    pass
+
 def Qubit_amp_SS_sche(
     q:str,
     ini_state:str,
