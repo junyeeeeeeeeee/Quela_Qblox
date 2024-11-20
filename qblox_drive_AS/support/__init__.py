@@ -371,7 +371,7 @@ def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=Non
         Give 2 points, rotate them makes them lie one the x-axis and return the rotate angle in degree.\n
         If you also give the rotate angle in degree, we rotate them according to this angle.
     """
-    vector_21 = point_2 - point_1
+    vector_21 = (point_2 - point_1)
     
     if angle_degree is None:
         angle = -arctan2(vector_21[1], vector_21[0])  # Angle to align with x-axis

@@ -7,7 +7,7 @@ from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer, sort_timeLabel
 from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
-from numpy import array, linspace, arange, logspace, mean, median, std
+from numpy import array, linspace, arange, logspace, mean, median, std, sort
 from abc import abstractmethod
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
@@ -873,7 +873,7 @@ class PowerRabiOsci(ExpGovernment):
         self.pi_amp_samples = {}
         for q in pi_amp:
             self.pi_amp_samples[q] = sampling_func(*pi_amp[q],pi_amp_pts_or_step)
-
+            
         self.pi_dura = pi_dura
         self.avg_n = avg_n
         self.execution = execution
@@ -926,7 +926,7 @@ class PowerRabiOsci(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'piamp':
                     ANA = Multiplex_analyzer("m11")      
-                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]])
+                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var][0] == 0 else self.QD_agent.rotate_angle[var])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
                     conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
@@ -1028,7 +1028,7 @@ class TimeRabiOsci(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'pidura':
                     ANA = Multiplex_analyzer("m11")      
-                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var] == 0 else [self.QD_agent.rotate_angle[var]])
+                    ANA._import_data(ds,1,self.QD_agent.refIQ[var] if self.QD_agent.rotate_angle[var][0] == 0 else self.QD_agent.rotate_angle[var])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
                     conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
@@ -1124,7 +1124,7 @@ class SingleShot(ExpGovernment):
                 ds = open_dataset(self.__raw_data_location)
                 for var in ds.data_vars:
                     ANA = Multiplex_analyzer("m14")
-                    ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                    ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                     ANA._start_analysis()
                     pic_path = os.path.join(self.save_dir,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                     ANA._export_result(pic_path)
@@ -1189,7 +1189,7 @@ class Ramsey(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1253,16 +1253,14 @@ class Ramsey(ExpGovernment):
         
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("m12")
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=ref)
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                    ANA._import_data(ds,var_dimension=2,refIQ= ref)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
 
                     """ Storing """
@@ -1312,7 +1310,7 @@ class SpinEcho(ExpGovernment):
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = array(list(set([round_to_nearest_multiple_of_multipleNS(x,8) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,8) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1377,16 +1375,14 @@ class SpinEcho(ExpGovernment):
         
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("m12")
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=ref)
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
 
                     """ Storing """
@@ -1437,7 +1433,7 @@ class CPMG(ExpGovernment):
         self.spin_num = pi_num
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = array(list(set([round_to_nearest_multiple_of_multipleNS(x,int(pi_num[q])*4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,int(pi_num[q])*4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1501,16 +1497,14 @@ class CPMG(ExpGovernment):
         
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("m12")
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=ref)
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
 
                     """ Storing """
@@ -1559,7 +1553,7 @@ class EnergyRelaxation(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1622,16 +1616,14 @@ class EnergyRelaxation(ExpGovernment):
         
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("m13")
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
-                        ref = [QD_savior.refIQ[var]]
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=ref)
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                        ref = QD_savior.refIQ[var]
+                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
 
                     """ Storing """
@@ -1673,7 +1665,7 @@ class XYFcali(ExpGovernment):
         self.time_samples = {}
         self.detune = detune
         for q in target_qs:
-            self.time_samples[q] = array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in  linspace(0,evo_time,100)*1e9])))*1e-9
+            self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in  linspace(0,evo_time,100)*1e9])))*1e-9)
 
         self.avg_n = avg_n
         self.execution = execution
@@ -1727,17 +1719,15 @@ class XYFcali(ExpGovernment):
             answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    time_data = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("c2")
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
-                        ref = [QD_savior.refIQ[var]]
+                        ref = QD_savior.refIQ[var]
                     
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=ref)
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._start_analysis(var_name=var)
                     ANA._export_result(self.save_dir)
                      
                     answer[var] = self.detune-ANA.fit_packs['freq']
@@ -1941,11 +1931,11 @@ class PiAcali(ExpGovernment):
             
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'PIcoef':
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
-                        ref = [QD_savior.refIQ[var]]
+                        ref = QD_savior.refIQ[var]
                     ANA = Multiplex_analyzer("c3")
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
                     ANA._start_analysis(var_name = var)
@@ -2038,11 +2028,11 @@ class hPiAcali(ExpGovernment):
             
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'HalfPIcoef':
-                    if QD_savior.rotate_angle[var] != 0:
-                        ref = [QD_savior.rotate_angle[var]]
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
-                        ref = [QD_savior.refIQ[var]]
+                        ref = QD_savior.refIQ[var]
                     ANA = Multiplex_analyzer("c4")
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
                     ANA._start_analysis(var_name = var)
@@ -2150,3 +2140,8 @@ class ROLcali(ExpGovernment):
         self.RunMeasurement()
 
         self.CloseMeasurement() 
+
+
+
+
+

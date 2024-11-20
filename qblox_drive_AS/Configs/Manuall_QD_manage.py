@@ -69,12 +69,12 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
 
 if __name__ == "__main__":
 
-    QD_path = ""
+    QD_path = "/Users/ratiswu/Documents/GitHub/Quela_Qblox/qblox_drive_AS/QD_backup/20241118/DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
     """ Set RO amp by a coef. """
-    set_ROamp_by_coef(QD_agent, roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
+    set_ROamp_by_coef(QD_agent, roAmp_coef_dict={"q0":1.2,"q1":1.2}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
 
     """ Set Integration time """ 
     set_integration_time(QD_agent, inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 

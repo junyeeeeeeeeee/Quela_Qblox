@@ -23,7 +23,7 @@ def rolCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rol_coef_samples:dic
 
     def state_dep_sched(ini_state:str):
         sched_kwargs = dict(
-            R_amp_coef=rol_coef_samples,
+            R_amp_coefs=rol_coef_samples,
             ini_state=ini_state,
             pi_amp=compose_para_for_multiplexing(QD_agent,rol_coef_samples,'d1'),
             pi_dura=compose_para_for_multiplexing(QD_agent,rol_coef_samples,'d3'),
@@ -62,7 +62,7 @@ def rolCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rol_coef_samples:dic
             preview_para = {}
             for q in rol_coef_samples:
                 preview_para[q] = rol_coef_samples[q][:2]
-            sched_kwargs['R_amp']= preview_para
+            sched_kwargs['R_amp_coefs']= preview_para
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 
             return {}

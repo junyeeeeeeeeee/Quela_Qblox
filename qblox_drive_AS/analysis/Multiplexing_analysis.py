@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -55,7 +55,8 @@ def zgate_T1_fitting(time_array:DataArray,IQ_array:DataArray, ref_IQ:list, fit:b
     signals = []
     if len(ref_IQ) == 1:
         for bias_idx, bias_data in enumerate(I_array):
-            signals.append(rotate_data(array([bias_data,Q_array[bias_idx]]),ref_IQ[0])[0])
+            iq_data = column_stack((bias_data,Q_array[bias_idx])).T
+            signals.append(rotate_data(iq_data,ref_IQ[0])[0])
             if fit:
                 T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
     else:
@@ -144,6 +145,7 @@ class Artist():
             if element['subtitle'] != "": ax.set_title(element['subtitle'],fontsize=self.axis_subtitle_fontsize)
             if element['xlabel'] != "": ax.set_xlabel(element['xlabel'],fontsize=self.axis_label_fontsize)
             if element['ylabel'] != "": ax.set_ylabel(element['ylabel'],fontsize=self.axis_label_fontsize)
+            ax.legend()
  
     def build_up_plot_frame(self,subplots_alignment:tuple=(3,1),fig_size:tuple=None)->tuple[Figure,list]:
         fig, axs = plt.subplots(subplots_alignment[0],subplots_alignment[1],figsize=(subplots_alignment[0]*9,subplots_alignment[1]*6) if fig_size is None else fig_size)
@@ -380,7 +382,6 @@ class analysis_tools():
         self.rabi_type = self.ds.attrs["rabi_type"]
         i_data = array(self.ds[var])[0]
         q_data = array(self.ds[var])[1]
-
         if not self.ds.attrs["OS_mode"]:
             if len(self.refIQ) == 2:
                 data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
@@ -400,7 +401,6 @@ class analysis_tools():
     
         self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
         self.fit_packs.attrs["fix_variable"] = fixed
-        
 
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
@@ -442,15 +442,20 @@ class analysis_tools():
         plt.close()
 
     
-    def T2_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    def T2_ana(self,var:str,ref:list):
+        raw_data = self.ds[var]
+        time_samples = array(self.ds[f"{var}_x"])[0][0]
+        print(time_samples)
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
-        
+        self.qubit = var
+
+
         self.T2_fit = []
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                self.data_n = rotate_data(data,ref[0])[0] # I
+                iq_data = column_stack((data[0],data[1])).T
+                self.data_n = rotate_data(iq_data,ref[0])[0]
             else:
                 self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             if not self.echo:
@@ -458,21 +463,25 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
-                self.ans = T1_fit_analysis(self.data_n,array(time_samples))
-                self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
+                self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
+                self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
+                self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
         
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
-    def XYF_cali_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    def XYF_cali_ana(self,var:str,ref:list):
+        raw_data = self.ds[f'{var}']
+        time_samples =  array(self.ds[f'{var}_x'])[0][0]
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
+        self.qubit = var
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                data = rotate_data(data,ref[0])[0] # I
+                iq_data = column_stack((data[0],data[1])).T
+                data = rotate_data(iq_data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
@@ -481,25 +490,40 @@ class analysis_tools():
         
 
     def T2_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
-        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+        if not self.echo:
+            Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+        else:
+            fig, ax = plt.subplots()
+            ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
+            ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
+            if save_pic_path != "" : 
+                slightly_print(f"pic saved located:\n{save_pic_path}")
+                plt.savefig(save_pic_path)
+                plt.close()
+            else:
+                plt.show()
+
         if len(self.T2_fit) > 1:
-            Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}")
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}",pic_folder=os.path.split(save_pic_path)[0])
 
     def XYF_cali_plot(self,save_pic_path:str=None,fq_MHz:int=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_XYFcalibration_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
-    def T1_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    def T1_ana(self,var:str,ref:list):
+        raw_data = self.ds[var]
+        time_samples = array(self.ds[f"{var}_x"])[0][0]
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
+        self.qubit = var
         self.plot_item = {"time":array(time_samples)*1e6}
         self.T1_fit = []
         for idx, data in enumerate(reshaped):
             if len(ref) == 1:
-                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
+                iq_data = column_stack((data[0],data[1])).T
+                self.plot_item["data"] = rotate_data(iq_data,ref[0])[0]*1000 # I
             else:
                 self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
 
@@ -510,7 +534,7 @@ class analysis_tools():
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
@@ -521,7 +545,7 @@ class analysis_tools():
         else:
             plt.show()
         if len(self.T1_fit) > 1:
-            Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1")
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1",pic_folder=os.path.split(save_pic_path)[0])
 
     def ZgateT1_ana(self,time_sort:bool=False):
         self.time_trace_mode = time_sort
@@ -665,10 +689,11 @@ class analysis_tools():
         data = moveaxis(array(self.ds[var]),1,0)
         refined_data_folder = []
         for PiPairNum_dep_data in data:
-            if len(self.refIQ[var]) == 2:
-                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         self.fit_packs = {var:refined_data_folder}
     
@@ -697,10 +722,11 @@ class analysis_tools():
         data = moveaxis(array(self.ds[var]),1,0)
         refined_data_folder = []
         for PiPairNum_dep_data in data:
-            if len(self.refIQ[var]) == 2:
-                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         self.fit_packs = {var:refined_data_folder}
     
@@ -737,14 +763,11 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
 
 
     def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
-        self.ds = data*1000
+        self.ds = data
         self.dim = var_dimension
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
         self.transition_freq = fq_Hz
-    
-    def _import_2nddata(self, data:DataArray):
-        self.data_2nd = data
 
     def _start_analysis(self,**kwargs):
         match self.exp_name:
@@ -761,13 +784,13 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':
-                self.T2_ana(self.ds,self.data_2nd,self.refIQ)
+                self.T2_ana(kwargs["var_name"],self.refIQ)
             case 'm13':
-                self.T1_ana(self.ds,self.data_2nd,self.refIQ)
+                self.T1_ana(kwargs["var_name"],self.refIQ)
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
-                self.XYF_cali_ana(self.ds,self.data_2nd,self.refIQ)
+                self.XYF_cali_ana(kwargs["var_name"],self.refIQ)
             case 'c3':
                 self.piamp_cali_ana(kwargs["var_name"])
             case 'c4':
