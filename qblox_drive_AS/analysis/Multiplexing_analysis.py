@@ -161,7 +161,7 @@ class Artist():
         return fig, axs
     
     def add_colormesh_on_ax(self,x_data:ndarray,y_data:ndarray,z_data:ndarray,fig:Figure,ax:plt.Axes,colorbar_name:str=None)->plt.Axes:
-        im = ax.pcolormesh(x_data,y_data,transpose(z_data))
+        im = ax.pcolormesh(x_data,y_data,transpose(z_data),shading='nearest')
         fig.colorbar(im, ax=ax, label="" if colorbar_name is None else colorbar_name)
         return ax
 
