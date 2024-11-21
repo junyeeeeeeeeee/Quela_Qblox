@@ -90,7 +90,7 @@ if __name__ == "__main__":
     """ Set driving IF """
     set_drivin_IF(QD_agent, driving_IF_Hz={})   # driving_IF_Hz = {"q0":-150e6, "q1":-100e6, ...}, set None or {} to bypass  !!! Always be negative !!!
 
-    """ Set RO-LO, RO-atte (modlue global) """
+    """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
     set_roLOfreq(QD_agent, LO_Hz=None, target_q='q0') # LO is global in the same QRM-RF module, set None to bypass 
     set_roAtte(QD_agent, ro_atte=None, target_q='q0') # RO-attenuation is global in the same QRM-RF module, set None to bypass 
 
