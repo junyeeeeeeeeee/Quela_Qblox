@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -9,13 +9,14 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.analysis.raw_data_demolisher import fluxCoupler_dataReducer,Conti2tone_dataReducer, fluxQub_dataReductor, Rabi_dataReducer, OneShot_dataReducer, T2_dataReducer, T1_dataReducer, ZgateT1_dataReducer, rofcali_dataReducer, piampcali_dataReducer
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis
-from qblox_drive_AS.support.QuFluxFit import convert_netCDF_2_arrays, remove_outlier_after_fit
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
+from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
+from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
 from qcat.analysis.qubit.relaxation import qubit_relaxation_fitting
@@ -53,7 +54,8 @@ def zgate_T1_fitting(time_array:DataArray,IQ_array:DataArray, ref_IQ:list, fit:b
     signals = []
     if len(ref_IQ) == 1:
         for bias_idx, bias_data in enumerate(I_array):
-            signals.append(rotate_data(array([bias_data,Q_array[bias_idx]]),ref_IQ[0])[0])
+            iq_data = column_stack((bias_data,Q_array[bias_idx])).T
+            signals.append(rotate_data(iq_data,ref_IQ[0])[0])
             if fit:
                 T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
     else:
@@ -99,6 +101,10 @@ def anal_rof_cali(I_e:ndarray,Q_e:ndarray,I_g:ndarray,Q_g:ndarray,dis_diff:ndarr
     ax[2].legend()
     plt.show()
 
+def sort_timeLabel(files):
+    sorted_files = sorted(files, key=lambda x: datetime.strptime(x.split("_")[-1].split(".")[0], "%Y%m%d%H%M%S"))
+    return sorted_files
+
 
 
 class Artist():
@@ -116,9 +122,6 @@ class Artist():
         import warnings
         warnings.filterwarnings("ignore", message="No artists with labels found to put in legend")
         plt.legend()
-        for ax in self.axs:
-            ax:plt.Axes
-            ax.grid()
         plt.tight_layout()
         if self.pic_save_path is not None:
             slightly_print(f"pic saved located:\n{self.pic_save_path}")
@@ -141,6 +144,7 @@ class Artist():
             if element['subtitle'] != "": ax.set_title(element['subtitle'],fontsize=self.axis_subtitle_fontsize)
             if element['xlabel'] != "": ax.set_xlabel(element['xlabel'],fontsize=self.axis_label_fontsize)
             if element['ylabel'] != "": ax.set_ylabel(element['ylabel'],fontsize=self.axis_label_fontsize)
+            ax.legend()
  
     def build_up_plot_frame(self,subplots_alignment:tuple=(3,1),fig_size:tuple=None)->tuple[Figure,list]:
         fig, axs = plt.subplots(subplots_alignment[0],subplots_alignment[1],figsize=(subplots_alignment[0]*9,subplots_alignment[1]*6) if fig_size is None else fig_size)
@@ -149,6 +153,7 @@ class Artist():
             axs = [axs]
         for ax in axs:
             ax:plt.Axes
+            ax.grid()
             ax.xaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.yaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.xaxis.label.set_size(self.axis_label_fontsize) 
@@ -198,7 +203,6 @@ class analysis_tools():
         self.bias = array(self.ds.coords["bias"])
         self.refIQ = refIQ
         
-
     def fluxCoupler_plot(self, save_pic_path:str=None):
         I_data = array(self.ds.data_vars[self.qubit])[0]
         Q_data = array(self.ds.data_vars[self.qubit])[1]
@@ -215,16 +219,66 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def conti2tone_ana(self, fit_func:callable=None, refIQ:list=[]):
-        
-        dataset_processed = dh.to_gridded_dataset(self.ds)
-        self.target_q = self.ds.attrs['target_q']
-        self.xyf = array(dataset_processed['x0'])
-        self.xyl = array(dataset_processed['x1'])
-        ii = array(self.ds["y0"])
-        qq = array(self.ds["y1"])
+    def fluxCavity_ana(self, var_name:str):
+        self.qubit = var_name
+        self.freqs = array(self.ds.data_vars[f"{var_name}_freq"])[0][0]
+        self.bias = array(self.ds.coords["bias"])
 
-        self.contrast = sqrt((ii-refIQ[0])**2+(qq-refIQ[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
+        S21 = array(self.ds.data_vars[self.qubit])[0] + 1j * array(self.ds.data_vars[self.qubit])[1]
+        self.mags:ndarray = abs(S21)
+        freq_fit = []
+        fit_err = []
+        for idx, _ in enumerate(S21):
+            res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
+            result, _, _ = res_er.fit()
+            freq_fit.append(result['fr'])
+            fit_err.append(result['fr_err'])
+
+        _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
+        collected_freq = []
+        collected_flux = []
+        for i in indexs:
+            collected_freq.append(freq_fit[i])
+            collected_flux.append(list(self.bias)[i])
+        self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
+        paras = array(self.fit_results.attrs['coefs'])
+
+        from scipy.optimize import minimize
+        from qblox_drive_AS.support.Pulse_schedule_library import Cosine_func
+        def cosine(x):
+            return -Cosine_func(x,*paras)
+
+        sweet_spot = minimize(cosine,x0=0,bounds=[(min(self.bias),max(self.bias))])
+
+
+        sweet_flux = float(sweet_spot.x[0])
+        sweet_freq = -sweet_spot.fun
+
+        self.fit_packs = {"A":paras[0],"f":paras[1],"phi":paras[2],"offset":paras[3],"sweet_freq":sweet_freq,"sweet_flux":sweet_flux}
+
+    def fluxCavity_plot(self,save_pic_folder):
+        fit_x = self.fit_results.coords['para_fit']
+        fit_y = self.fit_results.data_vars['fitting']
+        Plotter = Artist(pic_title=f"FluxCavity-{self.qubit}")
+        fig, axs = Plotter.build_up_plot_frame([1,1])
+        ax = Plotter.add_colormesh_on_ax(self.bias,self.freqs,self.mags,fig,axs[0])
+        ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
+        ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
+        Plotter.pic_save_path = os.path.join(save_pic_folder,f"FluxCavity_{self.qubit}.png")
+        Plotter.export_results()
+
+    def conti2tone_ana(self, var, fit_func:callable=None, ref:list=[]):
+        self.target_q = var
+        self.xyf = array(self.ds[f"{self.target_q}_freq"])[0][0]
+        self.xyl = array(self.ds.coords["xy_amp"])
+        ii = array(self.ds[self.target_q])[0]
+        qq = array(self.ds[self.target_q])[1]
+        if len(ref) == 2:
+            self.contrast = sqrt((ii-ref[0])**2+(qq-ref[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
+        else:
+            self.contrast = rotate_data(array([ii,qq]),ref[0])[0]
         self.fit_f01s = []
         self.fif_amps = []
         if fit_func is not None and self.xyl.shape[0] != 1:
@@ -238,41 +292,39 @@ class analysis_tools():
             self.fit_packs[self.target_q] = {"xyf_data":self.xyf,"contrast":self.contrast[0]}
     
     def conti2tone_plot(self, save_pic_path:str=None):
+        Plotter = Artist(pic_title=f"2Tone-{self.target_q}")
+        fig, axs = Plotter.build_up_plot_frame([1,1])
+
         if self.xyl.shape[0] != 1:
-            plt.pcolormesh(self.xyf,self.xyl,self.contrast)
+            ax = Plotter.add_colormesh_on_ax(self.xyf,self.xyl,self.contrast,axs[0])
             if len(self.fit_f01s) != 0 :
-                plt.scatter(self.fit_f01s,self.fif_amps,marker="*",c='red')
-            plt.title(f"{self.target_q} power-dep 2tone")
-            plt.ylabel("XY power (V)")
-            
+                ax = Plotter.add_scatter_on_ax(self.fit_f01s,self.fif_amps,ax,marker="*",c='red')
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} XYF (Hz)","ylabel":"XY Power (V)"}])
         else:
-            plt.plot(self.xyf,self.contrast[0])
-            plt.ylabel("Contrast")
-            plt.title(f"{self.target_q} 2tone with XY power {self.xyl[0]} V")
-        plt.xlabel("XY frequency (Hz)")
-        plt.grid()
+            res = QS_fit_analysis(self.fit_packs[self.target_q]["contrast"],f=self.fit_packs[self.target_q]["xyf_data"])
+            ax = Plotter.add_verline_on_ax(x=res.attrs['f01_fit']*1e-9, y_data=res.data_vars['data'].to_numpy()*1000, ax=axs[0], color='green',linestyle='dashed', alpha=0.8,lw=1)
+            ax = Plotter.add_plot_on_ax(res.coords['f']*1e-9,res.data_vars['data']*1000,ax,linestyle='-', color="red", alpha=0.75, ms=4)
+            Plotter.includes_axes([ax])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"XYF (GHz)","ylabel":"Contrast (mV)"}])
+        
+    
+        Plotter.pic_save_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
+        Plotter.export_results()
 
-        if save_pic_path is None:
-            plt.show()
-        else:
-            pic_path = os.path.join(save_pic_path,f"{self.target_q}_Conti2tone_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png")
-            slightly_print(f"pic saved located:\n{pic_path}")
-            plt.savefig(pic_path)
-            plt.close()
-
-
-        plt.show()
-
-    def fluxQb_ana(self, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
-        self.qubit = self.ds.attrs['target_q']
+    def fluxQb_ana(self, var, fit_func:callable=None, refIQ:list=[], filter_outlier:bool=True):
+        self.qubit = var
         self.filtered_z, self.filtered_f = [], []
-        if self.qubit in self.ds.attrs["ref_z"].split("_"):
-            self.ref_z = float(self.ds.attrs["ref_z"].split("_")[int(self.ds.attrs["ref_z"].split("_").index(self.qubit))+1])
-        else:
-            self.ref_z = 0
+        self.ref_z = float(self.ds.attrs[f"{self.qubit}_z_ref"])
+        self.f = array(self.ds[f"{self.qubit}_freq"])[0][0]
+        self.z = array(self.ds.coords["bias"])
+        IQarray = array(self.ds[f"{self.qubit}"])
 
-        self.f,self.z,i,q = convert_netCDF_2_arrays(self.ds)
-        self.contrast = array(sqrt((i-refIQ[0])**2+(q-refIQ[1])**2))
+
+        if len(refIQ) == 2:
+            self.contrast = array(sqrt((IQarray[0]-refIQ[0])**2+(IQarray[1]-refIQ[1])**2))
+        else:
+            self.contrast = rotate_data(IQarray,refIQ[0])[0]
         if fit_func is not None:
             # try:
             self.fit_z = []
@@ -321,29 +373,33 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self):
-        self.qubit = self.ds.attrs["target_q"]
-        x_data = array(self.ds['x0'])
-        title = self.ds['x0'].attrs["long_name"]
-
-        i_data = array(self.ds['y0'])
-        q_data = array(self.ds['y1'])
-
+    def rabi_ana(self,var:str):
+        self.qubit = var
+        self.rabi_type = self.ds.attrs["rabi_type"]
+        i_data = array(self.ds[var])[0]
+        q_data = array(self.ds[var])[1]
         if not self.ds.attrs["OS_mode"]:
-            if len(self.refIQ[self.qubit]) == 2:
-                data_to_fit = sqrt((i_data-self.refIQ[self.qubit][0])**2+(q_data-self.refIQ[self.qubit][1])**2)
+            if len(self.refIQ) == 2:
+                data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
             else:
                 iq_data = column_stack((i_data,q_data)).T
-                data_to_fit = rotate_data(iq_data,float(self.refIQ[self.qubit][0]))[0]
+                data_to_fit = rotate_data(iq_data,float(self.refIQ[0]))[0]
         else:
             # wait GMM
             pass
 
-        self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,title)
-        
+        if self.rabi_type.lower() == 'powerrabi':
+            x_data = array(self.ds[f"{var}_piamp"])[0]
+            fixed = self.ds.attrs[f'{var}_pidura']
+        else:
+            x_data = array(self.ds[f"{var}_pidura"])[0]
+            fixed = self.ds.attrs[f'{var}_piamp']
+    
+        self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
+        self.fit_packs.attrs["fix_variable"] = fixed
 
     def rabi_plot(self, save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_Rabi_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
 
@@ -381,65 +437,87 @@ class analysis_tools():
         plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
         plt.close()
 
-    
-    def T2_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    def T2_ana(self,var:str,ref:list):
+        raw_data = self.ds[var]
+        time_samples = array(self.ds[f"{var}_x"])[0][0]
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
-        
+        self.qubit = var
+
+
         self.T2_fit = []
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                self.data_n = rotate_data(data,ref[0])[0] # I
+                iq_data = column_stack((data[0],data[1])).T
+                self.data_n = rotate_data(iq_data,ref[0])[0]
             else:
                 self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
+            self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
             if not self.echo:
-                self.ans = T2_fit_analysis(self.data_n,array(time_samples))
+                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1e6)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
-                self.ans = T1_fit_analysis(self.data_n,array(time_samples))
-                self.T2_fit.append(self.ans.attrs["T1_fit"]*1e6)
+                self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
+                self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
         
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
-    def XYF_cali_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    
+    def XYF_cali_ana(self,var:str,ref:list):
+        raw_data = self.ds[f'{var}']
+        time_samples =  array(self.ds[f'{var}_x'])[0][0]
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
+        self.qubit = var
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                data = rotate_data(data,ref[0])[0] # I
+                iq_data = column_stack((data[0],data[1])).T
+                data = rotate_data(iq_data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
             self.ans = cos_fit_analysis(data,array(time_samples))
             self.fit_packs["freq"] = self.ans.attrs['f']
         
-
     def T2_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
-        Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+        if not self.echo:
+            Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+        else:
+            fig, ax = plt.subplots()
+            ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
+            ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
+            if save_pic_path != "" : 
+                slightly_print(f"pic saved located:\n{save_pic_path}")
+                plt.savefig(save_pic_path)
+                plt.close()
+            else:
+                plt.show()
+
         if len(self.T2_fit) > 1:
-            Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}")
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}",pic_folder=os.path.split(save_pic_path)[0])
 
     def XYF_cali_plot(self,save_pic_path:str=None,fq_MHz:int=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_XYFcalibration_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
-    def T1_ana(self,raw_data:DataArray,time_samples:DataArray,ref:list):
+    def T1_ana(self,var:str,ref:list):
+        raw_data = self.ds[var]
+        time_samples = array(self.ds[f"{var}_x"])[0][0]
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
-        self.qubit = raw_data.name
+        self.qubit = var
         self.plot_item = {"time":array(time_samples)*1e6}
         self.T1_fit = []
         for idx, data in enumerate(reshaped):
             if len(ref) == 1:
-                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
+                iq_data = column_stack((data[0],data[1])).T
+                self.plot_item["data"] = rotate_data(iq_data,ref[0])[0]*1000 # I
             else:
                 self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
 
@@ -450,7 +528,7 @@ class analysis_tools():
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['end_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
@@ -461,7 +539,7 @@ class analysis_tools():
         else:
             plt.show()
         if len(self.T1_fit) > 1:
-            Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1")
+            Data_manager().save_histo_pic(None,{str(self.qubit):self.T1_fit},self.qubit,mode="t1",pic_folder=os.path.split(save_pic_path)[0])
 
     def ZgateT1_ana(self,time_sort:bool=False):
         self.time_trace_mode = time_sort
@@ -530,7 +608,7 @@ class analysis_tools():
         Plotter.export_results()
     
     def ROF_cali_ana(self,var:str):
-        self.fit_packs = {}
+        self.qubit = var
         IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
         self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
         self.I_g, self.I_e = IQ_data[0][0], IQ_data[1][0]
@@ -541,9 +619,9 @@ class analysis_tools():
         self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
 
     def ROF_cali_plot(self,save_pic_folder:str=None):
-        q = list(self.fit_packs.keys())[0]
-        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{q}_ROF_cali_{self.ds.attrs['execution_time']}.png")
-        Plotter = Artist(pic_title=f"{q}_ROF_calibration",save_pic_path=save_pic_folder)
+        
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_ROF_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_ROF_calibration",save_pic_path=save_pic_folder)
         fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
         ax0:plt.Axes = axs[0]
         Plotter.add_plot_on_ax(self.rof,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|0>")
@@ -553,14 +631,42 @@ class analysis_tools():
         Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|1>")
         ax2:plt.Axes = axs[2]
         Plotter.add_plot_on_ax(self.rof,self.dis_diff,ax2,label='diff')
-        Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
-        Plotter.add_verline_on_ax(mean(self.rof),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
+        Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         
         Plotter.includes_axes([ax0,ax1,ax2])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Magnitude (V)"},
                 {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Phase (π)"},
                 {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Diff (V)"}]
+        )
+        Plotter.export_results()
+
+    def ROL_cali_ana(self,var:str):
+        self.qubit = var
+        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
+        self.rol = moveaxis(array(self.ds[f"{var}_rol"]),0,1)[0][0]
+        self.I_g, self.I_e = IQ_data[0][0], IQ_data[1][0]
+        self.Q_g, self.Q_e = IQ_data[0][1], IQ_data[1][1]
+        I_diff = self.I_e-self.I_g
+        Q_diff = self.Q_e-self.Q_g
+        self.dis_diff = sqrt((I_diff)**2+(Q_diff)**2)
+
+    def ROL_cali_plot(self,save_pic_folder:str=None):
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_ROL_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_ROL_calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((2,1),fig_size=(12,9))
+        ax0:plt.Axes = axs[0]
+        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_e**2+self.Q_e**2)-sqrt(self.I_g**2+self.Q_g**2),ax0,label="|1>-|0>")
+        ax1:plt.Axes = axs[1]
+        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi-arctan2(self.Q_g,self.I_g)/pi,ax1,label="|1>-|0>")
+        # Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rol"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
+        # Plotter.add_verline_on_ax(mean(self.rol),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        
+        Plotter.includes_axes([ax0,ax1])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Magnitude (V)"},
+                {'subtitle':"", 'xlabel':"ROL-coef", 'ylabel':"Phase (π)"},]
         )
         Plotter.export_results()
 
@@ -571,10 +677,11 @@ class analysis_tools():
         data = moveaxis(array(self.ds[var]),1,0)
         refined_data_folder = []
         for PiPairNum_dep_data in data:
-            if len(self.refIQ[var]) == 2:
-                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         self.fit_packs = {var:refined_data_folder}
     
@@ -603,10 +710,11 @@ class analysis_tools():
         data = moveaxis(array(self.ds[var]),1,0)
         refined_data_folder = []
         for PiPairNum_dep_data in data:
-            if len(self.refIQ[var]) == 2:
-                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[var][0],self.refIQ[var][1])
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[var][0])[0]
+                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         self.fit_packs = {var:refined_data_folder}
     
@@ -639,6 +747,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         QCATAna.__init__(self)
         analysis_tools.__init__(self)
         self.exp_name = analyze_for_what_exp.lower()
+        self.fit_packs = {}
 
 
     def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
@@ -647,34 +756,35 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
         self.transition_freq = fq_Hz
-    
-    def _import_2nddata(self, data:DataArray):
-        self.data_2nd = data
 
     def _start_analysis(self,**kwargs):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_ana(kwargs["var_name"],self.refIQ)
+            case 'm6':
+                self.fluxCavity_ana(kwargs["var_name"])
             case 'm8': 
-                self.conti2tone_ana(self.fit_func,self.refIQ)
+                self.conti2tone_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm9': 
-                self.fluxQb_ana(self.fit_func,self.refIQ)
+                self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana()
+                self.rabi_ana(kwargs["var_name"])
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':
-                self.T2_ana(self.ds,self.data_2nd,self.refIQ)
+                self.T2_ana(kwargs["var_name"],self.refIQ)
             case 'm13':
-                self.T1_ana(self.ds,self.data_2nd,self.refIQ)
+                self.T1_ana(kwargs["var_name"],self.refIQ)
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
-                self.XYF_cali_ana(self.ds,self.data_2nd,self.refIQ)
+                self.XYF_cali_ana(kwargs["var_name"],self.refIQ)
             case 'c3':
                 self.piamp_cali_ana(kwargs["var_name"])
             case 'c4':
                 self.halfpiamp_cali_ana(kwargs["var_name"])
+            case 'c5':
+                self.ROL_cali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
             case _:
@@ -684,6 +794,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_plot(pic_save_folder)
+            case 'm6':
+                self.fluxCavity_plot(pic_save_folder)
             case 'm8':
                 self.conti2tone_plot(pic_save_folder)
             case 'm9':
@@ -704,175 +816,11 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.piamp_cali_plot(pic_save_folder)
             case 'c4':
                 self.halfpiamp_cali_plot(pic_save_folder)
+            case 'c5':
+                self.ROL_cali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
 
 
 
-if __name__ == "__main__":
 
-    """ Flux coupler """
-    # m55_file = "Modularize/Meas_raw/20241104/DR2multiQ_FluxCavity_H12M37S17.nc"
-    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = fluxCoupler_dataReducer(m55_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'freq':
-    #         ANA = Multiplex_analyzer("m5")
-
-
-    """ Continuous wave 2 tone """
-    # m88_file = "Modularize/Meas_raw/20241026/DR2multiQ_2tone_H13M01S43.nc"
-    # QD_file = "Modularize/QD_backup/20241026/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = Conti2tone_dataReducer(m88_file)  
-    # ANA = Multiplex_analyzer("m8")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-
-    """ Flux Qubit Spectroscopy """
-    # m99_file = "Modularize/Meas_raw/20241027/DR2multiQ_Flux2tone_H18M50S29.nc"
-    # QD_file = "Modularize/QD_backup/20241027/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = fluxQub_dataReductor(m99_file)  
-    # ANA = Multiplex_analyzer("m9")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-    """ Rabi Oscillation """
-    # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H15M46S09.nc" # power rabi
-    # # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
-    # QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = Rabi_dataReducer(m1111_file)  
-    # ANA = Multiplex_analyzer("m11")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],1,QD_agent.refIQ[q])
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-    """ Single shot """
-    # m1414_file = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52/DR2multiQ_SingleShot(26)_H17M03S47.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = OneShot_dataReducer(m1414_file)
-    # print(ds.attrs)
-    # for var in ds.data_vars:
-    #     ANA = Multiplex_analyzer("m14")
-    #     ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
-    #     ANA._start_analysis()
-    #     pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
-    #     ANA._export_result(pic_path)
-
-    """ T2 """
-    # m1212_file = "Modularize/Meas_raw/20241030/DR2multiQ_T2(0)_H16M55S45.nc"
-    # QD_file = "Modularize/QD_backup/20241030/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = T2_dataReducer(m1212_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'x':
-    #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m12")
-    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-    #         ANA._import_2nddata(time_data)
-    #         ANA._start_analysis()
-
-    #         fit_pic_folder = Data_manager().get_today_picFolder()
-    #         ANA._export_result(fit_pic_folder)
-
-    """ T1 """
-    # m1313_file = "Modularize/Meas_raw/20241102/DR2multiQ_T1(0)_H20M15S39.nc"
-    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = T1_dataReducer(m1313_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'x':
-    #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m13")
-    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-    #         ANA._import_2nddata(time_data)
-    #         ANA._start_analysis()
-
-    #         fit_pic_folder = Data_manager().get_today_picFolder()
-    #         ANA._export_result(fit_pic_folder)
-
-
-    """ Zgate T1 """
-    # zgate_T1_folder = "Modularize/Meas_raw/20241105/ZgateT1_MultiQ_H14M00S46"
-    # QD_file = "Modularize/QD_backup/20241105/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # nc_paths = ZgateT1_dataReducer(zgate_T1_folder)
-    # for q in nc_paths:
-    #     ds = open_dataset(nc_paths[q])
-    #     ANA = Multiplex_analyzer("auxA")
-    #     ANA._import_data(ds,var_dimension=2,refIQ=QD_agent.refIQ[q])
-    #     ANA._start_analysis(time_sort=True)
-    #     ANA._export_result(nc_paths[q])
-
-    """ ROF calibration """
-    # rof_cali_file = "Modularize/Meas_raw/20241106/DR2multiQ_RofCali(0)_H16M28S22.nc"
-    # QD_file = "Modularize/QD_backup/20241106/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = rofcali_dataReducer(rof_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c1")
-    #     ANA._import_data(ds,var_dimension=1)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-
-    """ PI-amp calibration """
-    # piamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_XYLCali(0)_H13M08S43.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = piampcali_dataReducer(piamp_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "PIcoef"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c3")
-    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-    #     fit_packs = ANA.fit_packs
-
-    """ half PI-amp calibration """
-    # halfpiamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H13M46S39.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = piampcali_dataReducer(halfpiamp_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "HalfPIcoef"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c4")
-    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = None #Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-    #     fit_packs = ANA.fit_packs

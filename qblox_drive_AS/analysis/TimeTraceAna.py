@@ -1,7 +1,7 @@
 import os, sys, json 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from xarray import open_dataset
-from qblox_drive_AS.support.QDmanager import QDmanager,Data_manager
+from qblox_drive_AS.support.QDmanager import QDmanager
 import matplotlib.pyplot as plt
 from numpy import ndarray, array, median, std, mean
 from datetime import datetime 
@@ -78,7 +78,7 @@ def colormap(x:ndarray, y:ndarray, z:ndarray, fit_values:ndarray, ax:plt.Axes=No
     ax.axhline(median(fit_values)-std(fit_values),linestyle='--',c='orange')
     ax.set_xlabel('Time past (min)',fontsize=20)
     ax.set_ylabel("Free evolution time (us)",fontsize=20)
-    plt.colorbar(c, ax=ax, label='Contrast (V)')
+    plt.colorbar(c, ax=ax, label='I channel (mV)')
     plt.title(os.path.split(fig_path)[-1].split(".")[0])
     plt.tight_layout()
     if fig_path is not None:
@@ -130,9 +130,9 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
 
 
 if __name__ == "__main__":
-    folder_paths = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52"
-    QD_file_path = 'Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl'
-    save_every_fit_pic:bool=False
+    folder_paths = "qblox_drive_AS/Meas_raw/20241121/H10M50S46"
+    QD_file_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
+    save_every_fit_pic:bool=True
     QD_agent = QDmanager(QD_file_path)
     QD_agent.QD_loader()
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     T1_evo_time, T2_evo_time = {}, {}
     for idx, file in enumerate(files) :
         slightly_print(f"Analysis for the {idx}-th files ...")
-        exp_type:str = file.split("_")[1].split("(")[0]
+        exp_type:str = file.split("_")[0]
         path = os.path.join(folder_paths,file)
         ds = open_dataset(path)
         match exp_type.lower():
@@ -157,38 +157,19 @@ if __name__ == "__main__":
                         if save_every_fit_pic:
                             if not os.path.exists(T1_picsave_folder):
                                 os.mkdir(T1_picsave_folder)
-                    time_data = array(ds[f"{var}_x"])[0][0]
-                    T1_evo_time[var] = time_data
-                    ds[var].attrs['end_time'] = ds.attrs["end_time"]
+                    T1_evo_time[var] = array(ds[f"{var}_x"])[0][0]
                     ANA = Multiplex_analyzer("m13")
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
+                    if QD_agent.rotate_angle[var][0] != 0:
+                        ref = QD_agent.rotate_angle[var]
+                    else:
+                        eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
+                        ref = QD_agent.refIQ[var]
+                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._start_analysis(var_name=var)
                     if save_every_fit_pic:
                         ANA._export_result(T1_picsave_folder)
                     T1_raw[var][ds.attrs["end_time"]] = ANA.plot_item["data"]
                     T1_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T1"]
-            case "t2":
-                T2 += 1
-                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
-                    T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
-                    if T2 == 1:
-                        T2_rec[var], detu_rec[var], T2_raw[var] = {}, {}, {}
-                        if save_every_fit_pic:
-                            if not os.path.exists(T2_picsave_folder):
-                                os.mkdir(T2_picsave_folder)
-                    time_data = array(ds[f"{var}_x"])[0][0]
-                    T2_evo_time[var] = time_data
-                    ds[var].attrs['end_time'] = ds.attrs["end_time"]
-                    ANA = Multiplex_analyzer("m12")
-                    ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-                    ANA._import_2nddata(time_data)
-                    ANA._start_analysis()
-                    if save_every_fit_pic:
-                        ANA._export_result(T2_picsave_folder)
-                    T2_raw[var][ds.attrs["end_time"]] = ANA.data_n
-                    detu_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["freq"]*1e-6
-                    T2_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T2"]
             case "singleshot":
                 SS += 1
                 for var in ds.data_vars:
@@ -205,6 +186,33 @@ if __name__ == "__main__":
                         pic_path = os.path.join(SS_picsave_folder,f"{var}_SingleShot_{ds.attrs['end_time'].replace(' ', '_')}")
                         ANA._export_result(pic_path)
                     SS_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["effT_mK"]
+            case _:
+                T2 += 1
+                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                    # create raw data fitting folder
+                    T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
+                    if T2 == 1:
+                        T2_rec[var], detu_rec[var], T2_raw[var] = {}, {}, {}
+                        if save_every_fit_pic:
+                            if not os.path.exists(T2_picsave_folder):
+                                os.mkdir(T2_picsave_folder)
+                    # start analysis 
+                    T2_evo_time[var] = array(ds[f"{var}_x"])[0][0]
+                    ANA = Multiplex_analyzer("m12")
+                    if QD_agent.rotate_angle[var][0] != 0:
+                        ref = QD_agent.rotate_angle[var]
+                    else:
+                        eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
+                        ref = QD_agent.refIQ[var]
+                    ANA._import_data(ds,var_dimension=2,refIQ= ref)
+                    ANA._start_analysis(var_name=var)
+                    if save_every_fit_pic:
+                        ANA._export_result(T2_picsave_folder)
+                    # keep values
+                    T2_raw[var][ds.attrs["end_time"]] = ANA.plot_item["data"]
+                    detu_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["freq"]*1e-6
+                    T2_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T2"]
+            
 
     slightly_print(f"\nPlotting... ")
     if T1 != 0:

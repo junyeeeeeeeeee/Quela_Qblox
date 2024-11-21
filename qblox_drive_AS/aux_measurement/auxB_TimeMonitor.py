@@ -1,9 +1,9 @@
 import os, sys, time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from numpy import arange
-from qblox_drive_AS.SOP.m13_T1  import T1_executor
-from qblox_drive_AS.SOP.m12_T2  import ramsey_executor, modify_time_point
-from qblox_drive_AS.SOP.m14_SingleShot import SS_executor
+from qblox_drive_AS.SOP.T1  import T1_executor
+from qblox_drive_AS.SOP.T2  import ramsey_executor, modify_time_point
+from qblox_drive_AS.SOP.SingleShot import SS_executor
 from qblox_drive_AS.support import init_meas, shut_down, init_system_atte, coupler_zctrl
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager

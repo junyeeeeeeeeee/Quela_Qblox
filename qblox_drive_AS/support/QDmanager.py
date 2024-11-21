@@ -22,7 +22,51 @@ def ret_c(dict_a):
             x.append(i)
     return x
 
+def find_path_by_port(hardware_config, port):
+    """ By a port name, return a dict = {elements:[paths]} who use that port """
+    answers = {}
+    def recursive_find(hardware_config, port,  path) -> list | None:
+        
+        for k, v in hardware_config.items():
+            # If key is port, we are done
+            if k == "port":
+                
+                if (
+                    port in hardware_config["port"]
+                ):
+                    answers[hardware_config["clock"].split(".")[0]] = path[1:3]
+
+            # If value is list, append key to path and loop trough its elements.
+            elif isinstance(v, list):
+                path.append(k)  # Add list key to path.
+                for i, sub_config in enumerate(v):
+                    path.append(i)  # Add list element index to path.
+                    if isinstance(sub_config, dict):
+                        found_path = recursive_find(sub_config, port, path)
+                        if found_path:
+                            return found_path
+                    path.pop()  # Remove list index if port-clock not found in element.
+                path.pop()  # Remove list key if port-clock not found in list.
+
+            # If dict append its key. If port is not found delete it
+            elif isinstance(v, dict):
+                path.append(k)
+                found_path = recursive_find(v, port, path)
+                if found_path:
+                    return found_path
+                path.pop()  # Remove dict key if port-clock not found in this dict.
+        
+
+    _ = recursive_find(hardware_config, port,path=[])
+    if len(list(answers.keys())) == 0 :
+        raise KeyError(
+            f"The combination of {port=} could not be found in {hardware_config=}."
+        )
+    else:
+        return answers
+
 def find_path_by_clock(hardware_config, port, clock):
+    """ By port and clock name, return a dict = {elements:[paths]} who use that port and the same clock """
     answers = {}
     def recursive_find(hardware_config, port, clock, path) -> list | None:
         
@@ -69,6 +113,7 @@ class QDmanager():
         self.path = QD_path
         self.machine_IP = ""
         self.refIQ = {}
+        self.rotate_angle = {}
         self.Hcfg = {}
         self.Fctrl_str_ver = {}
         self.Log = "" 
@@ -118,6 +163,14 @@ class QDmanager():
         """
         for q in ref_dict:
             self.refIQ[q] = ref_dict[q]
+
+    def memo_rotate_angle(self,angle_dict:dict):
+       """
+        Memorize the rotating angle according to the given angle_dict, which the key named in "q0"..., and the value is the angle in degree.\n
+        Ex. angle_dict={"q0":75.3, ...} 
+        """ 
+       for q in angle_dict:
+           self.rotate_angle[q] = angle_dict[q]
     
     def refresh_log(self,message:str):
         """
@@ -156,6 +209,7 @@ class QDmanager():
             self.Hcfg = gift["Hcfg"]
         
         self.refIQ:dict = gift["refIQ"]
+        self.rotate_angle = gift["rota_angle"]
         
         self.quantum_device.hardware_config(self.Hcfg)
         print("Old friends loaded!")
@@ -165,13 +219,14 @@ class QDmanager():
         Save the merged dictionary to a json file with the given path. \n
         Ex. merged_file = {"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Hcfg":Hcfg,"refIQ":self.refIQ,"Log":self.Log}
         """
-        if self.path == '' or self.path.split("/")[-2].split("_")[-1] != datetime.datetime.now().day:
-            db = Data_manager()
-            db.build_folder_today()
-            self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
+        if self.path == '':
+            if os.path.split(os.path.split(self.path)[0])[-1].split("_")[-1] != Data_manager().get_date_today():
+                db = Data_manager()
+                db.build_folder_today()
+                self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is only for the hightlighs :)
-        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"rota_angle":self.rotate_angle,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
@@ -192,6 +247,7 @@ class QDmanager():
         self.q_num = qubit_number
         self.cp_num = coupler_number
         self.Hcfg = Hcfg
+        self.made_mobileFctrl()
         self.chip_name = chip_name
         self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
@@ -204,6 +260,7 @@ class QDmanager():
         self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
         self.quantum_device.hardware_config(self.Hcfg)
         for qb_idx in range(self.q_num):
+            self.rotate_angle[f"q{qb_idx}"] = 0
             qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
             qubit.measure.acq_channel(qb_idx)
             qubit.reset.duration(250e-6)
@@ -338,7 +395,20 @@ class Data_manager:
             os.mkdir(tuid_folder_path) 
             print(f"TUID Folder created at:\n{tuid_folder_path}")
 
-    
+    def build_packs_folder(self,special_name:str=None)->str:
+        if self.raw_folder is None:
+            self.build_folder_today(self.raw_data_dir)
+        
+        if special_name is None:
+            special_name = self.get_time_now()
+        
+        pack_path = os.path.join(self.raw_folder,special_name)
+        os.makedirs(pack_path,exist_ok=True)
+
+        return pack_path
+
+
+
     def save_raw_data(self,QD_agent:QDmanager,ds:Dataset,qb:str='q0',label:str=0,exp_type:str='CS', specific_dataFolder:str='', get_data_loc:bool=False):
         """
         If the arg `specific_dataFolder` was given, the raw nc will be saved into that given path. 
