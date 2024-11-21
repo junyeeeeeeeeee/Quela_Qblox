@@ -9,7 +9,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
 from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
@@ -441,7 +440,6 @@ class analysis_tools():
     def T2_ana(self,var:str,ref:list):
         raw_data = self.ds[var]
         time_samples = array(self.ds[f"{var}_x"])[0][0]
-        print(time_samples)
         reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
         self.qubit = var
 
@@ -456,7 +454,7 @@ class analysis_tools():
                 self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
             if not self.echo:
-                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1000)
+                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1e6)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
@@ -825,170 +823,4 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
 
 
 
-if __name__ == "__main__":
 
-    """ Flux coupler """
-    # m55_file = "Modularize/Meas_raw/20241104/DR2multiQ_FluxCavity_H12M37S17.nc"
-    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = fluxCoupler_dataReducer(m55_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'freq':
-    #         ANA = Multiplex_analyzer("m5")
-
-
-    """ Continuous wave 2 tone """
-    # m88_file = "Modularize/Meas_raw/20241026/DR2multiQ_2tone_H13M01S43.nc"
-    # QD_file = "Modularize/QD_backup/20241026/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = Conti2tone_dataReducer(m88_file)  
-    # ANA = Multiplex_analyzer("m8")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-
-    """ Flux Qubit Spectroscopy """
-    # m99_file = "Modularize/Meas_raw/20241027/DR2multiQ_Flux2tone_H18M50S29.nc"
-    # QD_file = "Modularize/QD_backup/20241027/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = fluxQub_dataReductor(m99_file)  
-    # ANA = Multiplex_analyzer("m9")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],2,QD_agent.refIQ[q],QS_fit_analysis)
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-    """ Rabi Oscillation """
-    # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H15M46S09.nc" # power rabi
-    # # m1111_file = "Modularize/Meas_raw/20241029/DR2multiQ_Rabi_H11M03S46.nc" # time  rabi
-    # QD_file = "Modularize/QD_backup/20241029/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # dss = Rabi_dataReducer(m1111_file)  
-    # ANA = Multiplex_analyzer("m11")      
-    # for q in dss:
-    #     ANA._import_data(dss[q],1,QD_agent.refIQ[q])
-    #     ANA._start_analysis()
-    #     ans = ANA._export_result()
-
-    """ Single shot """
-    # m1414_file = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52/DR2multiQ_SingleShot(26)_H17M03S47.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = OneShot_dataReducer(m1414_file)
-    # print(ds.attrs)
-    # for var in ds.data_vars:
-    #     ANA = Multiplex_analyzer("m14")
-    #     ANA._import_data(ds[var],var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
-    #     ANA._start_analysis()
-    #     pic_path = None #os.path.join(Data_manager().get_today_picFolder(),f"{var}_SingleShot_{ds.attrs['execution_time']}")
-    #     ANA._export_result(pic_path)
-
-    """ T2 """
-    # m1212_file = "Modularize/Meas_raw/20241030/DR2multiQ_T2(0)_H16M55S45.nc"
-    # QD_file = "Modularize/QD_backup/20241030/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = T2_dataReducer(m1212_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'x':
-    #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m12")
-    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-    #         ANA._import_2nddata(time_data)
-    #         ANA._start_analysis()
-
-    #         fit_pic_folder = Data_manager().get_today_picFolder()
-    #         ANA._export_result(fit_pic_folder)
-
-    """ T1 """
-    # m1313_file = "Modularize/Meas_raw/20241102/DR2multiQ_T1(0)_H20M15S39.nc"
-    # QD_file = "Modularize/QD_backup/20241102/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = T1_dataReducer(m1313_file)
-    # for var in ds.data_vars:
-    #     if var.split("_")[-1] != 'x':
-    #         time_data = array(ds[f"{var}_x"])[0][0]
-    #         ANA = Multiplex_analyzer("m13")
-    #         ANA._import_data(ds[var],var_dimension=2,refIQ=QD_agent.refIQ[var])
-    #         ANA._import_2nddata(time_data)
-    #         ANA._start_analysis()
-
-    #         fit_pic_folder = Data_manager().get_today_picFolder()
-    #         ANA._export_result(fit_pic_folder)
-
-
-    """ Zgate T1 """
-    # zgate_T1_folder = "Modularize/Meas_raw/20241105/ZgateT1_MultiQ_H14M00S46"
-    # QD_file = "Modularize/QD_backup/20241105/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # nc_paths = ZgateT1_dataReducer(zgate_T1_folder)
-    # for q in nc_paths:
-    #     ds = open_dataset(nc_paths[q])
-    #     ANA = Multiplex_analyzer("auxA")
-    #     ANA._import_data(ds,var_dimension=2,refIQ=QD_agent.refIQ[q])
-    #     ANA._start_analysis(time_sort=True)
-    #     ANA._export_result(nc_paths[q])
-
-    """ ROF calibration """
-    # rof_cali_file = "Modularize/Meas_raw/20241106/DR2multiQ_RofCali(0)_H16M28S22.nc"
-    # QD_file = "Modularize/QD_backup/20241106/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = rofcali_dataReducer(rof_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "rof"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c1")
-    #     ANA._import_data(ds,var_dimension=1)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-
-    """ PI-amp calibration """
-    # piamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_XYLCali(0)_H13M08S43.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = piampcali_dataReducer(piamp_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "PIcoef"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c3")
-    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-    #     fit_packs = ANA.fit_packs
-
-    """ half PI-amp calibration """
-    # halfpiamp_cali_file = "Modularize/Meas_raw/20241107/DR2multiQ_HalfPiCali(0)_H13M46S39.nc"
-    # QD_file = "Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl"
-    # QD_agent = QDmanager(QD_file)
-    # QD_agent.QD_loader()
-
-    # ds = piampcali_dataReducer(halfpiamp_cali_file)
-    # qubit = [x for x in list(ds.data_vars) if x.split("_")[-1] != "HalfPIcoef"]
-    # for var in qubit:
-    #     ANA = Multiplex_analyzer("c4")
-    #     ANA._import_data(ds,var_dimension=1,refIQ=QD_agent.refIQ)
-    #     ANA._start_analysis(var_name = var)
-    #     fit_pic_folder = None #Data_manager().get_today_picFolder()
-    #     ANA._export_result(fit_pic_folder)
-    #     fit_packs = ANA.fit_packs

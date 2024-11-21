@@ -1,7 +1,7 @@
 import os, sys, json 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from xarray import open_dataset
-from qblox_drive_AS.support.QDmanager import QDmanager,Data_manager
+from qblox_drive_AS.support.QDmanager import QDmanager
 import matplotlib.pyplot as plt
 from numpy import ndarray, array, median, std, mean
 from datetime import datetime 
@@ -130,9 +130,9 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
 
 
 if __name__ == "__main__":
-    folder_paths = "Modularize/Meas_raw/20241107/TimeMonitor_MultiQ_H16M32S52"
-    QD_file_path = 'Modularize/QD_backup/20241107/DR2#10_SumInfo.pkl'
-    save_every_fit_pic:bool=False
+    folder_paths = "qblox_drive_AS/Meas_raw/20241121/H10M50S46"
+    QD_file_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
+    save_every_fit_pic:bool=True
     QD_agent = QDmanager(QD_file_path)
     QD_agent.QD_loader()
 

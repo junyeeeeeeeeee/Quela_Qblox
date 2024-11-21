@@ -7,20 +7,22 @@ from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
 from qblox_drive_AS.support.QDmanager import find_path_by_port
 
 def set_integration_time(QD_agent:QDmanager, inte_time_s:dict=None):
-    if inte_time_s != {} or inte_time_s is not None:
-        for q in inte_time_s:
-            QD_agent.quantum_device.get_element(q).measure.integration_time(inte_time_s[q])
-            QD_agent.quantum_device.get_element(q).measure.pulse_duration(inte_time_s[q])
+    if inte_time_s is not None:
+        if len(list(inte_time_s.keys())) != 0:
+            for q in inte_time_s:
+                QD_agent.quantum_device.get_element(q).measure.integration_time(inte_time_s[q])
+                QD_agent.quantum_device.get_element(q).measure.pulse_duration(inte_time_s[q])
 
-def set_reset_time(QD_agent:QDmanager, reset_time_s:dict=None):
-    if reset_time_s != {} or reset_time_s is not None:
-        for q in reset_time_s:
-            QD_agent.quantum_device.get_element(q).reset.duration(reset_time_s[q])
+def setGlobally_reset_time(QD_agent:QDmanager, reset_time_s:float=None):
+    if reset_time_s is not None:
+        for q in QD_agent.quantum_device.elements():
+            QD_agent.quantum_device.get_element(q).reset.duration(reset_time_s)
 
 def set_drivin_IF(QD_agent:QDmanager, driving_IF_Hz:dict=None):
-    if driving_IF_Hz != {} or driving_IF_Hz is not None:
-        for q in driving_IF_Hz:
-            QD_agent.Notewriter.save_xyIF_for(q,driving_IF_Hz[q])
+    if driving_IF_Hz is not None:
+        if len(list(driving_IF_Hz.keys())) != 0:
+            for q in driving_IF_Hz:
+                QD_agent.Notewriter.save_xyIF_for(q,driving_IF_Hz[q])
 
 def set_roLOfreq(QD_agent:QDmanager,LO_Hz:float,target_q:str='q0'):
     """ ## *Warning*: 
@@ -46,14 +48,16 @@ def set_roAtte(QD_agent:QDmanager,ro_atte:int, target_q:str='q0'):
 
 def set_sweet_g(QD_agent:QDmanager,g_dict:dict=None):
     """ save g is the `g_dict` for q_key, g unit in Hz"""
-    if g_dict != {} or g_dict is not None:
-        for q in g_dict:
-            QD_agent.Notewriter.save_sweetG_for(g_dict[q],q)
+    if g_dict is not None:
+        if len(list(g_dict.keys())) != 0:
+            for q in g_dict:
+                QD_agent.Notewriter.save_sweetG_for(g_dict[q],q)
 
 def set_ROamp_by_coef(QD_agent:QDmanager, roAmp_coef_dict:dict=None):
-    if roAmp_coef_dict != {} or roAmp_coef_dict is not None:
-        for q in roAmp_coef_dict:
-            QD_agent.quantum_device.get_element(q).measure.pulse_amp( QD_agent.quantum_device.get_element(q).measure.pulse_amp()*float(roAmp_coef_dict[q]))
+    if roAmp_coef_dict is not None:
+        if len(list(roAmp_coef_dict.keys())) != 0:
+            for q in roAmp_coef_dict:
+                QD_agent.quantum_device.get_element(q).measure.pulse_amp( QD_agent.quantum_device.get_element(q).measure.pulse_amp()*float(roAmp_coef_dict[q]))
 
 def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
     """
@@ -62,10 +66,11 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
     ### Args:\n
     cp_elements = {"c0":0.2}
     """
-    if cp_elements != {} or cp_elements is not None:
-        for cp in cp_elements:
-            slightly_print(f"Set coupler {cp} at {cp_elements[cp]} V.")
-            QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
+    if cp_elements is not None:
+        if len(list(cp_elements.keys())) != 0:
+            for cp in cp_elements:
+                slightly_print(f"Set coupler {cp} at {cp_elements[cp]} V.")
+                QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
 
 if __name__ == "__main__":
 
@@ -79,8 +84,8 @@ if __name__ == "__main__":
     """ Set Integration time """ 
     set_integration_time(QD_agent, inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
-    """ Set reset time """
-    set_reset_time(QD_agent, reset_time_s={})      # reset_time_s = {"q0":250e-6, "q1":300e-6, ...}, set None or {} to bypass 
+    """ Set reset time (All qubits global)"""
+    setGlobally_reset_time(QD_agent, reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
 
     """ Set driving IF """
     set_drivin_IF(QD_agent, driving_IF_Hz={})   # driving_IF_Hz = {"q0":-150e6, "q1":-100e6, ...}, set None or {} to bypass  !!! Always be negative !!!

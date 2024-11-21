@@ -641,8 +641,8 @@ class PowerConti2tone(ExpGovernment):
         """ ### Args:
             * freq_range: {"q0":[freq_start, freq_end], ...}, sampling function use linspace\n
                 * if someone is 0 like {"q0":[0]}, system will calculate an advised value.
-            * flux_range: [amp_start, amp_end, pts], if only one value inside, we only use that value. \n
-            * flux_sampling_func (str): 'linspace', 'arange', 'logspace'
+            * xyl_range: [amp_start, amp_end, pts], if only one value inside, we only use that value. \n
+            * xyl_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
         self.overlap:bool = ro_xy_overlap
@@ -751,8 +751,9 @@ class FluxQubit(ExpGovernment):
     def SetParameters(self, freq_span_range:dict, bias_targets:list,z_amp_range:list, z_amp_sampling_func:str, freq_pts:int=100, avg_n:int=100, execution:bool=True):
         """ ### Args:
             * freq_span_range: {"q0":[freq_span_start, freq_span_end], ...}, sampling function use linspace\n
-            * flux_range: [amp_start, amp_end, pts]\n
-            * flux_sampling_func (str): 'linspace', 'arange', 'logspace'
+            * bias_targets: list, what qubit need to be bias, like ['q0', 'q1', ...]\n
+            * z_amp_range: [amp_start, amp_end, pts]\n
+            * z_amp_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
         self.bias_elements = bias_targets
@@ -960,10 +961,10 @@ class TimeRabiOsci(ExpGovernment):
 
     def SetParameters(self, pi_dura:dict, pi_amp:dict, pi_dura_sampling_func:str, pi_dura_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
         """ ### Args:
-            * pi_amp: {"q0":[pi_amp_start, pi_amp_end], ...}\n
-            * pi_dura: {"q0":pi_duration_in_seconds, ...}\n
-            * pi_amp_sampling_func (str): 'linspace', 'arange', 'logspace'\n
-            * pi_amp_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
+            * pi_amp: {"q0": pi-amp in V, ...}\n
+            * pi_dura: {"q0":[pi_duration_start, pi_duration_end], ...}\n
+            * pi_dura_sampling_func (str): 'linspace', 'arange', 'logspace'\n
+            * pi_dura_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
         from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
         if pi_dura_sampling_func in ['linspace','logspace','arange']:
@@ -1068,7 +1069,7 @@ class SingleShot(ExpGovernment):
     def SetParameters(self, target_qs:list, histo_counts:int=1, shots:int=10000, execution:bool=True):
         """ 
         ### Args:\n
-        * ro_amp_factor: {"q0":1.2, "q2":.... }, new ro amp = ro_amp*ro_amp_factor
+        * target_qs: list, like ["q0", "q1", ...]
         """
         self.use_time_label:bool = False
         self.avg_n = shots
@@ -1438,7 +1439,7 @@ class CPMG(ExpGovernment):
         self.spin_num = pi_num
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,int(pi_num[q])*4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,(1+int(pi_num[q]))*4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1779,7 +1780,7 @@ class ROFcali(ExpGovernment):
 
     def SetParameters(self, freq_span_range:dict, freq_pts:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * target_qs: ["q0", "q1", ...]\n
+            * freq_span_range: {"q0":[freq_span_start, freq_span_end], ....}\n
         """
         self.freq_samples = {}
         self.tempor_freq = [freq_span_range, freq_pts]
@@ -1878,7 +1879,9 @@ class PiAcali(ExpGovernment):
 
     def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, pi_pair_num:list=[2,3], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * roamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
+            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
+            * amp_sampling_funct: str, `linspace` or `arange`.\n
+            * pi_pair_num: list, like [2, 3] will try 2 exp, the first uses 2\*2 pi-pulse, and the second exp uses 3*2 pi-pulse
         """
         if amp_sampling_funct in ['linspace','logspace','arange']:
             sampling_func:callable = eval(amp_sampling_funct)
@@ -1975,7 +1978,9 @@ class hPiAcali(ExpGovernment):
 
     def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * roamp_coef_range: {"q0":[0.4, 0.6], "q1":[0.38, 0.46], ...]\n
+            * piamp_coef_range: {"q0":[0.4, 0.6], "q1":[0.45, 0.55], ...], must be close to 0.5 because it's a half pi-pulse.\n
+            * amp_sampling_funct: str, `linspace` or `arange`.\n
+            * pi_pair_num: list, like [3, 5] will try 2 exp, the first uses 3\*4 half pi-pulse, and the second exp uses 5*4 half pi-pulse
         """
         if amp_sampling_funct in ['linspace','logspace','arange']:
             sampling_func:callable = eval(amp_sampling_funct)
@@ -2072,7 +2077,8 @@ class ROLcali(ExpGovernment):
 
     def SetParameters(self, roamp_coef_range:dict, coef_sampling_func:str, ro_coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * target_qs: ["q0", "q1", ...]\n
+            * roamp_coef_range: {"q0":[0.85, 1.3], ... }, rule:  q_name:[roamp_coef_start, roamp_coef_end]. exp with ro-amp *=  roamp_coef\n
+            * coef_sampling_func: str, `'linspace'` or `'arange'`.
         """
         if coef_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(coef_sampling_func)
@@ -2254,12 +2260,18 @@ class ZgateEnergyRelaxation(ExpGovernment):
             
 
     def WorkFlow(self):
+        idx = 1
+        start_time = datetime.now()
         while True:
             self.PrepareHardware()
 
             self.RunMeasurement()
 
-            self.CloseMeasurement()   
+            self.CloseMeasurement()  
+
+            slightly_print(f"It's the {idx}-th measurement, about {round((datetime.now() - start_time).total_seconds()/60,1)} mins recorded.")
+            
+            idx += 1
             if not self.want_while:
                 break
-
+                

@@ -30,6 +30,7 @@ def ZgateT1_dataReducer(raw_data_folder:str)->dict:
             file_path = os.path.join(raw_data_folder,path)
             if file_path.split(".")[-1] == 'nc':
                 datasets.append(open_dataset(file_path))
+                print(datasets[-1].attrs)
     # make VIP folder for each qubit
     vip_folders:dict = {}
     for q in [var for var in datasets[0].data_vars if var.split("_")[-1] != "time"]:
@@ -63,8 +64,26 @@ def ZgateT1_dataReducer(raw_data_folder:str)->dict:
 
 
 if __name__ == "__main__":
-    x = []
-    for i in range(10):
-        x.append(i)
-        print(x[-1])
+    from qblox_drive_AS.support.QDmanager import QDmanager
+    from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
+    folder_path = 'qblox_drive_AS/Meas_raw/20241121/H10M16S21'
+    QD_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
+    QD_agent = QDmanager(QD_path)
+    QD_agent.QD_loader()
+
+    nc_paths = ZgateT1_dataReducer(folder_path)
+    for q in nc_paths:
+        if QD_agent.rotate_angle[q][0] != 0:
+            ref = QD_agent.rotate_angle[q]
+        else:
+            print(f"{q} rotation angle is 0, use contrast to analyze.")
+            ref = QD_agent.refIQ[q]
+
+        ds = open_dataset(nc_paths[q])
+        ANA = Multiplex_analyzer("auxA")
+        ANA._import_data(ds,var_dimension=2,refIQ=ref)
+        ANA._start_analysis(time_sort=False)
+        ANA._export_result(nc_paths[q])
+        ds.close()
+
     
