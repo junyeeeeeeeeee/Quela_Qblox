@@ -68,7 +68,7 @@ def fluxCoupler_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements
             dict_[f"{q}_freq"] = (["mixer","bias","freq"],array(freq_values).reshape(2,flux_samples.shape[0],array(ro_elements[q]).shape[0]))
 
         
-        rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":flux_samples,"freq":arange(flux_samples.shape[0])})
+        rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":flux_samples,"freq":freq_datapoint_idx})
         rfs_ds.attrs["execution_time"] = Data_manager().get_time_now()
         rfs_ds.attrs["cntrl_couplers"] =  "_".join(bias_elements)
         
