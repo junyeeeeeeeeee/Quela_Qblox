@@ -29,7 +29,7 @@ def set_roLOfreq(QD_agent:QDmanager,LO_Hz:float,target_q:str='q0'):
         Set the LO for those qubits who shares the same readout module with the `target_q`.
     """
     if LO_Hz is not None:
-        slightly_print(f"Set {find_port_clock_path(QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-LO = {round(LO_Hz*1e-9),2} GHz")
+        slightly_print(f"Set {find_port_clock_path(QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-LO = {round(LO_Hz*1e-9,2)} GHz")
         set_LO_frequency(QD_agent.quantum_device,target_q,'readout',LO_Hz)
 
 def set_roAtte(QD_agent:QDmanager,ro_atte:int, target_q:str='q0'):
