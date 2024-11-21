@@ -614,6 +614,7 @@ class IQ_references(ExpGovernment):
                 else:
                     print("Updating got denied ~")
             else:
+                QD_savior.memo_refIQ(answer)
                 QD_savior.QD_keeper(new_QD_dir)
 
 
@@ -1754,9 +1755,6 @@ class XYFcali(ExpGovernment):
                 QD_savior.QD_keeper(new_QD_dir)
             else:
                 print("Updating got denied ~")
-
-            QD_savior.QD_keeper(new_QD_dir)
-            
 
     def WorkFlow(self):
         
