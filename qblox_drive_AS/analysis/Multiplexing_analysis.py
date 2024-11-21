@@ -161,7 +161,7 @@ class Artist():
         return fig, axs
     
     def add_colormesh_on_ax(self,x_data:ndarray,y_data:ndarray,z_data:ndarray,fig:Figure,ax:plt.Axes,colorbar_name:str=None)->plt.Axes:
-        im = ax.pcolormesh(x_data,y_data,transpose(z_data))
+        im = ax.pcolormesh(x_data,y_data,transpose(z_data),shading='nearest')
         fig.colorbar(im, ax=ax, label="" if colorbar_name is None else colorbar_name)
         return ax
 
@@ -296,11 +296,11 @@ class analysis_tools():
         fig, axs = Plotter.build_up_plot_frame([1,1])
 
         if self.xyl.shape[0] != 1:
-            ax = Plotter.add_colormesh_on_ax(self.xyf,self.xyl,self.contrast,axs[0])
+            ax = Plotter.add_colormesh_on_ax(self.xyf,self.xyl,transpose(self.contrast),fig,axs[0])
             if len(self.fit_f01s) != 0 :
                 ax = Plotter.add_scatter_on_ax(self.fit_f01s,self.fif_amps,ax,marker="*",c='red')
             Plotter.includes_axes([ax])
-            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} XYF (Hz)","ylabel":"XY Power (V)"}])
+            Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.target_q} XYF (Hz)","ylabel":"XY Power (V)"}])
         else:
             res = QS_fit_analysis(self.fit_packs[self.target_q]["contrast"],f=self.fit_packs[self.target_q]["xyf_data"])
             ax = Plotter.add_verline_on_ax(x=res.attrs['f01_fit']*1e-9, y_data=res.data_vars['data'].to_numpy()*1000, ax=axs[0], color='green',linestyle='dashed', alpha=0.8,lw=1)

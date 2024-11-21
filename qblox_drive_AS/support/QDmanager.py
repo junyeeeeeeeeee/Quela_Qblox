@@ -260,7 +260,7 @@ class QDmanager():
         self.quantum_device = find_or_create_instrument(QuantumDevice, recreate=True, name=f"QPU{dr_loc.lower()}")
         self.quantum_device.hardware_config(self.Hcfg)
         for qb_idx in range(self.q_num):
-            self.rotate_angle[f"q{qb_idx}"] = 0
+            self.rotate_angle[f"q{qb_idx}"] = [0]
             qubit = find_or_create_instrument(BasicTransmonElement, recreate=True, name=f"q{qb_idx}")
             qubit.measure.acq_channel(qb_idx)
             qubit.reset.duration(250e-6)
