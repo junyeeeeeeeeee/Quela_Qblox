@@ -79,7 +79,7 @@ def PowerRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dur
         ds = Dataset(dict_, coords={"mixer":array(["I","Q"]),"pi_amp":pi_amp_idxes})
         ds.attrs["execution_time"] = Data_manager().get_time_now()
         ds.attrs["rabi_type"] = "PowerRabi"
-        ds.attrs["OS_mode"] = OSmode
+        ds.attrs["OS_mode"] = 0 if not OSmode else 1
         for q in pi_dura:
             ds.attrs[f"{q}_pidura"] = pi_dura[q]
 
@@ -154,7 +154,7 @@ def TimeRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dura
         ds = Dataset(dict_, coords={"mixer":array(["I","Q"]),"pi_dura":pi_dura_idxes})
         ds.attrs["execution_time"] = Data_manager().get_time_now()
         ds.attrs["rabi_type"] = "TimeRabi"
-        ds.attrs["OS_mode"] = OSmode
+        ds.attrs["OS_mode"] = 0 if not OSmode else 1
         for q in pi_amp:
             ds.attrs[f"{q}_piamp"] = pi_amp[q]
 
