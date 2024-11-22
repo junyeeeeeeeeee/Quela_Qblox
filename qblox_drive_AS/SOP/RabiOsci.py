@@ -5,7 +5,7 @@ from qblox_instruments import Cluster
 from qblox_drive_AS.support.UserFriend import *
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import linspace, array, arange, NaN, ndarray
+from numpy import linspace, array, arange, NaN, ndarray, round, full, concatenate
 from qblox_drive_AS.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
@@ -17,10 +17,40 @@ from xarray import Dataset
 
 #? The way to merge two dict a and b : c = {**a,**b}
 
-def round_to_nearest_multiple_of_multipleNS(x, specific_multiple:int=None):
-    if specific_multiple is None:
-        specific_multiple = 4
-    return specific_multiple * round(x / specific_multiple)
+def sort_elements_2_multiples_of(x:ndarray, specific_multiple:int=None):
+    """
+    Adjusts all numbers in a 1D NumPy array to the nearest multiples of 4
+    and ensures the array has exactly `target_size` elements.
+    
+    Parameters:
+        array (numpy.ndarray): The input 1D array of numbers.
+        target_size (int): The desired number of elements in the adjusted array.
+    
+    Returns:
+        numpy.ndarray: The adjusted array with all numbers as multiples of 4 and
+                       exactly `target_size` elements.
+    """
+    if specific_multiple is None: specific_multiple = 4
+    if not isinstance(array, ndarray):
+        raise ValueError("Input must be a NumPy array.")
+    
+    target_size = x.shape[0]
+
+    # Step 1: Adjust numbers to the nearest multiples of 4
+    adjusted_array = round(x / specific_multiple) * specific_multiple
+    
+    # Step 2: Adjust the array size to match the target size
+    current_size = adjusted_array.size
+    if current_size < target_size:
+        # Extend the array by repeating the largest multiple of 4
+        max_value = max(adjusted_array)
+        additional_values = full(target_size - current_size, max_value)
+        adjusted_array = concatenate([adjusted_array, additional_values])
+    elif current_size > target_size:
+        # Trim the array to the target size
+        adjusted_array = adjusted_array[:target_size]
+    
+    return adjusted_array.astype(int)
 
 
 def PowerRabi(QD_agent:QDmanager,meas_ctrl:MeasurementControl,pi_amp:dict,pi_dura:dict,n_avg:int=300,run:bool=True,OSmode:bool=False):
