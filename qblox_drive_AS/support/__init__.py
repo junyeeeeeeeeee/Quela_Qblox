@@ -5,6 +5,7 @@ from qcodes.instrument import find_or_create_instrument
 from typing import Tuple
 import ipywidgets as widgets
 from IPython.display import display
+from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_instruments import Cluster, PlugAndPlay, ClusterType
 # from qblox_instruments.qcodes_drivers.qcm_qrm import QcmQrm
 from qcodes import Instrument
@@ -221,7 +222,11 @@ def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:l
             set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
     elif mode.lower() == 'xy':
         for q_name in target_q:
-            set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+            try:
+                driving_port_path = find_port_clock_path(quantum_device.hardware_config(),f"{q_name}:mw",f"{q_name}.01")
+                set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+            except Exception as err:
+                print(f"!!!!! Can't fing the driving port for {q_name}, cancel setting its xy-attenuation !!!!!!")
     else:
         raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
 
@@ -245,13 +250,16 @@ def leave_LogMSG(MSG:str,sumInfo_path:str):
 
 
 # set attenuations
-def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=20,xy_out_att:int=20):
+def init_system_atte(quantum_device:QuantumDevice,qb_list:list,ro_out_att:int=None,xy_out_att:int=None):
     """
     Attenuation setting includes XY and RO. We don't change it once we set it.
     """
     # atte. setting
-    set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
-    set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
+    if ro_out_att is not None:
+        set_atte_for(quantum_device,ro_out_att,'ro',qb_list)
+    
+    if xy_out_att is not None:
+        set_atte_for(quantum_device,xy_out_att,'xy',qb_list) 
 
 
 # LO debug

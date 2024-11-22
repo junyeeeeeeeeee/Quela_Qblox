@@ -127,16 +127,8 @@ def plot_timeDepCohe(time_values:ndarray, y_values:ndarray, exp:str, fig_path:st
         plt.savefig(fig_path)
     plt.close()
 
-
-
-if __name__ == "__main__":
-    folder_paths = "qblox_drive_AS/Meas_raw/20241121/H10M50S46"
-    QD_file_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
-    save_every_fit_pic:bool=True
-    QD_agent = QDmanager(QD_file_path)
-    QD_agent.QD_loader()
-
-    files = [name for name in os.listdir(folder_paths) if (os.path.isfile(os.path.join(folder_paths,name)) and name.split(".")[-1] == "nc")]
+def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:bool=False):
+    files = [name for name in os.listdir(folder_path) if (os.path.isfile(os.path.join(folder_path,name)) and name.split(".")[-1] == "nc")]
 
     T1, T2, SS = 0, 0 , 0
     T1_rec, detu_rec, T2_rec, SS_rec = {}, {}, {}, {}
@@ -145,13 +137,13 @@ if __name__ == "__main__":
     for idx, file in enumerate(files) :
         slightly_print(f"Analysis for the {idx}-th files ...")
         exp_type:str = file.split("_")[0]
-        path = os.path.join(folder_paths,file)
+        path = os.path.join(folder_path,file)
         ds = open_dataset(path)
         match exp_type.lower():
             case "t1":
                 T1 += 1
                 for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
-                    T1_picsave_folder = os.path.join(folder_paths,f"{var}_T1_pics")
+                    T1_picsave_folder = os.path.join(folder_path,f"{var}_T1_pics")
                     if T1 == 1:
                         T1_rec[var], T1_raw[var] = {}, {}
                         if save_every_fit_pic:
@@ -173,7 +165,7 @@ if __name__ == "__main__":
             case "singleshot":
                 SS += 1
                 for var in ds.data_vars:
-                    SS_picsave_folder = os.path.join(folder_paths,f"{var}_SingleShot_pics")
+                    SS_picsave_folder = os.path.join(folder_path,f"{var}_SingleShot_pics")
                     if SS == 1:
                         SS_rec[var] = {}
                         if save_every_fit_pic:
@@ -190,7 +182,7 @@ if __name__ == "__main__":
                 T2 += 1
                 for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
                     # create raw data fitting folder
-                    T2_picsave_folder = os.path.join(folder_paths,f"{var}_T2_pics")
+                    T2_picsave_folder = os.path.join(folder_path,f"{var}_T2_pics")
                     if T2 == 1:
                         T2_rec[var], detu_rec[var], T2_raw[var] = {}, {}, {}
                         if save_every_fit_pic:
@@ -233,8 +225,8 @@ if __name__ == "__main__":
                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
             
-            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_paths,f"{q}_T1_timeDep_colormap.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_paths,f"{q}_T1_timeDep.png"))
+            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_path,f"{q}_T1_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_path,f"{q}_T1_timeDep.png"))
     if T2 != 0:
         for q in T2_rec:
             sorted_item_ans = sorted(T2_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
@@ -255,9 +247,9 @@ if __name__ == "__main__":
                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
             
-            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_paths,f"{q}_T2_timeDep_colormap.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_paths,f"{q}_T2_timeDep.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(folder_paths,f"{q}_Detune_timeDep.png"))
+            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_path,f"{q}_T2_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_path,f"{q}_T2_timeDep.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(folder_path,f"{q}_Detune_timeDep.png"))
     if SS != 0:
         for q in SS_rec:
             sorted_item_ans = sorted(SS_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
@@ -272,6 +264,27 @@ if __name__ == "__main__":
                 sorted_values_ans.append(value)
 
 
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_paths,f"{q}_effT_timeDep.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_path,f"{q}_effT_timeDep.png"))
     
     eyeson_print(f"\nProcedures done ! ")
+
+
+# if __name__ == "__main__":
+    folder_path = "qblox_drive_AS/Meas_raw/20241121/H10M50S46"
+    QD_file_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
+    save_every_fit_pic:bool=True
+    QD_agent = QDmanager(QD_file_path)
+    QD_agent.QD_loader()
+
+    time_monitor_data_ana(QD_agent, folder_path, save_every_fit_pic)
+
+
+if __name__ == "__main__":
+    QD_path = ""
+    folder_path = ""
+    save_every_fit_fig:bool = False
+
+    QD_agent = QDmanager(QD_path)
+    QD_agent.QD_loader()
+
+    time_monitor_data_ana(QD_agent, folder_path, save_every_fit_fig)

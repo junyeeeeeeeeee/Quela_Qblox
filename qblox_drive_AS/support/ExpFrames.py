@@ -13,6 +13,7 @@ from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupl
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
 from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
+from qblox_drive_AS.analysis.TimeTraceAna import time_monitor_data_ana
 
 
 class ExpGovernment(ABC):
@@ -2457,3 +2458,53 @@ class ZgateEnergyRelaxation(ExpGovernment):
             if not self.want_while:
                 break
                 
+class QubitMonitor():
+    def __init__(self, QD_path:str, save_dir:str, execution:bool=True):
+        self.QD_path = QD_path
+        self.save_dir = save_dir
+        self.Execution = execution
+        self.T1_time_range:dict = {}
+        self.T2_time_range:dict = {}
+        self.OS_target_qs:list = []
+        self.echo_pi_num:dict = {}
+        self.a_little_detune_Hz:float = 0.1e6
+        self.time_sampling_func = 'linspace'
+        self.time_ptsORstep:int|float = 100
+        self.OS_shots:int = 10000
+        self.AVG:int = 300
+        self.idx = 0
+
+    def StartMonitoring(self):
+        start_time = datetime.now()
+        while True:
+            if self.T1_time_range is not None:
+                if len(list(self.T1_time_range.keys())) != 0:
+                    EXP = EnergyRelaxation(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.SetParameters(self.T1_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution)
+                    EXP.WorkFlow()
+
+            if self.T2_time_range is not None:
+                if len(list(self.T2_time_range.keys())) != 0:
+                    EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.SetParameters(self.T2_time_range,self.echo_pi_num,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution)
+                    EXP.WorkFlow(freq_detune_Hz=self.a_little_detune_Hz)
+
+            if self.OS_target_qs is not None:
+                if  self.OS_shots != 0:
+                    if len(self.OS_target_qs) == 0:
+                        self.OS_target_qs = list(set(list(self.T1_time_range.keys())+list(self.T2_time_range.keys())))
+                    EXP = SingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.SetParameters(self.OS_target_qs,1,self.OS_shots,self.Execution)
+                    EXP.WorkFlow()
+            slightly_print(f"It's the {self.idx}-th measurement, about {round((datetime.now() - start_time).total_seconds()/3600,2)} hrs recorded.")
+            self.idx += 1
+
+    def TimeMonitor_analysis(self,New_QD_path:str=None,New_data_file:str=None,save_all_fit_fig:bool=False):
+        if New_QD_path is not None:
+            self.QD_path = New_QD_path
+        if New_data_file is not None:
+            self.save_dir = os.path.split(New_data_file)[0]
+
+        QD_agent = QDmanager(self.QD_path)
+        QD_agent.QD_loader()
+        time_monitor_data_ana(QD_agent,self.save_dir,save_all_fit_fig)
