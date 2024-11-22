@@ -81,7 +81,7 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
 
 if __name__ == "__main__":
 
-    QD_path = ""
+    QD_path = r"c:\Users\ASqcm\MeasConfigs\qblox_ExpConfigs\DR2#10_SumInfo.pkl"
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
