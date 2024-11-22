@@ -696,7 +696,11 @@ def multi_Z_gate_two_tone_sche(
             
             if len(additional_bias_list) != 0:
                 for qs in additional_bias_list:
-                    Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
+                    if qs[0] == 'c':
+                        if qubit_idx:
+                            Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
+                    else:
+                        Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
             
 
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
