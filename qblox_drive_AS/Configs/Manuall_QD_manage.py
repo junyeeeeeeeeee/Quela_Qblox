@@ -24,6 +24,13 @@ def set_drivin_IF(QD_agent:QDmanager, driving_IF_Hz:dict=None):
             for q in driving_IF_Hz:
                 QD_agent.Notewriter.save_xyIF_for(q,driving_IF_Hz[q])
 
+def setGlobally_driving_atte(QD_agent:QDmanager,xy_atte:int=None):
+    """ Atte must be multiples of 2 """
+    if xy_atte is not None:
+        slightly_print(f"Setting all qubits xy-attenuation at {xy_atte} dB")
+        for q in QD_agent.quantum_device.elements():
+            QD_agent.Notewriter.save_DigiAtte_For(xy_atte,q,'xy')
+
 def set_roLOfreq(QD_agent:QDmanager,LO_Hz:float,target_q:str='q0'):
     """ ## *Warning*: 
         Set the LO for those qubits who shares the same readout module with the `target_q`.
@@ -84,8 +91,11 @@ if __name__ == "__main__":
     """ Set Integration time """ 
     set_integration_time(QD_agent, inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
-    """ Set reset time (All qubits global)"""
+    """ Set reset time (All qubits global) """
     setGlobally_reset_time(QD_agent, reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
+
+    """ Set driving attenuation (All qubits blobal) """     # xy_atte = 10 recommended, all qubits are shared with a same value. Must be multiples of 2.
+    setGlobally_driving_atte(QD_agent, xy_atte=None)
 
     """ Set driving IF """
     set_drivin_IF(QD_agent, driving_IF_Hz={})   # driving_IF_Hz = {"q0":-150e6, "q1":-100e6, ...}, set None or {} to bypass  !!! Always be negative !!!
