@@ -697,7 +697,7 @@ def multi_Z_gate_two_tone_sche(
             if len(additional_bias_list) != 0:
                 for qs in additional_bias_list:
                     if qs[0] == 'c':
-                        if qubit_idx:
+                        if qubit_idx == 0:
                             Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
                     else:
                         Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
