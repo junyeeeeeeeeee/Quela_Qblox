@@ -1055,7 +1055,7 @@ class TimeRabiOsci(ExpGovernment):
             * pi_dura_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * pi_dura_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if pi_dura_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(pi_dura_sampling_func)
         else:
@@ -1063,9 +1063,7 @@ class TimeRabiOsci(ExpGovernment):
         
         self.pi_dura_samples = {}
         for q in pi_dura:
-            time_sample_sec = list(set([round_to_nearest_multiple_of_multipleNS(x) for x in sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9]))
-            time_sample_sec.sort()
-            self.pi_dura_samples[q] = array(time_sample_sec)*1e-9
+            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
     
 
         self.pi_amp = pi_amp
@@ -1289,7 +1287,7 @@ class Ramsey(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1298,7 +1296,7 @@ class Ramsey(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1421,7 +1419,7 @@ class SpinEcho(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1431,7 +1429,7 @@ class SpinEcho(ExpGovernment):
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,8) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,8)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1552,7 +1550,7 @@ class CPMG(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1562,11 +1560,11 @@ class CPMG(ExpGovernment):
         self.spin_num = pi_num
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,(1+int(pi_num[q]))*4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,(1+int(pi_num[q]))*4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
-
+        
         self.avg_n = avg_n
 
         if histo_counts <= 100:
@@ -1685,7 +1683,7 @@ class EnergyRelaxation(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1694,7 +1692,7 @@ class EnergyRelaxation(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1809,12 +1807,12 @@ class XYFcali(ExpGovernment):
         """ ### Args:
             * target_qs: ["q0", "q1", ...]\n
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
     
         self.time_samples = {}
         self.detune = detune
         for q in target_qs:
-            self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in  linspace(0,evo_time,100)*1e9])))*1e-9)
+            self.time_samples[q] = sort_elements_2_multiples_of(linspace(0,evo_time,100)*1e9,4)*1e-9
 
         self.avg_n = avg_n
         self.execution = execution
@@ -2352,7 +2350,7 @@ class ZgateEnergyRelaxation(ExpGovernment):
             * bias_range:list, [z_amp_start, z_amp_end, pts/step]\n
             * bias_sampling_func:str, `linspace`(default) or `arange`. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import round_to_nearest_multiple_of_multipleNS
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -2361,7 +2359,7 @@ class ZgateEnergyRelaxation(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort(array(list(set([round_to_nearest_multiple_of_multipleNS(x,4) for x in sampling_func(*time_range[q],time_pts_or_step)*1e9])))*1e-9)
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
