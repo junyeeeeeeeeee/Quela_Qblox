@@ -5,11 +5,11 @@ import os, datetime, sys, shutil
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from qblox_drive_AS.support.UserFriend import eyeson_print
 
-root = os.getcwd()
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # qblox_drive_AS
 # The directory for measurement raw data
-meas_raw_dir = os.path.join(root,'qblox_drive_AS/Meas_raw')
+meas_raw_dir = os.path.join(root,'Meas_raw')
 # The directory for qauntum device
-qdevice_backup_dir = os.path.join(root,'qblox_drive_AS/QD_backup')
+qdevice_backup_dir = os.path.join(root,'QD_backup')
 
 for i in [meas_raw_dir, qdevice_backup_dir]:
     if not os.path.exists(i):
@@ -51,7 +51,7 @@ def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
                 for name in target_file_list:
                     if name.split("#")[-1].split("_")[0] == ip_label and name.split("_")[-1].split(".")[0]=="SumInfo":
                         wanted_QD_pkl_path = os.path.join(date_folder_path,name)
-                        eyeson_print(f"now use QD_file in {date_folder_path.split('/')[-1]}")
+                        eyeson_print(f"now use QD_file in {os.path.split(date_folder_path)[-1]}")
                         button = 0
                         break
                 if button:
@@ -59,11 +59,11 @@ def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
         elif len(target_file_list) == 1:
             if ip_label == '' :
                 wanted_QD_pkl_path = os.path.join(date_folder_path,target_file_list[0])
-                eyeson_print(f"now use QD_file in {date_folder_path.split('/')[-1]}")
+                eyeson_print(f"now use QD_file in {os.path.split(date_folder_path)[-1]}")
                 break
             else:
                 if target_file_list[0].split("#")[-1].split("_")[0] == ip_label:
-                    eyeson_print(f"now use QD_file in {date_folder_path.split('/')[-1]}")
+                    eyeson_print(f"now use QD_file in {os.path.split(date_folder_path)[-1]}")
                     wanted_QD_pkl_path = os.path.join(date_folder_path,target_file_list[0])
                     break
                 else:
@@ -83,12 +83,4 @@ def find_latest_QD_pkl_for_dr(which_dr:str,ip_label:str=''):
         wanted_QD_pkl_path = copied_QD_file
         print("Today QD built up.")
     return wanted_QD_pkl_path
-
-
-
-
-if __name__ == "__main__":
-    meas_dr_now = 'dr2'
-    which_ip_last = '10'
-    print(find_latest_QD_pkl_for_dr(meas_dr_now,which_ip_last))
 
