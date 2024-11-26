@@ -656,7 +656,7 @@ class analysis_tools():
         Plotter = Artist(pic_title=f"{self.qubit}_ROL_calibration",save_pic_path=save_pic_folder)
         fig, axs = Plotter.build_up_plot_frame((2,1),fig_size=(12,9))
         ax0:plt.Axes = axs[0]
-        Plotter.add_plot_on_ax(self.rol,sqrt(self.I_e**2+self.Q_e**2)-sqrt(self.I_g**2+self.Q_g**2),ax0,label="|1>-|0>")
+        Plotter.add_plot_on_ax(self.rol,self.dis_diff,ax0,label="|1>-|0>")
         ax1:plt.Axes = axs[1]
         Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi-arctan2(self.Q_g,self.I_g)/pi,ax1,label="|1>-|0>")
         # Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rol"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
