@@ -264,6 +264,8 @@ class analysis_tools():
         ax = Plotter.add_colormesh_on_ax(self.bias,self.freqs,self.mags,fig,axs[0])
         ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
         ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+        ax.set_xlim(min(self.bias), max(self.bias))
+        ax.set_ylim(min(self.freqs),max(self.freqs))
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
         Plotter.pic_save_path = os.path.join(save_pic_folder,f"FluxCavity_{self.qubit}.png")
@@ -299,6 +301,8 @@ class analysis_tools():
             ax = Plotter.add_colormesh_on_ax(self.xyf,self.xyl,transpose(self.contrast),fig,axs[0])
             if len(self.fit_f01s) != 0 :
                 ax = Plotter.add_scatter_on_ax(self.fit_f01s,self.fif_amps,ax,marker="*",c='red')
+            ax.set_xlim(min(self.xyf), max(self.xyf))
+            ax.set_ylim(min(self.xyl),max(self.xyl))
             Plotter.includes_axes([ax])
             Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.target_q} XYF (Hz)","ylabel":"XY Power (V)"}])
         else:
@@ -362,6 +366,8 @@ class analysis_tools():
         fig.colorbar(c, ax=ax, label='Contrast (V)')
         ax.xaxis.set_tick_params(labelsize=18)
         ax.yaxis.set_tick_params(labelsize=18)
+        ax.set_xlim(min(self.z), max(self.z))
+        ax.set_ylim(min(self.f)*1e-9,max(self.f)*1e-9)
 
         if len(list(self.fit_packs.keys())) != 0:
             plt.title(f"{self.qubit} XYF={round(self.fit_packs['xyf']*1e-9,3)} GHz with z_pulse amp={round(float(-self.paras[1]/(2*self.paras[0])),3)} V")

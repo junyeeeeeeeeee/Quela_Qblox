@@ -2395,6 +2395,8 @@ class ZgateEnergyRelaxation(ExpGovernment):
         dataset = Zgate_T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.bias_samples,self.avg_n,self.execution,no_pi_pulse= not self.prepare_1)
         if self.execution:
             if self.save_dir is not None:
+                if self.want_while:
+                    self.JOBID = None
                 self.save_path = os.path.join(self.save_dir,f"zgateT1_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                 self.__raw_data_location = self.save_path + ".nc"
                 dataset.to_netcdf(self.__raw_data_location)
