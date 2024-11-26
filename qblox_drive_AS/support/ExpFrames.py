@@ -523,6 +523,7 @@ class FluxCavity(ExpGovernment):
         for q in self.tempor_freq[0]:
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+            
         QD_RO_init(self.QD_agent,self.freq_range)
         dataset = FluxCav_spec(self.QD_agent,self.meas_ctrl,self.Fctrl,self.freq_range,self.flux_samples,self.avg_n,self.execution)
         if self.execution:
@@ -666,7 +667,7 @@ class IQ_references(ExpGovernment):
             
             answer = {}
             for q in ds.data_vars:
-                answer[q] = IQ_ref_ana(ds,fig_path)
+                answer[q] = IQ_ref_ana(ds,q,fig_path)
             ds.close()
             if self.ask_save:
                 permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
@@ -2514,3 +2515,10 @@ class QubitMonitor():
         QD_agent = QDmanager(self.QD_path)
         QD_agent.QD_loader()
         time_monitor_data_ana(QD_agent,self.save_dir,save_all_fit_fig)
+
+
+
+if __name__ == "__main__":
+    EXP = FluxCavity(QD_path="")
+    EXP.execution = True
+    EXP.RunAnalysis(new_QD_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\qblox_ExpConfigs_20241126132118\DR2#10_SumInfo.pkl",new_file_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\FluxCavity_20241126132118.nc")

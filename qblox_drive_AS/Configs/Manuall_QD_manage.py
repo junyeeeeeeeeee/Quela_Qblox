@@ -31,6 +31,19 @@ def setGlobally_driving_atte(QD_agent:QDmanager,xy_atte:int=None):
         for q in QD_agent.quantum_device.elements():
             QD_agent.Notewriter.save_DigiAtte_For(xy_atte,q,'xy')
 
+def set_ROF(QD_agent:QDmanager, ROFs:dict={}):
+    if ROFs is not None:
+        if len(list(ROFs.keys())) != 0:
+            for q in ROFs:
+                QD_agent.quantum_device.get_element(q).clock_freqs.readout(ROFs[q])
+
+
+def set_sweet_bias(QD_agent:QDmanager, offsets:dict={}):
+    if offsets is not None:
+        if len(list(offsets.keys())) != 0:
+            for q in offsets:
+                QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=q,bias=offsets[q])
+
 def set_roLOfreq(QD_agent:QDmanager,LO_Hz:float,target_q:str='q0'):
     """ ## *Warning*: 
         Set the LO for those qubits who shares the same readout module with the `target_q`.
@@ -88,8 +101,11 @@ if __name__ == "__main__":
     """ Set RO amp by a coef. """
     set_ROamp_by_coef(QD_agent, roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
 
+    """ Set RO freq """
+    set_ROF(QD_agent, ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
+    
     """ Set Integration time """ 
-    set_integration_time(QD_agent, inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
+    set_integration_time(QD_agent, inte_time_s={"q0":1.5e-6,"q1":1.5e-6}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
     """ Set reset time (All qubits global) """
     setGlobally_reset_time(QD_agent, reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
@@ -110,4 +126,7 @@ if __name__ == "__main__":
     """ Set grq for sweet spot """
     set_sweet_g(QD_agent,g_dict={})    # g_dict = {"q0":45e6, "q1":90e6, ...}, set None or {} to bypass 
     
-    QD_agent.QD_keeper()  
+    """ Set sweet spot bias """
+    set_sweet_bias(QD_agent, offsets={})          # offsets = {"q0": 0.08, ....}
+
+    QD_agent.QD_keeper() 
