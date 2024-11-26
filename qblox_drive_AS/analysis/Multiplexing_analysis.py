@@ -493,7 +493,6 @@ class analysis_tools():
             ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
             ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
             if save_pic_path != "" : 
-                slightly_print(f"pic saved located:\n{save_pic_path}")
                 plt.savefig(save_pic_path)
                 plt.close()
             else:
