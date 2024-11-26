@@ -31,7 +31,7 @@ def sort_elements_2_multiples_of(x:ndarray, specific_multiple:int=None):
                        exactly `target_size` elements.
     """
     if specific_multiple is None: specific_multiple = 4
-    if not isinstance(array, ndarray):
+    if not isinstance(x, ndarray):
         raise ValueError("Input must be a NumPy array.")
     
     target_size = x.shape[0]
