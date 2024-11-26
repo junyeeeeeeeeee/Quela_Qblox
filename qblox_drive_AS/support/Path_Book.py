@@ -5,11 +5,13 @@ import os, datetime, sys, shutil
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 from qblox_drive_AS.support.UserFriend import eyeson_print
 
+
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # qblox_drive_AS
 # The directory for measurement raw data
 meas_raw_dir = os.path.join(root,'Meas_raw')
 # The directory for qauntum device
 qdevice_backup_dir = os.path.join(root,'QD_backup')
+
 
 for i in [meas_raw_dir, qdevice_backup_dir]:
     if not os.path.exists(i):

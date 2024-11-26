@@ -4,7 +4,7 @@ from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
-import os, sys 
+import os, sys, traceback
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
@@ -220,52 +220,60 @@ class analysis_tools():
             plt.close()
 
     def fluxCavity_ana(self, var_name:str):
+
         self.qubit = var_name
         self.freqs = array(self.ds.data_vars[f"{var_name}_freq"])[0][0]
         self.bias = array(self.ds.coords["bias"])
-
         S21 = array(self.ds.data_vars[self.qubit])[0] + 1j * array(self.ds.data_vars[self.qubit])[1]
         self.mags:ndarray = abs(S21)
-        freq_fit = []
-        fit_err = []
-        for idx, _ in enumerate(S21):
-            res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
-            result, _, _ = res_er.fit()
-            freq_fit.append(result['fr'])
-            fit_err.append(result['fr_err'])
+        try:
+            freq_fit = []
+            fit_err = []
+            for idx, _ in enumerate(S21):
+                res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
+                result, _, _ = res_er.fit()
+                freq_fit.append(result['fr'])
+                fit_err.append(result['fr_err'])
 
-        _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
-        collected_freq = []
-        collected_flux = []
-        for i in indexs:
-            collected_freq.append(freq_fit[i])
-            collected_flux.append(list(self.bias)[i])
-        self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
-        paras = array(self.fit_results.attrs['coefs'])
+            _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
+            collected_freq = []
+            collected_flux = []
+            for i in indexs:
+                collected_freq.append(freq_fit[i])
+                collected_flux.append(list(self.bias)[i])
+            self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
+            paras = array(self.fit_results.attrs['coefs'])
 
-        from scipy.optimize import minimize
-        from qblox_drive_AS.support.Pulse_schedule_library import Cosine_func
-        def cosine(x):
-            return -Cosine_func(x,*paras)
+            from scipy.optimize import minimize
+            from qblox_drive_AS.support.Pulse_schedule_library import Cosine_func
+            def cosine(x):
+                return -Cosine_func(x,*paras)
 
-        sweet_spot = minimize(cosine,x0=0,bounds=[(min(self.bias),max(self.bias))])
+            sweet_spot = minimize(cosine,x0=0,bounds=[(min(self.bias),max(self.bias))])
 
 
-        sweet_flux = float(sweet_spot.x[0])
-        sweet_freq = -sweet_spot.fun
+            sweet_flux = float(sweet_spot.x[0])
+            sweet_freq = -sweet_spot.fun
 
-        self.fit_packs = {"A":paras[0],"f":paras[1],"phi":paras[2],"offset":paras[3],"sweet_freq":sweet_freq,"sweet_flux":sweet_flux}
+            self.fit_packs = {"A":paras[0],"f":paras[1],"phi":paras[2],"offset":paras[3],"sweet_freq":sweet_freq,"sweet_flux":sweet_flux}
+        except Exception as err:
+            print(f"While fitting got error = {err}")
+            traceback.print_exc()
+            self.fit_packs = {}
 
     def fluxCavity_plot(self,save_pic_folder):
-        fit_x = self.fit_results.coords['para_fit']
-        fit_y = self.fit_results.data_vars['fitting']
         Plotter = Artist(pic_title=f"FluxCavity-{self.qubit}")
         fig, axs = Plotter.build_up_plot_frame([1,1])
         ax = Plotter.add_colormesh_on_ax(self.bias,self.freqs,self.mags,fig,axs[0])
-        ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
-        ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
         ax.set_xlim(min(self.bias), max(self.bias))
         ax.set_ylim(min(self.freqs),max(self.freqs))
+
+        if len(list(self.fit_packs.keys())) != 0:
+            fit_x = self.fit_results.coords['para_fit']
+            fit_y = self.fit_results.data_vars['fitting']
+            ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
+            ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
         Plotter.pic_save_path = os.path.join(save_pic_folder,f"FluxCavity_{self.qubit}.png")
