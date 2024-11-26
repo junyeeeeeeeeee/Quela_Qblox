@@ -18,7 +18,7 @@ from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.operations.gate_library import Reset, Measure
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
-from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio
+from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio, GateGenesis
 
 """ Global pulse settings """
 electrical_delay:float = 280e-9
@@ -1643,9 +1643,42 @@ def pi_half_cali_sche(
 
     return sched
 
-def drag_coef_cali():
-    """ (X,Y/2) and (Y,X/2)"""
-    pass
+def drag_coef_cali(
+    seq_combin_idx:int,
+    drag_ratios: dict,
+    waveformer:GateGenesis,
+    pi_amp:dict,
+    XY_duration:float,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:float,
+    repetitions:int=1,
+    seq_repeat:int=5
+    )-> Schedule:
+    """ seq_combin_idx=0 for (X,Y/2), and seq_combin_idx=1 for (Y,X/2)"""
+    qubits2read = list(drag_ratios.keys())
+    sameple_idx = array(drag_ratios[qubits2read[0]]).shape[0]
+    sched = Schedule("drag ratio calibration", repetitions=repetitions)
+    for acq_idx in sameple_idx:
+        for qubit_idx, q in enumerate(qubits2read):
+            waveformer.set_dragRatio_for(q, drag_ratios[q][acq_idx])
+            sched.add(Reset(q))
+            if qubit_idx == 0:
+                read_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
+         
+            for i in range(seq_repeat):
+                if seq_combin_idx == 0:
+                    spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration,read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
+                    spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration, spec_pulse,freeDu=0)
+                else:
+                    spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration,read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
+                    spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration, spec_pulse,freeDu=0)
+            Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
 
 def StarkShift_cali():
     """ N * (X,-X)"""
