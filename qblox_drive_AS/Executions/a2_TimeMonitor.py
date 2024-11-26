@@ -12,7 +12,7 @@ QM = QubitMonitor(QD_path=find_latest_QD_pkl_for_dr(DRandIP["dr"],DRandIP["last_
 QM.T1_time_range = {"q0":[0,60e-6],"q1":[0,50e-6]} # skip if empty.
 # T2 settings
 QM.T2_time_range = {"q0":[0,60e-6],"q1":[0,50e-6]} # skip if empty.
-QM.echo_pi_num = {"q0":0,"q1":0}
+QM.echo_pi_num = 0                                # int, if 0 ramsey, 1 spin echo, more for CPMG. All qubit in T2_time_range share a same number.
 QM.a_little_detune_Hz = 0.3e6                     # for all qubit in T2_time_range. Set None if you do SpinEcho or CPMG
 # SingleShot settings, skip if 0 shot
 QM.OS_shots = 10000     

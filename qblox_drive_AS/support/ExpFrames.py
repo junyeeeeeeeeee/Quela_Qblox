@@ -2466,7 +2466,7 @@ class QubitMonitor():
         self.T1_time_range:dict = {}
         self.T2_time_range:dict = {}
         self.OS_target_qs:list = []
-        self.echo_pi_num:dict = {}
+        self.echo_pi_num:int = 0
         self.a_little_detune_Hz:float = 0.1e6
         self.time_sampling_func = 'linspace'
         self.time_ptsORstep:int|float = 100
@@ -2476,6 +2476,10 @@ class QubitMonitor():
 
     def StartMonitoring(self):
         start_time = datetime.now()
+        pi_num_dict = {}
+        if self.T2_time_range is not None:
+            for q in self.T2_time_range:
+                pi_num_dict[q] = self.echo_pi_num
         while True:
             if self.T1_time_range is not None:
                 if len(list(self.T1_time_range.keys())) != 0:
@@ -2486,7 +2490,7 @@ class QubitMonitor():
             if self.T2_time_range is not None:
                 if len(list(self.T2_time_range.keys())) != 0:
                     EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
-                    EXP.SetParameters(self.T2_time_range,self.echo_pi_num,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution)
+                    EXP.SetParameters(self.T2_time_range,pi_num_dict,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution)
                     EXP.WorkFlow(freq_detune_Hz=self.a_little_detune_Hz)
 
             if self.OS_target_qs is not None:
