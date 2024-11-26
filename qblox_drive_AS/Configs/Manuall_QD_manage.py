@@ -94,7 +94,7 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
 
 if __name__ == "__main__":
 
-    QD_path = r"c:\Users\ASqcm\MeasConfigs\qblox_ExpConfigs\DR2#10_SumInfo.pkl"
+    QD_path = ""
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     set_ROF(QD_agent, ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
     
     """ Set Integration time """ 
-    set_integration_time(QD_agent, inte_time_s={"q0":1.5e-6,"q1":1.5e-6}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
+    set_integration_time(QD_agent, inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
     """ Set reset time (All qubits global) """
     setGlobally_reset_time(QD_agent, reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
