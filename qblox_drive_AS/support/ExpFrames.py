@@ -2517,6 +2517,118 @@ class QubitMonitor():
         time_monitor_data_ana(QD_agent,self.save_dir,save_all_fit_fig)
 
 
+class DragCali(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, seq_repeat_num:int=5, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+        """ ### Args:
+            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
+            * amp_sampling_funct: str, `linspace` or `arange`.\n
+            * pi_pair_num: list, like [2, 3] will try 2 exp, the first uses 2\*2 pi-pulse, and the second exp uses 3*2 pi-pulse
+        """
+        if coef_sampling_funct in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(coef_sampling_funct)
+        else:
+            raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_funct}")
+        
+        self.drag_coef_samples = {}
+        for q in drag_coef_range:
+           self.drag_coef_samples[q] = sampling_func(*drag_coef_range[q],coef_ptsORstep)
+        self.seq_repeat = seq_repeat_num
+        self.avg_n = avg_n
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(self.drag_coef_samples.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.Calibration_exp.GRAGcali import drag_cali 
+    
+        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.seq_repeat,self.avg_n,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"DragCali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
+        """ User callable analysis function pack """
+        
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            QD_savior = QDmanager(QD_file)
+            QD_savior.QD_loader()
+
+            ds = open_dataset(file_path)
+            
+            for var in ds.data_vars:
+                if var.split("_")[-1] != 'dragcoef':
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
+                    else:
+                        eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
+                        ref = QD_savior.refIQ[var]
+                    ANA = Multiplex_analyzer("c6")
+                    ANA._import_data(ds,var_dimension=1,refIQ=ref)
+                    ANA._start_analysis(var_name = var)
+                    ANA._export_result(fig_path)
+                    fit_packs = ANA.fit_packs
+            
+            ds.close()
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
+
+
+
+
+
+
 
 if __name__ == "__main__":
     EXP = FluxCavity(QD_path="")

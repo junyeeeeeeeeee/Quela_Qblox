@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -749,6 +749,52 @@ class analysis_tools():
         )
         Plotter.export_results()
 
+    def dragCali_ana(self,var:str):
+        self.qubit = var
+        self.drag_coef =  moveaxis(array(self.ds[f"{var}_dragcoef"]),1,0)[0][0]
+        self.operations = array(self.ds.coords["operations"])
+        data = moveaxis(array(self.ds[var]),1,0)
+        self.plot_item = {}
+
+        for idx, operation_dep_data in enumerate(data):
+            self.plot_item[self.operations[idx]] = {}
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(operation_dep_data[0],operation_dep_data[1],self.refIQ[0],self.refIQ[1])
+            else:
+                iq_data = column_stack((operation_dep_data[0],operation_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
+            
+            self.plot_item[self.operations[idx]]['data'] = refined_data
+            coefficients = polyfit(self.drag_coef, refined_data, deg=1)  
+            self.plot_item[self.operations[idx]]["fit_para"] = coefficients  # [slope, intercept]
+
+        if self.plot_item[self.operations[0]]["fit_para"][0] != self.plot_item[self.operations[1]]["fit_para"][1]:  # Ensure the lines are not parallel
+            x_intersect = (self.plot_item[self.operations[1]]["fit_para"][1] - self.plot_item[self.operations[0]]["fit_para"][1]) / (self.plot_item[self.operations[0]]["fit_para"][0] - self.plot_item[self.operations[1]]["fit_para"][0])
+            self.fit_packs = {"optimal_drag_coef": x_intersect}
+        else:
+            print("The lines are parallel and do not intersect.")
+
+    def dragCali_plot(self, save_pic_folder:str=None):
+        def linear(x,a,b):
+            return a*x+b
+
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_halfPIamp_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit} DRAG coef calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((1,1),fig_size=(12,9))
+        ax:plt.Axes = axs[0]
+        for ope in self.plot_item:
+            ax = Plotter.add_plot_on_ax(self.drag_coef,self.plot_item[ope]['data'],ax,linestyle='--',label=ope, alpha=0.8, ms=4)
+            ax = Plotter.add_plot_on_ax(self.drag_coef,linear(self.drag_coef,*self.plot_item[ope]['fit_para']),ax,linestyle='-', alpha=1, lw=2)
+
+        if len(list(self.fit_packs.keys())) != 0:
+            ax = Plotter.add_verline_on_ax(self.fit_packs["optimal_drag_coef"],list(self.plot_item.values())[0]['data'],ax,linestyle='--',label="Optimal")
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"DRAG coef.", 'ylabel':"I signals (V)"}]
+        )
+        Plotter.export_results()
+
+
 
 ################################
 ####   Analysis Interface   ####
@@ -798,6 +844,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.halfpiamp_cali_ana(kwargs["var_name"])
             case 'c5':
                 self.ROL_cali_ana(kwargs["var_name"])
+            case 'c6':
+                self.dragCali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
             case _:
@@ -831,6 +879,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.halfpiamp_cali_plot(pic_save_folder)
             case 'c5':
                 self.ROL_cali_plot(pic_save_folder)
+            case 'c6':
+                self.dragCali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
 

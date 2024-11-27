@@ -63,7 +63,7 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
             
             for q_idx, q in enumerate(drag_samples):
                 I_data, Q_data = array(ds[f"y{2*q_idx}"]).tolist(), array(ds[f"y{2*q_idx+1}"]).tolist()
-                dict_[q] = [I_data,Q_data] # shape in (mixer, pi_amp)
+                dict_[q] = [I_data,Q_data] # shape in (mixer, dragcoef)
                 dict_[f"{q}_dragcoef"] = [list(drag_samples[q])]*2
         else:
             preview_para = {}
@@ -76,7 +76,7 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
     
     for operation_idx, operations in enumerate(["(X,Y/2)","(Y,X/2)"]):
         slightly_print(f"operations: {operations} ...")
-        dataDict = operation_dep_exe(operation_idx) # {"q0":[],"q0_PIcoef":[], ...}
+        dataDict = operation_dep_exe(operation_idx) # {"q0":[],"q0_dragcoef":[], ...}
         for var in dataDict:
             results[var].append(dataDict[var])
             if operation_idx == 1: results[var] = (["mixer", "operations", "dragCoef"],moveaxis(array(results[var]),0,1)) # shape (operations, mixer, dragCoef) -> (mixer, operations, dragCoef)
