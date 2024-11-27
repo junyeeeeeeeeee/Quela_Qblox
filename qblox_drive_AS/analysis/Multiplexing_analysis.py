@@ -288,7 +288,8 @@ class analysis_tools():
         if len(ref) == 2:
             self.contrast = sqrt((ii-ref[0])**2+(qq-ref[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
         else:
-            self.contrast = rotate_data(array([ii,qq]),ref[0])[0]
+            iq_data = column_stack((ii,qq)).T
+            self.contrast = rotate_data(iq_data,ref[0])[0]
         self.fit_f01s = []
         self.fif_amps = []
         if fit_func is not None and self.xyl.shape[0] != 1:
@@ -336,7 +337,8 @@ class analysis_tools():
         if len(refIQ) == 2:
             self.contrast = array(sqrt((IQarray[0]-refIQ[0])**2+(IQarray[1]-refIQ[1])**2))
         else:
-            self.contrast = rotate_data(IQarray,refIQ[0])[0]
+            iq_data = column_stack((IQarray[0],IQarray[1])).T
+            self.contrast = rotate_data(iq_data,refIQ[0])[0]
         if fit_func is not None:
             # try:
             self.fit_z = []
