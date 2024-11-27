@@ -794,7 +794,7 @@ class PowerConti2tone(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'freq':
                     ANA = Multiplex_analyzer("m8")     
-                    ANA._import_data(ds,2,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var],QS_fit_analysis)
+                    ANA._import_data(ds,2,QD_savior.refIQ[var],QS_fit_analysis)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     if ANA.fit_packs != {}:
@@ -905,7 +905,7 @@ class FluxQubit(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'freq':
                     ANA = Multiplex_analyzer("m9") 
-                    ANA._import_data(ds,2,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var],QS_fit_analysis)
+                    ANA._import_data(ds,2,QD_savior.refIQ[var],QS_fit_analysis)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     if len(list(ANA.fit_packs.keys())) != 0: answer[var] = ANA.fit_packs        
