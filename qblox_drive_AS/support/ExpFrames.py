@@ -1839,7 +1839,7 @@ class XYFcali(ExpGovernment):
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.T2 import Ramsey
     
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution)
+        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution,second_phase='y')
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"XYFcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2600,7 +2600,7 @@ class DragCali(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            
+            answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'dragcoef':
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -2612,9 +2612,20 @@ class DragCali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
                     ANA._start_analysis(var_name = var)
                     ANA._export_result(fig_path)
-                    fit_packs = ANA.fit_packs
+                    answer[var] = ANA.fit_packs
             
             ds.close()
+
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.Waveformer.set_dragRatio_for(permi,answer[permi]["optimal_drag_coef"])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.Waveformer.set_dragRatio_for(q, answer[q]["optimal_drag_coef"])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
 
     def WorkFlow(self):
         

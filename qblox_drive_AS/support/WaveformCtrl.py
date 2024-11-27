@@ -143,11 +143,13 @@ class GateGenesis():
     def Y_pi_2_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
         amp= pi_amp[q]*self.__xylog[q]["halfPI_ratio"]
         delay_c= -pi_Du-freeDu
+        
         return self.XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,ref_pt='start')
 
     def X_pi_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
         amp= pi_amp[q]
         delay_c= -pi_Du-freeDu
+    
         return self.XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,ref_pt=ref_point)
 
     def Y_pi_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):

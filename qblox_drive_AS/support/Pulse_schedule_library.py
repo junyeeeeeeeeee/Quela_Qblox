@@ -1220,7 +1220,8 @@ def multi_ramsey_sche(
     qubits2read = list(freeduration.keys())
     sameple_idx = array(freeduration[qubits2read[0]]).shape[0]
     sched = Schedule("Ramsey", repetitions=repetitions)
-    
+    print(f"Second phase: {second_pulse_phase}")
+
     for acq_idx in range(sameple_idx):   
         for qubit_idx, q in enumerate(qubits2read):
             freeDu = freeduration[q][acq_idx]
@@ -1660,7 +1661,7 @@ def drag_coef_cali(
     qubits2read = list(drag_ratios.keys())
     sameple_idx = array(drag_ratios[qubits2read[0]]).shape[0]
     sched = Schedule("drag ratio calibration", repetitions=repetitions)
-    for acq_idx in sameple_idx:
+    for acq_idx in range(sameple_idx):
         for qubit_idx, q in enumerate(qubits2read):
             waveformer.set_dragRatio_for(q, drag_ratios[q][acq_idx])
             sched.add(Reset(q))
@@ -1671,12 +1672,15 @@ def drag_coef_cali(
          
             for i in range(seq_repeat):
                 if seq_combin_idx == 0:
-                    spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration,read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
-                    spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration, spec_pulse,freeDu=0)
+                    
+                    spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
+                    
+                    spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
                 else:
-                    spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration,read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
-                    spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration, spec_pulse,freeDu=0)
-            Integration(sched,q,R_inte_delay,R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+                    spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
+                    spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
+            
+            Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
     return sched
 

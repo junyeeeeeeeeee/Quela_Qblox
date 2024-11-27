@@ -15,6 +15,7 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
     results = {}
     original_pulse_info = QD_agent.Waveformer.get_log()
     sche_func= drag_coef_cali
+    
     dataset_2_nc = ""
     for q in drag_samples:
         results[q], results[f"{q}_dragcoef"] = [], []
@@ -38,7 +39,7 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
             R_duration=compose_para_for_multiplexing(QD_agent,drag_samples,'r3'),
             R_integration=compose_para_for_multiplexing(QD_agent,drag_samples,'r4'),
             R_inte_delay=compose_para_for_multiplexing(QD_agent,drag_samples,'r2'),
-            seq_repeat_num=seq_repeat_num
+            seq_repeat=seq_repeat_num
             )
         
         
