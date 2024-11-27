@@ -2549,7 +2549,7 @@ class DragCali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, seq_repeat_num:int=5, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
             * amp_sampling_funct: str, `linspace` or `arange`.\n
@@ -2655,7 +2655,113 @@ class DragCali(ExpGovernment):
         self.CloseMeasurement() 
 
 
+class GateErrorTest(ExpGovernment):
+    """ Helps you get the **Dressed** cavities. """
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
 
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+    
+    @RawDataPath.setter
+    def RawDataPath(self,path:str):
+        self.__raw_data_location = path
+
+    def SetParameters(self, target_qs:list, shots:int=10000, execution:bool=True, use_untrained_wf:bool=False):
+        """ 
+        ### Args:\n
+        * target_qs: list, like ["q0", "q1", ...]
+        """
+        self.use_time_label:bool = False
+        self.avg_n = shots
+        self.execution = execution
+        self.use_de4t_wf = use_untrained_wf
+        self.target_qs = target_qs
+        
+
+
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and driving atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    
+    def RunMeasurement(self):
+        from qblox_drive_AS.aux_measurement.GateErrorTest import GateError_single_shot
+       
+
+        dataset = GateError_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.use_de4t_wf,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
+        """ if histo_ana, it will check all the data in the same folder with the given new_file_path """
+    
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            QD_savior = QDmanager(QD_file)
+            QD_savior.QD_loader()
+
+            
+            ds = open_dataset(file_path)
+            answer = {}
+            for var in ds.data_vars:
+                ANA = Multiplex_analyzer("t1")
+                ANA._import_data(ds,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                ANA._start_analysis(var_name=var)
+                pic_path = os.path.join(fig_path,f"{var}_GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                ANA._export_result(pic_path)
+
+                ans = ANA.fit_packs # ["conventional":{"p00","p01","p10","p11"}, "effective"]
+                error_0 =  abs(ans["conventional"]["p00"] - ans["effective"]["p00"])/(int(array(ds.coords["pulse_num"])[2])-int(array(ds.coords["pulse_num"])[0]))
+                error_1 =  abs(ans["conventional"]["p11"] - ans["effective"]["p11"])/(int(array(ds.coords["pulse_num"])[3])-int(array(ds.coords["pulse_num"])[1]))
+                answer[var] = mean([error_0, error_1])
+                highlight_print(f"{var} averaged pi-pulse fidelity ~ {round((1-answer[var])*100, 2)} %")
+                
+            ds.close()
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
+
+    
 
 
 

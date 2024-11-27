@@ -870,6 +870,46 @@ class analysis_tools():
         Plotter.export_results()
 
 
+    def gateError_ana(self,var:str,tansition_freq_Hz:float=None):
+        data = moveaxis(array(self.ds[var]),0,1)*1000 # shape (pulse_num, IQ, shots) 
+        p0_data = data[0]
+        p1_data = data[1]
+        p0_data_eff = data[2]
+        p1_data_eff = data[3] 
+        self.fq = tansition_freq_Hz  
+
+        self.train_set = DataArray(moveaxis(array([p0_data,p1_data]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data.shape[-1]))] )
+        self.train_set_eff = DataArray(moveaxis(array([p0_data_eff,p1_data_eff]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data_eff.shape[-1]))] )
+        train_set_md = GMMROFidelity()
+        train_set_eff_md = GMMROFidelity()
+        
+        self.mds = [train_set_md, train_set_eff_md]
+        self.datasets = [self.train_set, self.train_set_eff]
+        self.names = ["conventional", "effective"]
+
+        for i, data in enumerate(self.datasets):
+            
+            self.mds[i]._import_data(data)
+            self.mds[i]._start_analysis()
+            g1d_fidelity = self.mds[i].export_G1DROFidelity()
+            
+            p00 = g1d_fidelity.g1d_dist[0][0][0]
+            p01 = g1d_fidelity.g1d_dist[0][0][1]
+            p10 = g1d_fidelity.g1d_dist[1][0][0]
+            p11 = g1d_fidelity.g1d_dist[1][0][1]
+            
+        
+            self.fit_packs[self.names[i]] = {"p00":p00,"p01":p01,"p10":p10,"p11":p11}
+
+    def gateError_plot(self,save_pic_path:str=None):
+        for idx, name in enumerate(self.names):
+            self.mds[idx]._import_data(self.datasets[idx])
+            self.mds[idx]._start_analysis()
+            g1d_fidelity = self.mds[idx].export_G1DROFidelity()
+            plot_readout_fidelity(self.datasets[idx], self.mds[idx], g1d_fidelity, self.fq, f"{save_pic_path}_{name}" if save_pic_path is not None else None, plot=True if save_pic_path is None else False)
+            plt.close()
+
+
 
 ################################
 ####   Analysis Interface   ####
@@ -923,6 +963,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.dragCali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
+            case 't1':
+                self.gateError_ana(kwargs["var_name"],self.transition_freq)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -958,6 +1000,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.dragCali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
+            case 't1':
+                self.gateError_plot(pic_save_folder)
 
 
 
