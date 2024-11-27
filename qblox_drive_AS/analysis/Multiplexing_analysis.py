@@ -509,9 +509,9 @@ class analysis_tools():
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
             self.ans = cos_fit_analysis(data,array(time_samples))
-            self.fit_packs['phase'] = self.ans.attrs['coefs'][2]
+            self.fit_packs['phase'] = self.ans.attrs['coefs'][2]*180/pi
             self.fit_packs["freq"] = self.ans.attrs['f']
-            eyeson_print(f"phase fit = {self.fit_packs['phase']}")
+            eyeson_print(f"phase fit = {round(self.fit_packs['phase'],2)} deg")
         
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""

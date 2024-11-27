@@ -1805,14 +1805,13 @@ class XYFcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, detune:float=10e6, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * target_qs: ["q0", "q1", ...]\n
         """
         from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
     
         self.time_samples = {}
-        self.detune = detune
         for q in target_qs:
             self.time_samples[q] = sort_elements_2_multiples_of(linspace(0,evo_time,100)*1e9,4)*1e-9
 
@@ -1831,7 +1830,6 @@ class XYFcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.detune)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
@@ -1886,18 +1884,23 @@ class XYFcali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=2,refIQ=ref)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
-                     
-                    answer[var] = self.detune-ANA.fit_packs['freq']
+
+                    if ANA.fit_packs['phase'] > 180:
+                        sign = -1
+                    else:
+                        sign = 1
+                    
+                    answer[var] = sign*ANA.fit_packs['freq']
                     highlight_print(f"{var}: actual detune = {round(answer[var]*1e-6,4)} MHz")
             ds.close()
 
             permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
             if permi in list(answer.keys()):
-                QD_savior.quantum_device.get_element(permi).clock_freqs.f01(QD_savior.quantum_device.get_element(permi).clock_freqs.f01()+answer[permi])
+                QD_savior.quantum_device.get_element(permi).clock_freqs.f01(QD_savior.quantum_device.get_element(permi).clock_freqs.f01()-answer[permi])
                 QD_savior.QD_keeper()
             elif permi in ["all",'y','yes']:
                 for q in answer:
-                    QD_savior.quantum_device.get_element(q).clock_freqs.f01(QD_savior.quantum_device.get_element(q).clock_freqs.f01()+answer[q])
+                    QD_savior.quantum_device.get_element(q).clock_freqs.f01(QD_savior.quantum_device.get_element(q).clock_freqs.f01()-answer[q])
                 QD_savior.QD_keeper()
             else:
                 print("Updating got denied ~")
