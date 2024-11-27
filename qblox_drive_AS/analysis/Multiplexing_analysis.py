@@ -226,6 +226,8 @@ class analysis_tools():
         self.bias = array(self.ds.coords["bias"])
         S21 = array(self.ds.data_vars[self.qubit])[0] + 1j * array(self.ds.data_vars[self.qubit])[1]
         self.mags:ndarray = abs(S21)
+        self.collected_freq = []
+        self.collected_flux = []
         try:
             freq_fit = []
             fit_err = []
@@ -233,15 +235,14 @@ class analysis_tools():
                 res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
                 result, _, _ = res_er.fit()
                 freq_fit.append(result['fr'])
-                fit_err.append(result['fr_err'])
+                fit_err.append(result['chi_square'])
 
             _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
-            collected_freq = []
-            collected_flux = []
+            
             for i in indexs:
-                collected_freq.append(freq_fit[i])
-                collected_flux.append(list(self.bias)[i])
-            self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
+                self.collected_freq.append(freq_fit[i])
+                self.collected_flux.append(list(self.bias)[i])
+            self.fit_results = cos_fit_analysis(array(self.collected_freq),array(self.collected_flux))
             paras = array(self.fit_results.attrs['coefs'])
 
             from scipy.optimize import minimize
@@ -273,6 +274,9 @@ class analysis_tools():
             fit_y = self.fit_results.data_vars['fitting']
             ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
             ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+        
+        if len(self.collected_flux) != 0 and len(self.collected_freq) != 0:
+            ax = Plotter.add_scatter_on_ax(self.collected_flux,self.collected_freq,ax,c='white',marker="o",s=30)
 
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
@@ -497,7 +501,9 @@ class analysis_tools():
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
             self.ans = cos_fit_analysis(data,array(time_samples))
+            self.fit_packs['phase'] = self.ans.attrs['coefs'][2]
             self.fit_packs["freq"] = self.ans.attrs['f']
+            eyeson_print(f"phase fit = {self.fit_packs['phase']}")
         
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
@@ -772,6 +778,7 @@ class analysis_tools():
 
         if self.plot_item[self.operations[0]]["fit_para"][0] != self.plot_item[self.operations[1]]["fit_para"][1]:  # Ensure the lines are not parallel
             x_intersect = (self.plot_item[self.operations[1]]["fit_para"][1] - self.plot_item[self.operations[0]]["fit_para"][1]) / (self.plot_item[self.operations[0]]["fit_para"][0] - self.plot_item[self.operations[1]]["fit_para"][0])
+            self.y_intersect = self.plot_item[self.operations[0]]["fit_para"][0] * x_intersect + self.plot_item[self.operations[0]]["fit_para"][1]
             self.fit_packs = {"optimal_drag_coef": x_intersect}
         else:
             print("The lines are parallel and do not intersect.")
@@ -789,7 +796,7 @@ class analysis_tools():
             ax = Plotter.add_plot_on_ax(self.drag_coef,linear(self.drag_coef,*self.plot_item[ope]['fit_para']),ax,linestyle='-', alpha=1, lw=2)
 
         if len(list(self.fit_packs.keys())) != 0:
-            ax = Plotter.add_verline_on_ax(self.fit_packs["optimal_drag_coef"],list(self.plot_item.values())[0]['data'],ax,linestyle='--',label="Optimal")
+            ax = Plotter.add_scatter_on_ax(self.fit_packs["optimal_drag_coef"],self.y_intersect,ax,marker='*',c='red',s=200,label=f"Optimal={round(self.fit_packs['optimal_drag_coef'],2)}")
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"DRAG coef.", 'ylabel':"I signals (V)"}]
