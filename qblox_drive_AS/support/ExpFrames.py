@@ -2100,7 +2100,7 @@ class PiAcali(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            
+            answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'PIcoef':
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -2112,8 +2112,19 @@ class PiAcali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
                     ANA._start_analysis(var_name = var)
                     ANA._export_result(fig_path)
-                    fit_packs = ANA.fit_packs
+                    answer[var] = ANA.fit_packs["ans"]
             ds.close()
+
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.quantum_device.get_element(permi).rxy.amp180(QD_savior.quantum_device.get_element(permi).rxy.amp180()*answer[permi])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.quantum_device.get_element(q).rxy.amp180(QD_savior.quantum_device.get_element(q).rxy.amp180()*answer[q])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
 
     def WorkFlow(self):
         
@@ -2137,7 +2148,7 @@ class hPiAcali(ExpGovernment):
 
     def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.4, 0.6], "q1":[0.45, 0.55], ...], must be close to 0.5 because it's a half pi-pulse.\n
+            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[...], ...], this is the coef tiles to QDmanager.Waveformer.__xylog[q]["halfPI_ratio"].\n
             * amp_sampling_funct: str, `linspace` or `arange`.\n
             * pi_pair_num: list, like [3, 5] will try 2 exp, the first uses 3\*4 half pi-pulse, and the second exp uses 5*4 half pi-pulse
         """
@@ -2206,7 +2217,7 @@ class hPiAcali(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            
+            answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'HalfPIcoef':
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -2216,12 +2227,21 @@ class hPiAcali(ExpGovernment):
                         ref = QD_savior.refIQ[var]
                     ANA = Multiplex_analyzer("c4")
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
-                    ANA._start_analysis(var_name = var)
+                    ANA._start_analysis(var_name = var) 
                     ANA._export_result(fig_path)
-                    fit_packs = ANA.fit_packs
+                    answer[var] = ANA.fit_packs["ans"]
 
             ds.close()
-
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.Waveformer.set_halfPIratio_for(permi, QD_savior.Waveformer.get_halfPIratio_for(permi)*answer[permi])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.Waveformer.set_halfPIratio_for(q, QD_savior.Waveformer.get_halfPIratio_for(q)*answer[q])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
     def WorkFlow(self):
         
         self.PrepareHardware()
@@ -2543,7 +2563,6 @@ class DragCali(ExpGovernment):
         self.drag_coef_samples = {}
         for q in drag_coef_range:
            self.drag_coef_samples[q] = sampling_func(*drag_coef_range[q],coef_ptsORstep)
-        self.seq_repeat = seq_repeat_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -2564,9 +2583,9 @@ class DragCali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.GRAGcali import drag_cali 
+        from qblox_drive_AS.Calibration_exp.DRAGcali import drag_cali 
     
-        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.seq_repeat,self.avg_n,self.execution)
+        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"DragCali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")

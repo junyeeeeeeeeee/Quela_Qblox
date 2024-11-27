@@ -26,6 +26,14 @@ from matplotlib.figure import Figure
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
 
+def find_minima(f, phase, start, stop):
+    """ from the given astart and stop, which is counted for the minimua number  """
+    minima = []
+    for n in range(start, stop):
+        x_min = ((2 * n + 1) * pi - phase) / (2 * pi * f)
+        minima.append(x_min)
+    return minima
+
 def plot_FreqBiasIQ(f:ndarray,z:ndarray,I:ndarray,Q:ndarray,refIQ:list=[], ax:plt.Axes=None)->plt.Axes:
     """
         I and Q shape in (z, freq)
@@ -704,7 +712,34 @@ class analysis_tools():
                 iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
                 refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
-        self.fit_packs = {var:refined_data_folder}
+        
+        # attrs["coefs"] = [A_fit,f_fit,phase_fit,offset_fit]
+        
+        candidates = []
+        self.ans = []
+        for idx, PiPairNum_dep_fitting_ds in enumerate(refined_data_folder[:2]):
+            # Find minima in the range n = -3 to n = 3
+            mini = list(find_minima(PiPairNum_dep_fitting_ds.attrs["coefs"][1], PiPairNum_dep_fitting_ds.attrs["coefs"][2], -3, 4))
+            minimas = []
+            
+            for i in mini:
+                if i <= max(self.pi_amp_coef) and i >= min(self.pi_amp_coef):
+                    if idx == 0:
+                        
+                        minimas.append(i)
+                    else:
+                        if len(candidates) > 0:
+                            for candit in candidates:
+                                if abs(candit-i) <= (max(self.pi_amp_coef)-min(self.pi_amp_coef))/10:
+                                    self.ans.append(i)
+                                    candidates.remove(candit)
+                        else:
+                            break
+            
+            if idx == 0:
+                candidates = minimas
+        
+        self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
     def piamp_cali_plot(self,save_pic_folder:str=None):
         q = list(self.fit_packs.keys())[0]
@@ -717,6 +752,10 @@ class analysis_tools():
             x_fit = refined_data.coords['para_fit']  
             Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI pairs", alpha=0.8, ms=4)
             Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
+        
+        if len(self.ans) != 0:
+            for an_ans in self.ans:
+                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--')
             
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
@@ -737,7 +776,32 @@ class analysis_tools():
                 iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
                 refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
-        self.fit_packs = {var:refined_data_folder}
+
+        candidates = []
+        self.ans = []
+        for idx, PiPairNum_dep_fitting_ds in enumerate(refined_data_folder[:2]):
+            # Find minima in the range n = -3 to n = 3
+            mini = list(find_minima(PiPairNum_dep_fitting_ds.attrs["coefs"][1], PiPairNum_dep_fitting_ds.attrs["coefs"][2], -3, 4))
+            minimas = []
+            
+            for i in mini:
+                if i <= max(self.pi_amp_coef) and i >= min(self.pi_amp_coef):
+                    if idx == 0:
+                        
+                        minimas.append(i)
+                    else:
+                        if len(candidates) > 0:
+                            for candit in candidates:
+                                if abs(candit-i) <= (max(self.pi_amp_coef)-min(self.pi_amp_coef))/10:
+                                    self.ans.append(i)
+                                    candidates.remove(candit)
+                        else:
+                            break
+            
+            if idx == 0:
+                candidates = minimas
+        
+        self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
     def halfpiamp_cali_plot(self,save_pic_folder:str=None):
         q = list(self.fit_packs.keys())[0]
@@ -750,7 +814,9 @@ class analysis_tools():
             x_fit = refined_data.coords['para_fit']  
             Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI quadruples", alpha=0.8, ms=4)
             Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
-            
+        if len(self.ans) != 0:
+            for an_ans in self.ans:
+                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--')
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"half PI-amp coef.", 'ylabel':"I signals (V)"}]

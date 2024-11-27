@@ -1419,6 +1419,7 @@ def Qubit_SS_sche(
 
 def multi_Qubit_SS_sche(
     ini_state:str,
+    waveformer:GateGenesis,
     pi_amp: dict,
     pi_dura:dict,
     R_amp: dict,
@@ -1439,7 +1440,7 @@ def multi_Qubit_SS_sche(
             Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
     
         if ini_state=='e': 
-            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+            waveformer.X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
         
     
         Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=0,acq_channel=qubit_idx,single_shot=True,get_trace=False,trace_recordlength=0)
@@ -1579,6 +1580,7 @@ def PI_amp_cali_sche(
 def multi_PI_amp_cali_sche(
     pi_amp_coefs: dict,
     pi_pair_num:int,
+    waveformer:GateGenesis,
     XY_amp: dict,
     XY_duration:dict,
     R_amp: dict,
@@ -1591,11 +1593,6 @@ def multi_PI_amp_cali_sche(
     sameple_idx = array(pi_amp_coefs[qubits2read[0]]).shape[0]
     sched = Schedule("Pi amp modification", repetitions=repetitions)
 
-    if np.median(pi_amp_coefs[qubits2read[0]]) > 0.9 : # should be 1 when pi amp cali
-        pairs:int = 2
-    else:                          # should be 0.5 when half-pi amp cali
-        pairs:int = 4
-    
     for acq_idx in range(sameple_idx):
         for qubit_idx, q in enumerate(qubits2read):
             amp_coef = pi_amp_coefs[q][acq_idx]
@@ -1609,10 +1606,52 @@ def multi_PI_amp_cali_sche(
                 Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
             
             for pi_num in range(pi_pair_num):
-                for pi_idx in range(pairs):
-                    spec_pulse = X_pi_p(sched,{str(q):float(XY_amp[q])*amp_coef},q,XY_duration[q],read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                for pi_idx in range(2):
+                    spec_pulse = waveformer.X_pi_p(sched,{str(q):float(XY_amp[q])*amp_coef},q,XY_duration[q],read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
                     
             Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    return sched
+
+def multi_hPI_amp_cali_sche(
+    pi_amp_coefs: dict,
+    pi_pair_num:int,
+    waveformer:GateGenesis,
+    XY_amp: dict,
+    XY_duration:dict,
+    R_amp: dict,
+    R_duration: dict,
+    R_integration:dict,
+    R_inte_delay:dict,
+    repetitions:int=1,
+    )-> Schedule:
+    qubits2read = list(pi_amp_coefs.keys())
+    sameple_idx = array(pi_amp_coefs[qubits2read[0]]).shape[0]
+    sched = Schedule("Pi amp modification", repetitions=repetitions)
+    ori_falf_ratio = {}
+    for q in qubits2read:
+        ori_falf_ratio[q] = waveformer.get_halfPIratio_for(q)
+        
+    
+    for acq_idx in range(sameple_idx):
+        for qubit_idx, q in enumerate(qubits2read):
+            waveformer.set_halfPIratio_for(q, ori_falf_ratio[q]*pi_amp_coefs[q][acq_idx])
+            sched.add(Reset(q))
+            
+            if qubit_idx == 0:
+                read_pulse = Readout(sched,q,R_amp,R_duration)
+            else:
+                Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
+            
+            for pi_num in range(pi_pair_num):
+                for pi_idx in range(4):
+                    spec_pulse = waveformer.X_pi_2_p(sched,XY_amp,q,XY_duration[q],read_pulse if (pi_num == 0 and pi_idx == 0) else spec_pulse, freeDu=electrical_delay if (pi_num == 0 and pi_idx == 0) else 0)
+                    
+            Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+
+    for q in ori_falf_ratio:
+        waveformer.set_halfPIratio_for(q, ori_falf_ratio[q])
+        
 
     return sched
 
@@ -1654,13 +1693,18 @@ def drag_coef_cali(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:float,
-    repetitions:int=1,
-    seq_repeat:int=5
+    repetitions:int=1
     )-> Schedule:
     """ seq_combin_idx=0 for (X,Y/2), and seq_combin_idx=1 for (Y,X/2)"""
     qubits2read = list(drag_ratios.keys())
     sameple_idx = array(drag_ratios[qubits2read[0]]).shape[0]
     sched = Schedule("drag ratio calibration", repetitions=repetitions)
+
+    ori_drag_ratio = {}
+    for q in qubits2read:
+        ori_drag_ratio[q] = waveformer.get_dragRatio_for(q)
+        
+
     for acq_idx in range(sameple_idx):
         for qubit_idx, q in enumerate(qubits2read):
             waveformer.set_dragRatio_for(q, drag_ratios[q][acq_idx])
@@ -1670,18 +1714,19 @@ def drag_coef_cali(
             else:
                 Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
          
-            for i in range(seq_repeat):
-                if seq_combin_idx == 0:
-                    
-                    spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
-                    
-                    spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
-                else:
-                    spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse if i==0 else spec_pulse,freeDu=electrical_delay if i==0 else 0)
-                    spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
+            
+            if seq_combin_idx == 0:
+                spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse,freeDu=electrical_delay)
+                spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
+            else:
+                spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse,freeDu=electrical_delay)
+                spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
             
             Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
+    for q in ori_drag_ratio:
+        waveformer.set_dragRatio_for(q, ori_drag_ratio[q])
+        
     return sched
 
 def StarkShift_cali():

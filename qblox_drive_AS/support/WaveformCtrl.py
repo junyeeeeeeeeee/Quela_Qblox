@@ -96,9 +96,14 @@ class GateGenesis():
 
     def set_dragRatio_for(self,target_q:str,drag_ratio:float):
         self.__xylog[target_q]["drag_ratio"] = drag_ratio
+    
+    def get_dragRatio_for(self,target_q:str):
+        return self.__xylog[target_q]["drag_ratio"]
 
     def set_halfPIratio_for(self,target_q:str,halfPI_ratio:float):
         self.__xylog[target_q]["halfPI_ratio"] = halfPI_ratio
+    def get_halfPIratio_for(self,target_q:str):
+        return self.__xylog[target_q]["halfPI_ratio"]
 
     def get_log(self)->dict:
         return {"xy":self.__xylog, "z":self.__zlog}
@@ -112,6 +117,7 @@ class GateGenesis():
             case 'xy':
                 if all(element in list(self.__xylog[target_q].keys()) for element in list(all_info.keys())):
                     self.__xylog[target_q] = all_info
+                    print("modified")
                 else:
                     raise KeyError("xy mode choosed, 'waveform','duraOVERsigma','drag_ratio' and 'halfPI_ratio' must in the given all_info. ")
             case 'z':
@@ -120,7 +126,7 @@ class GateGenesis():
                 else:
                     raise KeyError("z mode choosed, 'waveform' and 'duraOVERsigma' must in the given all_info. ")
             case _:
-                pass
+                raise KeyError(f"Wrong mode was given as {mode}")
     ##########################
     #####    gates    #####
     ##########################

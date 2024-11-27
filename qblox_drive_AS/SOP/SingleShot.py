@@ -23,6 +23,7 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000,r
         slightly_print(f"Shotting for |{ini_state}>")
         sched_kwargs = dict(   
             ini_state=ini_state,
+            waveformer = QD_agent.Waveformer,
             pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'d1'),
             pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements,'d3'),
             R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),

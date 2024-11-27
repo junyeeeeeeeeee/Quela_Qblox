@@ -11,9 +11,9 @@ from qblox_drive_AS.support import compose_para_for_multiplexing
 from qblox_drive_AS.support.Pulse_schedule_library import drag_coef_cali, pulse_preview
 
 
-def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict, seq_repeat_num:int=5,n_avg:int=300,run:bool=True):
+def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict, n_avg:int=300,run:bool=True):
     results = {}
-    original_pulse_info = QD_agent.Waveformer.get_log()
+    
     sche_func= drag_coef_cali
     
     dataset_2_nc = ""
@@ -39,7 +39,6 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
             R_duration=compose_para_for_multiplexing(QD_agent,drag_samples,'r3'),
             R_integration=compose_para_for_multiplexing(QD_agent,drag_samples,'r4'),
             R_inte_delay=compose_para_for_multiplexing(QD_agent,drag_samples,'r2'),
-            seq_repeat=seq_repeat_num
             )
         
         
@@ -81,8 +80,7 @@ def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict
         for var in dataDict:
             results[var].append(dataDict[var])
             if operation_idx == 1: results[var] = (["mixer", "operations", "dragCoef"],moveaxis(array(results[var]),0,1)) # shape (operations, mixer, dragCoef) -> (mixer, operations, dragCoef)
-            if "_" not in var:
-                QD_agent.Waveformer.modi_all_info_for(var,original_pulse_info["xy"][var],'xy')
+            
     
     if run:
         dataset_2_nc = Dataset(results,coords={"mixer":array(["I","Q"]),"operations":array(["(X,Y/2)","(Y,X/2)"]),"dragCoef":data_sample_idx})
