@@ -4,15 +4,15 @@ from qblox_drive_AS.support.ExpFrames import PowerConti2tone
 #// test okay.
 
 ''' fill in '''
-Execution:bool = True
-RO_XY_overlap:bool = False
+Execution:bool = 1
+RO_XY_overlap:bool = 0
 DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_range:dict = {"q0":[4.6e9,4.8e9], "q1":[4.05e9,4.25e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
-xyl_range:list = [0.1]                                 # driving power [from, end, pts/step]
+freq_range:dict = {"q0":[4.5e9,4.9e9], "q1":[4e9,4.4e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
+xyl_range:list = [0.02]                                 # driving power [from, end, pts/step]
 xyl_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
-freq_pts:int = 100
-AVG:int = 100
+freq_pts:int = 200
+AVG:int = 300
 
 ''' Don't Touch '''
 save_dir = Data_manager().build_packs_folder()

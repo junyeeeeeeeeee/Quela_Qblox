@@ -6,12 +6,12 @@ from qblox_drive_AS.support.ExpFrames import FluxCavity
 ''' fill in '''
 Execution:bool = True
 DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_span_range:dict = {"q0":[-4e6,+5e6], "q1":[-5e6,5e6]}    # np.linspace(rof+span, rof+span, freq_pts)
-flux_range:list = [-0.2, 0.2, 40]                                 # flux [from, end, pts/step]
+freq_span_range:dict = {"q0":[-6e6,+6e6],"q1":[-6e6,+6e6]}    # np.linspace(rof+span, rof+span, freq_pts)
+flux_range:list = [-0.2, 0.2, 20]                                 # flux [from, end, pts/step]
 flux_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
-freq_pts:int = 40
-AVG:int = 100
+freq_pts:int = 50
+AVG:int = 300
 
 ''' Don't Touch '''
 save_dir = Data_manager().build_packs_folder()
