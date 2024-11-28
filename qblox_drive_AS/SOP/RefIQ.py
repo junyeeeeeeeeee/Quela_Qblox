@@ -27,6 +27,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:
 
     sched_kwargs = dict(   
         ini_state='g',
+        waveformer=QD_agent.Waveformer,
         pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'d1'),
         pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements,'d3'),
         R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),

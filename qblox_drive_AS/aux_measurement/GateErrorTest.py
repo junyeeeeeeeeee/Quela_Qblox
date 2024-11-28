@@ -5,25 +5,34 @@ from qblox_drive_AS.support.UserFriend import *
 from numpy import array, moveaxis, arange
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import multi_Qubit_SS_sche, pulse_preview
+from qblox_drive_AS.support.Pulse_schedule_library import Gate_Test_SS_sche, pulse_preview
+from qblox_drive_AS.support.WaveformCtrl import GateGenesis
 
-
-def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000,run:bool=True):
-    sche_func = multi_Qubit_SS_sche 
+def GateError_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000, untrained:bool=False,run:bool=True):
+    sche_func = Gate_Test_SS_sche 
+    pulse_repeats = array(list([0, 1]) + list(arange(2,502,20)))
 
     for q in ro_elements:
+        pi_dura = QD_agent.quantum_device.get_element(q).rxy.duration()
         qubit_info = QD_agent.quantum_device.get_element(q)
+        qubit_info.reset.duration(qubit_info.reset.duration()+max(pulse_repeats)*pi_dura)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         eyeson_print(f"{q} Integration time: {round(qubit_info.measure.integration_time()*1e6,1)} µs")
 
     
     folder = []
+    if untrained:
+        slightly_print("Use default pi-pulse !")
+        wf_packs = GateGenesis(q_num=len(list(QD_agent.quantum_device.elements())),c_num=0)
+    else:
+        wf_packs = QD_agent.Waveformer
 
-    def state_dep_sched(ini_state:str):
-        slightly_print(f"Shotting for |{ini_state}>")
+
+    def repeat_dep_sched(seq_num:int):
+        slightly_print(f"Shotting for {seq_num} pi-pulses")
         sched_kwargs = dict(   
-            ini_state=ini_state,
-            waveformer = QD_agent.Waveformer,
+            pulse_num=seq_num,
+            waveformer = wf_packs,
             pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'d1'),
             pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements,'d3'),
             R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
@@ -49,21 +58,19 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000,r
         else:
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 
-            
-    state_dep_sched('g')
-    state_dep_sched('e')
+    for i in pulse_repeats:        
+        repeat_dep_sched(i)
+    
     folder = moveaxis(array(folder),0,2) # (state,ro_q,IQ,shots) -> (ro_q, IQ, state, shots)
     output_dict = {}
     for q_idx, q_name in enumerate(ro_elements):
-        output_dict[q_name] = (["mixer","prepared_state","index"],folder[q_idx])
+        output_dict[q_name] = (["mixer","pulse_num","index"],folder[q_idx])
 
-    SS_ds = Dataset(output_dict, coords= {"mixer":array(["I","Q"]), "prepared_state":array([0,1]),"index":arange(shots)})
+    SS_ds = Dataset(output_dict, coords= {"mixer":array(["I","Q"]), "pulse_num":pulse_repeats,"index":arange(shots)})
     SS_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     SS_ds.attrs["execution_time"] = Data_manager().get_time_now()
     
     return SS_ds
-
-
 
 
 

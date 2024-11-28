@@ -5,13 +5,13 @@ from qblox_drive_AS.support.ExpFrames import hPiAcali
 
 
 ''' fill in '''
-Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
-ro_power_coef_range:dict = {"q0":[0.45,0.55], "q1":[0.3,0.6]}    # half pi pulse coef, it should be around 0.5
+Execution:bool = 1
+DRandIP = {"dr":"dr1","last_ip":"11"}
+ro_power_coef_range:dict = {"q4":[0.9,1.1]}    # half pi pulse coef, it should be around 0.5
 coef_sampling_func:str = 'linspace'
-half_pi_quadruple_num:list = [3,5]
-coef_ptsORstep:int|float = 100
-AVG:int = 500
+half_pi_quadruple_num:list = [5,9]
+coef_ptsORstep:int|float = 50
+AVG:int = 300
 
 
 

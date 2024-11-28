@@ -13,6 +13,12 @@ def set_integration_time(QD_agent:QDmanager, inte_time_s:dict=None):
                 QD_agent.quantum_device.get_element(q).measure.integration_time(inte_time_s[q])
                 QD_agent.quantum_device.get_element(q).measure.pulse_duration(inte_time_s[q])
 
+def set_drag_coef(QD_agent:QDmanager,Coefs:dict={}):
+    if Coefs is not None:
+        if len(list(Coefs.keys())) != 0:
+            for q in Coefs:
+                QD_agent.Waveformer.set_dragRatio_for(q, Coefs[q])
+
 def setGlobally_reset_time(QD_agent:QDmanager, reset_time_s:float=None):
     if reset_time_s is not None:
         for q in QD_agent.quantum_device.elements():
@@ -94,7 +100,7 @@ def update_coupler_bias(QD_agent:QDmanager,cp_elements:dict):
 
 if __name__ == "__main__":
 
-    QD_path = ""
+    QD_path = "qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl"
     QD_agent = QDmanager(QD_path)
     QD_agent.QD_loader()
 
@@ -128,5 +134,9 @@ if __name__ == "__main__":
     
     """ Set sweet spot bias """
     set_sweet_bias(QD_agent, offsets={})          # offsets = {"q0": 0.08, ....}
+
+    """ Set Darg coef """
+    set_drag_coef(QD_agent, Coefs={})
+
 
     QD_agent.QD_keeper() 

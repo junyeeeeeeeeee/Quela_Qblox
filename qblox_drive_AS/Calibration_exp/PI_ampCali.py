@@ -32,6 +32,7 @@ def pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, roamp_samples:d
         sched_kwargs = dict(
             pi_amp_coefs=roamp_samples,
             pi_pair_num=pi_pair_num,
+            waveformer=QD_agent.Waveformer,
             XY_amp=compose_para_for_multiplexing(QD_agent,roamp_samples,'d1'),
             XY_duration=compose_para_for_multiplexing(QD_agent,roamp_samples,'d3'),
             R_amp=compose_para_for_multiplexing(QD_agent,roamp_samples,'r1'),
