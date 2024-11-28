@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -9,12 +9,13 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot, gate_phase_fit_analysis
 from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
+from qcat.analysis.state_discrimination.discriminator import get_proj_distance
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
@@ -25,6 +26,15 @@ from matplotlib.figure import Figure
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
+
+
+def find_minima(f, phase, start, stop):
+    """ from the given astart and stop, which is counted for the minimua number  """
+    minima = []
+    for n in range(start, stop):
+        x_min = ((2 * n + 1) * pi - phase) / (2 * pi * f)
+        minima.append(x_min)
+    return minima
 
 def plot_FreqBiasIQ(f:ndarray,z:ndarray,I:ndarray,Q:ndarray,refIQ:list=[], ax:plt.Axes=None)->plt.Axes:
     """
@@ -226,6 +236,8 @@ class analysis_tools():
         self.bias = array(self.ds.coords["bias"])
         S21 = array(self.ds.data_vars[self.qubit])[0] + 1j * array(self.ds.data_vars[self.qubit])[1]
         self.mags:ndarray = abs(S21)
+        self.collected_freq = []
+        self.collected_flux = []
         try:
             freq_fit = []
             fit_err = []
@@ -233,15 +245,14 @@ class analysis_tools():
                 res_er = ResonatorData(freq=self.freqs,zdata=array(S21[idx]))
                 result, _, _ = res_er.fit()
                 freq_fit.append(result['fr'])
-                fit_err.append(result['fr_err'])
+                fit_err.append(result['chi_square'])
 
             _, indexs = remove_outliers_with_window(array(fit_err),int(len(fit_err)/3),m=1)
-            collected_freq = []
-            collected_flux = []
+            
             for i in indexs:
-                collected_freq.append(freq_fit[i])
-                collected_flux.append(list(self.bias)[i])
-            self.fit_results = cos_fit_analysis(array(collected_freq),array(collected_flux))
+                self.collected_freq.append(freq_fit[i])
+                self.collected_flux.append(list(self.bias)[i])
+            self.fit_results = cos_fit_analysis(array(self.collected_freq),array(self.collected_flux))
             paras = array(self.fit_results.attrs['coefs'])
 
             from scipy.optimize import minimize
@@ -273,6 +284,9 @@ class analysis_tools():
             fit_y = self.fit_results.data_vars['fitting']
             ax = Plotter.add_scatter_on_ax(self.fit_packs["sweet_flux"],self.fit_packs["sweet_freq"],ax,c='red',marker="*",s=300)
             ax = Plotter.add_plot_on_ax(fit_x,fit_y,ax,c='red')
+        
+        if len(self.collected_flux) != 0 and len(self.collected_freq) != 0:
+            ax = Plotter.add_scatter_on_ax(self.collected_flux,self.collected_freq,ax,c='white',marker="o",s=30)
 
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"RO freqs (Hz)"}])
@@ -497,7 +511,11 @@ class analysis_tools():
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
             self.ans = cos_fit_analysis(data,array(time_samples))
+            p_deg = degrees(self.ans.attrs['coefs'][2])  # Converts radians to degrees
+            # Normalize to range [0, 360)
+            self.fit_packs['phase'] = (p_deg % 360 + 360) % 360
             self.fit_packs["freq"] = self.ans.attrs['f']
+            eyeson_print(f"phase fit = {round(self.fit_packs['phase'],2)} deg")
         
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
@@ -698,7 +716,34 @@ class analysis_tools():
                 iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
                 refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
-        self.fit_packs = {var:refined_data_folder}
+        
+        # attrs["coefs"] = [A_fit,f_fit,phase_fit,offset_fit]
+        
+        candidates = []
+        self.ans = []
+        for idx, PiPairNum_dep_fitting_ds in enumerate(refined_data_folder[:2]):
+            # Find minima in the range n = -3 to n = 3
+            mini = list(find_minima(PiPairNum_dep_fitting_ds.attrs["coefs"][1], PiPairNum_dep_fitting_ds.attrs["coefs"][2], -3, 4))
+            minimas = []
+            
+            for i in mini:
+                if i <= max(self.pi_amp_coef) and i >= min(self.pi_amp_coef):
+                    if idx == 0:
+                        
+                        minimas.append(i)
+                    else:
+                        if len(candidates) > 0:
+                            for candit in candidates:
+                                if abs(candit-i) <= (max(self.pi_amp_coef)-min(self.pi_amp_coef))/10:
+                                    self.ans.append(i)
+                                    candidates.remove(candit)
+                        else:
+                            break
+            
+            if idx == 0:
+                candidates = minimas
+        
+        self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
     def piamp_cali_plot(self,save_pic_folder:str=None):
         q = list(self.fit_packs.keys())[0]
@@ -711,6 +756,10 @@ class analysis_tools():
             x_fit = refined_data.coords['para_fit']  
             Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI pairs", alpha=0.8, ms=4)
             Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
+        
+        if len(self.ans) != 0:
+            for an_ans in self.ans:
+                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--',label='Optimal')
             
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
@@ -731,7 +780,32 @@ class analysis_tools():
                 iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
                 refined_data = rotate_data(iq_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
-        self.fit_packs = {var:refined_data_folder}
+
+        candidates = []
+        self.ans = []
+        for idx, PiPairNum_dep_fitting_ds in enumerate(refined_data_folder[:2]):
+            # Find minima in the range n = -3 to n = 3
+            mini = list(find_minima(PiPairNum_dep_fitting_ds.attrs["coefs"][1], PiPairNum_dep_fitting_ds.attrs["coefs"][2], -3, 4))
+            minimas = []
+            
+            for i in mini:
+                if i <= max(self.pi_amp_coef) and i >= min(self.pi_amp_coef):
+                    if idx == 0:
+                        
+                        minimas.append(i)
+                    else:
+                        if len(candidates) > 0:
+                            for candit in candidates:
+                                if abs(candit-i) <= (max(self.pi_amp_coef)-min(self.pi_amp_coef))/10:
+                                    self.ans.append(i)
+                                    candidates.remove(candit)
+                        else:
+                            break
+            
+            if idx == 0:
+                candidates = minimas
+        
+        self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
     def halfpiamp_cali_plot(self,save_pic_folder:str=None):
         q = list(self.fit_packs.keys())[0]
@@ -744,10 +818,131 @@ class analysis_tools():
             x_fit = refined_data.coords['para_fit']  
             Plotter.add_plot_on_ax(x,refined_data.data_vars['data'],ax,linestyle='--',label=f"{self.pi_pair_num[idx]} PI quadruples", alpha=0.8, ms=4)
             Plotter.add_plot_on_ax(x_fit,refined_data.data_vars['fitting'],ax,linestyle='-', alpha=1, lw=2)    
-            
+        if len(self.ans) != 0:
+            for an_ans in self.ans:
+                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--')
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"half PI-amp coef.", 'ylabel':"I signals (V)"}]
+        )
+        Plotter.export_results()
+
+    def dragCali_ana(self,var:str):
+        self.qubit = var
+        self.drag_coef =  moveaxis(array(self.ds[f"{var}_dragcoef"]),1,0)[0][0]
+        self.operations = array(self.ds.coords["operations"])
+        data = moveaxis(array(self.ds[var]),1,0)
+        self.plot_item = {}
+
+        for idx, operation_dep_data in enumerate(data):
+            self.plot_item[self.operations[idx]] = {}
+            if len(self.refIQ) == 2:
+                refined_data = IQ_data_dis(operation_dep_data[0],operation_dep_data[1],self.refIQ[0],self.refIQ[1])
+            else:
+                iq_data = column_stack((operation_dep_data[0],operation_dep_data[1])).T
+                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
+            
+            self.plot_item[self.operations[idx]]['data'] = refined_data
+            coefficients = polyfit(self.drag_coef, refined_data, deg=1)  
+            self.plot_item[self.operations[idx]]["fit_para"] = coefficients  # [slope, intercept]
+
+        if self.plot_item[self.operations[0]]["fit_para"][0] != self.plot_item[self.operations[1]]["fit_para"][1]:  # Ensure the lines are not parallel
+            x_intersect = (self.plot_item[self.operations[1]]["fit_para"][1] - self.plot_item[self.operations[0]]["fit_para"][1]) / (self.plot_item[self.operations[0]]["fit_para"][0] - self.plot_item[self.operations[1]]["fit_para"][0])
+            self.y_intersect = self.plot_item[self.operations[0]]["fit_para"][0] * x_intersect + self.plot_item[self.operations[0]]["fit_para"][1]
+            self.fit_packs = {"optimal_drag_coef": x_intersect}
+        else:
+            print("The lines are parallel and do not intersect.")
+
+    def dragCali_plot(self, save_pic_folder:str=None):
+        def linear(x,a,b):
+            return a*x+b
+
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_halfPIamp_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit} DRAG coef calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((1,1),fig_size=(12,9))
+        ax:plt.Axes = axs[0]
+        for ope in self.plot_item:
+            ax = Plotter.add_plot_on_ax(self.drag_coef,self.plot_item[ope]['data'],ax,linestyle='--',label=ope, alpha=0.8, ms=4)
+            ax = Plotter.add_plot_on_ax(self.drag_coef,linear(self.drag_coef,*self.plot_item[ope]['fit_para']),ax,linestyle='-', alpha=1, lw=2)
+
+        if len(list(self.fit_packs.keys())) != 0:
+            ax = Plotter.add_scatter_on_ax(self.fit_packs["optimal_drag_coef"],self.y_intersect,ax,marker='*',c='red',s=200,label=f"Optimal={round(self.fit_packs['optimal_drag_coef'],2)}")
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"DRAG coef.", 'ylabel':"I signals (V)"}]
+        )
+        Plotter.export_results()
+
+
+    def gateError_ana(self,var:str,tansition_freq_Hz:float=None):
+        self.qubit = var
+        datas = moveaxis(array(self.ds[var]),0,1)*1000 # shape (pulse_num, IQ, shots) 
+        gate_num = array(self.ds.coords["pulse_num"])
+        p0_data = datas[0]
+        p1_data = datas[1] 
+        # gate_num = delete(gate_num, 1) # remove gate num = 1
+        
+        p00_rec = []
+        self.fq = tansition_freq_Hz  
+        self.md = GMMROFidelity()
+        self.train_set = DataArray(moveaxis(array([p0_data,p1_data]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data.shape[-1]))] )
+        self.md._import_data(self.train_set)
+        self.md._start_analysis()
+        g1d_fidelity = self.md.export_G1DROFidelity()
+        centers_2d, centers1d, sigmas = self.md.discriminator._export_1D_paras()
+        discriminator = g1d_fidelity.discriminator
+        
+        p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
+        # p01 = g1d_fidelity.g1d_dist[0][0][1]
+        # p10 = g1d_fidelity.g1d_dist[1][0][0]
+        # p11 = g1d_fidelity.g1d_dist[1][0][1]
+        gates = [0]
+        for idx, data in enumerate(datas):
+            if idx > 1:
+                try:
+                    da = DataArray(moveaxis(array([data]),0,1), coords= [("mixer",array(["I","Q"])), ("prepared_state",array([0])), ("index",arange(p1_data.shape[-1]))] )
+                    train_data_proj = get_proj_distance(centers_2d.transpose(), da.transpose("mixer","prepared_state",  "index").values)
+                    dataset_proj = DataArray(train_data_proj, coords= [ ("prepared_state",[0]), ("index",arange(data.shape[-1]))] )  
+                    g1d_fidelity._import_data(dataset_proj)
+                    g1d_fidelity._start_analysis()
+                                  
+                    p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
+                    gates.append(gate_num[idx])
+                    
+                except:
+                    print(f"{gate_num[idx]}, fit wrong ~")
+        
+
+        # Fit the data
+        
+        self.params = gate_phase_fit_analysis(array(p00_rec),array(gates))
+        self.fit_packs = {"gate_num":self.params.coords['freeDu'].values, "f":self.params.attrs['f'], "tau":self.params.attrs['T2_fit']}
+        
+
+    def gateError_plot(self,save_pic_path:str=None):
+        
+        self.md._import_data(self.train_set)
+        self.md._start_analysis()
+        g1d_fidelity = self.md.export_G1DROFidelity()
+        plot_readout_fidelity(self.train_set, self.md, g1d_fidelity, self.fq, save_pic_path if save_pic_path is not None else None, plot=True if save_pic_path is None else False)
+        plt.close()
+
+        data = self.params['data'].values
+        gate_num = self.params.coords['freeDu'].values
+        fitting = self.params['fitting'].values
+        fit_x = self.params.coords['para_fit'].values
+
+        
+        Plotter = Artist(pic_title=f"{self.qubit} Gate Error Test",save_pic_path=save_pic_path+".png")
+        fig, axs = Plotter.build_up_plot_frame((1,1))
+        ax:plt.Axes = axs[0]
+        ax = Plotter.add_scatter_on_ax(gate_num, data, ax)
+        # Extract fitted parameters
+        
+        ax = Plotter.add_plot_on_ax(fit_x,fitting,ax,c='red',label=f"f={round(self.params.attrs['f'],5)} rad, tau={round(self.params.attrs['T2_fit'],2)}")
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"gate num", 'ylabel':"|0> populations"}]
         )
         Plotter.export_results()
 
@@ -800,8 +995,12 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.halfpiamp_cali_ana(kwargs["var_name"])
             case 'c5':
                 self.ROL_cali_ana(kwargs["var_name"])
+            case 'c6':
+                self.dragCali_ana(kwargs["var_name"])
             case 'auxa':
                 self.ZgateT1_ana(**kwargs)
+            case 't1':
+                self.gateError_ana(kwargs["var_name"],self.transition_freq)
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -833,8 +1032,12 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.halfpiamp_cali_plot(pic_save_folder)
             case 'c5':
                 self.ROL_cali_plot(pic_save_folder)
+            case 'c6':
+                self.dragCali_plot(pic_save_folder)
             case 'auxa':
                 self.ZgateT1_plot(pic_save_folder)
+            case 't1':
+                self.gateError_plot(pic_save_folder)
 
 
 

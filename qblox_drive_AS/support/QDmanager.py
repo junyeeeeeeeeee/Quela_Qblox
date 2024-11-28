@@ -2,6 +2,7 @@ import os, datetime, pickle
 from xarray import Dataset
 from qblox_drive_AS.support.FluxBiasDict import FluxBiasDict
 from qblox_drive_AS.support.Notebook import Notebook
+from qblox_drive_AS.support.WaveformCtrl import GateGenesis
 from qblox_instruments import Cluster
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
@@ -198,6 +199,7 @@ class QDmanager():
         self.Fluxmanager.activate_from_dict(gift["Flux"])
         self.Notewriter: Notebook = Notebook(q_number=self.q_num)
         self.Notewriter.activate_from_dict(gift["Note"])
+        self.Waveformer:GateGenesis = GateGenesis(q_num=0,c_num=0,log2super=gift["Waveform"])
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
         if new_Hcfg is not None:
@@ -226,7 +228,7 @@ class QDmanager():
                 self.path = os.path.join(db.raw_folder,f"{self.Identity}_SumInfo.pkl")
         Hcfg = self.quantum_device.generate_hardware_config()
         # TODO: Here is only for the hightlighs :)
-        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"rota_angle":self.rotate_angle,"Note":self.Notewriter.get_notebook(),"Log":self.Log}
+        merged_file = {"ID":self.Identity,"IP":self.machine_IP,"chip_info":{"name":self.chip_name,"type":self.chip_type},"QD":self.quantum_device,"Flux":self.Fluxmanager.get_bias_dict(),"Fctrl_str":self.Fctrl_str_ver,"Hcfg":Hcfg,"refIQ":self.refIQ,"rota_angle":self.rotate_angle,"Note":self.Notewriter.get_notebook(),"Log":self.Log, "Waveform":self.Waveformer.get_log()}
         
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(merged_file, file)
@@ -254,6 +256,7 @@ class QDmanager():
         self.made_mobileFctrl()
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
+        self.Waveformer:GateGenesis = GateGenesis(q_num=self.q_num,c_num=self.cp_num)
         
         # for firmware v0.7.0
         from qcodes.instrument import find_or_create_instrument
@@ -284,7 +287,9 @@ class QDmanager():
         6) pi-pulse duration.\n
         7) ref-IQ point.\n
         8) bias of this point.\n
-        9) ro attenuation.
+        9) ro attenuation.\n
+        10) XY waveform info\n
+        11) Z waveform info
         """
         print(z_bias)
         if modi_idx != "-1":
@@ -299,7 +304,9 @@ class QDmanager():
         ref_iq = self.refIQ[target_q]
         ro_attenuation = self.Notewriter.get_DigiAtteFor(target_q,'ro')
         ro_amp = qubit.measure.pulse_amp()
-        option_dict = {"f01":XYF,"rof":ROF,"rop":ro_amp,"pi_amp":pi_amp,"2tone_pi_amp":conti_pi_amp,"pi_dura":pi_dura,"refIQ":ref_iq,"bias":z_bias,"ro_atte":ro_attenuation}
+        xy_gate_lib = self.Waveformer.get_log()["xy"][target_q]
+        z_gate_lib = self.Waveformer.get_log()["z"][target_q]
+        option_dict = {"f01":XYF,"rof":ROF,"rop":ro_amp,"pi_amp":pi_amp,"2tone_pi_amp":conti_pi_amp,"pi_dura":pi_dura,"refIQ":ref_iq,"bias":z_bias,"ro_atte":ro_attenuation,"XY_waveform":xy_gate_lib,"Z_waveform":z_gate_lib}
 
         self.Notewriter.write_meas_options({target_q:option_dict},modi_idx)
         print(f"Optional meas point had been recorded! @ Z~{round(z_bias,3)}")
@@ -315,7 +322,9 @@ class QDmanager():
         6) pi-pulse duration.\n
         7) ref-IQ point.\n
         8) bias of this point.\n
-        9) ro attenuation.
+        9) ro attenuation.\n
+        10) XY waveform info\n
+        11) Z waveform info
         """
         option_selected = self.Notewriter.get_all_meas_options(target_q)[int(idx_chosen)]
         qubit = self.quantum_device.get_element(target_q)
@@ -327,6 +336,9 @@ class QDmanager():
         self.refIQ[target_q] = option_selected["refIQ"]
         self.Notewriter.save_DigiAtte_For(int(option_selected["ro_atte"]),target_q,'ro')
         qubit.measure.pulse_amp(option_selected["rop"])
+        for mode in ["xy", "z"]:
+            self.Waveformer.modi_all_info_for(target_q,option_selected[f"{mode.upper()}_waveform"],mode)
+
         if idx_chosen != '0':
             self.Fluxmanager.save_tuneawayBias_for('manual',target_q,option_selected["bias"])
             self.Fluxmanager.press_offsweetspot_button(target_q,True) # here is the only way to press this button

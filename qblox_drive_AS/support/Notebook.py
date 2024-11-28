@@ -128,7 +128,7 @@ class Notebook():
             raise KeyError(f"Wrong given mode={mode}. Expecting 'xy' or 'ro'.")
 
     def create_meas_options(self,target_q:str):
-        meas_elements = {"rof":0,"rop":0,"f01":0,"bias":0,"refIQ":[],"pi_amp":0,"2tone_pi_amp":0,"pi_dura":0,"ro_atte":0}
+        meas_elements = {"rof":0,"rop":0,"f01":0,"bias":0,"refIQ":[],"pi_amp":0,"2tone_pi_amp":0,"pi_dura":0,"ro_atte":0,"XY_waveform":{},"Z_waveform":{}}
         self.__InfoDict[target_q]["meas_options"].append(meas_elements)
     def get_all_meas_options(self,target_q:str)->list:
         return self.__InfoDict[target_q]["meas_options"]

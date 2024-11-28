@@ -794,7 +794,7 @@ class PowerConti2tone(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'freq':
                     ANA = Multiplex_analyzer("m8")     
-                    ANA._import_data(ds,2,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var],QS_fit_analysis)
+                    ANA._import_data(ds,2,QD_savior.refIQ[var],QS_fit_analysis)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     if ANA.fit_packs != {}:
@@ -905,7 +905,7 @@ class FluxQubit(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'freq':
                     ANA = Multiplex_analyzer("m9") 
-                    ANA._import_data(ds,2,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var],QS_fit_analysis)
+                    ANA._import_data(ds,2,QD_savior.refIQ[var],QS_fit_analysis)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     if len(list(ANA.fit_packs.keys())) != 0: answer[var] = ANA.fit_packs        
@@ -1805,17 +1805,16 @@ class XYFcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, detune:float=10e6, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, detu:float=0, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * target_qs: ["q0", "q1", ...]\n
         """
         from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
     
         self.time_samples = {}
-        self.detune = detune
         for q in target_qs:
-            self.time_samples[q] = sort_elements_2_multiples_of(linspace(0,evo_time,100)*1e9,4)*1e-9
-
+            self.time_samples[q] = sort_elements_2_multiples_of(linspace(40e-9,evo_time,100)*1e9,4)*1e-9
+        self.detu = detu
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -1831,15 +1830,15 @@ class XYFcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.detune)
-            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.detu
+            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.T2 import Ramsey
     
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution)
+        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution,second_phase='y')
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"XYFcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1886,18 +1885,23 @@ class XYFcali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=2,refIQ=ref)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
-                     
-                    answer[var] = self.detune-ANA.fit_packs['freq']
+
+                    if ANA.fit_packs['phase'] > 180:
+                        sign = -1
+                    else:
+                        sign = 1
+                    
+                    answer[var] = sign*ANA.fit_packs['freq']
                     highlight_print(f"{var}: actual detune = {round(answer[var]*1e-6,4)} MHz")
             ds.close()
 
             permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
             if permi in list(answer.keys()):
-                QD_savior.quantum_device.get_element(permi).clock_freqs.f01(QD_savior.quantum_device.get_element(permi).clock_freqs.f01()+answer[permi])
+                QD_savior.quantum_device.get_element(permi).clock_freqs.f01(QD_savior.quantum_device.get_element(permi).clock_freqs.f01()-answer[permi])
                 QD_savior.QD_keeper()
             elif permi in ["all",'y','yes']:
                 for q in answer:
-                    QD_savior.quantum_device.get_element(q).clock_freqs.f01(QD_savior.quantum_device.get_element(q).clock_freqs.f01()+answer[q])
+                    QD_savior.quantum_device.get_element(q).clock_freqs.f01(QD_savior.quantum_device.get_element(q).clock_freqs.f01()-answer[q])
                 QD_savior.QD_keeper()
             else:
                 print("Updating got denied ~")
@@ -2100,7 +2104,7 @@ class PiAcali(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            
+            answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'PIcoef':
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -2112,8 +2116,19 @@ class PiAcali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
                     ANA._start_analysis(var_name = var)
                     ANA._export_result(fig_path)
-                    fit_packs = ANA.fit_packs
+                    answer[var] = ANA.fit_packs["ans"]
             ds.close()
+
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.quantum_device.get_element(permi).rxy.amp180(QD_savior.quantum_device.get_element(permi).rxy.amp180()*answer[permi])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.quantum_device.get_element(q).rxy.amp180(QD_savior.quantum_device.get_element(q).rxy.amp180()*answer[q])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
 
     def WorkFlow(self):
         
@@ -2137,7 +2152,7 @@ class hPiAcali(ExpGovernment):
 
     def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.4, 0.6], "q1":[0.45, 0.55], ...], must be close to 0.5 because it's a half pi-pulse.\n
+            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[...], ...], this is the coef tiles to QDmanager.Waveformer.__xylog[q]["halfPI_ratio"].\n
             * amp_sampling_funct: str, `linspace` or `arange`.\n
             * pi_pair_num: list, like [3, 5] will try 2 exp, the first uses 3\*4 half pi-pulse, and the second exp uses 5*4 half pi-pulse
         """
@@ -2206,7 +2221,7 @@ class hPiAcali(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            
+            answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'HalfPIcoef':
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -2216,12 +2231,21 @@ class hPiAcali(ExpGovernment):
                         ref = QD_savior.refIQ[var]
                     ANA = Multiplex_analyzer("c4")
                     ANA._import_data(ds,var_dimension=1,refIQ=ref)
-                    ANA._start_analysis(var_name = var)
+                    ANA._start_analysis(var_name = var) 
                     ANA._export_result(fig_path)
-                    fit_packs = ANA.fit_packs
+                    answer[var] = ANA.fit_packs["ans"]
 
             ds.close()
-
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.Waveformer.set_halfPIratio_for(permi, QD_savior.Waveformer.get_halfPIratio_for(permi)*answer[permi])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.Waveformer.set_halfPIratio_for(q, QD_savior.Waveformer.get_halfPIratio_for(q)*answer[q])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
     def WorkFlow(self):
         
         self.PrepareHardware()
@@ -2517,8 +2541,232 @@ class QubitMonitor():
         time_monitor_data_ana(QD_agent,self.save_dir,save_all_fit_fig)
 
 
+class DragCali(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+        """ ### Args:
+            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
+            * amp_sampling_funct: str, `linspace` or `arange`.\n
+            * pi_pair_num: list, like [2, 3] will try 2 exp, the first uses 2\*2 pi-pulse, and the second exp uses 3*2 pi-pulse
+        """
+        if coef_sampling_funct in ['linspace','logspace','arange']:
+            sampling_func:callable = eval(coef_sampling_funct)
+        else:
+            raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_funct}")
+        
+        self.drag_coef_samples = {}
+        for q in drag_coef_range:
+           self.drag_coef_samples[q] = sampling_func(*drag_coef_range[q],coef_ptsORstep)
+        self.avg_n = avg_n
+        self.execution = execution
+        self.OSmode = OSmode
+        self.target_qs = list(self.drag_coef_samples.keys())
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.Calibration_exp.DRAGcali import drag_cali 
+    
+        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.avg_n,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"DragCali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
+        """ User callable analysis function pack """
+        
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            QD_savior = QDmanager(QD_file)
+            QD_savior.QD_loader()
+
+            ds = open_dataset(file_path)
+            answer = {}
+            for var in ds.data_vars:
+                if var.split("_")[-1] != 'dragcoef':
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
+                    else:
+                        eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
+                        ref = QD_savior.refIQ[var]
+                    ANA = Multiplex_analyzer("c6")
+                    ANA._import_data(ds,var_dimension=1,refIQ=ref)
+                    ANA._start_analysis(var_name = var)
+                    ANA._export_result(fig_path)
+                    answer[var] = ANA.fit_packs
+            
+            ds.close()
+
+            permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            if permi in list(answer.keys()):
+                QD_savior.Waveformer.set_dragRatio_for(permi,answer[permi]["optimal_drag_coef"])
+                QD_savior.QD_keeper()
+            elif permi in ["all",'y','yes']:
+                for q in answer:
+                    QD_savior.Waveformer.set_dragRatio_for(q, answer[q]["optimal_drag_coef"])
+                QD_savior.QD_keeper()
+            else:
+                print("Updating got denied ~")
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
+
+
+class GateErrorTest(ExpGovernment):
+    """ Helps you get the **Dressed** cavities. """
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+    
+    @RawDataPath.setter
+    def RawDataPath(self,path:str):
+        self.__raw_data_location = path
+
+    def SetParameters(self, target_qs:list, shots:int=10000, execution:bool=True, use_untrained_wf:bool=False):
+        """ 
+        ### Args:\n
+        * target_qs: list, like ["q0", "q1", ...]
+        """
+        self.use_time_label:bool = False
+        self.avg_n = shots
+        self.execution = execution
+        self.use_de4t_wf = use_untrained_wf
+        self.target_qs = target_qs
+        
+
+
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and driving atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    
+    def RunMeasurement(self):
+        from qblox_drive_AS.aux_measurement.GateErrorTest import GateError_single_shot
+       
+
+        dataset = GateError_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.use_de4t_wf,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
+        """ if histo_ana, it will check all the data in the same folder with the given new_file_path """
+    
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            QD_savior = QDmanager(QD_file)
+            QD_savior.QD_loader()
+
+            
+            ds = open_dataset(file_path)
+            answer = {}
+            for var in ds.data_vars:
+                ANA = Multiplex_analyzer("t1")
+                ANA._import_data(ds,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                ANA._start_analysis(var_name=var)
+                pic_path = os.path.join(fig_path,f"{var}_GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                ANA._export_result(pic_path)
+
+                answer[var] = ANA.fit_packs 
+                highlight_print(f"{var} X-gate phase error ~ {round(answer[var]['f'], 5)} rad")
+                
+            ds.close()
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
+
+
+
 
 if __name__ == "__main__":
-    EXP = FluxCavity(QD_path="")
+    EXP = GateErrorTest(QD_path="")
     EXP.execution = True
-    EXP.RunAnalysis(new_QD_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\qblox_ExpConfigs_20241126132118\DR2#10_SumInfo.pkl",new_file_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\FluxCavity_20241126132118.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H16M49S43/GateErrorTest_20241128165335.nc")
+    

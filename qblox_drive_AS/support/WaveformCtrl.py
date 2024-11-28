@@ -96,13 +96,37 @@ class GateGenesis():
 
     def set_dragRatio_for(self,target_q:str,drag_ratio:float):
         self.__xylog[target_q]["drag_ratio"] = drag_ratio
+    
+    def get_dragRatio_for(self,target_q:str):
+        return self.__xylog[target_q]["drag_ratio"]
 
     def set_halfPIratio_for(self,target_q:str,halfPI_ratio:float):
         self.__xylog[target_q]["halfPI_ratio"] = halfPI_ratio
+    def get_halfPIratio_for(self,target_q:str):
+        return self.__xylog[target_q]["halfPI_ratio"]
 
     def get_log(self)->dict:
         return {"xy":self.__xylog, "z":self.__zlog}
     
+    def modi_all_info_for(self,target_q:str,all_info:dict,mode:str):
+        """
+        if mode == 'xy': all_info = {"waveform":,"duraOVERsigma":,"drag_ratio":,"halfPI_ratio":}
+        else (mode=='z'):all_info = {"waveform":,"duraOVERsigma":}
+        """
+        match mode.lower():
+            case 'xy':
+                if all(element in list(self.__xylog[target_q].keys()) for element in list(all_info.keys())):
+                    self.__xylog[target_q] = all_info
+                    print("modified")
+                else:
+                    raise KeyError("xy mode choosed, 'waveform','duraOVERsigma','drag_ratio' and 'halfPI_ratio' must in the given all_info. ")
+            case 'z':
+                if all(element in list(self.__zlog[target_q].keys()) for element in list(all_info.keys())):
+                    self.__zlog[target_q] = all_info
+                else:
+                    raise KeyError("z mode choosed, 'waveform' and 'duraOVERsigma' must in the given all_info. ")
+            case _:
+                raise KeyError(f"Wrong mode was given as {mode}")
     ##########################
     #####    gates    #####
     ##########################
@@ -125,11 +149,13 @@ class GateGenesis():
     def Y_pi_2_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu):
         amp= pi_amp[q]*self.__xylog[q]["halfPI_ratio"]
         delay_c= -pi_Du-freeDu
+        
         return self.XY_waveform_controller(sche,amp,pi_Du,90,q,delay_c,ref_pulse_sche,ref_pt='start')
 
     def X_pi_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
         amp= pi_amp[q]
         delay_c= -pi_Du-freeDu
+    
         return self.XY_waveform_controller(sche,amp,pi_Du,0,q,delay_c,ref_pulse_sche,ref_pt=ref_point)
 
     def Y_pi_p(self,sche,pi_amp,q,pi_Du:float,ref_pulse_sche,freeDu, ref_point:str="start"):
