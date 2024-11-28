@@ -199,7 +199,10 @@ class QDmanager():
         self.Fluxmanager.activate_from_dict(gift["Flux"])
         self.Notewriter: Notebook = Notebook(q_number=self.q_num)
         self.Notewriter.activate_from_dict(gift["Note"])
-        self.Waveformer:GateGenesis = GateGenesis(q_num=0,c_num=0,log2super=gift["Waveform"])
+        if "Waveform" in list(gift.keys()):
+            self.Waveformer:GateGenesis = GateGenesis(q_num=0,c_num=0,log2super=gift["Waveform"])
+        else:
+            self.Waveformer:GateGenesis = GateGenesis(self.q_num,self.c_num)
         self.quantum_device :QuantumDevice = gift["QD"]
         # dict
         if new_Hcfg is not None:
