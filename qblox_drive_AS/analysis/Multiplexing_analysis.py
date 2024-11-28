@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit
+from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -9,12 +9,13 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot, gate_phase_fit_analysis
 from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
+from qcat.analysis.state_discrimination.discriminator import get_proj_distance
 from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
@@ -25,6 +26,7 @@ from matplotlib.figure import Figure
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
+
 
 def find_minima(f, phase, start, stop):
     """ from the given astart and stop, which is counted for the minimua number  """
@@ -509,7 +511,9 @@ class analysis_tools():
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
             self.ans = cos_fit_analysis(data,array(time_samples))
-            self.fit_packs['phase'] = self.ans.attrs['coefs'][2]*180/pi
+            p_deg = degrees(self.ans.attrs['coefs'][2])  # Converts radians to degrees
+            # Normalize to range [0, 360)
+            self.fit_packs['phase'] = (p_deg % 360 + 360) % 360
             self.fit_packs["freq"] = self.ans.attrs['f']
             eyeson_print(f"phase fit = {round(self.fit_packs['phase'],2)} deg")
         
@@ -755,7 +759,7 @@ class analysis_tools():
         
         if len(self.ans) != 0:
             for an_ans in self.ans:
-                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--')
+                ax = Plotter.add_verline_on_ax(an_ans, self.fit_packs[q][0].data_vars['data'], ax, colors='red',linestyles='--',label='Optimal')
             
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
@@ -871,44 +875,76 @@ class analysis_tools():
 
 
     def gateError_ana(self,var:str,tansition_freq_Hz:float=None):
-        data = moveaxis(array(self.ds[var]),0,1)*1000 # shape (pulse_num, IQ, shots) 
-        p0_data = data[0]
-        p1_data = data[1]
-        p0_data_eff = data[2]
-        p1_data_eff = data[3] 
+        self.qubit = var
+        datas = moveaxis(array(self.ds[var]),0,1)*1000 # shape (pulse_num, IQ, shots) 
+        gate_num = array(self.ds.coords["pulse_num"])
+        p0_data = datas[0]
+        p1_data = datas[1] 
+        # gate_num = delete(gate_num, 1) # remove gate num = 1
+        
+        p00_rec = []
         self.fq = tansition_freq_Hz  
-
+        self.md = GMMROFidelity()
         self.train_set = DataArray(moveaxis(array([p0_data,p1_data]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data.shape[-1]))] )
-        self.train_set_eff = DataArray(moveaxis(array([p0_data_eff,p1_data_eff]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data_eff.shape[-1]))] )
-        train_set_md = GMMROFidelity()
-        train_set_eff_md = GMMROFidelity()
+        self.md._import_data(self.train_set)
+        self.md._start_analysis()
+        g1d_fidelity = self.md.export_G1DROFidelity()
+        centers_2d, centers1d, sigmas = self.md.discriminator._export_1D_paras()
+        discriminator = g1d_fidelity.discriminator
         
-        self.mds = [train_set_md, train_set_eff_md]
-        self.datasets = [self.train_set, self.train_set_eff]
-        self.names = ["conventional", "effective"]
+        p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
+        # p01 = g1d_fidelity.g1d_dist[0][0][1]
+        # p10 = g1d_fidelity.g1d_dist[1][0][0]
+        # p11 = g1d_fidelity.g1d_dist[1][0][1]
+        gates = [0]
+        for idx, data in enumerate(datas):
+            if idx > 1:
+                try:
+                    da = DataArray(moveaxis(array([data]),0,1), coords= [("mixer",array(["I","Q"])), ("prepared_state",array([0])), ("index",arange(p1_data.shape[-1]))] )
+                    train_data_proj = get_proj_distance(centers_2d.transpose(), da.transpose("mixer","prepared_state",  "index").values)
+                    dataset_proj = DataArray(train_data_proj, coords= [ ("prepared_state",[0]), ("index",arange(data.shape[-1]))] )  
+                    g1d_fidelity._import_data(dataset_proj)
+                    g1d_fidelity._start_analysis()
+                                  
+                    p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
+                    gates.append(gate_num[idx])
+                    
+                except:
+                    print(f"{gate_num[idx]}, fit wrong ~")
+        
 
-        for i, data in enumerate(self.datasets):
-            
-            self.mds[i]._import_data(data)
-            self.mds[i]._start_analysis()
-            g1d_fidelity = self.mds[i].export_G1DROFidelity()
-            
-            p00 = g1d_fidelity.g1d_dist[0][0][0]
-            p01 = g1d_fidelity.g1d_dist[0][0][1]
-            p10 = g1d_fidelity.g1d_dist[1][0][0]
-            p11 = g1d_fidelity.g1d_dist[1][0][1]
-            
+        # Fit the data
         
-            self.fit_packs[self.names[i]] = {"p00":p00,"p01":p01,"p10":p10,"p11":p11}
+        self.params = gate_phase_fit_analysis(array(p00_rec),array(gates))
+        self.fit_packs = {"gate_num":self.params.coords['freeDu'].values, "f":self.params.attrs['f'], "tau":self.params.attrs['T2_fit']}
+        
 
     def gateError_plot(self,save_pic_path:str=None):
-        for idx, name in enumerate(self.names):
-            self.mds[idx]._import_data(self.datasets[idx])
-            self.mds[idx]._start_analysis()
-            g1d_fidelity = self.mds[idx].export_G1DROFidelity()
-            plot_readout_fidelity(self.datasets[idx], self.mds[idx], g1d_fidelity, self.fq, f"{save_pic_path}_{name}" if save_pic_path is not None else None, plot=True if save_pic_path is None else False)
-            plt.close()
+        
+        self.md._import_data(self.train_set)
+        self.md._start_analysis()
+        g1d_fidelity = self.md.export_G1DROFidelity()
+        plot_readout_fidelity(self.train_set, self.md, g1d_fidelity, self.fq, save_pic_path if save_pic_path is not None else None, plot=True if save_pic_path is None else False)
+        plt.close()
 
+        data = self.params['data'].values
+        gate_num = self.params.coords['freeDu'].values
+        fitting = self.params['fitting'].values
+        fit_x = self.params.coords['para_fit'].values
+
+        
+        Plotter = Artist(pic_title=f"{self.qubit} Gate Error Test",save_pic_path=save_pic_path+".png")
+        fig, axs = Plotter.build_up_plot_frame((1,1))
+        ax:plt.Axes = axs[0]
+        ax = Plotter.add_scatter_on_ax(gate_num, data, ax)
+        # Extract fitted parameters
+        
+        ax = Plotter.add_plot_on_ax(fit_x,fitting,ax,c='red',label=f"f={round(self.params.attrs['f'],5)} rad, tau={round(self.params.attrs['T2_fit'],2)}")
+        Plotter.includes_axes([ax])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"gate num", 'ylabel':"|0> populations"}]
+        )
+        Plotter.export_results()
 
 
 ################################

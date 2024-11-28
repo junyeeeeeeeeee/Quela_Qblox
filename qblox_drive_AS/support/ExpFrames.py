@@ -1805,7 +1805,7 @@ class XYFcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, target_qs:list, evo_time:float=0.5e-6, detu:float=0, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
             * target_qs: ["q0", "q1", ...]\n
         """
@@ -1813,8 +1813,8 @@ class XYFcali(ExpGovernment):
     
         self.time_samples = {}
         for q in target_qs:
-            self.time_samples[q] = sort_elements_2_multiples_of(linspace(0,evo_time,100)*1e9,4)*1e-9
-
+            self.time_samples[q] = sort_elements_2_multiples_of(linspace(40e-9,evo_time,100)*1e9,4)*1e-9
+        self.detu = detu
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -1830,7 +1830,8 @@ class XYFcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.detu
+            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
@@ -2748,11 +2749,8 @@ class GateErrorTest(ExpGovernment):
                 pic_path = os.path.join(fig_path,f"{var}_GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                 ANA._export_result(pic_path)
 
-                ans = ANA.fit_packs # ["conventional":{"p00","p01","p10","p11"}, "effective"]
-                error_0 =  abs(ans["conventional"]["p00"] - ans["effective"]["p00"])/(int(array(ds.coords["pulse_num"])[2])-int(array(ds.coords["pulse_num"])[0]))
-                error_1 =  abs(ans["conventional"]["p11"] - ans["effective"]["p11"])/(int(array(ds.coords["pulse_num"])[3])-int(array(ds.coords["pulse_num"])[1]))
-                answer[var] = mean([error_0, error_1])
-                highlight_print(f"{var} averaged pi-pulse fidelity ~ {round((1-answer[var])*100, 2)} %")
+                answer[var] = ANA.fit_packs 
+                highlight_print(f"{var} X-gate phase error ~ {round(answer[var]['f'], 5)} rad")
                 
             ds.close()
 
@@ -2764,12 +2762,11 @@ class GateErrorTest(ExpGovernment):
 
         self.CloseMeasurement() 
 
-    
-
 
 
 
 if __name__ == "__main__":
-    EXP = FluxCavity(QD_path="")
+    EXP = GateErrorTest(QD_path="")
     EXP.execution = True
-    EXP.RunAnalysis(new_QD_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\qblox_ExpConfigs_20241126132118\DR2#10_SumInfo.pkl",new_file_path=r"c:\ExpData\5Q4C_Test\20241126\20241126_132118\FluxCavity_20241126132118.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H16M49S43/GateErrorTest_20241128165335.nc")
+    

@@ -4,7 +4,7 @@ from qblox_drive_AS.support.ExpFrames import FluxCoupler
 #// test okay.
 
 ''' fill in '''
-Execution:bool = False
+Execution:bool = 1
 DRandIP = {"dr":"dr2","last_ip":"10"}
 freq_span_range:dict = {"q0":[-4e6,+5e6], "q1":[-5e6,+10e6]}    # np.linspace(rof+span, rof+span, freq_pts)
 bias_elements:list = ["c0", "c1"]

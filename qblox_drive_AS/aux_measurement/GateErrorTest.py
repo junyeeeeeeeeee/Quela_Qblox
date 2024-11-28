@@ -10,7 +10,7 @@ from qblox_drive_AS.support.WaveformCtrl import GateGenesis
 
 def GateError_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000, untrained:bool=False,run:bool=True):
     sche_func = Gate_Test_SS_sche 
-    pulse_repeats = array([0, 1, 50, 51])
+    pulse_repeats = array(list([0, 1]) + list(arange(2,502,20)))
 
     for q in ro_elements:
         pi_dura = QD_agent.quantum_device.get_element(q).rxy.duration()
@@ -71,8 +71,6 @@ def GateError_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000, un
     SS_ds.attrs["execution_time"] = Data_manager().get_time_now()
     
     return SS_ds
-
-
 
 
 

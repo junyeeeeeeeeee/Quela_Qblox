@@ -7,7 +7,7 @@ from qblox_drive_AS.support.ExpFrames import GateErrorTest
 Execution:bool = 1
 DRandIP = {"dr":"dr1","last_ip":"11"}
 target_qs:list = ["q4"]
-un_trained_pulse:bool = True
+un_trained_pulse:bool = False
 shots:int = 10000
 
 

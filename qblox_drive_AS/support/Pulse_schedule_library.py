@@ -165,6 +165,28 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,ret
         return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit,phase=phase_fit))
     else:
         return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit,phase=phase_fit)), fit_error
+
+def gate_phase_fit_analysis(data:np.ndarray,gate_num:np.ndarray):
+    f_guess,phase_guess= fft_oscillation_guess(data,gate_num)
+    T2_guess = 0.5*max(gate_num)
+    T2=Parameter(name='T2', value=T2_guess, min=0.05*min(gate_num), max=10*T2_guess) 
+    up_lim_f= 30*f_guess
+    f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
+    result = Ramsey_func_model.fit(data,D=gate_num,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
+    
+    A_fit= result.best_values['A']
+    f_fit= result.best_values['f']
+    phase_fit= result.best_values['phase']
+    
+    T2_fit= result.best_values['T2']
+    offset_fit= result.best_values['offset']
+    para_fit= np.linspace(gate_num.min(),gate_num.max(),50*len(data))
+    fitting= Ramsey_func(para_fit,A_fit,T2_fit,f_fit,phase_fit,offset_fit)
+    
+    return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],gate_num),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T2",T2_fit=T2_fit,f=f_fit,phase=phase_fit))
+
+
+
 def QS_fit_analysis(data:np.ndarray,f:np.ndarray):
     fmin = f.min()
     fmax = f.max()
