@@ -175,7 +175,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_agent.quantum_device.get_element(var).clock_freqs.f01())
                     ANA._start_analysis()
                     if save_every_fit_pic:
-                        pic_path = os.path.join(SS_picsave_folder,f"{var}_SingleShot_{ds.attrs['end_time'].replace(' ', '_')}")
+                        pic_path = os.path.join(SS_picsave_folder,f"{var}_SingleShot_{ds.attrs['end_time'].replace(' ', '_').replace(':','_').replace(' ','_')}")
                         ANA._export_result(pic_path)
                     SS_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["effT_mK"]
             case _:
@@ -267,16 +267,6 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
             plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_path,f"{q}_effT_timeDep.png"))
     
     eyeson_print(f"\nProcedures done ! ")
-
-
-# if __name__ == "__main__":
-    folder_path = "qblox_drive_AS/Meas_raw/20241121/H10M50S46"
-    QD_file_path = 'qblox_drive_AS/QD_backup/20241121/DR2#10_SumInfo.pkl'
-    save_every_fit_pic:bool=True
-    QD_agent = QDmanager(QD_file_path)
-    QD_agent.QD_loader()
-
-    time_monitor_data_ana(QD_agent, folder_path, save_every_fit_pic)
 
 
 if __name__ == "__main__":
