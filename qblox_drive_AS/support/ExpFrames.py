@@ -2766,7 +2766,7 @@ class GateErrorTest(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = GateErrorTest(QD_path="")
+    EXP = ZgateEnergyRelaxation(QD_path="")
     EXP.execution = True
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H16M49S43/GateErrorTest_20241128165335.nc")
+    EXP.RunAnalysis(new_QD_path=r"c:\ExpData\5Q4C_Test\20241127\20241127_113322\qblox_ExpConfigs_20241127113322\DR2#10_SumInfo.pkl",new_file_path=r"c:\ExpData\5Q4C_Test\20241127\20241127_113322\zgateT1_20241127113550.nc")
     
