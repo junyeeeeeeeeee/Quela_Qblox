@@ -882,7 +882,7 @@ class analysis_tools():
         p1_data = datas[1] 
         # gate_num = delete(gate_num, 1) # remove gate num = 1
         
-        p00_rec = []
+        gates, p_rec = [], []
         self.fq = tansition_freq_Hz  
         self.md = GMMROFidelity()
         self.train_set = DataArray(moveaxis(array([p0_data,p1_data]),0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(p0_data.shape[-1]))] )
@@ -890,23 +890,17 @@ class analysis_tools():
         self.md._start_analysis()
         g1d_fidelity = self.md.export_G1DROFidelity()
         centers_2d, centers1d, sigmas = self.md.discriminator._export_1D_paras()
-        discriminator = g1d_fidelity.discriminator
         
-        p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
-        # p01 = g1d_fidelity.g1d_dist[0][0][1]
-        # p10 = g1d_fidelity.g1d_dist[1][0][0]
-        # p11 = g1d_fidelity.g1d_dist[1][0][1]
-        gates = [0]
         for idx, data in enumerate(datas):
-            if idx > 1:
+            if idx > 0: # idx = 0 is prepare ground
                 try:
                     da = DataArray(moveaxis(array([data]),0,1), coords= [("mixer",array(["I","Q"])), ("prepared_state",array([0])), ("index",arange(p1_data.shape[-1]))] )
                     train_data_proj = get_proj_distance(centers_2d.transpose(), da.transpose("mixer","prepared_state",  "index").values)
                     dataset_proj = DataArray(train_data_proj, coords= [ ("prepared_state",[0]), ("index",arange(data.shape[-1]))] )  
                     g1d_fidelity._import_data(dataset_proj)
                     g1d_fidelity._start_analysis()
-                                  
-                    p00_rec.append(g1d_fidelity.g1d_dist[0][0][0])
+                    p = list(g1d_fidelity.state_data_array[0]).count(1)/len(list(g1d_fidelity.state_data_array[0]))
+                    p_rec.append(p)
                     gates.append(gate_num[idx])
                     
                 except:
@@ -915,7 +909,7 @@ class analysis_tools():
 
         # Fit the data
         
-        self.params = gate_phase_fit_analysis(array(p00_rec),array(gates))
+        self.params = gate_phase_fit_analysis(array(p_rec),array(gates))
         self.fit_packs = {"gate_num":self.params.coords['freeDu'].values, "f":self.params.attrs['f'], "tau":self.params.attrs['T2_fit']}
         
 
@@ -939,7 +933,7 @@ class analysis_tools():
         ax = Plotter.add_scatter_on_ax(gate_num, data, ax)
         # Extract fitted parameters
         
-        ax = Plotter.add_plot_on_ax(fit_x,fitting,ax,c='red',label=f"f={round(self.params.attrs['f'],5)} rad, tau={round(self.params.attrs['T2_fit'],2)}")
+        ax = Plotter.add_plot_on_ax(fit_x,fitting,ax,c='red',label=f"f={round(self.params.attrs['f']*1000,3)} mrad, tau={round(self.params.attrs['T2_fit'],2)}")
         Plotter.includes_axes([ax])
         Plotter.set_LabelandSubtitles(
             [{'subtitle':"", 'xlabel':"gate num", 'ylabel':"|0> populations"}]

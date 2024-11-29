@@ -2659,7 +2659,7 @@ class DragCali(ExpGovernment):
         self.CloseMeasurement() 
 
 
-class GateErrorTest(ExpGovernment):
+class XGateErrorTest(ExpGovernment):
     """ Helps you get the **Dressed** cavities. """
     def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
         super().__init__()
@@ -2676,13 +2676,14 @@ class GateErrorTest(ExpGovernment):
     def RawDataPath(self,path:str):
         self.__raw_data_location = path
 
-    def SetParameters(self, target_qs:list, shots:int=10000, execution:bool=True, use_untrained_wf:bool=False):
+    def SetParameters(self, target_qs:list, shots:int=10000, MaxGate_num:int=300, execution:bool=True, use_untrained_wf:bool=False):
         """ 
         ### Args:\n
         * target_qs: list, like ["q0", "q1", ...]
         """
         self.use_time_label:bool = False
         self.avg_n = shots
+        self.Max_Gate_num = MaxGate_num
         self.execution = execution
         self.use_de4t_wf = use_untrained_wf
         self.target_qs = target_qs
@@ -2704,13 +2705,13 @@ class GateErrorTest(ExpGovernment):
         
     
     def RunMeasurement(self):
-        from qblox_drive_AS.aux_measurement.GateErrorTest import GateError_single_shot
+        from qblox_drive_AS.aux_measurement.GateErrorTest import XGateError_single_shot
        
 
-        dataset = GateError_single_shot(self.QD_agent,self.target_qs,self.avg_n,self.use_de4t_wf,self.execution)
+        dataset = XGateError_single_shot(self.QD_agent,self.target_qs,self.Max_Gate_num,self.avg_n,self.use_de4t_wf,self.execution)
         if self.execution:
             if self.save_dir is not None:
-                self.save_path = os.path.join(self.save_dir,f"GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
+                self.save_path = os.path.join(self.save_dir,f"XGateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
                 self.__raw_data_location = self.save_path + ".nc"
                 dataset.to_netcdf(self.__raw_data_location)
             else:
@@ -2746,11 +2747,11 @@ class GateErrorTest(ExpGovernment):
                 ANA = Multiplex_analyzer("t1")
                 ANA._import_data(ds,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                 ANA._start_analysis(var_name=var)
-                pic_path = os.path.join(fig_path,f"{var}_GateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                pic_path = os.path.join(fig_path,f"{var}_XGateErrorTest_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                 ANA._export_result(pic_path)
 
                 answer[var] = ANA.fit_packs 
-                highlight_print(f"{var} X-gate phase error ~ {round(answer[var]['f'], 5)} rad")
+                highlight_print(f"{var} X-gate phase error ~ {round(answer[var]['f'], 3)} mrad")
                 
             ds.close()
 
@@ -2768,5 +2769,5 @@ class GateErrorTest(ExpGovernment):
 if __name__ == "__main__":
     EXP = GateErrorTest(QD_path="")
     EXP.execution = True
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H16M49S43/GateErrorTest_20241128165335.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H18M28S37/GateErrorTest_20241128183038.nc")
     

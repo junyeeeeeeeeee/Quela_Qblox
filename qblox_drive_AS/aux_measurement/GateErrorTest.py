@@ -8,9 +8,21 @@ from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_mul
 from qblox_drive_AS.support.Pulse_schedule_library import Gate_Test_SS_sche, pulse_preview
 from qblox_drive_AS.support.WaveformCtrl import GateGenesis
 
-def GateError_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000, untrained:bool=False,run:bool=True):
+def XGateError_single_shot(QD_agent:QDmanager,ro_elements:list, max_gate_num:int,shots:int=1000, untrained:bool=False,run:bool=True):
     sche_func = Gate_Test_SS_sche 
-    pulse_repeats = array(list([0, 1]) + list(arange(2,502,20)))
+    sample_pts = 25 # fix
+
+    if max_gate_num < 3:
+        raise ValueError("Max gates number must be more than 3 gates.")
+    odd_numbers = list(range(3, max_gate_num + 1, 2))
+    if len(odd_numbers) > sample_pts:
+        step = len(odd_numbers) // (sample_pts-1)  # Select step to get 24 values
+        selected_values = odd_numbers[::step][:(sample_pts-1)]  # Select 24 evenly spaced values
+        selected_values.append(odd_numbers[-1])  # Add the closest number to max_gates_num
+    else:
+        selected_values = odd_numbers
+
+    pulse_repeats = array(list([0, 1]) + list(selected_values))
 
     for q in ro_elements:
         pi_dura = QD_agent.quantum_device.get_element(q).rxy.duration()
