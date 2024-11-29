@@ -2767,7 +2767,7 @@ class XGateErrorTest(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = GateErrorTest(QD_path="")
+    EXP = XGateErrorTest(QD_path="")
     EXP.execution = True
     EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H18M28S37/GateErrorTest_20241128183038.nc")
     
