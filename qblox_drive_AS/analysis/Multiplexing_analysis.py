@@ -742,6 +742,8 @@ class analysis_tools():
             
             if idx == 0:
                 candidates = minimas
+        if len(self.ans) == 0:
+            self.ans.append(1)
         
         self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
@@ -805,6 +807,8 @@ class analysis_tools():
             if idx == 0:
                 candidates = minimas
         
+        if len(self.ans) == 0:
+            self.ans.append(1)
         self.fit_packs = {var:refined_data_folder,"ans":self.ans[0]}
     
     def halfpiamp_cali_plot(self,save_pic_folder:str=None):

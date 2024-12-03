@@ -169,7 +169,7 @@ def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,ret
 def gate_phase_fit_analysis(data:np.ndarray,gate_num:np.ndarray):
     f_guess,phase_guess= fft_oscillation_guess(data,gate_num)
     T2_guess = 0.5*max(gate_num)
-    T2=Parameter(name='T2', value=T2_guess, min=0.05*min(gate_num), max=10*T2_guess) 
+    T2=Parameter(name='T2', value=T2_guess, min=0.05*min(gate_num), max=20*T2_guess) 
     up_lim_f= 30*f_guess
     f_guess_=Parameter(name='f', value=f_guess , min=0, max=up_lim_f)
     result = Ramsey_func_model.fit(data,D=gate_num,A=abs(min(data)+max(data))/2,T2=T2,f=f_guess_,phase=phase_guess, offset=np.mean(data))
