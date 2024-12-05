@@ -19,27 +19,27 @@ class QD_modifier():
                 for q in inte_time_s:
                     self.QD_agent.quantum_device.get_element(q).measure.integration_time(inte_time_s[q])
                     self.QD_agent.quantum_device.get_element(q).measure.pulse_duration(inte_time_s[q])
-        self.to_modifiy_item.append("inte_time")
+                self.to_modifiy_item.append("inte_time")
 
     def set_drag_coef(self, Coefs:dict={}):
         if Coefs is not None:
             if len(list(Coefs.keys())) != 0:
                 for q in Coefs:
                     self.QD_agent.Waveformer.set_dragRatio_for(q, Coefs[q])
-        self.to_modifiy_item.append("DRAG_coef")
+                self.to_modifiy_item.append("DRAG_coef")
 
     def setGlobally_reset_time(self, reset_time_s:float=None):
         if reset_time_s is not None:
             for q in self.QD_agent.quantum_device.elements():
                 self.QD_agent.quantum_device.get_element(q).reset.duration(reset_time_s)
-        self.to_modifiy_item.append("reset_time")
+            self.to_modifiy_item.append("reset_time")
 
     def set_drivin_IF(self, driving_IF_Hz:dict=None):
         if driving_IF_Hz is not None:
             if len(list(driving_IF_Hz.keys())) != 0:
                 for q in driving_IF_Hz:
                     self.QD_agent.Notewriter.save_xyIF_for(q,driving_IF_Hz[q])
-        self.to_modifiy_item.append("Driving_IF")
+                self.to_modifiy_item.append("Driving_IF")
 
     def setGlobally_driving_atte(self,xy_atte:int=None):
         """ Atte must be multiples of 2 """
@@ -47,21 +47,21 @@ class QD_modifier():
             slightly_print(f"Setting all qubits xy-attenuation at {xy_atte} dB")
             for q in self.QD_agent.quantum_device.elements():
                 self.QD_agent.Notewriter.save_DigiAtte_For(xy_atte,q,'xy')
-        self.to_modifiy_item.append("Driving_Atte")
+            self.to_modifiy_item.append("Driving_Atte")
 
     def set_ROF(self, ROFs:dict={}):
         if ROFs is not None:
             if len(list(ROFs.keys())) != 0:
                 for q in ROFs:
                     self.QD_agent.quantum_device.get_element(q).clock_freqs.readout(ROFs[q])
-        self.to_modifiy_item.append("ROF")
+                self.to_modifiy_item.append("ROF")
 
     def set_sweet_bias(self, offsets:dict={}):
         if offsets is not None:
             if len(list(offsets.keys())) != 0:
                 for q in offsets:
                     self.QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=q,bias=offsets[q])
-        self.to_modifiy_item.append("Sweet_Offset")
+                self.to_modifiy_item.append("Sweet_Offset")
 
     def set_roLOfreq(self,LO_Hz:float,target_q:str='q0'):
         """ ## *Warning*: 
@@ -70,7 +70,7 @@ class QD_modifier():
         if LO_Hz is not None:
             slightly_print(f"Set {find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-LO = {round(LO_Hz*1e-9,2)} GHz")
             set_LO_frequency(self.QD_agent.quantum_device,target_q,'readout',LO_Hz)
-        self.to_modifiy_item.append("RO_LO")
+            self.to_modifiy_item.append("RO_LO")
 
     def set_roAtte(self, ro_atte:int, target_q:str='q0'):
         """ ## *Warning*: 
@@ -85,7 +85,7 @@ class QD_modifier():
                 if who_onTheSameBoat[q][0] == who_onTheSameBoat[target_q][0]:
                     print(f"set {q} ...")
                     self.QD_agent.Notewriter.save_DigiAtte_For(ro_atte,q,'ro')
-        self.to_modifiy_item.append("RO_Atte")
+            self.to_modifiy_item.append("RO_Atte")
 
     def set_sweet_g(self, g_dict:dict=None):
         """ save g is the `g_dict` for q_key, g unit in Hz"""
@@ -93,14 +93,14 @@ class QD_modifier():
             if len(list(g_dict.keys())) != 0:
                 for q in g_dict:
                     self.QD_agent.Notewriter.save_sweetG_for(g_dict[q],q)
-        self.to_modifiy_item.append("Sweet_g")
+                self.to_modifiy_item.append("Sweet_g")
 
     def set_ROamp_by_coef(self,  roAmp_coef_dict:dict=None):
         if roAmp_coef_dict is not None:
             if len(list(roAmp_coef_dict.keys())) != 0:
                 for q in roAmp_coef_dict:
                     self.QD_agent.quantum_device.get_element(q).measure.pulse_amp( self.QD_agent.quantum_device.get_element(q).measure.pulse_amp()*float(roAmp_coef_dict[q]))
-        self.to_modifiy_item.append("RO_amp")
+                self.to_modifiy_item.append("RO_amp")
 
     def update_coupler_bias(self,cp_elements:dict):
         """
@@ -114,7 +114,7 @@ class QD_modifier():
                 for cp in cp_elements:
                     slightly_print(f"Set coupler {cp} at {cp_elements[cp]} V.")
                     self.QD_agent.Fluxmanager.save_idleBias_for(cp, cp_elements[cp])
-        self.to_modifiy_item.append("coupler_bias")
+                self.to_modifiy_item.append("coupler_bias")
 
     def save_modifications(self):
         highlight_print(f"These items will be modified: {self.to_modifiy_item}")
