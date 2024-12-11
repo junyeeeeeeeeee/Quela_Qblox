@@ -23,8 +23,8 @@ from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
 import qblox_drive_AS.support.UI_Window as uw
 import qblox_drive_AS.support.Chip_Data_Store as cds
 from numpy import ndarray
-from numpy import asarray, real, vstack, array
-from numpy import arctan2, pi, cos, sin
+from numpy import asarray, real, vstack, array, imag
+from numpy import arctan2, pi, cos, sin, exp
 from qblox_drive_AS.support.UserFriend import *
 
 
@@ -382,23 +382,25 @@ def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=Non
     vector_21 = (point_2 - point_1)
     
     if angle_degree is None:
-        angle = -arctan2(vector_21[1], vector_21[0])  # Angle to align with x-axis
+        angle = arctan2(vector_21[1], vector_21[0])  # Angle to align with x-axis
     else:
-        angle = -angle_degree*pi/180
- 
+        angle = angle_degree*pi/180
 
-    # Apply rotation to both translated points
-    P1_rotated = rotation_matrix(angle) @ point_1 
-    P2_rotated = rotation_matrix(angle) @ point_2 
+    data = array([[point_1[0], point_2[0]],[point_1[1], point_2[1]]])
+    rotated = rotate_data(data, angle)
 
-    return vstack((P1_rotated,P2_rotated)), -angle*180/pi
+
+    return rotated, angle*180/pi
 
 
 def rotate_data(data:ndarray, angle_degree:float)->ndarray:
-    """ data shape (IQ, shots)"""
+    """ data shape (IQ, shots) """
 
-    angle = -angle_degree*pi/180
-    data_rotated = rotation_matrix(angle) @ data
+    angle = angle_degree*pi/180
+    S21 = data[0] + 1j*data[1] 
+
+    roted_S21 = array(S21*exp(-1j*angle))
+    data_rotated = array([real(roted_S21).tolist(), imag(roted_S21).tolist()])
 
     return data_rotated
 

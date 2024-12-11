@@ -613,9 +613,6 @@ class IQ_references(ExpGovernment):
         self.avg_n = shots
         self.execution = execution
         self.target_qs = list(self.ro_amp.keys())
-        for i in self.ro_amp:
-            if self.ro_amp[i] != 1:
-                self.ask_save = True
 
 
     def PrepareHardware(self):
@@ -669,24 +666,9 @@ class IQ_references(ExpGovernment):
             for q in ds.data_vars:
                 answer[q] = IQ_ref_ana(ds,q,fig_path)
             ds.close()
-            if self.ask_save:
-                permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
-                if permi in list(answer.keys()):
-                    QD_savior.memo_refIQ({permi:answer[permi]})
-                    qbit = QD_savior.quantum_device.get_element(permi)
-                    qbit.measure.pulse_amp(self.ro_amp[permi]*float(qbit.measure.pulse_amp()))
-                    QD_savior.QD_keeper()
-                elif permi in ["all",'y','yes']:
-                    QD_savior.memo_refIQ(answer)
-                    for q in answer:
-                        qbit = QD_savior.quantum_device.get_element(q)
-                        qbit.measure.pulse_amp(self.ro_amp[q]*float(qbit.measure.pulse_amp()))
-                    QD_savior.QD_keeper()
-                else:
-                    print("Updating got denied ~")
-            else:
-                QD_savior.memo_refIQ(answer)
-                QD_savior.QD_keeper()
+            
+            QD_savior.memo_refIQ(answer)
+            QD_savior.QD_keeper()
 
 
     def WorkFlow(self):
