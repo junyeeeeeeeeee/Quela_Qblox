@@ -144,8 +144,8 @@ def T1_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T1_guess:float=10*1e-6,ret
     else:
         fit_error = float(result.covar[1][1])*1e6
         return xr.Dataset(data_vars=dict(data=(['freeDu'],data),fitting=(['para_fit'],fitting)),coords=dict(freeDu=(['freeDu'],freeDu),para_fit=(['para_fit'],para_fit)),attrs=dict(exper="T1",T1_fit=T1_fit)), fit_error
-def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,T2_guess:float=10*1e-6,return_error:bool=False):
-    
+def T2_fit_analysis(data:np.ndarray,freeDu:np.ndarray,return_error:bool=False):
+    T2_guess = mean(freeDu)
     f_guess,phase_guess= fft_oscillation_guess(data,freeDu)
     T2=Parameter(name='T2', value= T2_guess, min=0.1e-6, max=5*T2_guess) 
     up_lim_f= 30*1e6

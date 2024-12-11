@@ -204,7 +204,10 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     T2_raw[var][ds.attrs["end_time"]] = ANA.plot_item["data"]
                     detu_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["freq"]*1e-6
                     T2_rec[var][ds.attrs["end_time"]] = ANA.fit_packs["median_T2"]
-            
+    
+    pic_folder = os.path.join(folder_path, "Pics")
+    if not os.path.exists(pic_folder):
+        os.mkdir(pic_folder)
 
     slightly_print(f"\nPlotting... ")
     if T1 != 0:
@@ -225,8 +228,8 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
             
-            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_path,f"{q}_T1_timeDep_colormap.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_path,f"{q}_T1_timeDep.png"))
+            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_T1_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_T1_timeDep.png"))
     if T2 != 0:
         for q in T2_rec:
             sorted_item_ans = sorted(T2_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
@@ -247,9 +250,9 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
             
-            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(folder_path,f"{q}_T2_timeDep_colormap.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(folder_path,f"{q}_T2_timeDep.png"))
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(folder_path,f"{q}_Detune_timeDep.png"))
+            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_T2_timeDep_colormap.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_T2_timeDep.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(pic_folder,f"{q}_Detune_timeDep.png"))
     if SS != 0:
         for q in SS_rec:
             sorted_item_ans = sorted(SS_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
@@ -264,14 +267,14 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 sorted_values_ans.append(value)
 
 
-            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(folder_path,f"{q}_effT_timeDep.png"))
+            plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "eff_Temp.", units={"x":"min","y":"mK"}, fig_path=os.path.join(pic_folder,f"{q}_effT_timeDep.png"))
     
     eyeson_print(f"\nProcedures done ! ")
 
 
 if __name__ == "__main__":
-    QD_path = ""
-    folder_path = ""
+    QD_path = "qblox_drive_AS/QD_backup/20241209/DR1#11_SumInfo.pkl"
+    folder_path = "/Users/ratiswu/Desktop/Meas/20241210_203056"
     save_every_fit_fig:bool = False
 
     QD_agent = QDmanager(QD_path)
