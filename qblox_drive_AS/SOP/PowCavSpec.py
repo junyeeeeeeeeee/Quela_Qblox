@@ -21,13 +21,13 @@ def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:di
     freq_datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
     original_rof = {}
      
-    from numpy import NaN
+    from numpy import nan
     for q in ro_elements:
         
         qubit_info = QD_agent.quantum_device.get_element(q)
         original_rof[q] = qubit_info.clock_freqs.readout()
         # avoid frequency conflicts
-        qubit_info.clock_freqs.readout(NaN)
+        qubit_info.clock_freqs.readout(nan)
 
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
     freq.batched = True

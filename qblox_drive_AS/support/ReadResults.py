@@ -12,9 +12,11 @@ from qblox_drive_AS.support.Pulse_schedule_library import dataset_to_array, IQ_d
 
 if __name__ == '__main__':
     import os
-    
-    QD_agent = QDmanager('Modularize/QD_backup/2024_8_29/DR4#81_SumInfo.pkl')
-    QD_agent.QD_loader()
+    a = [["port",1],["port",2],["port",3]]
+    for port, idx in a:
+        print(f"{port}:{idx}")
+    # QD_agent = QDmanager('Modularize/QD_backup/2024_8_29/DR4#81_SumInfo.pkl')
+    # QD_agent.QD_loader()
     # qs = ['q1']
     # # for q in qs:
     # #     print(q,":")

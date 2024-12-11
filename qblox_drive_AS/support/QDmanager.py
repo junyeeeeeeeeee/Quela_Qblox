@@ -66,48 +66,12 @@ def find_path_by_port(hardware_config, port):
     else:
         return answers
 
-def find_path_by_clock(hardware_config, port, clock):
-    """ By port and clock name, return a dict = {elements:[paths]} who use that port and the same clock """
-    answers = {}
-    def recursive_find(hardware_config, port, clock, path) -> list | None:
-        
-        for k, v in hardware_config.items():
-            # If key is port, we are done
-            if k == "port":
-                if (
-                    port in hardware_config["port"]
-                    and hardware_config["clock"] == clock
-                ):
-                    answers[hardware_config["port"].split(":")[0]] = path[1:3]
-
-            # If value is list, append key to path and loop trough its elements.
-            elif isinstance(v, list):
-                path.append(k)  # Add list key to path.
-                for i, sub_config in enumerate(v):
-                    path.append(i)  # Add list element index to path.
-                    if isinstance(sub_config, dict):
-                        found_path = recursive_find(sub_config, port, clock, path)
-                        if found_path:
-                            return found_path
-                    path.pop()  # Remove list index if port-clock not found in element.
-                path.pop()  # Remove list key if port-clock not found in list.
-
-            # If dict append its key. If port is not found delete it
-            elif isinstance(v, dict):
-                path.append(k)
-                found_path = recursive_find(v, port, clock, path)
-                if found_path:
-                    return found_path
-                path.pop()  # Remove dict key if port-clock not found in this dict.
-        
-
-    _ = recursive_find(hardware_config, port, clock, path=[])
-    if len(list(answers.keys())) == 0 :
-        raise KeyError(
-            f"The combination of {port=} and {clock=} could not be found in {hardware_config=}."
-        )
-    else:
-        return answers
+def find_flux_lines(hcfg:dict)->dict:
+    answer = {}
+    for port_loc, port_name in hcfg["connectivity"]["graph"]:
+        if port_name.split(":")[-1] == 'fl':
+            answer[port_name.split(":")[0]] = port_loc
+    return answer
 
 class QDmanager():
     def __init__(self,QD_path:str=''):
@@ -134,13 +98,13 @@ class QDmanager():
     
     def made_mobileFctrl(self):
         """ Turn attrs about `cluster.module.out0_offset` into str."""
-        ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
-
+        ans = find_flux_lines(self.Hcfg)
+        
         self.Fctrl_str_ver = {}
         for q in ans:
-            cluster_name = ans[q][0].split("_")[0]
-            module_name = ans[q][0].split("_")[1]
-            func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+            cluster_name = ans[q].split(".")[0]
+            module_name = ans[q].split(".")[1]
+            func_name = f"out{ans[q].split('_')[-1]}_offset"
 
             self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
         

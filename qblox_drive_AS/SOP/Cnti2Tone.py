@@ -1,7 +1,7 @@
 
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, NaN, arange
+from numpy import array, nan, arange
 from xarray import Dataset
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
@@ -36,7 +36,7 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
 
         
         qubit_info.reset.duration(280e-9+drive_pulse_length+0.5e-6) 
-        qubit_info.clock_freqs.f01(NaN)
+        qubit_info.clock_freqs.f01(nan)
         eyeson_print(f"Inte_time= {round(qubit_info.measure.integration_time()*1e6,1)} µs")
         eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
 

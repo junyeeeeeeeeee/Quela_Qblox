@@ -206,6 +206,31 @@ def connect_clusters_withinMulti(dr_loc:str,ip:str='192.168.1.10'):
         raise KeyError(f"{ip} is NOT available now!")
  
 # def set attenuation for all qubit
+# ver for cluster-0.7.0
+# def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
+#     """
+#         Set the attenuations for RO/XY by the given mode and atte. values.\n
+#         atte_value: integer multiple of 2,\n
+#         mode: 'ro' or 'xy',\n
+#         target_q: ['q1']
+#     """
+#     # Check atte value
+#     if atte_value%2 != 0:
+#         raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
+#     # set atte.
+#     if mode.lower() == 'ro':
+#         for q_name in target_q:
+#             set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
+#     elif mode.lower() == 'xy':
+#         for q_name in target_q:
+#             try:
+#                 driving_port_path = find_port_clock_path(quantum_device.hardware_config(),f"{q_name}:mw",f"{q_name}.01")
+#                 set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+#             except Exception as err:
+#                 print(f"!!!!! Can't fing the driving port for {q_name}, cancel setting its xy-attenuation !!!!!!")
+#     else:
+#         raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
+
 def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:list=['q1']):
     """
         Set the attenuations for RO/XY by the given mode and atte. values.\n
@@ -213,23 +238,23 @@ def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:l
         mode: 'ro' or 'xy',\n
         target_q: ['q1']
     """
+    
     # Check atte value
     if atte_value%2 != 0:
         raise ValueError(f"atte_value={atte_value} is not the multiple of 2!")
     # set atte.
     if mode.lower() == 'ro':
         for q_name in target_q:
-            set_readout_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value, in_att=0)
+            quantum_device.hardware_config()["hardware_options"]["output_att"][f"q:res-{q_name}.ro"] = atte_value
     elif mode.lower() == 'xy':
+        
         for q_name in target_q:
             try:
-                driving_port_path = find_port_clock_path(quantum_device.hardware_config(),f"{q_name}:mw",f"{q_name}.01")
-                set_drive_attenuation(quantum_device, quantum_device.get_element(q_name), out_att=atte_value)
+                quantum_device.hardware_config()["hardware_options"]["output_att"][f"{q_name}:mw-{q_name}.01"] = atte_value
             except Exception as err:
                 print(f"!!!!! Can't fing the driving port for {q_name}, cancel setting its xy-attenuation !!!!!!")
     else:
         raise KeyError (f"The mode='{mode.lower()}' is not 'ro' or 'xy'!")
-
 
 def reset_offset(flux_callable_map:dict):
     for i in flux_callable_map:

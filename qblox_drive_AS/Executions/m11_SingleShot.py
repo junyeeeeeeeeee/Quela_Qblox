@@ -1,11 +1,11 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import SingleShot
-#// test okay.
+#// Okay v0.9.2
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
+DRandIP = {"dr":"dr1","last_ip":"11"}
 target_qs:list = ["q0","q1"]
 shots:int = 10000
 histo_counts:int = 1

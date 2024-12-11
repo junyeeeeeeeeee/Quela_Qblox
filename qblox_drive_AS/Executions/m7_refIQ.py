@@ -1,11 +1,11 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import IQ_references
-#// test okay.
+#// Okay v0.9.2
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
+DRandIP = {"dr":"dr1","last_ip":"11"}
 RO_amp_factor:dict = {"q0":1, "q1":1}    # ro-amp *= ro_amp_factor
 shots:int = 10000
 

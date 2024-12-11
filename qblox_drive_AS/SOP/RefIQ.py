@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN, array, arange, minimum, maximum, cos, sin, pi, linspace
+from numpy import nan, array, arange, minimum, maximum, cos, sin, pi, linspace
 from xarray import Dataset
 import matplotlib.pyplot as plt
 from qblox_drive_AS.support.UserFriend import *
@@ -20,9 +20,9 @@ def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:
         eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
        
         qubit_info.measure.pulse_amp(ro_elements[q]*float(qubit_info.measure.pulse_amp()))
-        if qubit_info.rxy.amp180() is NaN:
+        if qubit_info.rxy.amp180() is nan:
             qubit_info.rxy.amp180(0)
-        if qubit_info.rxy.duration() is NaN:
+        if qubit_info.rxy.duration() is nan:
             qubit_info.rxy.duration(0)
 
     sched_kwargs = dict(   

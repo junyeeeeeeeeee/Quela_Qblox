@@ -5,7 +5,7 @@ from qblox_instruments import Cluster
 from qblox_drive_AS.support.UserFriend import *
 from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import linspace, array, arange, NaN, ndarray, round, full, concatenate
+from numpy import linspace, array, arange, nan, ndarray, round, full, concatenate
 from qblox_drive_AS.support import QDmanager, Data_manager, cds
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl

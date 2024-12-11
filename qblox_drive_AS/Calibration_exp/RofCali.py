@@ -5,7 +5,7 @@ from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from numpy import array, NaN, arange, moveaxis
+from numpy import array, nan, arange, moveaxis
 from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
 from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, pulse_preview
 
@@ -15,7 +15,7 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
     for q in rof_samples:
         qubit_info = QD_agent.quantum_device.get_element(q)
         ro_f_origin[q] = qubit_info.clock_freqs.readout()
-        qubit_info.clock_freqs.readout(NaN)
+        qubit_info.clock_freqs.readout(nan)
         eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         rof_data_idx = arange(rof_samples[q].shape[0])
     
@@ -62,8 +62,8 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
     
         else:
             preview_para = {}
-            for q in ro_elements:
-                preview_para[q] = ro_elements[q][:2]
+            for q in rof_samples:
+                preview_para[q] = rof_samples[q][:2]
             sched_kwargs['ro_freq']= preview_para
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 

@@ -3,7 +3,7 @@ Use the results from m1 and a light attenuation (10 ~ 16 is recommended) to find
 """
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN
+from numpy import nan
 from xarray import Dataset
 import matplotlib.pyplot as plt
 from qcodes.parameters import ManualParameter
@@ -31,7 +31,7 @@ def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict
     quantum_device = QD_agent.quantum_device
     sche_func = One_tone_multi_sche
     for q in ro_elements:
-        quantum_device.get_element(q).clock_freqs.readout(NaN) # avoid cluster clock warning
+        quantum_device.get_element(q).clock_freqs.readout(nan) # avoid cluster clock warning
     
 
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
