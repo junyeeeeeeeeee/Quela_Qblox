@@ -27,8 +27,6 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
             
         if not drive_read_overlap:
             drive_pulse_ref_pt = 'start'
-            qubit_info.measure.pulse_duration(1.5e-6)
-            qubit_info.measure.integration_time(1e-6)
             drive_pulse_length = 100e-6
         else:
             drive_pulse_ref_pt = 'end'
@@ -36,9 +34,11 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
             qubit_info.measure.pulse_duration(drive_pulse_length)
             qubit_info.measure.integration_time(drive_pulse_length)
 
+        
         qubit_info.reset.duration(280e-9+drive_pulse_length+0.5e-6) 
         qubit_info.clock_freqs.f01(NaN)
-    
+        eyeson_print(f"Inte_time= {round(qubit_info.measure.integration_time()*1e6,1)} µs")
+        eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
 
     freq = ManualParameter(name="XYfreq", unit="Hz", label="Frequency")
     freq.batched = True

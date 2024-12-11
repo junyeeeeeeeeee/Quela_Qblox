@@ -16,9 +16,9 @@ def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:
     for q in ro_elements:
         qubit_info = QD_agent.quantum_device.get_element(q)
         
-        qubit_info.measure.pulse_duration(2e-6)
-        qubit_info.measure.integration_time(1.5e-6)
-        qubit_info.reset.duration(250e-6)
+        eyeson_print(f"Inte_time= {round(qubit_info.measure.integration_time()*1e6,1)} µs")
+        eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
+       
         qubit_info.measure.pulse_amp(ro_elements[q]*float(qubit_info.measure.pulse_amp()))
         if qubit_info.rxy.amp180() is NaN:
             qubit_info.rxy.amp180(0)

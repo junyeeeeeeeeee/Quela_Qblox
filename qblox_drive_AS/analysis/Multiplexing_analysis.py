@@ -1,4 +1,4 @@
-from numpy import array, mean, median, argmax, linspace, arange, column_stack, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
+from numpy import array, mean, median, argmax, linspace, arange, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
 from numpy import sqrt, pi
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
@@ -63,9 +63,9 @@ def zgate_T1_fitting(time_array:DataArray,IQ_array:DataArray, ref_IQ:list, fit:b
     T1s = []
     signals = []
     if len(ref_IQ) == 1:
-        for bias_idx, bias_data in enumerate(I_array):
-            iq_data = column_stack((bias_data,Q_array[bias_idx])).T
-            signals.append(rotate_data(iq_data,ref_IQ[0])[0])
+        data = moveaxis(IQ_array,0,1)
+        for bias_idx, bias_data in enumerate(data): 
+            signals.append(rotate_data(bias_data,ref_IQ[0])[0])
             if fit:
                 T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
     else:
@@ -302,8 +302,7 @@ class analysis_tools():
         if len(ref) == 2:
             self.contrast = sqrt((ii-ref[0])**2+(qq-ref[1])**2).reshape(self.xyl.shape[0],self.xyf.shape[0])
         else:
-            iq_data = column_stack((ii,qq)).T
-            self.contrast = rotate_data(iq_data,ref[0])[0]
+            self.contrast = rotate_data(array(self.ds[self.target_q]),ref[0])[0]
         self.fit_f01s = []
         self.fif_amps = []
         if fit_func is not None and self.xyl.shape[0] != 1:
@@ -351,8 +350,7 @@ class analysis_tools():
         if len(refIQ) == 2:
             self.contrast = array(sqrt((IQarray[0]-refIQ[0])**2+(IQarray[1]-refIQ[1])**2))
         else:
-            iq_data = column_stack((IQarray[0],IQarray[1])).T
-            self.contrast = rotate_data(iq_data,refIQ[0])[0]
+            self.contrast = rotate_data(IQarray,refIQ[0])[0]
         if fit_func is not None:
             # try:
             self.fit_z = []
@@ -412,8 +410,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
             else:
-                iq_data = column_stack((i_data,q_data)).T
-                data_to_fit = rotate_data(iq_data,float(self.refIQ[0]))[0]
+                data_to_fit = rotate_data(array(self.ds[var]),float(self.refIQ[0]))[0]
         else:
             # wait GMM
             pass
@@ -450,7 +447,7 @@ class analysis_tools():
         self.RO_fidelity_percentage = (p00+p11)*100/2
 
 
-        _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.centers[0],self.gmm2d_fidelity.centers[1])
+        _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
         z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
         self.rotated_data = empty_like(array(data))
         for state_idx, state_data in enumerate(z):
@@ -478,8 +475,7 @@ class analysis_tools():
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                iq_data = column_stack((data[0],data[1])).T
-                self.data_n = rotate_data(iq_data,ref[0])[0]
+                self.data_n = rotate_data(data,ref[0])[0]
             else:
                 self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
@@ -505,8 +501,7 @@ class analysis_tools():
         for idx, data in enumerate(reshaped):
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             if len(ref) == 1:
-                iq_data = column_stack((data[0],data[1])).T
-                data = rotate_data(iq_data,ref[0])[0] # I
+                data = rotate_data(data,ref[0])[0] # I
             else:
                 data = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
             
@@ -549,8 +544,7 @@ class analysis_tools():
         self.T1_fit = []
         for idx, data in enumerate(reshaped):
             if len(ref) == 1:
-                iq_data = column_stack((data[0],data[1])).T
-                self.plot_item["data"] = rotate_data(iq_data,ref[0])[0]*1000 # I
+                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
             else:
                 self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
 
@@ -713,8 +707,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
-                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
+                refined_data = rotate_data(data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         
         # attrs["coefs"] = [A_fit,f_fit,phase_fit,offset_fit]
@@ -779,8 +772,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                iq_data = column_stack((PiPairNum_dep_data[0],PiPairNum_dep_data[1])).T
-                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
+                refined_data = rotate_data(data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
 
         candidates = []
@@ -843,8 +835,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(operation_dep_data[0],operation_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                iq_data = column_stack((operation_dep_data[0],operation_dep_data[1])).T
-                refined_data = rotate_data(iq_data,self.refIQ[0])[0]
+                refined_data = rotate_data(data,self.refIQ[0])[0]
             
             self.plot_item[self.operations[idx]]['data'] = refined_data
             coefficients = polyfit(self.drag_coef, refined_data, deg=1)  

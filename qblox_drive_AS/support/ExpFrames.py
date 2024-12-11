@@ -102,7 +102,7 @@ class BroadBand_CavitySearching(ExpGovernment):
             fig_path = self.save_fig_path
         else:
             file_path = new_file_path
-            fig_path = os.path.join(os.path.split(new_file_path)[0],os.path.split(self.save_fig_path)[-1])
+            fig_path = os.path.join(os.path.split(new_file_path)[0],"S21.png")
 
         QD_savior = QDmanager(QD_file)
         QD_savior.QD_loader()
@@ -613,9 +613,6 @@ class IQ_references(ExpGovernment):
         self.avg_n = shots
         self.execution = execution
         self.target_qs = list(self.ro_amp.keys())
-        for i in self.ro_amp:
-            if self.ro_amp[i] != 1:
-                self.ask_save = True
 
 
     def PrepareHardware(self):
@@ -669,19 +666,9 @@ class IQ_references(ExpGovernment):
             for q in ds.data_vars:
                 answer[q] = IQ_ref_ana(ds,q,fig_path)
             ds.close()
-            if self.ask_save:
-                permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
-                if permi in list(answer.keys()):
-                    QD_savior.memo_refIQ({permi:answer[permi]})
-                    QD_savior.QD_keeper()
-                elif permi in ["all",'y','yes']:
-                    QD_savior.memo_refIQ(answer)
-                    QD_savior.QD_keeper()
-                else:
-                    print("Updating got denied ~")
-            else:
-                QD_savior.memo_refIQ(answer)
-                QD_savior.QD_keeper()
+            
+            QD_savior.memo_refIQ(answer)
+            QD_savior.QD_keeper()
 
 
     def WorkFlow(self):
@@ -1326,7 +1313,9 @@ class Ramsey(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            slightly_print(f"{q} arti-detune = {round(self.QD_agent.Notewriter.get_artiT2DetuneFor(q)*1e-6,2)} MHz")
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.QD_agent.Notewriter.get_artiT2DetuneFor(q)
+            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
@@ -2767,7 +2756,6 @@ class XGateErrorTest(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = XGateErrorTest(QD_path="")
-    EXP.execution = True
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="qblox_drive_AS/Meas_raw/20241128/H18M28S37/GateErrorTest_20241128183038.nc")
+    EXP = BroadBand_CavitySearching(QD_path="")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/BroadBandCS_20241209143406.nc")
     
