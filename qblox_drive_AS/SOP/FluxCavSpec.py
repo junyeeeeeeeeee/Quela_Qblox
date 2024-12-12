@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, arange, NaN, ndarray
+from numpy import array, arange, nan, ndarray
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
@@ -18,7 +18,7 @@ def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,
         qubit_info = QD_agent.quantum_device.get_element(q)
         flux_dura = qubit_info.reset.duration()+qubit_info.measure.integration_time()
         original_rof[q] = qubit_info.clock_freqs.readout()
-        qubit_info.clock_freqs.readout(NaN)
+        qubit_info.clock_freqs.readout(nan)
         freq_datapoint_idx = arange(ro_elements[q].shape[0])
 
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")

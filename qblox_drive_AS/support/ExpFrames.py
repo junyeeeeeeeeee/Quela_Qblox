@@ -81,7 +81,6 @@ class BroadBand_CavitySearching(ExpGovernment):
         
         for port_loc, port_name in hcfg["connectivity"]["graph"]:
             if port_name == f'{self.target_q}:res':
-                print(port_loc.split(".")[1][6:])
                 qrmRF_slot_idx = int(port_loc.split(".")[1][6:])
         self.readout_module = self.cluster.modules[qrmRF_slot_idx-1]
     

@@ -9,10 +9,10 @@ from quantify_scheduler.backends.qblox_backend import QbloxHardwareCompilationCo
 cluster_IP:str = "192.168.1.11"
 dr_name:str = "dr1"
 qubit_number_onChip:int = 2
-coupler_number_onChip:int = 0
+coupler_number_onChip:int = 2
 chip_name:str = "5Q4C"
 chip_type:str = "5Q4C"
-old_QD_path:str = "qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
+old_QD_path:str = "" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 # Hcfg = {
@@ -92,17 +92,21 @@ old_QD_path:str = "qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl" # set t
 # }
 # Hcfg = QbloxHardwareCompilationConfig.model_validate(Hcfg)
 # rich.print(Hcfg)
+# serialized_config = Hcfg.model_dump_json(exclude_unset=True)
+
+# deserialized_config = QbloxHardwareCompilationConfig.model_validate_json(serialized_config)
+# rich.print(deserialized_config)
 Hcfg = {
     "config_type": "quantify_scheduler.backends.qblox_backend.QbloxHardwareCompilationConfig",
     "hardware_description": {
         f"cluster{dr_name}": {
             "instrument_type": "Cluster",
             "modules": {
-                "4": {
-                    "instrument_type": "QCM_RF"
-                },
                 "2": {
                     "instrument_type": "QCM"
+                },
+                "4": {
+                    "instrument_type": "QCM_RF"
                 },
                 "6": {
                     "instrument_type": "QRM_RF"
@@ -116,8 +120,8 @@ Hcfg = {
         "output_att": {
             "q0:mw-q0.01": 0,
             "q1:mw-q1.01": 0,
-            "q:res-q0.ro": 22,
-            "q:res-q1.ro": 22
+            "q:res-q0.ro": 10,
+            "q:res-q1.ro": 10
         },
         "mixer_corrections": {
             "q0:mw-q0.01": {
@@ -185,6 +189,14 @@ Hcfg = {
             [
                 f"cluster{dr_name}.module2.real_output_1",
                 "q1:fl"
+            ],
+            [
+                f"cluster{dr_name}.module2.real_output_2",
+                "c0:fl"
+            ],
+            [
+                f"cluster{dr_name}.module2.real_output_3",
+                "c1:fl"
             ],
             [
                 f"cluster{dr_name}.module6.complex_output_0",

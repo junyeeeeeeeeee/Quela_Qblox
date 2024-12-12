@@ -414,7 +414,7 @@ def Readout(sche,q,R_amp,R_duration,powerDep=False):
 
     # tim_sample, env_sample = FlatTopGaussianPulse(Du,amp)
     # return sche.add(NumericalPulse(samples=env_sample,t_samples=tim_sample,port="q:res",clock=q+".ro",t0=0e-9),)
-    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9))
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=0e-9))
 
 def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     if powerDep is True:
@@ -427,7 +427,7 @@ def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     # tim_sample, env_sample = FlatTopGaussianPulse(Du,amp)
 
     # return sche.add(NumericalPulse(samples=env_sample,t_samples=tim_sample,port="q:res",clock=q+".ro",t0=0),ref_pt="start",ref_op=ref_pulse_sche,)
-    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),ref_pt="start",ref_op=ref_pulse_sche,)
+    return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=0e-9),ref_pt="start",ref_op=ref_pulse_sche,)
 
     
 def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel:int=0,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
@@ -437,7 +437,7 @@ def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_ind
     # Trace acquisition does not support APPEND bin mode !!!
     if get_trace==False:
         return sche.add(SSBIntegrationComplex(
-            duration=R_inte_duration[q],
+            duration=R_inte_duration[q]-4e-9,
             port="q:res",
             clock=q+".ro",
             acq_index=acq_index,
@@ -467,33 +467,33 @@ def pulse_preview(quantum_device:QuantumDevice,sche_func:Schedule, sche_kwargs:d
     
 #%% schedule function
 
-def One_tone_sche(
-    frequencies: np.ndarray,
-    q:str,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    powerDep:bool,
-    repetitions:int=1,    
-) -> Schedule:
+# def One_tone_sche(
+#     frequencies: np.ndarray,
+#     q:str,
+#     R_amp: dict,
+#     R_duration: dict,
+#     R_integration:dict,
+#     R_inte_delay:float,
+#     powerDep:bool,
+#     repetitions:int=1,    
+# ) -> Schedule:
     
-    sched = Schedule("One tone spectroscopy (NCO sweep)",repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+ ".ro", freq=frequencies.flat[0]))
+#     sched = Schedule("One tone spectroscopy (NCO sweep)",repetitions=repetitions)
+#     sched.add_resource(ClockResource(name=q+ ".ro", freq=frequencies.flat[0]))
     
-    for acq_idx, freq in enumerate(frequencies):
+#     for acq_idx, freq in enumerate(frequencies):
         
-        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
-        sched.add(Reset(q))
+#         sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
+#         sched.add(Reset(q))
         
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
+#         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
         
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+#         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
-    return sched
+#     return sched
 
 
-# ? Doing...
+
 
 def One_tone_multi_sche(
     frequencies: dict,
@@ -515,13 +515,14 @@ def One_tone_multi_sche(
     for acq_idx in range(sameple_idx):    
 
         for qubit_idx, q in enumerate(qubits2read):
+    
             freq = frequencies[q][acq_idx]
             if acq_idx == 0:
                 sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
-            
+    
             sched.add(Reset(q))
             sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+            sched.add(IdlePulse(duration=4e-9))
 
             
             if qubit_idx == 0:
@@ -530,10 +531,10 @@ def One_tone_multi_sche(
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
             
             if bias != 0 and bias_dura != 0: 
-                Z(sched,bias,bias_dura,q,spec_pulse,0,ref_position='end')
-
+                Z(sched,bias,bias_dura,q,spec_pulse,4e-9,ref_position='end')
+            
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-          
+            
     return sched
 
 def RabiSplitting_multi_sche(
@@ -570,7 +571,7 @@ def RabiSplitting_multi_sche(
                 spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
                 if bias != 0 and bias_dura != 0 and len(list(bias_couplers)):
                     for qc in bias_couplers:
-                        Z(sched,bias,bias_dura,qc,spec_pulse,0,ref_position='end')
+                        Z(sched,bias,bias_dura,qc,spec_pulse,4e-9,ref_position='end')
             else:
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
 
@@ -578,32 +579,32 @@ def RabiSplitting_multi_sche(
           
     return sched 
 
-def Two_tone_sche(
-    frequencies: np.ndarray,
-    q:str,
-    spec_amp:float,
-    spec_Du:float,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    repetitions:int=1,   
-    ref_pt:str='end'
+# def Two_tone_sche(
+#     frequencies: np.ndarray,
+#     q:str,
+#     spec_amp:float,
+#     spec_Du:float,
+#     R_amp: dict,
+#     R_duration: dict,
+#     R_integration:dict,
+#     R_inte_delay:float,
+#     repetitions:int=1,   
+#     ref_pt:str='end'
     
-) -> Schedule:
-    sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
-    for acq_idx, freq in enumerate(frequencies):
-        sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
-        sched.add(Reset(q))
-        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+# ) -> Schedule:
+#     sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
+#     sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
+#     for acq_idx, freq in enumerate(frequencies):
+#         sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
+#         sched.add(Reset(q))
+#         # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
+#         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+#         Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
+#         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
      
-    return sched
+#     return sched
 
 def multi_Two_tone_sche(
     frequencies:dict,
@@ -2420,7 +2421,13 @@ def set_LO_frequency(quantum_device:QuantumDevice,q:str,IF_frequency:float):
     quantum_device.hardware_config(hw_config)
 
 
+def set_ROLO_frequency(quantum_device:QuantumDevice,LO_frequency:float,q:str='q'):  
+    hw_config = quantum_device.hardware_config()
+    for name in hw_config["hardware_options"]["modulation_frequencies"]:
+        if name.split("-")[0] == f"{q}:res":
+            hw_config["hardware_options"]["modulation_frequencies"][name]["lo_freq"] = LO_frequency
 
+    quantum_device.hardware_config(hw_config)
 
 
 

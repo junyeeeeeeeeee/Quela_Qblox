@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN
+from numpy import nan
 from numpy import ndarray
 from xarray import Dataset
 from numpy import array, arange, sqrt
@@ -26,7 +26,7 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
         freq_datapoint_idx = arange(0,XYFs[q].shape[0])
         qubit_info = QD_agent.quantum_device.get_element(q)  
         original_xyfs[q] = qubit_info.clock_freqs.f01()
-        qubit_info.clock_freqs.f01(NaN)
+        qubit_info.clock_freqs.f01(nan)
         spec_pulse_amp = QD_agent.Notewriter.get_2tone_piampFor(q)
     
     freq = ManualParameter(name="freq", unit="Hz", label="Frequency")

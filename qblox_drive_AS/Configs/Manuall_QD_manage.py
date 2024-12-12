@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support import QDmanager
 from qblox_drive_AS.support.UserFriend import *
 from quantify_scheduler.helpers.collections import find_port_clock_path
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
+from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, set_ROLO_frequency
 from qblox_drive_AS.support.ExpFrames import qs_on_a_boat
 
 class QD_modifier():
@@ -75,13 +75,13 @@ class QD_modifier():
                     self.QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=q,bias=offsets[q])
                 self.to_modifiy_item.append("Sweet_Offset")
 
-    def set_roLOfreq(self,LO_Hz:float,target_q:str='q0'):
+    def set_roLOfreq(self,LO_Hz:float,target_q:str='q'):
         """ ## *Warning*: 
             Set the LO for those qubits who shares the same readout module with the `target_q`.
         """
         if LO_Hz is not None:
-            slightly_print(f"Set {find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-LO = {round(LO_Hz*1e-9,2)} GHz")
-            set_LO_frequency(self.QD_agent.quantum_device,target_q,'readout',LO_Hz)
+            slightly_print(f"Setting {target_q}:res LO @ {round(LO_Hz*1e-9,2)} GHz")
+            set_ROLO_frequency(self.QD_agent.quantum_device,LO_Hz,target_q)
             self.to_modifiy_item.append("RO_LO")
 
     def set_roAtte(self, ro_atte:int, target_q:str='q'):
@@ -92,6 +92,7 @@ class QD_modifier():
         """
         if ro_atte is not None:
             who_onTheSameBoat:list = qs_on_a_boat(self.QD_agent.quantum_device.hardware_config(),target_q)
+            slightly_print(f"Setting {target_q}:res RO-atte = {ro_atte} dB")
             for q in who_onTheSameBoat:
                 print(f"set {q} ...")
                 self.QD_agent.Notewriter.save_DigiAtte_For(ro_atte,q,'ro')
@@ -136,7 +137,7 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20241212/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     """ reset rotation angle """
@@ -161,8 +162,8 @@ if __name__ == "__main__":
     QMaster.set_drivin_IF(driving_IF_Hz={})   # driving_IF_Hz = {"q0":-150e6, "q1":-100e6, ...}, set None or {} to bypass  !!! Always be negative !!!
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=None, target_q='q0') # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_q='q') # q is correct (q:res) ! RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=None, target_q='q') # q is correct (q:res) ! LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=30, target_q='q') # q is correct (q:res) ! RO-attenuation is global in the same QRM-RF module, set None to bypass 
 
     """ Set coupler bias """
     QMaster.update_coupler_bias(cp_elements={})  # cp_elements = {"c0":0.1, "c2":0.05, ...}, set None or {} to bypass 
@@ -177,7 +178,7 @@ if __name__ == "__main__":
     QMaster.set_drag_coef(Coefs={})    # Coefs = {"q0": -0.5, ....}
 
     """ Set T2 use detuing, unit: Hz """
-    QMaster.set_RamseyT2detuing(detunes={"q0":0,"q1":0})   # detunes = {"q0": -0.5e6, ....}
+    QMaster.set_RamseyT2detuing(detunes={})   # detunes = {"q0": -0.5e6, ....}
 
 
     QMaster.save_modifications()
