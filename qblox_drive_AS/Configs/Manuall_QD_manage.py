@@ -2,8 +2,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
 from qblox_drive_AS.support import QDmanager
 from qblox_drive_AS.support.UserFriend import *
-from quantify_scheduler.helpers.collections import find_port_clock_path
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, set_ROLO_frequency
+from qblox_drive_AS.support.Pulse_schedule_library import set_ROLO_frequency
 from qblox_drive_AS.support.ExpFrames import qs_on_a_boat
 
 class QD_modifier():
@@ -137,14 +136,14 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20241212/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20241216/DR2#10_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     """ reset rotation angle """
     QMaster.reset_rotation_angle(target_qs=[])   # who in target_qs will be reset the rotation angle to 0
 
     """ Set RO amp by a coef. """
-    QMaster.set_ROamp_by_coef(roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
+    QMaster.set_ROamp_by_coef(roAmp_coef_dict={"q1":0.9}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
 
     """ Set RO freq """
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
@@ -163,7 +162,7 @@ if __name__ == "__main__":
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
     QMaster.set_roLOfreq(LO_Hz=None, target_q='q') # q is correct (q:res) ! LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=30, target_q='q') # q is correct (q:res) ! RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_q='q') # q is correct (q:res) ! RO-attenuation is global in the same QRM-RF module, set None to bypass 
 
     """ Set coupler bias """
     QMaster.update_coupler_bias(cp_elements={})  # cp_elements = {"c0":0.1, "c2":0.05, ...}, set None or {} to bypass 

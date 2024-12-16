@@ -2,12 +2,12 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import TimeRabiOsci
-#// test okay.
+#// Okay v0.9.2
 
 ''' fill in '''
 Execution:bool = True
 DRandIP = {"dr":"dr2","last_ip":"10"}
-pi_dura_range:dict = {"q0":[0,200e-9], "q1":[0,200e-9]}    # [pi_amp_start, pi_amp_end]
+pi_dura_range:dict = {"q0":[0,100e-9], "q1":[0,100e-9]}    # [pi_amp_start, pi_amp_end]
 pi_dura_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
 pi_amp:dict = {"q0":0.3, "q1":0.15}

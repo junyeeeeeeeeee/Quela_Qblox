@@ -1485,32 +1485,32 @@ def Gate_Test_SS_sche(
     return sched
 
 #? Calibrations :
-def ROF_Cali_sche(
-    q:str,
-    ro_freq:np.ndarray,
-    ini_state:str,
-    pi_amp: dict,
-    pi_dura:dict,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    repetitions:int=1,
-) -> Schedule:
+# def ROF_Cali_sche(
+#     q:str,
+#     ro_freq:np.ndarray,
+#     ini_state:str,
+#     pi_amp: dict,
+#     pi_dura:dict,
+#     R_amp: dict,
+#     R_duration: dict,
+#     R_integration:dict,
+#     R_inte_delay:float,
+#     repetitions:int=1,
+# ) -> Schedule:
 
-    sched = Schedule("Single shot", repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+ ".ro", freq=ro_freq.flat[0]))
-    for acq_idx, rof in enumerate(ro_freq):
-        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=rof))
-        sched.add(Reset(q))
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
+#     sched = Schedule("Single shot", repetitions=repetitions)
+#     sched.add_resource(ClockResource(name=q+ ".ro", freq=ro_freq.flat[0]))
+#     for acq_idx, rof in enumerate(ro_freq):
+#         sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=rof))
+#         sched.add(Reset(q))
+#         spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
 
-        if ini_state=='e': 
-            X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+#         if ini_state=='e': 
+#             X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
             
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+#         Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
 
-    return sched
+#     return sched
 
 def multi_ROF_Cali_sche(
     ro_freq:dict,
@@ -1532,10 +1532,9 @@ def multi_ROF_Cali_sche(
             freq = ro_freq[q][acq_idx]
             if acq_idx == 0:
                 sched.add_resource(ClockResource(name=q+ ".ro", freq=array(ro_freq[q]).flat[0]))
-
-            sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
             sched.add(Reset(q))
-            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+            sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
+            sched.add(IdlePulse(duration=4e-9))
 
             if qubit_idx == 0:
                 spec_pulse = Readout(sched,q,R_amp,R_duration)
@@ -2398,9 +2397,9 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
         
 #     quantum_device.hardware_config(hw_config)
 
-def set_LO_frequency(quantum_device:QuantumDevice,q:str,IF_frequency:float):  
+def set_XYLO_frequency(quantum_device:QuantumDevice,q:str,LO_frequency:float):  
     hw_config = quantum_device.hardware_config()
-    hw_config["hardware_options"]["modulation_frequencies"][f"{q}:mw-{q}.01"]["interm_freq"] = IF_frequency
+    hw_config["hardware_options"]["modulation_frequencies"][f"{q}:mw-{q}.01"]["lo_freq"] = LO_frequency
     quantum_device.hardware_config(hw_config)
 
 

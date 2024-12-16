@@ -6,9 +6,9 @@ from qblox_drive_AS.support.ExpFrames import PowerConti2tone
 ''' fill in '''
 Execution:bool = 1
 RO_XY_overlap:bool = False
-DRandIP = {"dr":"dr1","last_ip":"11"}
-freq_range:dict = {"q0":[3.35e9,3.45e9], "q1":[3.35e9,3.45e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
-xyl_range:list = [0.6]                                 # driving power [from, end, pts/step]
+DRandIP = {"dr":"dr2","last_ip":"10"}
+freq_range:dict = {"q0":[4.3e9, 4.8e9]}#, "q1":[3.7e9,4.2e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
+xyl_range:list = [0.01]                                 # driving power [from, end, pts/step]
 xyl_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
 freq_pts:int = 100

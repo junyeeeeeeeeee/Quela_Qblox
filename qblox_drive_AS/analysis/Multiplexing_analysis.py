@@ -686,7 +686,7 @@ class analysis_tools():
         ax0:plt.Axes = axs[0]
         Plotter.add_plot_on_ax(self.rol,self.dis_diff,ax0,label="|1>-|0>")
         ax1:plt.Axes = axs[1]
-        Plotter.add_plot_on_ax(self.rol,arctan2(self.Q_e,self.I_e)/pi-arctan2(self.Q_g,self.I_g)/pi,ax1,label="|1>-|0>")
+        Plotter.add_plot_on_ax(self.rol,degrees(arctan2(self.Q_e,self.I_e)+360)%360-degrees(arctan2(self.Q_g,self.I_g)+360)%360,ax1,label="|1>-|0>")
         # Plotter.add_verline_on_ax(self.fit_packs[q]["optimal_rol"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
         # Plotter.add_verline_on_ax(mean(self.rol),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         

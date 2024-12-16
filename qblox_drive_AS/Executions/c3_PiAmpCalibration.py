@@ -1,13 +1,13 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import PiAcali
-#// test okay
+#// Okay v0.9.2
 
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr1","last_ip":"11"}
-pi_power_coef_range:dict = {"q0":[0.95,1.05],"q1":[0.95,1.05]}
+DRandIP = {"dr":"dr2","last_ip":"10"}
+pi_power_coef_range:dict = {"q0":[0.9,1.1],"q1":[0.95,1.05]}
 coef_sampling_func:str = 'linspace'
 pi_pair_num:list = [9,13]
 coef_ptsORstep:int|float = 100

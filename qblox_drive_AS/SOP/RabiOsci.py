@@ -1,18 +1,15 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
-import os, sys, time
+import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from qblox_instruments import Cluster
 from qblox_drive_AS.support.UserFriend import *
-from utils.tutorial_utils import show_args
 from qcodes.parameters import ManualParameter
-from numpy import linspace, array, arange, nan, ndarray, round, full, concatenate
-from qblox_drive_AS.support import QDmanager, Data_manager, cds
+from numpy import  array, arange, ndarray, round, full, concatenate
+from qblox_drive_AS.support import QDmanager, Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from quantify_core.measurement.control import MeasurementControl
-from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr, meas_raw_dir
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, compose_para_for_multiplexing, reset_offset
-from qblox_drive_AS.support.Pulse_schedule_library import multi_PowerRabi_sche, multi_TimeRabi_sche, set_LO_frequency, pulse_preview
-from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
+from qblox_drive_AS.support import  compose_para_for_multiplexing
+from qblox_drive_AS.support.Pulse_schedule_library import multi_PowerRabi_sche, multi_TimeRabi_sche, pulse_preview
+
 from xarray import Dataset
 
 #? The way to merge two dict a and b : c = {**a,**b}

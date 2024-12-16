@@ -11,21 +11,21 @@ from qblox_drive_AS.support.Pulse_schedule_library import dataset_to_array, IQ_d
 
 
 if __name__ == '__main__':
-    import os
-    a = [["port",1],["port",2],["port",3]]
-    for port, idx in a:
-        print(f"{port}:{idx}")
-    # QD_agent = QDmanager('Modularize/QD_backup/2024_8_29/DR4#81_SumInfo.pkl')
-    # QD_agent.QD_loader()
-    # qs = ['q1']
-    # # for q in qs:
-    # #     print(q,":")
-    # #     qubit = QD_agent.quantum_device.get_element(q)
-    # #     print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
-    # #     print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
-    # #     print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
-    # #     print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
-    # #     print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
+    
+    QD_agent = QDmanager('qblox_drive_AS/QD_backup/20241216/DR2#10_SumInfo.pkl')
+    QD_agent.QD_loader()
+    qs = ['q0','q1']
+    for q in qs:
+        print(q,":")
+        qubit = QD_agent.quantum_device.get_element(q)
+        print(f"bare= {QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz")
+        print(f"ROF = {qubit.clock_freqs.readout()*1e-9} GHz")
+        print(f"XYF = {qubit.clock_freqs.f01()*1e-9} GHz")
+        print(f"x = {(qubit.clock_freqs.readout()-QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz")
+        print(f"g = {QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz")
+        print(f"inte_time = {qubit.measure.integration_time()*1e6} µs")
+        print(f"RO_time = {qubit.measure.pulse_duration()*1e6} µs")
+        print(f"reset_time = {qubit.reset.duration()*1e6} µs")
 
     # file = 'Modularize/Meas_raw/2024_8_29/DR4q1_T2(0)_H12M58S58.nc'
     # nc = open_dataset(file)

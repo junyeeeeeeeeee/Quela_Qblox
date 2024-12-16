@@ -6,7 +6,7 @@ from qblox_drive_AS.support.ExpFrames import SpinEcho
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr1","last_ip":"11"}
+DRandIP = {"dr":"dr2","last_ip":"10"}
 time_range:dict = {"q0":[0,100e-6],"q1":[0,100e-6]}
 time_sampling_func:str = "linspace"
 time_ptsORstep:int|float = 100

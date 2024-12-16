@@ -10,7 +10,7 @@ from xarray import open_dataset
 from numpy import array, linspace, arange, logspace, mean, median, std, sort
 from abc import abstractmethod
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
+from qblox_drive_AS.support.Pulse_schedule_library import set_XYLO_frequency, QS_fit_analysis
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 from qblox_drive_AS.analysis.TimeTraceAna import time_monitor_data_ana
 
@@ -736,10 +736,11 @@ class PowerConti2tone(ExpGovernment):
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # set driving LO and offset bias
+
         for q in self.freq_range:
             self.Fctrl[q](float(self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q)))
             if isinstance(self.freq_range[q],ndarray):
-                set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+                set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=max(self.freq_range[q]))
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.Cnti2Tone import Two_tone_spec
@@ -751,7 +752,7 @@ class PowerConti2tone(ExpGovernment):
                 IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
                 if advised_fq-IF_minus < 2e9:
                     raise ValueError(f"Attempting to set {q} driving LO @ {round((advised_fq-IF_minus)*1e-9,1)} GHz")
-                set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=advised_fq-IF_minus)
+                set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=advised_fq-IF_minus)
                 self.freq_range[q] = linspace(advised_fq-IF_minus-500e6,advised_fq-IF_minus,self.f_pts)
 
         dataset = Two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.xyl_samples,self.avg_n,self.execution,self.overlap)
@@ -859,7 +860,7 @@ class FluxQubit(ExpGovernment):
             if abs(self.tempor_freq[0][q][0]-self.tempor_freq[0][q][1]) >500e6:
                 raise ValueError(f"Attempting to span over 500 MHz for driving on {q}")
             self.freq_range[q] = linspace(xyf+self.tempor_freq[0][q][0],xyf+self.tempor_freq[0][q][1],self.tempor_freq[1])
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=max(self.freq_range[q]))
             
         dataset = Zgate_two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_elements,self.z_amp_samples,self.avg_n,self.execution)
         if self.execution:
@@ -969,7 +970,9 @@ class PowerRabiOsci(ExpGovernment):
         # offset bias, LO and driving atte
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
         
@@ -1059,7 +1062,7 @@ class TimeRabiOsci(ExpGovernment):
         
         self.pi_dura_samples = {}
         for q in pi_dura:
-            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
+            self.pi_dura_samples[q] = (sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9).astype(int)*1e-9#sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
     
 
         self.pi_amp = pi_amp
@@ -1078,7 +1081,7 @@ class TimeRabiOsci(ExpGovernment):
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1180,7 +1183,9 @@ class SingleShot(ExpGovernment):
         # offset bias, LO and driving atte
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     
@@ -1281,7 +1286,7 @@ class Ramsey(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
+        # from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1290,7 +1295,7 @@ class Ramsey(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+                self.time_samples[q] = (sampling_func(*time_range[q],time_pts_or_step)*1e9).astype(int)*1e-9#sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1317,10 +1322,11 @@ class Ramsey(ExpGovernment):
         # offset bias, LO and atte
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             slightly_print(f"{q} arti-detune = {round(self.QD_agent.Notewriter.get_artiT2DetuneFor(q)*1e-6,2)} MHz")
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.QD_agent.Notewriter.get_artiT2DetuneFor(q)
             self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1424,7 +1430,7 @@ class SpinEcho(ExpGovernment):
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,8)*1e-9
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,2)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1453,8 +1459,8 @@ class SpinEcho(ExpGovernment):
             self.spin_num[q] = 1
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1555,7 +1561,11 @@ class CPMG(ExpGovernment):
         self.spin_num = pi_num
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,(1+int(pi_num[q]))*4)*1e-9
+                if pi_num[q] != 0:
+                    sep = int(pi_num[q])
+                else:
+                    sep = 1
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,2*sep)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1583,8 +1593,13 @@ class CPMG(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            if self.spin_num == 0:
+                det = self.QD_agent.Notewriter.get_artiT2DetuneFor(q)
+            else:
+                det = 0
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+det
+            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1645,13 +1660,9 @@ class CPMG(ExpGovernment):
             QD_savior.QD_keeper()
             
 
-    def WorkFlow(self, freq_detune_Hz:float=None):
+    def WorkFlow(self):
         while True:
             self.PrepareHardware()
-            
-            if freq_detune_Hz is not None:
-                for q in self.target_qs:
-                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+freq_detune_Hz)
 
             self.RunMeasurement()
 
@@ -1678,7 +1689,7 @@ class EnergyRelaxation(ExpGovernment):
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
-        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
+        # from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
         if time_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(time_sampling_func)
         else:
@@ -1687,7 +1698,7 @@ class EnergyRelaxation(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+                self.time_samples[q] = (sampling_func(*time_range[q],time_pts_or_step)*1e9).astype(int)*1e-9#sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1711,11 +1722,11 @@ class EnergyRelaxation(ExpGovernment):
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
-        print(self.Fctrl)
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
-
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1806,7 +1817,7 @@ class XYFcali(ExpGovernment):
     
         self.time_samples = {}
         for q in target_qs:
-            self.time_samples[q] = sort_elements_2_multiples_of(linspace(40e-9,evo_time,100)*1e9,4)*1e-9
+            self.time_samples[q] = linspace(0,evo_time*1e9,100).astype(int)/1e9#sort_elements_2_multiples_of(linspace(0e-9,evo_time,100)*1e9,4)*1e-9
         self.detu = detu
         self.avg_n = avg_n
         self.execution = execution
@@ -1822,9 +1833,10 @@ class XYFcali(ExpGovernment):
         # offset bias, LO and atte
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.detu
             self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=self.QD_agent.Notewriter.get_xyIFFor(q))
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -1877,11 +1889,16 @@ class XYFcali(ExpGovernment):
                     ANA._import_data(ds,var_dimension=2,refIQ=ref)
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
+                    
+                    if ANA.fit_packs['freq']*1e-6 > 10:
+                        err_mod_sign = -1
+                    else:
+                        err_mod_sign = 1
 
                     if ANA.fit_packs['phase'] > 180:
-                        sign = -1
+                        sign = -1*err_mod_sign
                     else:
-                        sign = 1
+                        sign = 1*err_mod_sign
                     
                     answer[var] = sign*ANA.fit_packs['freq']
                     highlight_print(f"{var}: actual detune = {round(answer[var]*1e-6,4)} MHz")
@@ -1939,8 +1956,8 @@ class ROFcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
@@ -2054,8 +2071,9 @@ class PiAcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
 
         
@@ -2171,8 +2189,8 @@ class hPiAcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
 
         
@@ -2286,8 +2304,8 @@ class ROLcali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
 
         
@@ -2402,8 +2420,8 @@ class ZgateEnergyRelaxation(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
@@ -2486,7 +2504,6 @@ class QubitMonitor():
         self.T2_time_range:dict = {}
         self.OS_target_qs:list = []
         self.echo_pi_num:int = 0
-        self.a_little_detune_Hz:float = 0.1e6
         self.time_sampling_func = 'linspace'
         self.time_ptsORstep:int|float = 100
         self.OS_shots:int = 10000
@@ -2510,7 +2527,7 @@ class QubitMonitor():
                 if len(list(self.T2_time_range.keys())) != 0:
                     EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
                     EXP.SetParameters(self.T2_time_range,pi_num_dict,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution)
-                    EXP.WorkFlow(freq_detune_Hz=self.a_little_detune_Hz)
+                    EXP.WorkFlow()
 
             if self.OS_target_qs is not None:
                 if  self.OS_shots != 0:
@@ -2573,8 +2590,8 @@ class DragCali(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
 
         
@@ -2691,8 +2708,8 @@ class XGateErrorTest(ExpGovernment):
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
-            
-            set_LO_frequency(self.QD_agent.quantum_device,q=q,IF_frequency=IF_minus)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_XYLO_frequency(self.QD_agent.quantum_device,q=q,LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     

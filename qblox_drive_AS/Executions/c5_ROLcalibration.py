@@ -6,7 +6,7 @@ from qblox_drive_AS.support.ExpFrames import ROLcali
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr1","last_ip":"11"}
+DRandIP = {"dr":"dr2","last_ip":"10"}
 ro_power_coef_range:dict = {"q0":[0.9,1.5], "q1":[0.85,1.5]}
 coef_sampling_func:str = 'linspace'
 coef_ptsORstep:int|float = 100

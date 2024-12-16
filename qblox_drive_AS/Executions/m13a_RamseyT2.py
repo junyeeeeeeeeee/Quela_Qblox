@@ -6,8 +6,8 @@ from qblox_drive_AS.support.ExpFrames import Ramsey
 
 ''' fill in '''
 Execution:bool = 1
-DRandIP = {"dr":"dr1","last_ip":"11"}
-time_range:dict = {"q0":[0,100e-6],"q1":[0,100e-6]}
+DRandIP = {"dr":"dr2","last_ip":"10"}
+time_range:dict = {"q0":[0,50e-6],"q1":[0,50e-6]}
 time_sampling_func:str = "linspace"
 time_ptsORstep:int|float = 100
 AVG:int = 500
