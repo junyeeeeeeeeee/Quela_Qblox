@@ -707,7 +707,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(data,self.refIQ[0])[0]
+                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
         
         # attrs["coefs"] = [A_fit,f_fit,phase_fit,offset_fit]
@@ -772,7 +772,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(PiPairNum_dep_data[0],PiPairNum_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(data,self.refIQ[0])[0]
+                refined_data = rotate_data(PiPairNum_dep_data,self.refIQ[0])[0]
             refined_data_folder.append(cos_fit_analysis(refined_data,self.pi_amp_coef))
 
         candidates = []
@@ -835,7 +835,7 @@ class analysis_tools():
             if len(self.refIQ) == 2:
                 refined_data = IQ_data_dis(operation_dep_data[0],operation_dep_data[1],self.refIQ[0],self.refIQ[1])
             else:
-                refined_data = rotate_data(data,self.refIQ[0])[0]
+                refined_data = rotate_data(operation_dep_data,self.refIQ[0])[0]
             
             self.plot_item[self.operations[idx]]['data'] = refined_data
             coefficients = polyfit(self.drag_coef, refined_data, deg=1)  

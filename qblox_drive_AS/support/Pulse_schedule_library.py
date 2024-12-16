@@ -682,20 +682,13 @@ def multi_Z_gate_two_tone_sche(
     R_duration: dict,
     R_integration:dict,
     R_inte_delay:dict,
-    repetitions:int=1,   
-    
+    repetitions:int=1,     
 ) -> Schedule:
-    sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
     
-    additional_bias_list = []
+    sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
+
     qubits2read = list(frequencies.keys())
     sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
-
-    for q_need_bias in bias_qs:
-        if q_need_bias not in qubits2read:
-            additional_bias_list.append(q_need_bias)
-
-
 
     for acq_idx in range(sameple_idx):    
         for qubit_idx, q in enumerate(qubits2read):
@@ -708,22 +701,12 @@ def multi_Z_gate_two_tone_sche(
             
             if qubit_idx == 0:
                 spec_pulse = Readout(sched,q,R_amp,R_duration)
+                for qb in bias_qs:
+                    Z(sched,Z_amp,spec_Du,qb,spec_pulse,electrical_delay)
             else:
                 Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
             
             Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
-
-            if q in bias_qs:
-                Z(sched,Z_amp,spec_Du,q,spec_pulse,electrical_delay)
-            
-            if len(additional_bias_list) != 0:
-                for qs in additional_bias_list:
-                    if qs[0] == 'c':
-                        if qubit_idx == 0:
-                            Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
-                    else:
-                        Z(sched,Z_amp,spec_Du,qs,spec_pulse,electrical_delay)
-            
 
             Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
      
