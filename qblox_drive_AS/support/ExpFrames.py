@@ -2474,6 +2474,7 @@ class ZgateEnergyRelaxation(ExpGovernment):
                 # ensure the histo_counts you set is truly a number
                 try: 
                     a = int(histo_counts)/100
+                    self.want_while = True
                 except:
                     raise TypeError(f"The arg `histo_counts` you set is not a number! We see it's {type(histo_counts)}...")
                 if histo_counts == idx:
