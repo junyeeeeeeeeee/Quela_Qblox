@@ -2458,7 +2458,7 @@ class ZgateEnergyRelaxation(ExpGovernment):
                 ds.close()
             
 
-    def WorkFlow(self):
+    def WorkFlow(self, histo_counts:int=None):
         idx = 1
         start_time = datetime.now()
         while True:
@@ -2470,9 +2470,18 @@ class ZgateEnergyRelaxation(ExpGovernment):
 
             slightly_print(f"It's the {idx}-th measurement, about {round((datetime.now() - start_time).total_seconds()/60,1)} mins recorded.")
             
+            if histo_counts is not None:
+                # ensure the histo_counts you set is truly a number
+                try: 
+                    a = int(histo_counts)/100
+                except:
+                    raise TypeError(f"The arg `histo_counts` you set is not a number! We see it's {type(histo_counts)}...")
+                if histo_counts == idx:
+                    break
             idx += 1
             if not self.want_while:
                 break
+            
                 
 class QubitMonitor():
     def __init__(self, QD_path:str, save_dir:str, execution:bool=True):

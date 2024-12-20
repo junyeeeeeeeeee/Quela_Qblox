@@ -12,8 +12,8 @@ time_ptsORstep:int|float = 75                       # pts/step, depends on time_
 
 z_amp_range:list = [-0.08, 0.08, 10]                # [start, end, pts/step], depends on bias_sampling_func you use
 z_sampling_func:str = 'linspace'                     # 'linspace', 'arange'
-
-time_monitor:bool = False                            # True will use while loop, then analyze it in qblox_drive_AS.analysis.raw_data_demolisher with save_dir path and a same QD_path
+histo_counts:int = None                              # If it's set a number instead of None, repeat that number no matter what value the `time_monitor` is.
+time_monitor:bool = True                            # True will use while loop, then analyze it in qblox_drive_AS.analysis.raw_data_demolisher with save_dir path and a same QD_path
 prepare_excited:bool = True                          # False will not drive qubit
 
 AVG:int = 500
@@ -23,5 +23,5 @@ AVG:int = 500
 save_dir = Data_manager().build_packs_folder()
 EXP = ZgateEnergyRelaxation(QD_path=find_latest_QD_pkl_for_dr(DRandIP["dr"],DRandIP["last_ip"]),data_folder=save_dir)
 EXP.SetParameters(time_range,time_sampling_func,z_amp_range,prepare_excited,z_sampling_func,time_ptsORstep,time_monitor,AVG,Execution)
-EXP.WorkFlow()
+EXP.WorkFlow(histo_counts)
 EXP.RunAnalysis(time_dep_plot=False)
