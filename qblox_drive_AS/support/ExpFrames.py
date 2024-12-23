@@ -930,10 +930,9 @@ class PowerRabiOsci(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, pi_amp:dict, pi_dura:dict, pi_amp_sampling_func:str, pi_amp_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
+    def SetParameters(self, pi_amp:dict, pi_amp_sampling_func:str, pi_amp_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
         """ ### Args:
             * pi_amp: {"q0":[pi_amp_start, pi_amp_end], ...}\n
-            * pi_dura: {"q0":pi_duration_in_seconds, ...}\n
             * pi_amp_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * pi_amp_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
         """
@@ -946,7 +945,6 @@ class PowerRabiOsci(ExpGovernment):
         for q in pi_amp:
             self.pi_amp_samples[q] = sampling_func(*pi_amp[q],pi_amp_pts_or_step)
             
-        self.pi_dura = pi_dura
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -958,13 +956,15 @@ class PowerRabiOsci(ExpGovernment):
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and driving atte
+        self.pi_dura = {}
+        
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-        
+            self.pi_dura[q] = self.QD_agent.quantum_device.get_element(q).rxy.duration()
         
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.RabiOsci import PowerRabi
@@ -1037,7 +1037,7 @@ class TimeRabiOsci(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, pi_dura:dict, pi_amp:dict, pi_dura_sampling_func:str, pi_dura_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
+    def SetParameters(self, pi_dura:dict, pi_dura_sampling_func:str, pi_dura_pts_or_step:float=100, avg_n:int=100, execution:bool=True, OSmode:bool=False):
         """ ### Args:
             * pi_amp: {"q0": pi-amp in V, ...}\n
             * pi_dura: {"q0":[pi_duration_start, pi_duration_end], ...}\n
@@ -1054,8 +1054,6 @@ class TimeRabiOsci(ExpGovernment):
         for q in pi_dura:
             self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
     
-
-        self.pi_amp = pi_amp
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -1067,13 +1065,15 @@ class TimeRabiOsci(ExpGovernment):
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
+        self.pi_amp = {}
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-        
+            self.pi_amp[q] = self.QD_agent.quantum_device.get_element(q).rxy.amp180()
+            
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.RabiOsci import TimeRabi
     

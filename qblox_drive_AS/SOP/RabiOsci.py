@@ -210,9 +210,8 @@ def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,target_q
         match str(fit_results.attrs['Rabi_type']).lower():
             case 'powerrabi':
                 qubit.rxy.amp180(fit_results.attrs['pi_2'])
-                qubit.rxy.duration(fit_results.attrs["fix_variable"])
+    
             case 'timerabi':
-                qubit.rxy.amp180(fit_results.attrs["fix_variable"])
                 qubit.rxy.duration(fit_results.attrs['pi_2'])
     else:
         warning_print(f"Results for {target_q} didn't satisfy the update condition !")
