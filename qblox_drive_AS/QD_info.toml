@@ -1,0 +1,18 @@
+QD_file: qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl infomation.
+
+[q0]
+    bare   = 4.539218756027668 GHz
+    ROF    = 4.5393115219309434 GHz
+    XYF    = 3.413577180054372 GHz
+    Pi-amp = 0.5959091401975283 V
+    Pi-dura= 1000.0 ns
+    x      = 0.09276590327548981 MHz
+    g      = 14.770809547171078 MHz
+[q1]
+    bare   = 4.728998992638925 GHz
+    ROF    = 4.729438058004331 GHz
+    XYF    = 3.4232492577979032 GHz
+    Pi-amp = 0.6873892504921788 V
+    Pi-dura= 1000.0 ns
+    x      = 0.43906536540603636 MHz
+    g      = 23.935560887534443 MHz

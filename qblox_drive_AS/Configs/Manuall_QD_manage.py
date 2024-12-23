@@ -13,6 +13,12 @@ class QD_modifier():
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
 
+    def reset_rotation_angle(self, target_qs:list):
+        if len(target_qs) > 0:
+            for q in target_qs:
+                self.QD_agent.rotate_angle[q] = [0]
+            self.to_modifiy_item.append("Rotation_angle")
+
     def set_RamseyT2detuing(self, detunes:dict={}):
         if detunes is not None:
             if len(list(detunes.keys())) != 0:
@@ -175,6 +181,9 @@ if __name__ == "__main__":
     QMaster = QD_modifier(QD_path)
 
     ### Readout
+    """ Reset Rotation angle """
+    QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
+
     """ Set RO amp by a coef. """
     QMaster.set_ROamp_by_coef(roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
 
