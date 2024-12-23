@@ -852,7 +852,7 @@ class analysis_tools():
         def linear(x,a,b):
             return a*x+b
 
-        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_halfPIamp_cali_{self.ds.attrs['execution_time']}.png")
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_DragCali_{self.ds.attrs['execution_time']}.png")
         Plotter = Artist(pic_title=f"{self.qubit} DRAG coef calibration",save_pic_path=save_pic_folder)
         fig, axs = Plotter.build_up_plot_frame((1,1),fig_size=(12,9))
         ax:plt.Axes = axs[0]
