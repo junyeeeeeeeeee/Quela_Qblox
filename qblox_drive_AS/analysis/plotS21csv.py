@@ -4,6 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from IPython.display import display
 import csv
+from xarray import open_dataset
+from qblox_drive_AS.SOP.wideCS import plot_S21
 def plot_S21_fromVNAcsv(csv_file:str,S_chennel:str='S21', vna_series:str='ZNB'):
     match vna_series.lower():
         case 'znb':
@@ -71,7 +73,12 @@ def plot_S21_fromPYQUMcsv(csv_file:str):
     plt.tight_layout()
     plt.show()
 
+def plot_S21_nc(nc_path:str):
+    ds = open_dataset(nc_path)
+    plot_S21(ds)
+
 
 if __name__ == "__main__":
-    plot_S21_fromVNAcsv("/Users/ratiswu/Downloads/postBandage3FQ3CQ_BBS21.csv","S21","E5080B")
+    #plot_S21_fromVNAcsv("/Users/ratiswu/Downloads/postBandage3FQ3CQ_BBS21.csv","S21","E5080B")
     # plot_S21_fromPYQUMcsv("/Users/ratiswu/Downloads/4 to 8.csv")
+    plot_S21_nc("/Users/ratiswu/Desktop/FTP-ASqcMeas/BroadBandCS_20241216172608.nc")
