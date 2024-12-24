@@ -154,7 +154,7 @@ class Zoom_CavitySearching(ExpGovernment):
         
     
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, Cavity_spec, CavitySearch
+        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, CavitySearch
         QD_RO_init(self.QD_agent,self.freq_range)
         meas = CavitySearch()
         meas.ro_elements = self.freq_range
@@ -164,10 +164,8 @@ class Zoom_CavitySearching(ExpGovernment):
         meas.QD_agent = self.QD_agent
         meas.run()
         dataset = meas.dataset
-        print(dataset)
         
         
-        # dataset = Cavity_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"zoomCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
