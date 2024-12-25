@@ -18,6 +18,13 @@ class QD_modifier():
             for q in target_qs:
                 self.QD_agent.rotate_angle[q] = [0]
             self.to_modifiy_item.append("Rotation_angle")
+    
+    def set_XYF(self,xyfs_Hz:dict={}):
+        if xyfs_Hz is not None:
+            if len(list(xyfs_Hz.keys())) != 0:
+                for q in xyfs_Hz:
+                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyfs_Hz[q])
+                self.to_modifiy_item.append("XYF")
 
     def set_RamseyT2detuing(self, detunes:dict={}):
         if detunes is not None:
@@ -201,6 +208,9 @@ if __name__ == "__main__":
     QMaster.setGlobally_reset_time(reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
 
     ### Driving 
+    """ Set XY Frequency """
+    QMaster.set_XYF(xyfs_Hz = {})                         # xyfs_Hz = {"q0":4e9, "q1":4.5e9}, ** unit: Hz
+
     """ Set pi pulse amplitude """
     QMaster.set_XY_amp(pi_amps = {})                      # pi_amps = {"q0":0.2, "q1":0.15, ...}
 
