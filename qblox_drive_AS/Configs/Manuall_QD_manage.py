@@ -168,7 +168,9 @@ class QD_modifier():
         
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","QD_info.toml"), "w") as file:
-                file.write(f"QD_file: {self.QD_path} infomation.\n\n")
+                file.write(f"QD_file: {self.QD_path}\n\n")
+                file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
+                file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n\n")
 
                 for q in qs:
                     file.write(f'[{q}]\n')  
@@ -184,7 +186,7 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250102/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
@@ -242,7 +244,7 @@ if __name__ == "__main__":
 
 
     ### Export a toml to see the QD info
-    QMaster.export(target_q="all")         # target_q = 'all' or ['q0', 'q1', ...]     
+    QMaster.export(target_q=[])         # target_q = 'all' or ['q0', 'q1', ...]     
 
     
     QMaster.save_modifications()
