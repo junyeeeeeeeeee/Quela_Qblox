@@ -9,83 +9,14 @@ import matplotlib.pyplot as plt
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import array, arange, real, imag, arctan2
-from quantify_core.measurement.control import MeasurementControl
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
-from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
+from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_multiplexing 
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, pulse_preview
 from quantify_scheduler.operations.gate_library import Reset
 from quantify_scheduler.operations.pulse_library import IdlePulse,SetClockFrequency
 from quantify_scheduler.resources import ClockResource
 
-def Cavity_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,n_avg:int=10,run:bool=True)->Dataset:
-    """
-        Doing the multiplexing cavity search according to the arg `ro_elements`\n
-        Please fill up the initial value about measure for qubit in QuantumDevice first, like: amp, duration, integration_time and acqusition_delay!\n
-        ----
-        ### Args:\n
-        * ro_elements: {'q0': data point array, 'q1':[], ...}\n
-        ----
-        ## Warning:\n
-        The sweep frequency data-point for each cavity in ro_elements is better to set equally.
-    """
-    datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
-
-    quantum_device = QD_agent.quantum_device
-    sche_func = One_tone_multi_sche
-    for q in ro_elements:
-        quantum_device.get_element(q).clock_freqs.readout(NaN) # avoid cluster clock warning
-    
-
-    freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
-    freq.batched = True
-
-
-    spec_sched_kwargs = dict(   
-        frequencies=ro_elements,
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
-        powerDep=False,
-    )
-    
-    if run:
-        gettable = ScheduleGettable(
-            quantum_device,
-            schedule_function=sche_func, 
-            schedule_kwargs=spec_sched_kwargs,
-            real_imag=True,
-            batched=True,
-            num_channels=len(list(ro_elements.keys())),
-        )
-        quantum_device.cfg_sched_repetitions(n_avg)
-        meas_ctrl.gettables(gettable)
-        meas_ctrl.settables(freq)
-        meas_ctrl.setpoints(datapoint_idx)
-        
-        rs_ds = meas_ctrl.run("One-tone")
-        dict_ = {}
-        for q_idx, q in enumerate(list(ro_elements.keys())):
-            i_data = array(rs_ds[f'y{2*q_idx}'])
-            q_data = array(rs_ds[f'y{2*q_idx+1}'])
-            dict_[q] = (["mixer","freq"],array([i_data,q_data]))
-            dict_[f'{q}_freq'] = (["mixer","freq"],array([ro_elements[q],ro_elements[q]]))
-        
-        DS = Dataset(dict_,coords={"mixer":array(["I","Q"]),"freq":datapoint_idx})
-      
-    else:
-        n_s = 2
-        preview_para = {}
-        for q in ro_elements:
-            preview_para[q] = ro_elements[q][:n_s]
-        
-        spec_sched_kwargs['frequencies']= preview_para
-        pulse_preview(quantum_device,sche_func,spec_sched_kwargs)
-        DS = {}
-
-    return DS
 
 def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
@@ -104,7 +35,6 @@ def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, save_pic_folder:str=None
     ['Qi_dia_corr', 'Qi_no_corr', 'absQc', 'Qc_dia_corr', 'Ql', 'fr', 'theta0', 'phi0', 'phi0_err', 'Ql_err', 'absQc_err', 'fr_err', 'chi_square', 'Qi_no_corr_err', 'Qi_dia_corr_err', 'A', 'alpha', 'delay', 'input_power']
     """
     fit_results = {}
-
     for idx, q in enumerate(ds.data_vars):
         if str(q).split("_")[-1] != "freq":
             S21 = array(ds[q])[0] + array(ds[q])[1]*1j
@@ -288,5 +218,11 @@ class CavitySearch(ScheduleConductor):
 
 
 if __name__ == "__main__":
-    meas = CavitySearch()
-    ps = meas.get_adjsutable_paras(display=True)
+    # meas = CavitySearch()
+    # ps = meas.get_adjsutable_paras(display=True)
+    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250120/DR1#11_SumInfo.pkl")
+    QD_agent.QD_loader()
+    from xarray import open_dataset
+    ds = open_dataset("qblox_drive_AS/Meas_raw/20250120/H14M32S19/zoomCS_20250120143243.nc")
+
+    multiplexing_CS_ana(QD_agent,ds)

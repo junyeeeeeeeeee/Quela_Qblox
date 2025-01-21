@@ -340,11 +340,20 @@ class Dressed_CavitySearching(ExpGovernment):
         
     
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.CavitySpec import Cavity_spec, QD_RO_init
+        from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, CavitySearch
         QD_RO_init(self.QD_agent,self.freq_range)
         for q in self.ro_amp:
             self.QD_agent.quantum_device.get_element(q).measure.pulse_amp(self.ro_amp[q])
-        dataset = Cavity_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.avg_n,self.execution)
+        
+        meas = CavitySearch()
+        meas.ro_elements = self.freq_range
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"dressedCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1181,7 +1190,7 @@ class SingleShot(ExpGovernment):
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and driving atte
         for q in self.target_qs:
-            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            # self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
@@ -1273,6 +1282,7 @@ class Ramsey(ExpGovernment):
         self.save_dir = data_folder
         self.__raw_data_location:str = ""
         self.JOBID = JOBID
+        self.histos:int = 0
 
     @property
     def RawDataPath(self):
@@ -2775,6 +2785,7 @@ class XGateErrorTest(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = BroadBand_CavitySearching(QD_path="")
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20241128/DR1#11_SumInfo.pkl",new_file_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/BroadBandCS_20241209143406.nc")
+    EXP = Ramsey(QD_path="")
+    EXP.execution = 1
+    EXP.RunAnalysis(new_QD_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/ramsey_updates/qblox_ExpConfigs_20250117192846/DR1#11_SumInfo.pkl",new_file_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/ramsey_updates/Ramsey_20250117192846.nc")
     
