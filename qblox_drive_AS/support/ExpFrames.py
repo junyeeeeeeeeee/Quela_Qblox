@@ -1734,9 +1734,18 @@ class EnergyRelaxation(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T1 import T1
-    
-        dataset = T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.histos,self.avg_n,self.execution)
+        from qblox_drive_AS.SOP.T1 import T1, EnergyRelaxPS
+        meas = EnergyRelaxPS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = self.histos
+        
+        meas.run()
+        dataset = meas.dataset
+
+
+        # dataset = T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.histos,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"T1_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
