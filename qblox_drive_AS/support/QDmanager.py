@@ -142,25 +142,37 @@ class QDmanager():
     
     def made_mobileFctrl(self):
         """ Turn attrs about `cluster.module.out0_offset` into str."""
-        ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
-
         self.Fctrl_str_ver = {}
-        for q in ans:
-            cluster_name = ans[q][0].split("_")[0]
-            module_name = ans[q][0].split("_")[1]
-            func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+        try:
+            ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
+            for q in ans:
+                cluster_name = ans[q][0].split("_")[0]
+                module_name = ans[q][0].split("_")[1]
+                func_name = f"out{ans[q][1].split('_')[-1]}_offset"
 
-            self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+                self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+        except:
+            ans = self.quantum_device.elements()
+            eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")
+            for q in ans:
+               self.Fctrl_str_ver[q] = f"pass" 
         
+
     def activate_str_Fctrl(self,cluster:Cluster):
         """ From string translate to attributes, made callable Fctl """
         Fctrl_active:callable = {}
-    
+
+        def pass_func(*arg):
+            pass
+        
         for q in self.Fctrl_str_ver:
-            attr = cluster
-            for i in range(1,len(self.Fctrl_str_ver[q].split("."))):
-                attr = getattr(attr,self.Fctrl_str_ver[q].split(".")[i])
-            Fctrl_active[q] = attr
+            if self.Fctrl_str_ver[q] != "pass":
+                attr = cluster
+                for i in range(1,len(self.Fctrl_str_ver[q].split("."))):
+                    attr = getattr(attr,self.Fctrl_str_ver[q].split(".")[i])
+                Fctrl_active[q] = attr
+            else:
+                Fctrl_active[q] = pass_func
 
         return Fctrl_active
 
@@ -311,11 +323,11 @@ class QDmanager():
         self.q_num = qubit_number
         self.cp_num = coupler_number
         self.Hcfg = Hcfg
-        self.made_mobileFctrl()
+        
         self.chip_name = chip_name
         self.chip_type = chip_type
         self.register(cluster_ip_adress=cluster_ip,which_dr=dr_loc,chip_name=chip_name,chip_type=chip_type)
-        self.made_mobileFctrl()
+        
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         self.Waveformer:GateGenesis = GateGenesis(q_num=self.q_num,c_num=self.cp_num)
@@ -340,6 +352,8 @@ class QDmanager():
             qubit.rxy.amp180(0.05)
             qubit.rxy.duration(40e-9)
             self.quantum_device.add_element(qubit)
+
+        self.made_mobileFctrl()
         
     def keep_meas_option(self,target_q:str,z_bias:float,modi_idx:int):
         """ keep the following info into Notebook\n

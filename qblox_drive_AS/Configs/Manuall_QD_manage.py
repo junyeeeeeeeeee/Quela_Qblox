@@ -15,8 +15,9 @@ class QD_modifier():
     
     def comment(self, message:str=None):
         if message is not None:
-            self.QD_agent.refresh_log(str(message))
-            self.to_modifiy_item.append("Comments")
+            if message != "":
+                self.QD_agent.refresh_log(str(message))
+                self.to_modifiy_item.append("Comments")
 
     def reset_rotation_angle(self, target_qs:list):
         if len(target_qs) > 0:
@@ -178,25 +179,27 @@ class QD_modifier():
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","QD_info.toml"), "w") as file:
                 file.write(f"QD_file: {self.QD_path}\n")
-                file.write(f"Comments: {self.QD_agent.Log}\n\n")
+                file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
-                file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n\n")
+                file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
+                file.write(f"Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} µs\n\n")
 
                 for q in qs:
                     file.write(f'[{q}]\n')  
                     qubit = self.QD_agent.quantum_device.get_element(q)
                     file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
                     file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
+                    file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} µs\n")
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
                     file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
                     file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
-
+                    file.write("\n")
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20250120/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
@@ -253,7 +256,7 @@ if __name__ == "__main__":
 
 
     """ Some comments for this QD file """
-    QMaster.comment(message="Test for comments.")              # message is a str, like "Hello QD comments !", etc.
+    QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
     ### Export a toml to see the QD info
     QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]     

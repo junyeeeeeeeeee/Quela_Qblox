@@ -156,7 +156,8 @@ class EnergyRelaxPS(ScheduleConductor):
         return sched
 
     def __SetParameters__(self, *args, **kwargs):
-        self.__time_data_idx = arange(array(self._time_samples.values())[0].shape[0])
+        
+        self.__time_data_idx = arange(len(list(self._time_samples.values())[0]))
         for q in self._time_samples:
             qubit_info = self.QD_agent.quantum_device.get_element(q)
             eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")

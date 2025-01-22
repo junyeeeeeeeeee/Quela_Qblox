@@ -1,18 +1,47 @@
-QD_file: qblox_drive_AS/QD_backup/20241211/DR1#11_SumInfo.pkl infomation.
+QD_file: qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl
+Comments: ---
+
+RO-atte = 26 dB
+XY-atte = 0 dB
+Reset time = 600 µs
 
 [q0]
-    bare   = 4.539218756027668 GHz
-    ROF    = 4.5393115219309434 GHz
-    XYF    = 3.413577180054372 GHz
-    Pi-amp = 0.5959091401975283 V
-    Pi-dura= 1000.0 ns
-    x      = 0.09276590327548981 MHz
-    g      = 14.770809547171078 MHz
+    bare   = 4.508897929076325 GHz
+    ROF    = 4.508976642691805 GHz
+    ROT    = 8.0 µs
+    XYF    = 2.6048282857747043 GHz
+    Pi-amp = 0.732139731799475 V
+    Pi-dura= 200.0 ns
+    x      = 0.0787136154794693 MHz
+    g      = 18.499024766413836 MHz
+
 [q1]
-    bare   = 4.728998992638925 GHz
-    ROF    = 4.729438058004331 GHz
-    XYF    = 3.4232492577979032 GHz
-    Pi-amp = 0.6873892504921788 V
-    Pi-dura= 1000.0 ns
-    x      = 0.43906536540603636 MHz
-    g      = 23.935560887534443 MHz
+    bare   = 4.604740611931549 GHz
+    ROF    = 4.605404986066962 GHz
+    ROT    = 4.0 µs
+    XYF    = 3.491817888393119 GHz
+    Pi-amp = 0.33855876255267886 V
+    Pi-dura= 200.0 ns
+    x      = 0.6643741354141235 MHz
+    g      = 28.212533399605253 MHz
+
+[q2]
+    bare   = 4.698012769030793 GHz
+    ROF    = 4.698527897634897 GHz
+    ROT    = 4.0 µs
+    XYF    = 3.4188165302904636 GHz
+    Pi-amp = 0.18353527863089436 V
+    Pi-dura= 200.0 ns
+    x      = 0.515128604104042 MHz
+    g      = 26.9172764434143 MHz
+
+[q3]
+    bare   = 4.794240996877137 GHz
+    ROF    = 4.7948298926835315 GHz
+    ROT    = 5.0 µs
+    XYF    = 3.525529715998996 GHz
+    Pi-amp = 0.4482143305329039 V
+    Pi-dura= 200.0 ns
+    x      = 0.588895806394577 MHz
+    g      = 30.656741711800432 MHz
+

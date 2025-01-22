@@ -19,7 +19,7 @@ class Notebook():
                 else: # dict type
                     self.__InfoDict[f"q{i}"][cata] = {}
                     self.__InfoDict[f"q{i}"][cata]['xy'] = 0
-                    self.__InfoDict[f"q{i}"][cata]['ro'] = 16 if cata == 'digitalAtte' else 0
+                    self.__InfoDict[f"q{i}"][cata]['ro'] = 0 if cata == 'digitalAtte' else 0
 
 
     ## About get
