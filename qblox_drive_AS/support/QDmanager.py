@@ -220,7 +220,6 @@ class QDmanager():
         self.Waveformer = gift.Waveformer
         self.quantum_device = gift.quantum_device
         self.StateDiscriminator = gift.StateDiscriminator
-        self.DiscriminatorVersion = gift.DiscriminatorVersion
 
         # string/ int
         self.manager_version = gift.manager_version
@@ -296,10 +295,6 @@ class QDmanager():
         else:
             self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
         
-        if "DiscriminatorVersion" in list(gift.keys()):
-            self.DiscriminatorVersion = gift["DiscriminatorVersion"]
-        else:
-            self.DiscriminatorVersion = ""
         
         # dict
         self.Hcfg = gift["Hcfg"]
@@ -332,7 +327,7 @@ class QDmanager():
         self.Notewriter: Notebook = Notebook(self.q_num)
         self.Waveformer:GateGenesis = GateGenesis(q_num=self.q_num,c_num=self.cp_num)
         self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
-        self.DiscriminatorVersion:str = ""
+
         
         # for firmware v0.7.0
         from qcodes.instrument import find_or_create_instrument
