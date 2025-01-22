@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
-from qblox_drive_AS.support import QDmanager
+from qblox_drive_AS.support.QDmanager import QDmanager
 from qblox_drive_AS.support.UserFriend import *
 from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
@@ -12,6 +12,12 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
+    
+    def comment(self, message:str=None):
+        if message is not None:
+            if message != "":
+                self.QD_agent.refresh_log(str(message))
+                self.to_modifiy_item.append("Comments")
 
     def reset_rotation_angle(self, target_qs:list):
         if len(target_qs) > 0:
@@ -151,12 +157,16 @@ class QD_modifier():
                 self.to_modifiy_item.append("coupler_bias")
 
     def save_modifications(self):
-        highlight_print(f"These items will be modified: {self.to_modifiy_item}")
-        permission = mark_input("Is it correct ? [y/n] :")
-        if permission.lower() in ["y", "yes"]:
-            self.QD_agent.QD_keeper() 
+        if len(self.to_modifiy_item) != 0:
+            highlight_print(f"These items will be modified: {self.to_modifiy_item}")
+            permission = mark_input("Is it correct ? [y/n] :")
+            
+            if permission.lower() in ["y", "yes"]:
+                self.QD_agent.QD_keeper() 
+            else:
+                slightly_print("Your modifications got denied !")
         else:
-            slightly_print("Your modifications got denied !")
+            slightly_print("Nothing to change ~ ")
 
     def export(self, target_q:list=[]):
         """ Give a list contains qubit names you want to read info like: ['q0','q1'] or you can set target_q = 'all' to print all qubits."""
@@ -168,25 +178,28 @@ class QD_modifier():
         
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","QD_info.toml"), "w") as file:
-                file.write(f"QD_file: {self.QD_path}\n\n")
+                file.write(f"QD_file: {self.QD_path}\n")
+                file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
-                file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n\n")
+                file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
+                file.write(f"Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} µs\n\n")
 
                 for q in qs:
                     file.write(f'[{q}]\n')  
                     qubit = self.QD_agent.quantum_device.get_element(q)
                     file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
                     file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
+                    file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} µs\n")
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
                     file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
                     file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
-
+                    file.write("\n")
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20250102/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
@@ -242,9 +255,11 @@ if __name__ == "__main__":
     QMaster.set_sweet_bias(offsets={})          # offsets = {"q0": 0.08, ....}
 
 
+    """ Some comments for this QD file """
+    QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
     ### Export a toml to see the QD info
-    QMaster.export(target_q=[])         # target_q = 'all' or ['q0', 'q1', ...]     
+    QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]     
 
     
     QMaster.save_modifications()

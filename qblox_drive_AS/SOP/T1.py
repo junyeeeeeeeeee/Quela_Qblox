@@ -80,8 +80,46 @@ class EnergyRelaxPS(ScheduleConductor):
     def __init__(self):
         super().__init__()
         self._time_samples:dict = {}
+        self._os_mode:bool = False
         self._repeat:int = 1
         self._avg_n:int = 300
+
+    @property
+    def time_samples( self ):
+        return self._time_samples
+    @time_samples.setter
+    def set_time_samples(self, time_samples:dict):
+        if not isinstance(time_samples,dict):
+            raise TypeError("Arg 'time_samples' must be a dict !")
+        self._time_samples = time_samples
+    @property
+    def repeat( self ):
+        return self._repeat
+    @repeat.setter
+    def set_repeat(self, repeat_num:int):
+        if not isinstance(repeat_num,(int,float)):
+            raise TypeError("Ard 'repeat_num' must be a int or float !")
+        self._repeat = int(repeat_num)
+    @property
+    def os_mode( self ):
+        return self._os_mode
+    @os_mode.setter
+    def set_os_mode(self, os_mode:bool):
+        if not isinstance(os_mode,bool):
+            if os_mode in [0,1]:
+                pass
+            else:
+                raise TypeError("Arg 'os_mode' must be a bool, 0 or 1 !")
+        
+        self._os_mode = os_mode
+    @property
+    def n_avg( self ):
+        return self._avg_n
+    @n_avg.setter
+    def set_n_avg(self, avg_num:int):
+        if not isinstance(avg_num,(int,float)):
+            raise TypeError("Ard 'avg_num' must be a int or float !")
+        self._avg_n = int(avg_num)
 
 
     def __PulseSchedule__(self, 
@@ -93,6 +131,7 @@ class EnergyRelaxPS(ScheduleConductor):
         R_integration:dict,
         R_inte_delay:dict,
         repetitions:int=1,
+        singleshot:bool=False 
         )->Schedule:
 
         qubits2read = list(freeduration.keys())
@@ -111,13 +150,14 @@ class EnergyRelaxPS(ScheduleConductor):
             
                 self.QD_agent.Waveformer.X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu+electrical_delay)
                 
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
+                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=singleshot,get_trace=False,trace_recordlength=0)
         
         self.schedule = sched
         return sched
 
     def __SetParameters__(self, *args, **kwargs):
-        self.__time_data_idx = arange(array(self._time_samples.values())[0].shape[0])
+        
+        self.__time_data_idx = arange(len(list(self._time_samples.values())[0]))
         for q in self._time_samples:
             qubit_info = self.QD_agent.quantum_device.get_element(q)
             eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
@@ -130,6 +170,7 @@ class EnergyRelaxPS(ScheduleConductor):
 
         self.__sched_kwargs = dict(
         freeduration=self._time_samples,
+        singleshot=self._os_mode,
         pi_amp=compose_para_for_multiplexing(self.QD_agent,self._time_samples,'d1'),
         pi_dura=compose_para_for_multiplexing(self.QD_agent,self._time_samples,'d3'),
         R_amp=compose_para_for_multiplexing(self.QD_agent,self._time_samples,'r1'),
@@ -164,17 +205,21 @@ class EnergyRelaxPS(ScheduleConductor):
         if self._execution:
             ds = self.meas_ctrl.run('T1')
             dict_ = {}
-            for q_idx, q in enumerate(self._time_samples):
-                i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
-                q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
-                dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
-                time_values = list(self._time_samples[q])*2*self._repeat
-                dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,self._repeat,self._time_samples[q].shape[0]))
-            
-            dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
+            if not self._os_mode:
+                for q_idx, q in enumerate(self._time_samples):
+                    i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
+                    time_values = list(self._time_samples[q])*2*self._repeat
+                    dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,self._repeat,self._time_samples[q].shape[0]))
+                
+                dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
+            else:
+                # trying coordinates: mixer, repeat, time_idx, index
+                dataset = ds
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-
+            dataset.attrs["method"] = int(self._os_mode)
             self.dataset = dataset
 
         else:
