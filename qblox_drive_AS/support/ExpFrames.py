@@ -1233,13 +1233,17 @@ class SingleShot(ExpGovernment):
             QD_savior = QDmanager(QD_file)
             QD_savior.QD_loader()
 
+            parent_dir = os.path.dirname(file_path)  # Get the parent directory
+            date_part = os.path.basename(os.path.dirname(parent_dir))  # "20250122"
+            time_part = os.path.basename(parent_dir) 
+
             if not histo_ana:
                 ds = open_dataset(file_path)
                 for var in ds.data_vars:
                     ANA = Multiplex_analyzer("m14")
-                    # QD_savior.StateDiscriminator = ANA.gmm2d_fidelity # will be in the future
                     ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                     ANA._start_analysis()
+                    QD_savior.StateDiscriminator.serialize(var,ANA.gmm2d_fidelity,version=f"{date_part}_{time_part}") # will be in the future
                     pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                     ANA._export_result(pic_path)
                     highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
@@ -1746,7 +1750,7 @@ class EnergyRelaxation(ExpGovernment):
         
         meas.run()
         dataset = meas.dataset
-
+        
 
         # dataset = T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.histos,self.avg_n,self.execution)
         if self.execution:

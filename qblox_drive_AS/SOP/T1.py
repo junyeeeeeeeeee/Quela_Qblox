@@ -168,6 +168,9 @@ class EnergyRelaxPS(ScheduleConductor):
         self.__Para_repeat.batched = False
         self.__repeat_data_idx = arange(self._repeat)
 
+        if self._os_mode:
+            self.__one_shot_para =  ManualParameter(name="Shot")
+
         self.__sched_kwargs = dict(
         freeduration=self._time_samples,
         singleshot=self._os_mode,
@@ -192,8 +195,12 @@ class EnergyRelaxPS(ScheduleConductor):
                 )
             self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
             self.meas_ctrl.gettables(self.__gettable)
-            self.meas_ctrl.settables([self.__Para_free_Du,self.__Para_repeat])
-            self.meas_ctrl.setpoints_grid((self.__time_data_idx,self.__repeat_data_idx))
+            if not self._os_mode:
+                self.meas_ctrl.settables([self.__Para_free_Du,self.__Para_repeat])
+                self.meas_ctrl.setpoints_grid((self.__time_data_idx,self.__repeat_data_idx))
+            else:
+                self.meas_ctrl.settables([self.__Para_free_Du,self.__one_shot_para,self.__Para_repeat])
+                self.meas_ctrl.setpoints_grid((self.__time_data_idx,arange(self._avg_n),self.__repeat_data_idx))
         else:
             preview_para = {}
             for q in self._time_samples:
@@ -203,12 +210,12 @@ class EnergyRelaxPS(ScheduleConductor):
     def __RunAndGet__(self, *args, **kwargs):
         
         if self._execution:
-            ds = self.meas_ctrl.run('T1')
+            ori_ds = self.meas_ctrl.run('T1')
             dict_ = {}
             if not self._os_mode:
                 for q_idx, q in enumerate(self._time_samples):
-                    i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
-                    q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    i_data = array(ori_ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    q_data = array(ori_ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
                     dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
                     time_values = list(self._time_samples[q])*2*self._repeat
                     dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,self._repeat,self._time_samples[q].shape[0]))
@@ -216,7 +223,15 @@ class EnergyRelaxPS(ScheduleConductor):
                 dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
             else:
                 # trying coordinates: mixer, repeat, time_idx, index
-                dataset = ds
+                dataset = ori_ds
+                for var in dataset.data_vars:
+                    dataset[var].attrs = {}
+        
+                for coord in dataset.coords:
+                    dataset.coords[coord].attrs = {}
+
+                dataset.attrs = {}
+                
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             dataset.attrs["method"] = int(self._os_mode)

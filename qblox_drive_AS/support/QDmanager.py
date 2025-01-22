@@ -9,7 +9,7 @@ from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
+from qblox_drive_AS.support.StatifyContainer import Statifier
 
 
 def ret_q(dict_a):
@@ -116,7 +116,7 @@ class QDmanager():
     def __init__(self,QD_path:str=''):
         self.manager_version:str = "v2.0" # Only RatisWu can edit it
         self.path = QD_path
-        self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+        self.StateDiscriminator:Statifier = Statifier()
         self.Waveformer:GateGenesis = None
         self.machine_IP = ""
         self.refIQ = {}
@@ -293,7 +293,7 @@ class QDmanager():
         if "Discriminator" in list(gift.keys()):
             self.StateDiscriminator = gift["Discriminator"]
         else:
-            self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+            self.StateDiscriminator:Statifier = Statifier()
         
         
         # dict
@@ -326,7 +326,7 @@ class QDmanager():
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         self.Waveformer:GateGenesis = GateGenesis(q_num=self.q_num,c_num=self.cp_num)
-        self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+        self.StateDiscriminator:Statifier = Statifier()
 
         
         # for firmware v0.7.0
@@ -422,7 +422,7 @@ class QDmanager():
         if "state_discriminator" in option_selected:
             self.StateDiscriminator = option_selected["state_discriminator"]
         else:
-            self.StateDiscriminator = GMMROFidelity()
+            self.StateDiscriminator = Statifier()
 
 
 
@@ -693,6 +693,6 @@ class Data_manager:
 
 if __name__ == "__main__":
     
-    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250120/DR1#11_SumInfo.pkl")
-    QD_agent.version_converter()
-    # QD_agent.QD_keeper()
+    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl")
+    QD_agent.QD_loader()
+    print(QD_agent.StateDiscriminator.elements)
