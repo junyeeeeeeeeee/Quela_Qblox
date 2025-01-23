@@ -1354,9 +1354,22 @@ class Ramsey(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey
-    
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
+        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        meas = RamseyT2PS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = self.histos
+        meas.set_spin_num = self.spin_num
+        meas.set_second_phase = 'x'
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
+
+
+        # dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"Ramsey_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1488,9 +1501,20 @@ class SpinEcho(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey
-    
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
+        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        meas = RamseyT2PS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = self.histos
+        meas.set_spin_num = self.spin_num
+        meas.set_second_phase = 'x'
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
+        # dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"SpinEcho_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1618,9 +1642,20 @@ class CPMG(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey
-    
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
+        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        meas = RamseyT2PS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = self.histos
+        meas.set_spin_num = self.spin_num
+        meas.set_second_phase = 'x'
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
+        # dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"CPMG_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1912,9 +1947,20 @@ class XYFcali(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey
-    
-        dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution,second_phase='y')
+        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        meas = RamseyT2PS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = 1
+        meas.set_spin_num = self.spin_num
+        meas.set_second_phase = 'y'
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
+        # dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,1,self.avg_n,self.execution,second_phase='y')
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"XYFcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
