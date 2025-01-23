@@ -145,12 +145,16 @@ class QDmanager():
         self.Fctrl_str_ver = {}
         try:
             ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
-            for q in ans:
-                cluster_name = ans[q][0].split("_")[0]
-                module_name = ans[q][0].split("_")[1]
-                func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+            qbits_registered = self.quantum_device.elements()
+            for q in qbits_registered:
+                if q in ans:
+                    cluster_name = ans[q][0].split("_")[0]
+                    module_name = ans[q][0].split("_")[1]
+                    func_name = f"out{ans[q][1].split('_')[-1]}_offset"
 
-                self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+                    self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+                else:
+                    self.Fctrl_str_ver[q] = f"pass" 
         except:
             ans = self.quantum_device.elements()
             eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")

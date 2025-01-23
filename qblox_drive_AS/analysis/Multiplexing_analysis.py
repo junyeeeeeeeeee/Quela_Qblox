@@ -163,7 +163,7 @@ class Artist():
             axs = [axs]
         for ax in axs:
             ax:plt.Axes
-            ax.grid()
+            ax.grid() 
             ax.xaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.yaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.xaxis.label.set_size(self.axis_label_fontsize) 
@@ -463,6 +463,25 @@ class analysis_tools():
 
         plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
         plt.close()
+    
+    def oneshot_urgent_plot(self, data:ndarray, save_pic_path:str=None):
+        """ data shape: ("mixer", "prepared_state", "index")"""
+        
+        data = moveaxis(data,0,1)
+        Plotter = Artist(f"SingleShot raw data", save_pic_path)
+        fig, axs = Plotter.build_up_plot_frame((2,1),(6,9))
+        color = ['blue','red']
+        for idx, state in enumerate(data):
+            ax = Plotter.add_scatter_on_ax(state[0],state[1],ax=axs[idx],c=color[idx],s=1)
+            ax.set_aspect('equal')
+            Plotter.includes_axes([ax])
+
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"Prepare |0>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},
+            {'subtitle':"Prepare |1>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},]
+        )
+        Plotter.export_results()
+
 
     def T2_ana(self,var:str,ref:list):
         raw_data = self.ds[var]
@@ -535,30 +554,51 @@ class analysis_tools():
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
-    def T1_ana(self,var:str,ref:list):
+    def T1_ana(self,var:str,ref:list,method:str="AVG"):
         raw_data = self.ds[var]
-        time_samples = array(self.ds[f"{var}_x"])[0][0]
-        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
         self.qubit = var
-        self.plot_item = {"time":array(time_samples)*1e6}
+        self.plot_item = {}
         self.T1_fit = []
-        for idx, data in enumerate(reshaped):
-            if len(ref) == 1:
-                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
-            else:
-                self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
+        self.method = method
 
-            self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
+        signals = []
+        if self.method.lower() in ['oneshot','singleshot']:
+
+            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0]*1e6
+            signals = array(raw_data)
+                
+        else:
+
+            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0][0]*1e6
+            reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+            for idx, data in enumerate(reshaped):
+                if len(ref) == 1:
+                    signals.append(rotate_data(data,ref[0])[0]*1000) # I
+                else:
+                    signals.append(sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000)
+
+        for repetition in signals:
+            
+            self.ans = qubit_relaxation_fitting(self.plot_item["time"],repetition)
+            if len(self.T1_fit) == 0 or self.ans.params["tau"].value > max(self.T1_fit):
+                self.plot_item["data"] = repetition
             self.T1_fit.append(self.ans.params["tau"].value)
+        
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
         self.fit_packs["mean_T1"] = mean(array(self.T1_fit))
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
+        
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
+        if self.method.lower() == "oneshot":
+            ax.set_ylabel("|1> probability")
+            pi_fidelity = round((self.ans.params['offset']+self.plot_item['data'][0])*100,2)
+            ax.legend(["data",f"Offset={round(self.ans.params['offset']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
+
         if save_pic_path != "" : 
             slightly_print(f"pic saved located:\n{save_pic_path}")
             plt.savefig(save_pic_path)
@@ -956,12 +996,13 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.fit_packs = {}
 
 
-    def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
+    def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None, method:str="AVG"):
         self.ds = data
         self.dim = var_dimension
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
         self.transition_freq = fq_Hz
+        self.method = method
 
     def _start_analysis(self,**kwargs):
         match self.exp_name:
@@ -980,7 +1021,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm12':
                 self.T2_ana(kwargs["var_name"],self.refIQ)
             case 'm13':
-                self.T1_ana(kwargs["var_name"],self.refIQ)
+                self.T1_ana(kwargs["var_name"],self.refIQ,self.method)
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
@@ -1014,6 +1055,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
+            case 'm14b':
+                self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
             case 'm12':
                 self.T2_plot(pic_save_folder)
             case 'm13':

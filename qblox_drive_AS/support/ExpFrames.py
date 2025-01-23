@@ -1,13 +1,14 @@
 from numpy import ndarray
 from abc import ABC
+import traceback
 import os
 from datetime import datetime
-from xarray import Dataset
+from xarray import Dataset, DataArray
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer, sort_timeLabel
 from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
-from numpy import array, linspace, arange, logspace, mean, median, std, sort
+from numpy import array, linspace, arange, logspace, mean, median, std, sort, moveaxis
 from abc import abstractmethod
 from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
@@ -1240,16 +1241,25 @@ class SingleShot(ExpGovernment):
             if not histo_ana:
                 ds = open_dataset(file_path)
                 for var in ds.data_vars:
-                    ANA = Multiplex_analyzer("m14")
-                    ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
-                    ANA._start_analysis()
-                    QD_savior.StateDiscriminator.serialize(var,ANA.gmm2d_fidelity,version=f"{date_part}_{time_part}") # will be in the future
-                    pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-                    ANA._export_result(pic_path)
-                    highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
-                    QD_savior.rotate_angle[var] = [ANA.fit_packs["RO_rotation_angle"]]
+                    try:
+                        ANA = Multiplex_analyzer("m14")
+                        ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                        ANA._start_analysis()
+                        QD_savior.StateDiscriminator.serialize(var,ANA.gmm2d_fidelity,version=f"{date_part}_{time_part}") # will be in the future
+                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                        ANA._export_result(pic_path)
+                        highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
+                        QD_savior.rotate_angle[var] = [ANA.fit_packs["RO_rotation_angle"]]
+                    except BaseException as err:
+                        print(f"Get error while analyze your one-shot data: {err}")
+                        traceback.print_exc()
+                        eyeson_print("Trying to plot the raw data now... ")
+                        ANA = Multiplex_analyzer("m14b")
+                        ANA._import_data(ds[var]*1000,var_dimension=0)
+                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}.png")
+                        ANA._export_result(pic_path)
+                        
                 ds.close()
-                
                 QD_savior.QD_keeper()
             else:
 
@@ -1786,8 +1796,50 @@ class EnergyRelaxation(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        p_rec[q] = []
+                        if q.split("_")[-1] != "x":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+                            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            
+                            for repetition in reshaped_data:
+                                time_proba = []
+                                    
+                                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                                md.discriminator._import_data(da)
+                                md.discriminator._start_analysis()
+                                ans = md.discriminator._export_result()
+                                
+                                for i in ans:
+                                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                    time_proba.append(p)
+                                p_rec[q].append(time_proba) 
+                        else:
+                            time_pts = array(ds.data_vars[q])[0][0][0][0].shape[0]
+                            time = array(array(ds.data_vars[q])[0][0][0][0].tolist()*len(list(ds.coords['repeat'].values)))
+                            p_rec[q] = time.reshape(len(list(ds.coords['repeat'].values)),time_pts).tolist()
+                        
+                        p_rec[q] = (["repeat","probabilty"], array(p_rec[q])) 
+
+                    dss = Dataset(p_rec,coords={"repeat":ds.coords['repeat'].values,"probabilty":ds.coords['time_idx'].values})
+                    dss.attrs = ds.attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
+
         
-            for var in ds.data_vars:
+            for var in dss.data_vars:
                 if var.split("_")[-1] != 'x':
                     ANA = Multiplex_analyzer("m13")
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -1795,7 +1847,7 @@ class EnergyRelaxation(ExpGovernment):
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._import_data(dss,var_dimension=2,refIQ=ref,method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
 
@@ -2801,7 +2853,9 @@ class XGateErrorTest(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = Ramsey(QD_path="")
-    EXP.execution = 1
-    EXP.RunAnalysis(new_QD_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/ramsey_updates/qblox_ExpConfigs_20250117192846/DR1#11_SumInfo.pkl",new_file_path="/Users/ratiswu/Desktop/FTP-ASqcMeas/ramsey_updates/Ramsey_20250117192846.nc")
+    EXP = EnergyRelaxation("")
+    EXP.execution = True
+    EXP.histos = 1
+    EXP.RunAnalysis("qblox_drive_AS/QD_backup/20250122/DR1_FQWJ_activateMD.pkl", "qblox_drive_AS/Meas_raw/20250122/H16M38S40/T1_20250122163925.nc")
+
     

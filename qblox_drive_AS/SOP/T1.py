@@ -210,31 +210,32 @@ class EnergyRelaxPS(ScheduleConductor):
     def __RunAndGet__(self, *args, **kwargs):
         
         if self._execution:
-            ori_ds = self.meas_ctrl.run('T1')
+            ds = self.meas_ctrl.run('T1')
             dict_ = {}
             if not self._os_mode:
                 for q_idx, q in enumerate(self._time_samples):
-                    i_data = array(ori_ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
-                    q_data = array(ori_ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._time_samples[q].shape[0])
+                    q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._time_samples[q].shape[0])
                     dict_[q] = (["mixer","repeat","idx"],array([i_data,q_data]))
                     time_values = list(self._time_samples[q])*2*self._repeat
                     dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,self._repeat,self._time_samples[q].shape[0]))
                 
                 dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
             else:
-                # trying coordinates: mixer, repeat, time_idx, index
-                dataset = ori_ds
-                for var in dataset.data_vars:
-                    dataset[var].attrs = {}
-        
-                for coord in dataset.coords:
-                    dataset.coords[coord].attrs = {}
+                dict_ = {}
+                for q_idx, q in enumerate(self._time_samples):
+                    i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._avg_n,self._time_samples[q].shape[0])
+                    q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._avg_n,self._time_samples[q].shape[0])
+                    dict_[q] = (["mixer","prepared_state","repeat","index","time_idx"],array([[i_data],[q_data]]))
+                    time_values = list(self._time_samples[q])*2*self._repeat*self._avg_n
+                    dict_[f"{q}_x"] = (["mixer","prepared_state","repeat","index","time_idx"],array(time_values).reshape(2,1,self._repeat,self._avg_n,self._time_samples[q].shape[0]))
 
-                dataset.attrs = {}
+                dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"prepared_state":array([1]),"index":arange(self._avg_n),"time_idx":self.__time_data_idx})
+                
                 
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            dataset.attrs["method"] = int(self._os_mode)
+            dataset.attrs["method"] = "OneShot" if self._os_mode else "AVG"
             self.dataset = dataset
 
         else:
