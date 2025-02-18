@@ -560,7 +560,7 @@ class analysis_tools():
                 self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
             else:
                 self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
-            print(self.plot_item["time"])
+            
             da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
             da.name = "dummy"
             my_ana = RelaxationAnalysis(da)
