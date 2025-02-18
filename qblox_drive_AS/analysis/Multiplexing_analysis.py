@@ -20,7 +20,7 @@ from qcat.visualization.readout_fidelity import plot_readout_fidelity
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
-from qcat.analysis.qubit.relaxation import qubit_relaxation_fitting
+from qcat.analysis.qubit.relaxation import RelaxationAnalysis
 from datetime import datetime
 from matplotlib.figure import Figure
 
@@ -66,13 +66,22 @@ def zgate_T1_fitting(time_array:DataArray,IQ_array:DataArray, ref_IQ:list, fit:b
         data = moveaxis(IQ_array,0,1)
         for bias_idx, bias_data in enumerate(data): 
             signals.append(rotate_data(bias_data,ref_IQ[0])[0])
+            da = DataArray(data=signals[-1], coords={"time":array(time_array)*1e3})
+            da.name = 'dummy'
             if fit:
-                T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
+                my_ana = RelaxationAnalysis(da)
+                my_ana._start_analysis()
+                T1s.append(my_ana.fit_result.params["tau"].value)
+                
     else:
         for bias_idx, bias_data in enumerate(I_array):
             signals.append(sqrt((array(bias_data)-ref_IQ[0])**2+(array(Q_array[bias_idx])-ref_IQ[1])**2))
+            da = DataArray(data=signals[-1], coords={"time":array(time_array)*1e3})
+            da.name = 'dummy'
             if fit:
-                T1s.append(qubit_relaxation_fitting(array(time_array),signals[-1]).params["tau"].value)
+                my_ana = RelaxationAnalysis(da)
+                my_ana._start_analysis()
+                T1s.append(my_ana.fit_result.params["tau"].value)
 
     return signals, T1s
 
@@ -503,7 +512,11 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
-                self.ans = qubit_relaxation_fitting(self.plot_item["time"],self.plot_item["data"])
+                da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
+                da.name = "dummy"
+                my_ana = RelaxationAnalysis(da)
+                my_ana._start_analysis()
+                self.ans = my_ana.fit_result
                 self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
@@ -559,6 +572,7 @@ class analysis_tools():
         self.qubit = var
         self.plot_item = {}
         self.T1_fit = []
+
         self.method = method
 
         signals = []
@@ -578,10 +592,14 @@ class analysis_tools():
                     signals.append(sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000)
 
         for repetition in signals:
-            
-            self.ans = qubit_relaxation_fitting(self.plot_item["time"],repetition)
+            da = DataArray(data=array(repetition), coords={"time":self.plot_item["time"]*1e3})
+            # da.name = "dummy"
+            my_ana = RelaxationAnalysis(da)
+            my_ana._start_analysis()
+            self.ans = my_ana.fit_result
             if len(self.T1_fit) == 0 or self.ans.params["tau"].value > max(self.T1_fit):
                 self.plot_item["data"] = repetition
+
             self.T1_fit.append(self.ans.params["tau"].value)
         
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
