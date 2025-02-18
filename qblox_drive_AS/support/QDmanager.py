@@ -211,19 +211,16 @@ class QDmanager():
             gift:QDmanager = pickle.load(inp) # refer to `merged_file` in QD_keeper()
 
           
-        try:  
-            manager_ver = gift.manager_version
-            if manager_ver.lower() != "v2.0":
-                raise AttributeError(Back.RED + Fore.YELLOW + Style.BRIGHT +"Your QD_file is too old! please use self.version_converter() to load it."+ Style.RESET_ALL)   
-        except:
-            raise AttributeError(Back.RED + Fore.YELLOW + Style.BRIGHT +"Your QD_file is too old! please use self.version_converter() to load it."+ Style.RESET_ALL)
-        
         # class
         self.Fluxmanager = gift.Fluxmanager
         self.Notewriter = gift.Notewriter
         self.Waveformer = gift.Waveformer
         self.quantum_device = gift.quantum_device
-        self.StateDiscriminator = gift.StateDiscriminator
+        try:
+            self.StateDiscriminator = gift.StateDiscriminator
+        except:
+            print("Generating Statifier ...")
+            self.StateDiscriminator:Statifier = Statifier()
 
         # string/ int
         self.manager_version = gift.manager_version
@@ -267,47 +264,6 @@ class QDmanager():
             pickle.dump(self, file)
             print(f'Summarized info had successfully saved to the given path!')
 
-    def version_converter(self, old_QD_path:str=None):
-        
-        if old_QD_path is not None:
-            self.path = old_QD_path
-
-        with open(self.path, 'rb') as inp:
-            gift:dict = pickle.load(inp) # refer to `merged_file` in QD_keeper()
-        # string and int
-        self.chip_name:str = gift["chip_info"]["name"]
-        self.chip_type:str = gift["chip_info"]["type"]
-        self.Identity:str = gift["ID"]
-        self.Log:str = gift["Log"]
-        self.Fctrl_str_ver = gift["Fctrl_str"]
-        self.machine_IP:str = gift["IP"]
-        self.q_num:int = len(list(filter(ret_q,gift["Flux"])))
-        self.c_num:int = len(list(filter(ret_c,gift["Flux"])))
-        # class    
-        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num,cp_number=self.c_num)
-        self.Fluxmanager.activate_from_dict(gift["Flux"])
-        self.Notewriter: Notebook = Notebook(q_number=self.q_num)
-        self.Notewriter.activate_from_dict(gift["Note"])
-        if "Waveform" in list(gift.keys()):
-            self.Waveformer:GateGenesis = GateGenesis(q_num=0,c_num=0,log2super=gift["Waveform"])
-        else:
-            self.Waveformer:GateGenesis = GateGenesis(self.q_num,self.c_num)
-        self.quantum_device :QuantumDevice = gift["QD"]
-
-        if "Discriminator" in list(gift.keys()):
-            self.StateDiscriminator = gift["Discriminator"]
-        else:
-            self.StateDiscriminator:Statifier = Statifier()
-        
-        
-        # dict
-        self.Hcfg = gift["Hcfg"]
-        self.refIQ:dict = gift["refIQ"]
-        self.rotate_angle = gift["rota_angle"]
-        
-        self.quantum_device.hardware_config(self.Hcfg)
-        self.QD_keeper()
-        print("The version had been updated and the file is saved !")
 
     def build_new_QD(self,qubit_number:int,coupler_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
 
@@ -697,6 +653,8 @@ class Data_manager:
 
 if __name__ == "__main__":
     
-    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl")
+    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250218/DR1#11_SumInfo.pkl")
     QD_agent.QD_loader()
     print(QD_agent.StateDiscriminator.elements)
+    
+    

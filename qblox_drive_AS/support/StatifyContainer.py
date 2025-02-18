@@ -27,14 +27,15 @@ class Statifier():  # state + indentify + er = statifier
             raise NameError(f"The name you gave didn't show in container, check it please:\n{self.__container}")
         return getattr(self, name)
 
-    def check_model_alive(self, dataArray:DataArray, name:str):
+    def check_model_alive(self, dataArray:DataArray, name:str, show_plot:bool=True):
         """ dataArray is from OneShot nc dataset and *1000 """
         md = self.summon_discriminator(name)
         md._import_data(dataArray)
         md._start_analysis()
         g1d_fidelity = md.export_G1DROFidelity()
 
-        plot_readout_fidelity(dataArray, md, g1d_fidelity)
+        if show_plot:
+            plot_readout_fidelity(dataArray, md, g1d_fidelity)
 
 
 

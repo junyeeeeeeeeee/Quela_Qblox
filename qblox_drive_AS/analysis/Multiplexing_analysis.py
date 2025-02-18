@@ -463,7 +463,8 @@ class analysis_tools():
             self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
         
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
-
+        
+    
     def oneshot_plot(self,save_pic_path:str=None):
         da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
         self.gmm2d_fidelity._import_data(da)
@@ -610,12 +611,13 @@ class analysis_tools():
         
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
+        
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
         if self.method.lower() == "oneshot":
             ax.set_ylabel("|1> probability")
-            pi_fidelity = round((self.ans.params['offset']+self.plot_item['data'][0])*100,2)
-            ax.legend(["data",f"Offset={round(self.ans.params['offset']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
+            pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
+            ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
 
         if save_pic_path != "" : 
             slightly_print(f"pic saved located:\n{save_pic_path}")

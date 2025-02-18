@@ -1243,11 +1243,14 @@ class SingleShot(ExpGovernment):
                 for var in ds.data_vars:
                     try:
                         ANA = Multiplex_analyzer("m14")
+                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                         ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                         ANA._start_analysis()
-                        QD_savior.StateDiscriminator.serialize(var,ANA.gmm2d_fidelity,version=f"{date_part}_{time_part}") # will be in the future
-                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
                         ANA._export_result(pic_path)
+                        
+                        QD_savior.StateDiscriminator.serialize(var,ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
+                        QD_savior.StateDiscriminator.check_model_alive(ds[var]*1000, var, show_plot=False)
+                        
                         highlight_print(f"{var} rotate angle = {round(ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
                         QD_savior.rotate_angle[var] = [ANA.fit_packs["RO_rotation_angle"]]
                     except BaseException as err:
@@ -1784,7 +1787,7 @@ class EnergyRelaxation(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T1 import T1, EnergyRelaxPS
+        from qblox_drive_AS.SOP.T1 import EnergyRelaxPS
         meas = EnergyRelaxPS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
@@ -1843,7 +1846,6 @@ class EnergyRelaxation(ExpGovernment):
                             reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
                             
                             md = QD_savior.StateDiscriminator.summon_discriminator(q)
-                            
                             
                             for repetition in reshaped_data:
                                 time_proba = []
@@ -2902,6 +2904,6 @@ if __name__ == "__main__":
     EXP = EnergyRelaxation("")
     EXP.execution = True
     EXP.histos = 1
-    EXP.RunAnalysis("qblox_drive_AS/QD_backup/20250122/DR1_FQWJ_activateMD.pkl", "qblox_drive_AS/Meas_raw/20250122/H16M38S40/T1_20250122163925.nc")
+    EXP.RunAnalysis("qblox_drive_AS/QD_backup/20250218/DR1#11_SumInfo.pkl", "qblox_drive_AS/Meas_raw/20250218/H22M28S05/T1_20250218222828.nc")
 
     
