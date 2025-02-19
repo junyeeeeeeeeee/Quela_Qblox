@@ -410,25 +410,31 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self,var:str):
+    def rabi_ana(self,var:str, method:str="AVE"):
         self.qubit = var
-        self.rabi_type = self.ds.attrs["rabi_type"]
-        i_data = array(self.ds[var])[0]
-        q_data = array(self.ds[var])[1]
-        if not self.ds.attrs["OS_mode"]:
+        self.method = method.lower()
+        
+        
+        self.rabi_type = 'PowerRabi' if self.ds.attrs["rabi_type"].lower() == 'power' else 'TimeRabi'
+        
+        if self.method.lower() in ['oneshot','singleshot']:
+            data_to_fit = array(self.ds[var])
+            x_data = array(self.ds[f"{var}_variable"])
+        else:
+            i_data = array(self.ds[var])[0]
+            q_data = array(self.ds[var])[1]
+            x_data = array(self.ds[f"{var}_variable"])[0]
             if len(self.refIQ) == 2:
                 data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
             else:
                 data_to_fit = rotate_data(array(self.ds[var]),float(self.refIQ[0]))[0]
-        else:
-            # wait GMM
-            pass
+
+        
+        
 
         if self.rabi_type.lower() == 'powerrabi':
-            x_data = array(self.ds[f"{var}_piamp"])[0]
             fixed = self.ds.attrs[f'{var}_pidura']
         else:
-            x_data = array(self.ds[f"{var}_pidura"])[0]
             fixed = self.ds.attrs[f'{var}_piamp']
     
         self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
@@ -437,7 +443,8 @@ class analysis_tools():
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
-        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
+        
+        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method == "oneshot" else False,Dis=1 if self.method == "oneshot" else None,q=self.qubit)
 
     def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
         self.fq = tansition_freq_Hz
@@ -493,23 +500,36 @@ class analysis_tools():
         Plotter.export_results()
 
 
-    def T2_ana(self,var:str,ref:list):
+    def T2_ana(self,var:str,ref:list, method:str="AVE"):
         raw_data = self.ds[var]
-        time_samples = array(self.ds[f"{var}_x"])[0][0]
-        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
         self.qubit = var
+        self.method = method
+        self.plot_item = {}
+        signals = []
+        if self.method.lower() in ['oneshot','singleshot']:
+
+            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0]*1e6
+            signals = array(raw_data)
+        else:
+            self.plot_item["time"] =  array(self.ds[f"{var}_x"])[0][0]*1e6
+            reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+            for idx, data in enumerate(reshaped):
+                if len(ref) == 1:
+                    signals.append(rotate_data(data,ref[0])[0]) # I
+                else:
+                    signals.append(sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2))
+
+
 
 
         self.T2_fit = []
-        for idx, data in enumerate(reshaped):
+        for data in signals:
             self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
-            if len(ref) == 1:
-                self.data_n = rotate_data(data,ref[0])[0]
-            else:
-                self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
+            
+            self.plot_item["data"] = array(data)
+            
             if not self.echo:
-                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1e6)
+                self.ans = T2_fit_analysis(self.plot_item["data"],self.plot_item["time"]/1e6)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
@@ -548,12 +568,18 @@ class analysis_tools():
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
+        
+        
         if not self.echo:
-            Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+            Fit_analysis_plot(self.ans,P_rescale=True if self.method.lower() == "oneshot" else False,Dis=1 if self.method.lower() == "oneshot" else None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
         else:
             fig, ax = plt.subplots()
             ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
             ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
+            if self.method.lower() == "oneshot":
+                ax.set_ylabel("|1> probability")
+                pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
+                ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
             if save_pic_path != "" : 
                 plt.savefig(save_pic_path)
                 plt.close()
@@ -1035,11 +1061,11 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm9': 
                 self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana(kwargs["var_name"])
+                self.rabi_ana(kwargs["var_name"],self.method)
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':
-                self.T2_ana(kwargs["var_name"],self.refIQ)
+                self.T2_ana(kwargs["var_name"],self.refIQ,self.method)
             case 'm13':
                 self.T1_ana(kwargs["var_name"],self.refIQ,self.method)
             case 'c1':

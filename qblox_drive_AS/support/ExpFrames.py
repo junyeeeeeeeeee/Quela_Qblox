@@ -968,6 +968,14 @@ class PowerRabiOsci(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.target_qs = list(pi_amp.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.pi_amp_samples:
+                if self.avg_n * self.pi_amp_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, amp_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.pi_amp_samples[q].shape[0]} for {q}")
+        
+        
         
 
     def PrepareHardware(self):
@@ -983,12 +991,21 @@ class PowerRabiOsci(ExpGovernment):
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-            self.pi_dura[q] = self.QD_agent.quantum_device.get_element(q).rxy.duration()
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.RabiOsci import PowerRabi
+        from qblox_drive_AS.SOP.RabiOsci import RabiPS
+
+        meas = RabiPS()
+        meas.set_samples = self.pi_amp_samples
+        meas.set_RabiType = "power"
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = PowerRabi(self.QD_agent,self.meas_ctrl,self.pi_amp_samples,self.pi_dura,self.avg_n,self.execution,self.OSmode)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"PowerRabi_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1022,10 +1039,50 @@ class PowerRabiOsci(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            for var in ds.data_vars:
-                if str(var).split("_")[-1] != 'piamp':
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        if q.split("_")[-1] != "variable":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","index","var_idx")
+                            reshaped_data = moveaxis(raw_data,-1,1)   # raw shape -> ("mixer","var_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            
+                            time_proba = []
+                                
+                            da = DataArray(reshaped_data, coords= [("mixer",array(["I","Q"])), ("var_idx",array(ds.coords["var_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                            md.discriminator._import_data(da)
+                            md.discriminator._start_analysis()
+                            ans = md.discriminator._export_result()
+                            
+                            for i in ans:
+                                p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                time_proba.append(p)
+                            p_rec[q] = array(time_proba)  # 1D, shape: (variable,)
+                        else:
+                            p_rec[q] = array(ds.data_vars[q])[0][0][0]  # 1D, shape: (variable,)
+                    
+                        p_rec[q] = (["probabilty"], p_rec[q])
+
+                    dss = Dataset(p_rec,coords={"probabilty":ds.coords['var_idx'].values})
+                    dss.attrs = ds.attrs
+                    for var in dss.data_vars:
+                        dss[var].attrs = ds[var].attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
+
+            for var in dss.data_vars:
+                if str(var).split("_")[-1] != 'variable':
                     ANA = Multiplex_analyzer("m11")      
-                    ANA._import_data(ds,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var])
+                    ANA._import_data(dss,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var], method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
@@ -1071,8 +1128,9 @@ class TimeRabiOsci(ExpGovernment):
         
         self.pi_dura_samples = {}
         for q in pi_dura:
+            if min(pi_dura[q]) == 0: pi_dura[q] = [4e-9, max(pi_dura[q])]
             self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
-    
+            
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
@@ -1091,12 +1149,22 @@ class TimeRabiOsci(ExpGovernment):
             xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
-            self.pi_amp[q] = self.QD_agent.quantum_device.get_element(q).rxy.amp180()
+            # self.pi_amp[q] = self.QD_agent.quantum_device.get_element(q).rxy.amp180()
             
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.RabiOsci import TimeRabi
-    
-        dataset = TimeRabi(self.QD_agent,self.meas_ctrl,self.pi_amp,self.pi_dura_samples,self.avg_n,self.execution,self.OSmode)
+        from qblox_drive_AS.SOP.RabiOsci import RabiPS
+
+        meas = RabiPS()
+        meas.set_samples = self.pi_dura_samples
+        meas.set_RabiType = "time"
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        
+        meas.run()
+        dataset = meas.dataset
+
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"TimeRabi_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -1130,10 +1198,51 @@ class TimeRabiOsci(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            for var in ds.data_vars:
-                if str(var).split("_")[-1] != 'pidura':
+
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        if q.split("_")[-1] != "variable":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","index","var_idx")
+                            reshaped_data = moveaxis(raw_data,-1,1)   # raw shape -> ("mixer","var_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            
+                            time_proba = []
+                                
+                            da = DataArray(reshaped_data, coords= [("mixer",array(["I","Q"])), ("var_idx",array(ds.coords["var_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                            md.discriminator._import_data(da)
+                            md.discriminator._start_analysis()
+                            ans = md.discriminator._export_result()
+                            
+                            for i in ans:
+                                p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                time_proba.append(p)
+                            p_rec[q] = array(time_proba)  # 1D, shape: (variable,)
+                        else:
+                            p_rec[q] = array(ds.data_vars[q])[0][0][0]  # 1D, shape: (variable,)
+                    
+                        p_rec[q] = (["probabilty"], p_rec[q])
+
+                    dss = Dataset(p_rec,coords={"probabilty":ds.coords['var_idx'].values})
+                    dss.attrs = ds.attrs
+                    for var in dss.data_vars:
+                        dss[var].attrs = ds[var].attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
+
+            for var in dss.data_vars:
+                if str(var).split("_")[-1] != 'variable':
                     ANA = Multiplex_analyzer("m11")      
-                    ANA._import_data(ds,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var])
+                    ANA._import_data(dss,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var], method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
                     conditional_update_qubitInfo(QD_savior,ANA.fit_packs,var)  
@@ -1340,6 +1449,13 @@ class Ramsey(ExpGovernment):
         self.OSmode = OSmode
         self.spin_num = {}
         self.target_qs = list(time_range.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.time_samples:
+                if self.avg_n * self.time_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, time_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.time_samples[q].shape[0]} for {q}")
+        
         
 
     def PrepareHardware(self):
@@ -1357,7 +1473,7 @@ class Ramsey(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        from qblox_drive_AS.SOP.T2 import RamseyT2PS
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
@@ -1406,8 +1522,50 @@ class Ramsey(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-        
-            for var in ds.data_vars:
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        p_rec[q] = []
+                        if q.split("_")[-1] != "x":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+                            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            for repetition in reshaped_data:
+                                time_proba = []
+                                    
+                                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                                md.discriminator._import_data(da)
+                                md.discriminator._start_analysis()
+                                ans = md.discriminator._export_result()
+                                
+                                for i in ans:
+                                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                    time_proba.append(p)
+                                p_rec[q].append(time_proba) 
+                        else:
+                            time_pts = array(ds.data_vars[q])[0][0][0][0].shape[0]
+                            time = array(array(ds.data_vars[q])[0][0][0][0].tolist()*len(list(ds.coords['repeat'].values)))
+                            p_rec[q] = time.reshape(len(list(ds.coords['repeat'].values)),time_pts).tolist()
+                        
+                        p_rec[q] = (["repeat","probabilty"], array(p_rec[q])) 
+
+                    dss = Dataset(p_rec,coords={"repeat":ds.coords['repeat'].values,"probabilty":ds.coords['time_idx'].values})
+                    dss.attrs = ds.attrs
+                    for var in dss.data_vars:
+                        dss[var].attrs = ds[var].attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
+            
+            for var in dss.data_vars:
                 if var.split("_")[-1] != 'x':
                     ANA = Multiplex_analyzer("m12")
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -1415,7 +1573,7 @@ class Ramsey(ExpGovernment):
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds,var_dimension=2,refIQ= ref)
+                    ANA._import_data(dss,var_dimension=2,refIQ=ref,method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
 
@@ -1488,6 +1646,13 @@ class SpinEcho(ExpGovernment):
         self.OSmode = OSmode
         
         self.target_qs = list(time_range.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.time_samples:
+                if self.avg_n * self.time_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, time_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.time_samples[q].shape[0]} for {q}")
+        
         
 
     def PrepareHardware(self):
@@ -1504,7 +1669,7 @@ class SpinEcho(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        from qblox_drive_AS.SOP.T2 import RamseyT2PS
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
@@ -1551,8 +1716,53 @@ class SpinEcho(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
+
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        p_rec[q] = []
+                        if q.split("_")[-1] != "x":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+                            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            for repetition in reshaped_data:
+                                time_proba = []
+                                    
+                                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                                md.discriminator._import_data(da)
+                                md.discriminator._start_analysis()
+                                ans = md.discriminator._export_result()
+                                
+                                for i in ans:
+                                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                    time_proba.append(p)
+                                p_rec[q].append(time_proba) 
+                        else:
+                            time_pts = array(ds.data_vars[q])[0][0][0][0].shape[0]
+                            time = array(array(ds.data_vars[q])[0][0][0][0].tolist()*len(list(ds.coords['repeat'].values)))
+                            p_rec[q] = time.reshape(len(list(ds.coords['repeat'].values)),time_pts).tolist()
+                        
+                        p_rec[q] = (["repeat","probabilty"], array(p_rec[q])) 
+
+                    dss = Dataset(p_rec,coords={"repeat":ds.coords['repeat'].values,"probabilty":ds.coords['time_idx'].values})
+                    dss.attrs = ds.attrs
+                    for var in dss.data_vars:
+                        dss[var].attrs = ds[var].attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
+
+
         
-            for var in ds.data_vars:
+            for var in dss.data_vars:
                 if var.split("_")[-1] != 'x':
                     ANA = Multiplex_analyzer("m12")
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -1560,7 +1770,7 @@ class SpinEcho(ExpGovernment):
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._import_data(dss,var_dimension=2,refIQ=ref,method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
 
@@ -1630,6 +1840,13 @@ class CPMG(ExpGovernment):
         self.OSmode = OSmode
         
         self.target_qs = list(time_range.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.time_samples:
+                if self.avg_n * self.time_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, time_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.time_samples[q].shape[0]} for {q}")
+        
         
 
     def PrepareHardware(self):
@@ -1645,7 +1862,7 @@ class CPMG(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.T2 import Ramsey, RamseyT2PS
+        from qblox_drive_AS.SOP.T2 import RamseyT2PS
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
@@ -1692,8 +1909,50 @@ class CPMG(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
+            if "method" in ds.attrs:
+               
+                if str(ds.attrs["method"]).lower() in ["oneshot","singleshot"]:
+                    p_rec = {} # {q: (repeat, time)}
+                    for q in ds.data_vars:
+                        p_rec[q] = []
+                        if q.split("_")[-1] != "x":
+                            
+                            raw_data = array(ds.data_vars[q])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+                            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+                            
+                            md = QD_savior.StateDiscriminator.summon_discriminator(q)
+                            
+                            for repetition in reshaped_data:
+                                time_proba = []
+                                    
+                                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(ds.coords["index"]))] )
+                                md.discriminator._import_data(da)
+                                md.discriminator._start_analysis()
+                                ans = md.discriminator._export_result()
+                                
+                                for i in ans:
+                                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                                    time_proba.append(p)
+                                p_rec[q].append(time_proba) 
+                        else:
+                            time_pts = array(ds.data_vars[q])[0][0][0][0].shape[0]
+                            time = array(array(ds.data_vars[q])[0][0][0][0].tolist()*len(list(ds.coords['repeat'].values)))
+                            p_rec[q] = time.reshape(len(list(ds.coords['repeat'].values)),time_pts).tolist()
+                        
+                        p_rec[q] = (["repeat","probabilty"], array(p_rec[q])) 
+
+                    dss = Dataset(p_rec,coords={"repeat":ds.coords['repeat'].values,"probabilty":ds.coords['time_idx'].values})
+                    dss.attrs = ds.attrs
+                    for var in dss.data_vars:
+                        dss[var].attrs = ds[var].attrs
+                else:
+                    dss = ds
+                    dss.attrs["method"] = "AVG"
+            else:
+                dss = ds
+                dss.attrs["method"] = "AVG"
         
-            for var in ds.data_vars:
+            for var in dss.data_vars:
                 if var.split("_")[-1] != 'x':
                     ANA = Multiplex_analyzer("m12")
                     if QD_savior.rotate_angle[var][0] != 0:
@@ -1701,7 +1960,7 @@ class CPMG(ExpGovernment):
                     else:
                         eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
                         ref = QD_savior.refIQ[var]
-                    ANA._import_data(ds,var_dimension=2,refIQ=ref)
+                    ANA._import_data(dss,var_dimension=2,refIQ=ref,method=dss.attrs["method"])
                     ANA._start_analysis(var_name=var)
                     ANA._export_result(fig_path)
 
@@ -1772,6 +2031,12 @@ class EnergyRelaxation(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.target_qs = list(time_range.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.time_samples:
+                if self.avg_n * self.time_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, time_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.time_samples[q].shape[0]} for {q}")
         
 
     def PrepareHardware(self):

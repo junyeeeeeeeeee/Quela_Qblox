@@ -267,7 +267,7 @@ class RamseyT2PS(ScheduleConductor):
                     time_values = list(self._time_samples[q])*2*self._repeat
                     dict_[f"{q}_x"] = (["mixer","repeat","idx"],array(time_values).reshape(2,self._repeat,self._time_samples[q].shape[0]))
                 
-                    ramsey_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
+                    dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"idx":self.__time_data_idx})
         
             else:
                 dict_ = {}
@@ -281,10 +281,10 @@ class RamseyT2PS(ScheduleConductor):
                 dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"repeat":self.__repeat_data_idx,"prepared_state":array([1]),"index":arange(self._avg_n),"time_idx":self.__time_data_idx})
                 
                 
-            for var in [i for i in ramsey_ds.data_vars if "_" not in i]:
-                ramsey_ds[var].attrs["spin_num"] = self._spin_num[var]
-            ramsey_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            ramsey_ds.attrs["execution_time"] = Data_manager().get_time_now()
+            for var in [i for i in dataset.data_vars if "_" not in i]:
+                dataset[var].attrs["spin_num"] = self._spin_num[var]
+            dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["method"] = "OneShot" if self._os_mode else "AVG"
             self.dataset = dataset
 
