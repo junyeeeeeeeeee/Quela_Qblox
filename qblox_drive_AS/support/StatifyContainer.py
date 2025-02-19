@@ -41,14 +41,16 @@ class Statifier():  # state + indentify + er = statifier
 
 if __name__ == "__main__":
     
-    Bob = tester("B")
-    Alice = tester("A")
-    Ratis = tester("R")
+    Bob = tester("Age: 27")
+    Alice = tester("Age: 25")
+    Ratis = tester("Age: 26")
     rec = {"Bob":Bob, "Alice":Alice, "Ratis":Ratis}
     
     container = Statifier()
     for i in rec:
         container.serialize(i, rec[i], version="v0.1.1")
+    
+    print(container.elements)
 
-    person:tester = container.summon_discriminator("bob")
+    person:tester = container.summon_discriminator("Bob")
     person.play()
