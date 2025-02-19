@@ -12,7 +12,7 @@ pi_amp_ptsORstep:int|float = 100  # Depends on the sampling func you use, 'linsp
 AVG:int = 600
 
 #?? Notes: While you're using one-shot method, amp samples (pi_amp_pts) * shots (AVG) must less than or equal to 131000. 
-use_OneShot:bool = True
+use_OneShot:bool = False
 
 ''' Don't Touch '''
 save_dir = Data_manager().build_packs_folder()
