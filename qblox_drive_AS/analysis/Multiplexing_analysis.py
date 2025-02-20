@@ -410,16 +410,32 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self,var:str, method:str="AVE"):
+    def rabi_ana(self,var:str, OSmodel:GMMROFidelity=None):
         self.qubit = var
-        self.method = method.lower()
+        self.method:str = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
         
         
         self.rabi_type = 'PowerRabi' if self.ds.attrs["rabi_type"].lower() == 'power' else 'TimeRabi'
         
         if self.method.lower() in ['oneshot','singleshot']:
-            data_to_fit = array(self.ds[var])
-            x_data = array(self.ds[f"{var}_variable"])
+            p_rec = [] # (variable, )
+            
+                    
+            raw_data = array(self.ds.data_vars[var])*1000 # Shape ("mixer","prepared_state","index","var_idx")
+            reshaped_data = moveaxis(raw_data,-1,1)   # raw shape -> ("mixer","var_idx","prepared_state","index")
+                
+            da = DataArray(reshaped_data, coords= [("mixer",array(["I","Q"])), ("var_idx",array(self.ds.coords["var_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+            OSmodel.discriminator._import_data(da)
+            OSmodel.discriminator._start_analysis()
+            ans = OSmodel.discriminator._export_result()
+            
+            for i in ans:
+                p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                p_rec.append(p)
+            
+            data_to_fit = array(p_rec)
+            x_data = array(self.ds.data_vars[f"{var}_variable"])[0][0][0]
+
         else:
             i_data = array(self.ds[var])[0]
             q_data = array(self.ds[var])[1]
@@ -430,8 +446,6 @@ class analysis_tools():
                 data_to_fit = rotate_data(array(self.ds[var]),float(self.refIQ[0]))[0]
 
         
-        
-
         if self.rabi_type.lower() == 'powerrabi':
             fixed = self.ds.attrs[f'{var}_pidura']
         else:
@@ -444,7 +458,7 @@ class analysis_tools():
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         
-        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method == "oneshot" else False,Dis=1 if self.method == "oneshot" else None,q=self.qubit)
+        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "oneshot" else False,Dis=1 if self.method.lower() == "oneshot" else None,q=self.qubit)
 
     def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
         self.fq = tansition_freq_Hz
@@ -500,17 +514,39 @@ class analysis_tools():
         Plotter.export_results()
 
 
-    def T2_ana(self,var:str,ref:list, method:str="AVE"):
-        raw_data = self.ds[var]
+    def T2_ana(self,var:str,ref:list, OSmodel:GMMROFidelity=None):
+        self.echo:bool=False if self.ds[var].attrs["spin_num"] == 0 else True
         self.qubit = var
-        self.method = method
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
         self.plot_item = {}
         signals = []
         if self.method.lower() in ['oneshot','singleshot']:
-
-            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0]*1e6
-            signals = array(raw_data)
+                
+            p_rec = [] # {q: (repeat, time)}
+      
+            raw_data = array(self.ds.data_vars[self.qubit])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+           
+            for repetition in reshaped_data:
+                time_proba = []
+                    
+                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(self.ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                
+                for i in ans:
+                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                    time_proba.append(p)
+                p_rec.append(time_proba) 
+                        
+                            
+            self.plot_item["time"] = array(self.ds.data_vars[f"{self.qubit}_x"])[0][0][0][0]*1e6
+            signals = array(p_rec)
+    
         else:
+            raw_data = self.ds[var]
+            
             self.plot_item["time"] =  array(self.ds[f"{var}_x"])[0][0]*1e6
             reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
             for idx, data in enumerate(reshaped):
@@ -524,7 +560,6 @@ class analysis_tools():
 
         self.T2_fit = []
         for data in signals:
-            self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
             
             self.plot_item["data"] = array(data)
             
@@ -533,6 +568,7 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
             else:
+                
                 da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
                 da.name = "dummy"
                 my_ana = RelaxationAnalysis(da)
@@ -594,22 +630,38 @@ class analysis_tools():
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
-    def T1_ana(self,var:str,ref:list,method:str="AVG"):
-        raw_data = self.ds[var]
+    def T1_ana(self,var:str,ref:list,OSmodel:GMMROFidelity=None):
+        
         self.qubit = var
         self.plot_item = {}
         self.T1_fit = []
 
-        self.method = method
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
 
         signals = []
         if self.method.lower() in ['oneshot','singleshot']:
-
-            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0]*1e6
-            signals = array(raw_data)
+            p_rec = []  # (repeat, time, )
+            raw_data = array(self.ds.data_vars[self.qubit])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+            for repetition in reshaped_data:
+                time_proba = []
+                    
+                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(self.ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                
+                for i in ans:
+                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                    time_proba.append(p)
+                p_rec.append(time_proba) 
+            
+            signals = array(p_rec) 
+            self.plot_item["time"] = array(self.ds.data_vars[f"{self.qubit}_x"])[0][0][0][0]*1e6
+            
                 
         else:
-
+            raw_data = self.ds[var]
             self.plot_item["time"] = array(self.ds[f"{var}_x"])[0][0]*1e6
             reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
             for idx, data in enumerate(reshaped):
@@ -1061,13 +1113,13 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm9': 
                 self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana(kwargs["var_name"],self.method)
+                self.rabi_ana(kwargs["var_name"], OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
             case 'm12':
-                self.T2_ana(kwargs["var_name"],self.refIQ,self.method)
+                self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
-                self.T1_ana(kwargs["var_name"],self.refIQ,self.method)
+                self.T1_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
