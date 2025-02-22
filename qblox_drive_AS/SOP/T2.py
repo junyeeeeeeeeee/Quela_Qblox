@@ -131,6 +131,7 @@ class RamseyT2PS(ScheduleConductor):
             qubit_info = self.QD_agent.quantum_device.get_element(q)
             if q not in list(self._spin_num.keys()):
                 self._spin_num[q] = 0
+            qubit_info.reset.duration(qubit_info.reset.duration()+max(self._time_samples[q]))
             eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         
         self.__Para_free_Du = ManualParameter(name="free_Duration", unit="s", label="Time")
