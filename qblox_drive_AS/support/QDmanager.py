@@ -300,7 +300,7 @@ class QDmanager():
             qubit.reset.duration(250e-6)
             qubit.clock_freqs.readout(6e9)
             qubit.measure.acq_delay(0)
-            qubit.measure.pulse_amp(0.15)
+            qubit.measure.pulse_amp(0.5)
             qubit.measure.pulse_duration(1e-6)
             qubit.measure.integration_time(1e-6)
             qubit.clock_freqs.f01(4e9)
