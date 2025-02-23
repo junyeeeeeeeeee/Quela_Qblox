@@ -484,8 +484,59 @@ class analysis_tools():
             self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
         
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
+
+    def n_oneshot_ana(self, var:str,data:DataArray,tansition_freq_Hz:float=None):
+        """ data shape (repeat, mixer, prepared_state, index)""" 
         
+        self.fq = tansition_freq_Hz
+        self.effT_mK, self.thermal_populations, self.RO_fidelity_percentage, self.RO_rotate_angle = [], [], [], []
+
+        rot_data = []
+
+        for repetition in array(data):
+            da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(self.ds.coords["prepared_state"])), ("index",array(self.ds.coords["index"]))] )
+            self.gmm2d_fidelity = GMMROFidelity()
+            self.gmm2d_fidelity._import_data(da)
+            self.gmm2d_fidelity._start_analysis()
+            g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+            
+            p00 = g1d_fidelity.g1d_dist[0][0][0]
+            self.thermal_populations.append(g1d_fidelity.g1d_dist[0][0][1])
+            p11 = g1d_fidelity.g1d_dist[1][0][1]
+            if self.fq is not None:
+                self.effT_mK.append(p01_to_Teff(self.thermal_populations, self.fq)*1000)
+            else:
+                self.effT_mK.append(0)
+            self.RO_fidelity_percentage.append((p00+p11)*100/2)
+
+
+            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
+            self.RO_rotate_angle.append(rotate_angle)
+            z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+            
+            container = empty_like(array(data))
+            
+            for state_idx, state_data in enumerate(z):
+                container[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
+
+            rot_data.append(moveaxis(container,0,1).tolist())
+            
+            
+        self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
+        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
     
+    def n_oneshot_plot(self,save_pic_path:str=None):
+        
+        for var in self.rotated_ds.data_vars:
+            for repetition in array(self.rotated_ds[var]):
+                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
+                self.gmm2d_fidelity._import_data(da)
+                self.gmm2d_fidelity._start_analysis()
+                g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+
+                plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                plt.close()
+
     def oneshot_plot(self,save_pic_path:str=None):
         da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
         self.gmm2d_fidelity._import_data(da)
@@ -1116,6 +1167,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_ana(kwargs["var_name"], OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm14': 
                 self.oneshot_ana(self.ds,self.transition_freq)
+            case 'm14n':
+                self.n_oneshot_ana(kwargs["var_name"], self.ds, self.transition_freq)
             case 'm12':
                 self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
@@ -1153,6 +1206,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
+            case 'm14n':
+                self.n_oneshot_plot(pic_save_folder)
             case 'm14b':
                 self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
             case 'm12':

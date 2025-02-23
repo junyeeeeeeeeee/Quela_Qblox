@@ -1348,6 +1348,157 @@ class SingleShot(ExpGovernment):
 
             self.counter += 1
 
+
+class nSingleShot(ExpGovernment):
+    """ Helps you get the **Dressed** cavities. """
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+    
+    @RawDataPath.setter
+    def RawDataPath(self,path:str):
+        self.__raw_data_location = path
+
+    def SetParameters(self, target_qs:list, histo_counts:int=1, shots:int=10000, execution:bool=True):
+        """ 
+        ### Args:\n
+        * target_qs: list, like ["q0", "q1", ...]
+        """
+        self.use_time_label:bool = False
+        self.avg_n = shots
+        self.execution = execution
+        self.target_qs = target_qs
+        self.histos = histo_counts
+        self.counter:int = 0
+        if self.histos > 1:
+            self.use_time_label = True
+
+
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and driving atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.SingleShot import ReadoutFidelityPS
+        meas = ReadoutFidelityPS()
+        meas.set_target_qs = self.target_qs
+        meas.set_shots = self.avg_n
+        meas.set_repeat = self.histos
+        
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.execution = self.execution
+        
+        meas.run()
+        dataset = meas.dataset
+
+        
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if (self.JOBID is None or self.use_time_label) else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None,new_QDagent:QDmanager=None,new_pic_save_place:str=None):
+        """ if histo_ana, it will check all the data in the same folder with the given new_file_path """
+    
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            if new_pic_save_place is not None:
+                fig_path = new_pic_save_place
+
+            if new_QDagent is None:
+                QD_savior = QDmanager(QD_file)
+                QD_savior.QD_loader()
+            else:
+                QD_savior = new_QDagent
+
+            parent_dir = os.path.dirname(file_path)  # Get the parent directory
+            date_part = os.path.basename(os.path.dirname(parent_dir))  # "20250122"
+            time_part = os.path.basename(parent_dir) 
+            ds = open_dataset(file_path)
+            if self.histos == 1:
+                for var in ds.data_vars:
+                    try:
+                        self.ANA = Multiplex_analyzer("m14n")
+                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                        self.ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                        self.ANA._start_analysis()
+                        if self.save_pics:
+                            self.ANA._export_result(pic_path)
+                        
+                        QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
+                        QD_savior.StateDiscriminator.check_model_alive(ds[var]*1000, var, show_plot=False)
+                        
+                        highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
+                        QD_savior.rotate_angle[var] = [self.ANA.fit_packs["RO_rotation_angle"]]
+                    except BaseException as err:
+                        print(f"Get error while analyze your one-shot data: {err}")
+                        traceback.print_exc()
+                        eyeson_print("Trying to plot the raw data now... ")
+                        self.ANA = Multiplex_analyzer("m14b")
+                        self.ANA._import_data(ds[var]*1000,var_dimension=0)
+                        pic_path = os.path.join(fig_path,f"{var}_SingleShot_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}.png")
+                        if self.save_pics:
+                            self.ANA._export_result(pic_path)
+                        
+                ds.close()
+                if self.keep_QD:
+                    QD_savior.QD_keeper()
+            else:
+                for var in ds.data_vars:
+                    self.ANA = Multiplex_analyzer("m14n")
+                    self.ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
+                    self.ANA._start_analysis()
+                
+                    highlight_print(f"{var}: {round(median(array(self.ANA.fit_packs["effT_mK"])),1)} +/- {round(std(array(self.ANA.fit_packs["effT_mK"])),1)} mK")
+                    Data_manager().save_histo_pic(QD_savior,array(self.ANA.fit_packs["effT_mK"]),var,mode="ss",pic_folder=fig_path)
+                    Data_manager().save_histo_pic(QD_savior,array(self.ANA.fit_packs["thermal_population"])*100,var,mode="pop",pic_folder=fig_path)
+
+    def WorkFlow(self):
+        
+        self.PrepareHardware()
+
+        self.RunMeasurement()
+
+        self.CloseMeasurement() 
+
+
+
 class Ramsey(ExpGovernment):
     def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
         super().__init__()
