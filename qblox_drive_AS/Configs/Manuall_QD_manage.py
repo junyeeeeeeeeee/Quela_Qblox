@@ -189,6 +189,7 @@ class QD_modifier():
                     qubit = self.QD_agent.quantum_device.get_element(q)
                     file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
                     file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
+                    file.write(f"    RO-amp = {round(qubit.measure.pulse_amp(),3)} V\n")
                     file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} µs\n")
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
@@ -199,7 +200,7 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20250122/DR1#11_SumInfo.pkl"
+    QD_path = "/Users/ratiswu/Desktop/FTP-ASqcMeas/20250117_231012/qblox_ExpConfigs_20250117231012/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
