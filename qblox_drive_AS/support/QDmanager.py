@@ -207,48 +207,62 @@ class QDmanager():
         """
         Load the QuantumDevice, Bias config, hardware config and Flux control callable dict from a given json file path contain the serialized QD.
         """
+        update:bool = False
         with open(self.path, 'rb') as inp:
             gift:QDmanager = pickle.load(inp) # refer to `merged_file` in QD_keeper()
 
-          
-        # class
-        self.Fluxmanager = gift.Fluxmanager
-        self.Notewriter = gift.Notewriter
-        self.Waveformer = gift.Waveformer
-        self.quantum_device = gift.quantum_device
-        try:
-            self.StateDiscriminator = gift.StateDiscriminator
-        except:
-            print("Generating Statifier ...")
-            self.StateDiscriminator:Statifier = Statifier()
 
-        # string/ int
-        self.manager_version = gift.manager_version
-        self.chip_name:str = gift.chip_name
-        self.chip_type:str = gift.chip_type
-        self.Identity:str = gift.Identity
-        self.Log:str = gift.Log
-        self.Fctrl_str_ver = gift.Fctrl_str_ver
-        self.machine_IP:str = gift.machine_IP
-        self.q_num:int = len(list(filter(ret_q,self.Fluxmanager.get_bias_dict())))
-        self.c_num:int = len(list(filter(ret_c,self.Fluxmanager.get_bias_dict())))
+        try:  
+            manager_ver = gift.manager_version
+            if manager_ver.lower() != "v2.0":
+                update = True   
+        except:
+            update = True
         
-        # dict
-        self.refIQ = gift.refIQ
-        self.Hcfg = gift.Hcfg
-        self.rotate_angle = gift.rotate_angle
-        
-        if new_Hcfg is not None:
-            from qblox_drive_AS.support.UserFriend import slightly_print
-            self.Hcfg = new_Hcfg
-            self.quantum_device.hardware_config(new_Hcfg)
-            slightly_print("Saved new given Hardware config.")
-            self.made_mobileFctrl()
+        if update:
+            self.version_converter(gift)
+            print("This QD_file is out-updated, successfully updated !")
+
         else:
-            self.quantum_device.hardware_config(self.Hcfg)
+            # class
+            self.Fluxmanager = gift.Fluxmanager
+            self.Notewriter = gift.Notewriter
+            self.Waveformer = gift.Waveformer
+            self.quantum_device = gift.quantum_device
+            try:
+                self.StateDiscriminator = gift.StateDiscriminator
+            except:
+                print("Generating Statifier ...")
+                self.StateDiscriminator:Statifier = Statifier()
+
+            # string/ int
+            # self.manager_version = gift.manager_version
+            self.chip_name:str = gift.chip_name
+            self.chip_type:str = gift.chip_type
+            self.Identity:str = gift.Identity
+            self.Log:str = gift.Log
+            self.Fctrl_str_ver = gift.Fctrl_str_ver
+            self.machine_IP:str = gift.machine_IP
+            self.q_num:int = len(list(filter(ret_q,self.Fluxmanager.get_bias_dict())))
+            self.c_num:int = len(list(filter(ret_c,self.Fluxmanager.get_bias_dict())))
+            
+            # dict
+            self.refIQ = gift.refIQ
+            self.Hcfg = gift.Hcfg
+            self.rotate_angle = gift.rotate_angle
+            
+            if new_Hcfg is not None:
+                from qblox_drive_AS.support.UserFriend import slightly_print
+                self.Hcfg = new_Hcfg
+                self.quantum_device.hardware_config(new_Hcfg)
+                slightly_print("Saved new given Hardware config.")
+                self.made_mobileFctrl()
+            else:
+                self.quantum_device.hardware_config(self.Hcfg)
         
         print("Old friends loaded!")
-    
+
+        
     def QD_keeper(self, special_path:str=''):
         """
         Save the merged dictionary to a json file with the given path. \n
@@ -263,6 +277,41 @@ class QDmanager():
         with open(self.path if special_path == '' else special_path, 'wb') as file:
             pickle.dump(self, file)
             print(f'Summarized info had successfully saved to the given path!')
+
+    def version_converter(self, gift):
+        
+        # string and int
+        self.chip_name:str = gift["chip_info"]["name"]
+        self.chip_type:str = gift["chip_info"]["type"]
+        self.Identity:str = gift["ID"]
+        self.Log:str = gift["Log"]
+        self.Fctrl_str_ver = gift["Fctrl_str"]
+        self.machine_IP:str = gift["IP"]
+        self.q_num:int = len(list(filter(ret_q,gift["Flux"])))
+        self.c_num:int = len(list(filter(ret_c,gift["Flux"])))
+        # class    
+        self.Fluxmanager :FluxBiasDict = FluxBiasDict(qb_number=self.q_num,cp_number=self.c_num)
+        self.Fluxmanager.activate_from_dict(gift["Flux"])
+        self.Notewriter: Notebook = Notebook(q_number=self.q_num)
+        self.Notewriter.activate_from_dict(gift["Note"])
+        if "Waveform" in list(gift.keys()):
+            self.Waveformer:GateGenesis = GateGenesis(q_num=0,c_num=0,log2super=gift["Waveform"])
+        else:
+            self.Waveformer:GateGenesis = GateGenesis(self.q_num,self.c_num)
+        self.quantum_device :QuantumDevice = gift["QD"]
+
+        if "Discriminator" in list(gift.keys()):
+            self.StateDiscriminator = gift["Discriminator"]
+        else:
+            self.StateDiscriminator:Statifier = Statifier()
+        
+        
+        # dict
+        self.Hcfg = gift["Hcfg"]
+        self.refIQ:dict = gift["refIQ"]
+        self.rotate_angle = gift["rota_angle"]
+        
+        self.quantum_device.hardware_config(self.Hcfg)
 
 
     def build_new_QD(self,qubit_number:int,coupler_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
@@ -656,5 +705,4 @@ if __name__ == "__main__":
     QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250218/DR1#11_SumInfo.pkl")
     QD_agent.QD_loader()
     print(QD_agent.StateDiscriminator.elements)
-    
     
