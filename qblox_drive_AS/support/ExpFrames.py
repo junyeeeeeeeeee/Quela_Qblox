@@ -1464,8 +1464,8 @@ class nSingleShot(ExpGovernment):
                         QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
                         QD_savior.StateDiscriminator.check_model_alive(ds[var]*1000, var, show_plot=False)
                         
-                        highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'],2)} in degree.")
-                        QD_savior.rotate_angle[var] = [self.ANA.fit_packs["RO_rotation_angle"]]
+                        highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'][0],2)} in degree.")
+                        QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
                     except BaseException as err:
                         print(f"Get error while analyze your one-shot data: {err}")
                         traceback.print_exc()
@@ -1485,7 +1485,7 @@ class nSingleShot(ExpGovernment):
                     self.ANA._import_data(ds[var]*1000,var_dimension=0,fq_Hz=QD_savior.quantum_device.get_element(var).clock_freqs.f01())
                     self.ANA._start_analysis()
                 
-                    highlight_print(f"{var}: {round(median(array(self.ANA.fit_packs["effT_mK"])),1)} +/- {round(std(array(self.ANA.fit_packs["effT_mK"])),1)} mK")
+                    highlight_print(f"{var}: {round(median(array(self.ANA.fit_packs['effT_mK'])),1)} +/- {round(std(array(self.ANA.fit_packs['effT_mK'])),1)} mK")
                     Data_manager().save_histo_pic(QD_savior,array(self.ANA.fit_packs["effT_mK"]),var,mode="ss",pic_folder=fig_path)
                     Data_manager().save_histo_pic(QD_savior,array(self.ANA.fit_packs["thermal_population"])*100,var,mode="pop",pic_folder=fig_path)
 
