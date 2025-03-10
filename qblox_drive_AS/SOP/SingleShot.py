@@ -64,6 +64,8 @@ def Qubit_state_single_shot(QD_agent:QDmanager,ro_elements:list,shots:int=1000,r
     SS_ds = Dataset(output_dict, coords= {"mixer":array(["I","Q"]), "prepared_state":array([0,1]),"index":arange(shots)})
     SS_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     SS_ds.attrs["execution_time"] = Data_manager().get_time_now()
+    SS_ds.attrs["method"] = "Shot"
+    SS_ds.attrs["system"] = "qblox"
     
     return SS_ds
 

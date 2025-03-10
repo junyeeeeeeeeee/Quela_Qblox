@@ -417,7 +417,7 @@ class analysis_tools():
         
         self.rabi_type = 'PowerRabi' if self.ds.attrs["rabi_type"].lower() == 'power' else 'TimeRabi'
         
-        if self.method.lower() in ['oneshot','singleshot']:
+        if self.method.lower() in ['oneshot','singleshot','shot']:
             p_rec = [] # (variable, )
             
                     
@@ -458,7 +458,7 @@ class analysis_tools():
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         
-        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "oneshot" else False,Dis=1 if self.method.lower() == "oneshot" else None,q=self.qubit)
+        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,q=self.qubit)
 
     def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
         self.fq = tansition_freq_Hz
@@ -568,10 +568,10 @@ class analysis_tools():
     def T2_ana(self,var:str,ref:list, OSmodel:GMMROFidelity=None):
         self.echo:bool=False if self.ds[var].attrs["spin_num"] == 0 else True
         self.qubit = var
-        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
         self.plot_item = {}
         signals = []
-        if self.method.lower() in ['oneshot','singleshot']:
+        if self.method.lower() in ['oneshot','singleshot','shot']:
                 
             p_rec = [] # {q: (repeat, time)}
       
@@ -659,12 +659,12 @@ class analysis_tools():
         
         
         if not self.echo:
-            Fit_analysis_plot(self.ans,P_rescale=True if self.method.lower() == "oneshot" else False,Dis=1 if self.method.lower() == "oneshot" else None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+            Fit_analysis_plot(self.ans,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
         else:
             fig, ax = plt.subplots()
             ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
             ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
-            if self.method.lower() == "oneshot":
+            if self.method.lower() == "shot":
                 ax.set_ylabel("|1> probability")
                 pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
                 ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
@@ -688,10 +688,10 @@ class analysis_tools():
         self.plot_item = {}
         self.T1_fit = []
 
-        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
 
         signals = []
-        if self.method.lower() in ['oneshot','singleshot']:
+        if self.method.lower() in ['oneshot','singleshot','shot']:
             p_rec = []  # (repeat, time, )
             raw_data = array(self.ds.data_vars[self.qubit])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
             reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
@@ -744,7 +744,7 @@ class analysis_tools():
         
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
-        if self.method.lower() == "oneshot":
+        if self.method.lower() == "shot":
             ax.set_ylabel("|1> probability")
             pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
             ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
