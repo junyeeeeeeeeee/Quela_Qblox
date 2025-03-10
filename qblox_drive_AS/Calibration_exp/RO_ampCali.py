@@ -85,7 +85,8 @@ def rolCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rol_coef_samples:dic
         
         rofcali_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"state":["g","e"],"rol":rol_data_idx})
         rofcali_ds.attrs["execution_time"] = Data_manager().get_time_now()
-
+        rofcali_ds.attrs["method"] = "Average"
+        rofcali_ds.attrs["system"] = "qblox"
     
     return rofcali_ds
 

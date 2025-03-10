@@ -62,8 +62,8 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
     
         else:
             preview_para = {}
-            for q in ro_elements:
-                preview_para[q] = ro_elements[q][:2]
+            for q in rof_samples:
+                preview_para[q] = rof_samples[q][:2]
             sched_kwargs['ro_freq']= preview_para
             pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
 
@@ -87,6 +87,8 @@ def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_a
         
         rofcali_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"state":["g","e"],"rof":rof_data_idx})
         rofcali_ds.attrs["execution_time"] = Data_manager().get_time_now()
+        rofcali_ds.attrs["method"] = "Average"
+        rofcali_ds.attrs["system"] = "qblox"
 
         for q in ro_f_origin:
             rofcali_ds.attrs[f"{q}_ori_rof"] = ro_f_origin[q]

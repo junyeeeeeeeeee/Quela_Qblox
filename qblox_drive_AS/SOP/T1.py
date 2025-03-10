@@ -176,7 +176,8 @@ class EnergyRelaxPS(ScheduleConductor):
                 
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            dataset.attrs["method"] = "OneShot" if self._os_mode else "AVG"
+            dataset.attrs["method"] = "Shot" if self._os_mode else "Average"
+            dataset.attrs["system"] = "qblox"
             self.dataset = dataset
 
         else:

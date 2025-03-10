@@ -52,6 +52,7 @@ def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:
             IQ_array = array([iq_tuples[2*q_idx],iq_tuples[2*q_idx+1]])
             dict_[q] = (["mixer","shots"],IQ_array)
         ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"shots":arange(shots)})
+        ds.attrs["system"] = "qblox"
         
     else:
         pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)

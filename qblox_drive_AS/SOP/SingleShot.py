@@ -185,7 +185,8 @@ class ReadoutFidelityPS( ScheduleConductor ):
                 
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-            dataset.attrs["method"] = "OneShot"
+            dataset.attrs["method"] = "Shot"
+            dataset.attrs["system"] = "qblox"
             self.dataset = dataset
 
         else:

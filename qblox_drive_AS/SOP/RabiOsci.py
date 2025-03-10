@@ -246,8 +246,8 @@ class RabiPS(ScheduleConductor):
                     
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
             dataset.attrs["rabi_type"] = self._RabiType
-            dataset.attrs["method"] = "OneShot" if self._os_mode else "AVG"
-            
+            dataset.attrs["method"] = "Shot" if self._os_mode else "Average"
+            dataset.attrs["system"] = "qblox"            
             if self._RabiType == 'time':
                 for q in self.amps:
                     dataset.attrs[f"{q}_piamp"] = self.amps[q]

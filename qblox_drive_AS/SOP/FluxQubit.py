@@ -74,7 +74,8 @@ def Zgate_two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,XYFs:dic
 
         rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":Bias_samples,"freq":freq_datapoint_idx})
         rfs_ds.attrs["execution_time"] = Data_manager().get_time_now()
-
+        rfs_ds.attrs["method"] = "Average"
+        rfs_ds.attrs["system"] = "qblox"
 
     else:
         n_s = 2

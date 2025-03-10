@@ -88,7 +88,8 @@ def half_pi_amp_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, coef_sampl
     if run:
         dataset_2_nc = Dataset(results,coords={"mixer":array(["I","Q"]),"PiPairNum":array(pi_pair_num),"HalfPiCoef":data_sample_idx})
         dataset_2_nc.attrs["execution_time"] = Data_manager().get_time_now()
-        
+        dataset_2_nc.attrs["method"] = "Average"
+        dataset_2_nc.attrs["system"] = "qblox"
    
     return dataset_2_nc
 

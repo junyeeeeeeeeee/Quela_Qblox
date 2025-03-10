@@ -632,7 +632,8 @@ class analysis_tools():
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
-    
+     
+
     def XYF_cali_ana(self,var:str,ref:list):
         raw_data = self.ds[f'{var}']
         time_samples =  array(self.ds[f'{var}_x'])[0][0]
@@ -1189,6 +1190,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ZgateT1_ana(**kwargs)
             case 't1':
                 self.gateError_ana(kwargs["var_name"],self.transition_freq)
+
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
