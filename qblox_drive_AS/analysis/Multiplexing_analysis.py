@@ -1,5 +1,5 @@
 from numpy import array, mean, median, argmax, linspace, arange, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
-from numpy import sqrt, pi
+from numpy import sqrt, pi, inf
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot, gate_phase_fit_analysis
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, cos_fit_analysis, IQ_data_dis, gate_phase_fit_analysis
 from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
@@ -632,7 +632,156 @@ class analysis_tools():
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
-     
+    
+
+
+    def parity_ana(self, var: str, ref: list, OSmodel: GMMROFidelity, t_interval: float):
+        """
+        分析方法：對輸入的資料進行判定、FFT 分析與 Lorentzian 擬合，
+        並將結果存入 self.plot_item 中。
+        """
+
+        from scipy.optimize import curve_fit
+        from scipy.signal import welch  
+
+        # 判斷 echo 狀態
+        self.echo: bool = False if self.ds[var].attrs["spin_num"] == 0 else True
+        self.qubit = var
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
+        self.plot_item = {}
+        if self.method.lower() in ['oneshot','singleshot','shot']:
+            p_rec = []  # 存放各個 repeat 的判定結果
+            
+            # 讀取原始資料，單位乘以 1000
+            # 原始資料形狀: ("mixer", "prepared_state", "repeat", "index", "time_idx")
+            raw_data = array(self.ds.data_vars[self.qubit]) * 1000
+            # 轉換維度順序: ("repeat", "mixer", "time_idx", "prepared_state", "index")
+            reshaped_data = moveaxis(moveaxis(raw_data, 2, 0), -1, 2)
+            
+            # 逐個處理每個 repeat
+            for repetition in reshaped_data:
+                time_proba = []
+                # 建立 DataArray，固定 prepared_state=1 與 time_idx（取自原始 ds）
+                da = DataArray(
+                    repetition,
+                    coords=[
+                        ("mixer", array(["I", "Q"])),
+                        ("time_idx", array(self.ds.coords["time_idx"])),
+                        ("prepared_state", array([1])),
+                        ("index", array(self.ds.coords["index"]))
+                    ]
+                )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                # 假設 ans 為一組分類結果，轉成一維後為 list of 0/1
+                for i in ans:
+                    p = list(i.reshape(-1))
+                    time_proba.append(p)
+                p_rec.append(time_proba)
+
+            # 將時間尺度轉換：原 ds.coords["index"] 乘上 21 μs，轉換成秒 (21e-6 s)
+            self.plot_item["time"] = array(self.ds.coords["index"]) * t_interval  # 單位: s
+            # 假設每個 repeat 只有一筆結果，signals shape: (n_repeat, 1, n_index)
+            signals = array(p_rec)
+            n_rep = signals.shape[0]
+            classification_all = []
+            for r in range(n_rep):
+                classification_all.append(array(signals[r][0]).flatten())
+            classification_all = array(classification_all)  # shape (n_rep, n_index)
+            
+            # ---------------------------
+            # 使用 Welch 取代原本的 FFT
+            # 對每個 repeat 的相鄰變化訊號計算 PSD
+            # ---------------------------
+            dt = t_interval  # 取樣間隔 (s)
+            fs = 1.0 / dt  # 取樣率 (Hz)
+            welch_amplitudes = []
+            print(t_interval)
+            for r in range(n_rep):
+                cl = classification_all[r]
+                # 若相鄰相同則輸出 1，否則 -1
+                adjacent = where(cl[:-1] == cl[1:], 1, -1)
+
+                # 使用 welch 計算功率譜
+                # nperseg、noverlap 可依需求調整，scaling='density' 表示 PSD
+                freq, psd = welch(
+                    adjacent, fs=fs, nperseg = adjacent.shape[0], noverlap = 0, scaling='density')
+                # freq, psd = welch(adjacent, fs=fs, nperseg = 25 , scaling='density')
+
+                # 只取 freq>0 的部分 (若想保留 freq=0 亦可)
+                mask = freq > 0
+                freq_positive = freq[mask]
+                psd_positive = psd[mask]
+
+                welch_amplitudes.append(psd_positive)
+                if r == 0:
+                    Welch_freq = freq_positive  # 所有 repeat 頻率軸應相同
+
+            welch_amplitudes = array(welch_amplitudes)  # shape: (n_rep, n_freq)
+            avg_welch_amp = mean(welch_amplitudes, axis=0)
+            err_welch_amp = std(welch_amplitudes, axis=0, ddof=1) / sqrt(n_rep)
+            
+            # 存入 plot_item 供後續繪圖
+            self.plot_item["Welch_freq"] = Welch_freq
+            self.plot_item["Welch_amp"] = avg_welch_amp
+            self.plot_item["Welch_err"] = err_welch_amp
+
+            # ---------------------------
+            # Lorentzian 擬合：基於 Welch 平均後的 PSD 資料
+            # L(x) = A*(4*gamma)/((2*pi*x)^2 + 4*gamma^2) + c
+            # ---------------------------
+            
+            def lorentzian(x, A, gamma, c):
+                return A * (4 * gamma) / ((2 * pi * x)**2 + 4 * gamma**2) + c
+            
+            p0 = [max(avg_welch_amp) * 25000, 30000, 0]
+
+            lower_bounds = [0, 0, 0]
+            upper_bounds = [max(avg_welch_amp) * 50000, inf, inf] #np.min(avg_welch_amp)]
+
+            popt, pcov = curve_fit(lorentzian, Welch_freq, avg_welch_amp, p0=p0, 
+                                   bounds=(lower_bounds, upper_bounds), maxfev=100000)
+            x_fit = linspace(min(Welch_freq), max(Welch_freq), 1000)
+            y_fit = lorentzian(x_fit, *popt)
+
+            self.plot_item["Lorentzian_x"] = x_fit
+            self.plot_item["Lorentzian_y"] = y_fit
+            self.plot_item["Lorentzian_params"] = (
+                f'Lorentzian Fit Parameters:\n'
+                f'A = {popt[0]:.3e}\n'
+                f'gamma = {popt[1]:.3e}\n'
+                f'c = {popt[2]:.3e}'
+            )
+        else:
+            pass
+
+    def parity_plot(self, save_pic_path: str = None):
+        """
+        繪圖方法：根據 parity_ana 計算結果繪製 FFT 平均結果與 Lorentzian 擬合圖，
+        並依據傳入的 save_pic_path 儲存圖片（若未提供則顯示圖形）。
+        """
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_ParitySwitch_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(self.plot_item["Welch_freq"], self.plot_item["Welch_amp"],'o', markersize=3, label="Welch Data")
+        ax.plot(self.plot_item["Lorentzian_x"], self.plot_item["Lorentzian_y"], '-', label="Lorentzian Fit")
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Welch Amplitude")
+        ax.set_title("Averaged Welch Analysis with Lorentzian Fit")
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.grid(True, which="both")
+        ax.legend()
+        ax.text(0.04, 0.1, self.plot_item["Lorentzian_params"], transform=ax.transAxes, fontsize=10,
+                verticalalignment='bottom', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        plt.tight_layout()
+        if save_pic_path != "":
+            slightly_print(f"pic saved located:\n{save_pic_path}")
+            plt.savefig(save_pic_path)
+            plt.close()
+        else:
+            plt.show()
 
     def XYF_cali_ana(self,var:str,ref:list):
         raw_data = self.ds[f'{var}']
@@ -1154,7 +1303,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.transition_freq = fq_Hz
         self.method = method
 
-    def _start_analysis(self,**kwargs):
+    def _start_analysis(self, **kwargs):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_ana(kwargs["var_name"],self.refIQ)
@@ -1190,7 +1339,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ZgateT1_ana(**kwargs)
             case 't1':
                 self.gateError_ana(kwargs["var_name"],self.transition_freq)
-
+            case 'a3':
+                self.parity_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None, t_interval = kwargs["t_interval"])
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -1232,6 +1382,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ZgateT1_plot(pic_save_folder)
             case 't1':
                 self.gateError_plot(pic_save_folder)
+            case 'a3':
+                self.parity_plot(pic_save_folder)
 
 
 

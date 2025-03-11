@@ -1050,7 +1050,7 @@ class PowerRabiOsci(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'variable':
                     ANA = Multiplex_analyzer("m11")
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)      
                     ANA._import_data(ds,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var])
                     ANA._start_analysis(var_name=var, OSmodel=md)
@@ -1177,7 +1177,7 @@ class TimeRabiOsci(ExpGovernment):
             for var in ds.data_vars:
                 if str(var).split("_")[-1] != 'variable':
                     ANA = Multiplex_analyzer("m11")  
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)    
                     ANA._import_data(ds,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var])
                     ANA._start_analysis(var_name=var, OSmodel=md)
@@ -1631,7 +1631,7 @@ class Ramsey(ExpGovernment):
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)
                     if QD_savior.rotate_angle[var][0] != 0:
                         ref = QD_savior.rotate_angle[var]
@@ -1795,7 +1795,7 @@ class SpinEcho(ExpGovernment):
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)
                     if QD_savior.rotate_angle[var][0] != 0:
                         ref = QD_savior.rotate_angle[var]
@@ -1956,7 +1956,7 @@ class CPMG(ExpGovernment):
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)
                     if QD_savior.rotate_angle[var][0] != 0:
                         ref = QD_savior.rotate_angle[var]
@@ -2112,7 +2112,7 @@ class EnergyRelaxation(ExpGovernment):
         
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
-                    if ds.attrs['method'].lower() == "oneshot":
+                    if ds.attrs['method'].lower() == "shot":
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)
                         
                     self.ANA = Multiplex_analyzer("m13")
@@ -3176,7 +3176,164 @@ class XGateErrorTest(ExpGovernment):
 
         self.CloseMeasurement() 
 
+class ParitySwitch(ExpGovernment):
+    def __init__(self,QD_path:str,data_folder:str=None,JOBID:str=None):
+        super().__init__()
+        self.QD_path = QD_path
+        self.save_dir = data_folder
+        self.__raw_data_location:str = ""
+        self.JOBID = JOBID
+        self.histos:int = 0
+        self.execution = False  # 預設值，避免未定義錯誤
 
+    @property
+    def RawDataPath(self):
+        return self.__raw_data_location
+
+    def SetParameters(self, time_range:dict, histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+        """ ### Args:
+            * time_range: {"q0":500e-9, ...}\n
+            * histo_counts: int, larger than 100 use while loop.\n
+        """
+        from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
+        
+
+        self.time_samples = {}
+        for q in time_range:
+            self.time_samples[q] = sort_elements_2_multiples_of(array([time_range[q]])*1e9,4)*1e-9
+            print(self.time_samples[q])
+        self.avg_n = avg_n
+        # raise TimeoutError()
+
+        if histo_counts <= 200:
+            self.want_while = False
+            self.histos = histo_counts
+        else:
+            self.want_while = True
+            self.histos = 1
+        
+        self.execution = execution
+        self.OSmode = OSmode
+        self.spin_num = {}
+        self.target_qs = list(time_range.keys())
+
+        # FPGA memory limit guard
+        if self.OSmode:
+            for q in self.time_samples:
+                if self.avg_n * self.time_samples[q].shape[0] > 131000:
+                    raise MemoryError(f"Due to Qblox FPGA memory limit, time_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.time_samples[q].shape[0]} for {q}")
+        
+        
+
+    def PrepareHardware(self):
+        self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        # bias coupler
+        self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
+        # offset bias, LO and atte
+        for q in self.target_qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            slightly_print(f"{q} arti-detune = {round(self.QD_agent.Notewriter.get_artiT2DetuneFor(q)*1e-6,2)} MHz")
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.QD_agent.Notewriter.get_artiT2DetuneFor(q)
+            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
+        
+    def RunMeasurement(self):
+        from qblox_drive_AS.SOP.T2 import RamseyT2PS
+        meas = RamseyT2PS()
+        meas.set_time_samples = self.time_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.set_repeat = self.histos
+        meas.set_spin_num = self.spin_num
+        meas.set_second_phase = 'x'
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.execution = self.execution
+        
+        meas.run()
+        dataset = meas.dataset
+
+
+        # dataset = Ramsey(self.QD_agent,self.meas_ctrl,self.time_samples,self.spin_num,self.histos,self.avg_n,self.execution)
+        if self.execution:
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"ParitySwitch_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                
+            else:
+                self.save_fig_path = None
+        
+    def CloseMeasurement(self):
+        shut_down(self.cluster,self.Fctrl)
+
+
+    def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None,new_QDagent:QDmanager=None,new_pic_save_place:str=None):
+        """ User callable analysis function pack """
+        
+        if self.execution:
+            if new_QD_path is None:
+                QD_file = self.QD_path
+            else:
+                QD_file = new_QD_path
+
+            if new_file_path is None:
+                file_path = self.__raw_data_location
+                fig_path = self.save_dir
+            else:
+                file_path = new_file_path
+                fig_path = os.path.split(new_file_path)[0]
+
+            if new_QDagent is None:
+                QD_savior = QDmanager(QD_file)
+                QD_savior.QD_loader()
+            else:
+                QD_savior = new_QDagent
+
+            if new_pic_save_place is not None:
+                fig_path = new_pic_save_place
+
+            ds = open_dataset(file_path)
+            md = None
+            
+            for var in ds.data_vars:
+                if var.split("_")[-1] != 'x':
+                    self.ANA = Multiplex_analyzer("a3")
+                    if ds.attrs['method'].lower() == "shot":
+                        md = QD_savior.StateDiscriminator.summon_discriminator(var)
+                    if QD_savior.rotate_angle[var][0] != 0:
+                        ref = QD_savior.rotate_angle[var]
+                    else:
+                        eyeson_print(f"{var} rotation angle is 0, use contrast to analyze.")
+                        ref = QD_savior.refIQ[var]
+                    self.ANA._import_data(ds,var_dimension=2,refIQ=ref)
+
+                    q_infor = QD_savior.quantum_device.get_element(var)
+                    
+                    self.ANA._start_analysis(var_name=var, OSmodel=md, t_interval = q_infor.measure.integration_time() + q_infor.reset.duration())
+                    if self.save_pics:
+                        self.ANA._export_result(fig_path)
+     
+        ds.close()
+        if self.keep_QD:
+            QD_savior.QD_keeper()
+            
+
+    def WorkFlow(self,freq_detune_Hz:float=None):
+        while True:
+            self.PrepareHardware()
+
+            if freq_detune_Hz is not None:
+                for q in self.target_qs:
+                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+freq_detune_Hz)
+
+            self.RunMeasurement()
+
+            self.CloseMeasurement()   
+            if not self.want_while:
+                break
 
 
 if __name__ == "__main__":
