@@ -3301,7 +3301,7 @@ class ParitySwitch(ExpGovernment):
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("a3")
-                    if ds.attrs['method'].lower() == "shot":
+                    if ds.attrs['method'].lower() in ["shot", "oneshot"]:
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)
                     if QD_savior.rotate_angle[var][0] != 0:
                         ref = QD_savior.rotate_angle[var]
