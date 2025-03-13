@@ -5,6 +5,7 @@ from qblox_drive_AS.support.UserFriend import *
 from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
 from qblox_drive_AS.support.QDmanager import find_path_by_port
+from qblox_drive_AS.support.StatifyContainer import Statifier
 
 class QD_modifier():
     def __init__(self,QD_path:str):
@@ -12,12 +13,18 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
+        
     
     def comment(self, message:str=None):
         if message is not None:
             if message != "":
                 self.QD_agent.refresh_log(str(message))
                 self.to_modifiy_item.append("Comments")
+    
+    def reset_discriminator(self, switch:bool):
+        if switch:
+            self.QD_agent.StateDiscriminator = Statifier()
+            self.to_modifiy_item.append("Discriminators")
 
     def reset_rotation_angle(self, target_qs:list):
         if len(target_qs) > 0:
@@ -55,6 +62,7 @@ class QD_modifier():
                 self.to_modifiy_item.append("DRAG_coef")
 
     def setGlobally_reset_time(self, reset_time_s:float=None):
+        
         if reset_time_s is not None:
             for q in self.QD_agent.quantum_device.elements():
                 self.QD_agent.quantum_device.get_element(q).reset.duration(reset_time_s)
@@ -200,7 +208,7 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "/Users/ratiswu/Desktop/FTP-ASqcMeas/20250117_231012/qblox_ExpConfigs_20250117231012/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250313/DR1#11_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
@@ -262,5 +270,7 @@ if __name__ == "__main__":
     ### Export a toml to see the QD info
     QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]     
 
+    # Reset the whole Statifier
+    QMaster.reset_discriminator(switch=False)  # trun on the switch if you wanna initialize it
     
     QMaster.save_modifications()

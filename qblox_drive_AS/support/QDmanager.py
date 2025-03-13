@@ -9,7 +9,7 @@ from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.device_under_test.transmon_element import BasicTransmonElement
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
+from qblox_drive_AS.support.StatifyContainer import Statifier
 
 
 def ret_q(dict_a):
@@ -116,7 +116,7 @@ class QDmanager():
     def __init__(self,QD_path:str=''):
         self.manager_version:str = "v2.0" # Only RatisWu can edit it
         self.path = QD_path
-        self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+        self.StateDiscriminator:Statifier = Statifier()
         self.Waveformer:GateGenesis = None
         self.machine_IP = ""
         self.refIQ = {}
@@ -145,12 +145,16 @@ class QDmanager():
         self.Fctrl_str_ver = {}
         try:
             ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
-            for q in ans:
-                cluster_name = ans[q][0].split("_")[0]
-                module_name = ans[q][0].split("_")[1]
-                func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+            qbits_registered = self.quantum_device.elements()
+            for q in qbits_registered:
+                if q in ans:
+                    cluster_name = ans[q][0].split("_")[0]
+                    module_name = ans[q][0].split("_")[1]
+                    func_name = f"out{ans[q][1].split('_')[-1]}_offset"
 
-                self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+                    self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
+                else:
+                    self.Fctrl_str_ver[q] = f"pass" 
         except:
             ans = self.quantum_device.elements()
             eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")
@@ -207,9 +211,10 @@ class QDmanager():
         with open(self.path, 'rb') as inp:
             gift:QDmanager = pickle.load(inp) # refer to `merged_file` in QD_keeper()
 
+
         try:  
             manager_ver = gift.manager_version
-            if manager_ver.lower() != "v2.0":
+            if manager_ver.lower() not in  ["v2.0","v2.1"]:
                 update = True   
         except:
             update = True
@@ -217,16 +222,24 @@ class QDmanager():
         if update:
             self.version_converter(gift)
             print("This QD_file is out-updated, successfully updated !")
+
         else:
             # class
             self.Fluxmanager = gift.Fluxmanager
             self.Notewriter = gift.Notewriter
             self.Waveformer = gift.Waveformer
             self.quantum_device = gift.quantum_device
-            self.StateDiscriminator = gift.StateDiscriminator
+            try:
+                if manager_ver.lower() == "v2.1":
+                    self.StateDiscriminator = gift.StateDiscriminator
+                else:
+                    self.StateDiscriminator:Statifier = Statifier()
+            except:
+                print("Generating Statifier ...")
+                self.StateDiscriminator:Statifier = Statifier()
 
             # string/ int
-            # self.manager_version = gift.manager_version
+            self.manager_version = gift.manager_version
             self.chip_name:str = gift.chip_name
             self.chip_type:str = gift.chip_type
             self.Identity:str = gift.Identity
@@ -269,7 +282,7 @@ class QDmanager():
             print(f'Summarized info had successfully saved to the given path!')
 
     def version_converter(self, gift):
-        
+        from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
         # string and int
         self.chip_name:str = gift["chip_info"]["name"]
         self.chip_type:str = gift["chip_info"]["type"]
@@ -291,9 +304,12 @@ class QDmanager():
         self.quantum_device :QuantumDevice = gift["QD"]
 
         if "Discriminator" in list(gift.keys()):
-            self.StateDiscriminator = gift["Discriminator"]
+            if type(gift["Discriminator"]) != GMMROFidelity:
+                self.StateDiscriminator = gift["Discriminator"]
+            else:
+                self.StateDiscriminator:Statifier = Statifier()
         else:
-            self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+            self.StateDiscriminator:Statifier = Statifier()
         
         
         # dict
@@ -302,6 +318,7 @@ class QDmanager():
         self.rotate_angle = gift["rota_angle"]
         
         self.quantum_device.hardware_config(self.Hcfg)
+
 
     def build_new_QD(self,qubit_number:int,coupler_number:int,Hcfg:dict,cluster_ip:str,dr_loc:str,chip_name:str='',chip_type:str=''):
 
@@ -324,7 +341,7 @@ class QDmanager():
         self.Fluxmanager :FluxBiasDict = FluxBiasDict(self.q_num,self.cp_num)
         self.Notewriter: Notebook = Notebook(self.q_num)
         self.Waveformer:GateGenesis = GateGenesis(q_num=self.q_num,c_num=self.cp_num)
-        self.StateDiscriminator:GMMROFidelity = GMMROFidelity()
+        self.StateDiscriminator:Statifier = Statifier()
 
         
         # for firmware v0.7.0
@@ -338,7 +355,7 @@ class QDmanager():
             qubit.reset.duration(250e-6)
             qubit.clock_freqs.readout(6e9)
             qubit.measure.acq_delay(0)
-            qubit.measure.pulse_amp(0.15)
+            qubit.measure.pulse_amp(0.5)
             qubit.measure.pulse_duration(1e-6)
             qubit.measure.integration_time(1e-6)
             qubit.clock_freqs.f01(4e9)
@@ -420,7 +437,7 @@ class QDmanager():
         if "state_discriminator" in option_selected:
             self.StateDiscriminator = option_selected["state_discriminator"]
         else:
-            self.StateDiscriminator = GMMROFidelity()
+            self.StateDiscriminator = Statifier()
 
 
 
@@ -691,6 +708,7 @@ class Data_manager:
 
 if __name__ == "__main__":
     
-    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250226/DR1#11_SumInfo.pkl")
+    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250218/DR1#11_SumInfo.pkl")
     QD_agent.QD_loader()
-    # QD_agent.QD_keeper()
+    print(QD_agent.StateDiscriminator.elements)
+    

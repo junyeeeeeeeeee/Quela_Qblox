@@ -1,5 +1,5 @@
 from numpy import array, mean, median, argmax, linspace, arange, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
-from numpy import sqrt, pi
+from numpy import sqrt, pi, inf
 from numpy import ndarray
 from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 import quantify_core.data.handling as dh
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, T1_fit_analysis, cos_fit_analysis, IQ_data_dis, twotone_comp_plot, gate_phase_fit_analysis
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis, Rabi_fit_analysis, T2_fit_analysis, Fit_analysis_plot, cos_fit_analysis, IQ_data_dis, gate_phase_fit_analysis
 from qblox_drive_AS.support.QuFluxFit import remove_outlier_after_fit
 from scipy.optimize import curve_fit
 from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
@@ -172,7 +172,7 @@ class Artist():
             axs = [axs]
         for ax in axs:
             ax:plt.Axes
-            ax.grid()
+            ax.grid() 
             ax.xaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.yaxis.set_tick_params(labelsize=self.tick_number_fontsize)
             ax.xaxis.label.set_size(self.axis_label_fontsize) 
@@ -410,25 +410,45 @@ class analysis_tools():
             plt.savefig(pic_path)
             plt.close()
 
-    def rabi_ana(self,var:str):
+    def rabi_ana(self,var:str, OSmodel:GMMROFidelity=None):
         self.qubit = var
-        self.rabi_type = self.ds.attrs["rabi_type"]
-        i_data = array(self.ds[var])[0]
-        q_data = array(self.ds[var])[1]
-        if not self.ds.attrs["OS_mode"]:
+        self.method:str = self.ds.attrs['method'] if 'method' in self.ds.attrs else "AVG"
+        
+        
+        self.rabi_type = 'PowerRabi' if self.ds.attrs["rabi_type"].lower() == 'power' else 'TimeRabi'
+        
+        if self.method.lower() in ['oneshot','singleshot','shot']:
+            p_rec = [] # (variable, )
+            
+                    
+            raw_data = array(self.ds.data_vars[var])*1000 # Shape ("mixer","prepared_state","index","var_idx")
+            reshaped_data = moveaxis(raw_data,-1,1)   # raw shape -> ("mixer","var_idx","prepared_state","index")
+                
+            da = DataArray(reshaped_data, coords= [("mixer",array(["I","Q"])), ("var_idx",array(self.ds.coords["var_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+            OSmodel.discriminator._import_data(da)
+            OSmodel.discriminator._start_analysis()
+            ans = OSmodel.discriminator._export_result()
+            
+            for i in ans:
+                p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                p_rec.append(p)
+            
+            data_to_fit = array(p_rec)
+            x_data = array(self.ds.data_vars[f"{var}_variable"])[0][0][0]
+
+        else:
+            i_data = array(self.ds[var])[0]
+            q_data = array(self.ds[var])[1]
+            x_data = array(self.ds[f"{var}_variable"])[0]
             if len(self.refIQ) == 2:
                 data_to_fit = sqrt((i_data-self.refIQ[0])**2+(q_data-self.refIQ[1])**2)
             else:
                 data_to_fit = rotate_data(array(self.ds[var]),float(self.refIQ[0]))[0]
-        else:
-            # wait GMM
-            pass
 
+        
         if self.rabi_type.lower() == 'powerrabi':
-            x_data = array(self.ds[f"{var}_piamp"])[0]
             fixed = self.ds.attrs[f'{var}_pidura']
         else:
-            x_data = array(self.ds[f"{var}_pidura"])[0]
             fixed = self.ds.attrs[f'{var}_piamp']
     
         self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
@@ -437,62 +457,139 @@ class analysis_tools():
     def rabi_plot(self, save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
-        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=None,Dis=None,q=self.qubit)
+        
+        Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,q=self.qubit)
 
-    def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
+    def oneshot_ana(self, var:str,data:DataArray,tansition_freq_Hz:float=None):
+        """ data shape (repeat, mixer, prepared_state, index)""" 
+        
         self.fq = tansition_freq_Hz
-        self.gmm2d_fidelity = GMMROFidelity()
-        self.gmm2d_fidelity._import_data(data)
-        self.gmm2d_fidelity._start_analysis()
-        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-        
-        p00 = g1d_fidelity.g1d_dist[0][0][0]
-        self.thermal_populations = g1d_fidelity.g1d_dist[0][0][1]
-        p11 = g1d_fidelity.g1d_dist[1][0][1]
-        if self.fq is not None:
-            self.effT_mK = p01_to_Teff(self.thermal_populations, self.fq)*1000
-        else:
-            self.effT_mK = 0
-        self.RO_fidelity_percentage = (p00+p11)*100/2
+        self.effT_mK, self.thermal_populations, self.RO_fidelity_percentage, self.RO_rotate_angle = [], [], [], []
+
+        rot_data = []
+
+        for repetition in array(data):
+            da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(self.ds.coords["prepared_state"])), ("index",array(self.ds.coords["index"]))] )
+            self.gmm2d_fidelity = GMMROFidelity()
+            self.gmm2d_fidelity._import_data(da)
+            self.gmm2d_fidelity._start_analysis()
+            g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+            
+            p00 = g1d_fidelity.g1d_dist[0][0][0]
+            self.thermal_populations.append(g1d_fidelity.g1d_dist[0][0][1])
+            p11 = g1d_fidelity.g1d_dist[1][0][1]
+            if self.fq is not None:
+                self.effT_mK.append(p01_to_Teff(self.thermal_populations[-1], self.fq)*1000)
+            else:
+                self.effT_mK.append(0)
+            self.RO_fidelity_percentage.append((p00+p11)*100/2)
 
 
-        _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
-        z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
-        self.rotated_data = empty_like(array(data))
-        for state_idx, state_data in enumerate(z):
-            self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
-        
+            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
+            self.RO_rotate_angle.append(rotate_angle)
+            z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+            
+            container = empty_like(array(repetition))
+            
+            for state_idx, state_data in enumerate(z):
+                
+                container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
+
+            rot_data.append(moveaxis(container,0,1).tolist())
+            
+            
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
-
+        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
+    
     def oneshot_plot(self,save_pic_path:str=None):
-        da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
-        self.gmm2d_fidelity._import_data(da)
-        self.gmm2d_fidelity._start_analysis()
-        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+        
+        for var in self.rotated_ds.data_vars:
+            for repetition in array(self.rotated_ds[var]):
+                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(repetition).shape[2]))] )
+                self.gmm2d_fidelity._import_data(da)
+                self.gmm2d_fidelity._start_analysis()
+                g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
 
-        plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
-        plt.close()
+                plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                plt.close()
 
-    def T2_ana(self,var:str,ref:list):
-        raw_data = self.ds[var]
-        time_samples = array(self.ds[f"{var}_x"])[0][0]
-        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+    
+    def oneshot_urgent_plot(self, data:ndarray, save_pic_path:str=None):
+        """ data shape: ("mixer", "prepared_state", "index")"""
+        
+        data = moveaxis(data[0],0,1)
+        Plotter = Artist(f"SingleShot raw data", save_pic_path)
+        fig, axs = Plotter.build_up_plot_frame((2,1),(6,9))
+        color = ['blue','red']
+        for idx, state in enumerate(data):
+            ax = Plotter.add_scatter_on_ax(state[0],state[1],ax=axs[idx],c=color[idx],s=1)
+            ax.set_aspect('equal')
+            Plotter.includes_axes([ax])
+
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"Prepare |0>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},
+            {'subtitle':"Prepare |1>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},]
+        )
+        Plotter.export_results()
+
+
+    def T2_ana(self,var:str,ref:list, OSmodel:GMMROFidelity=None):
+        self.echo:bool=False if self.ds[var].attrs["spin_num"] == 0 else True
         self.qubit = var
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
+        self.plot_item = {}
+        signals = []
+        if self.method.lower() in ['oneshot','singleshot','shot']:
+                
+            p_rec = [] # {q: (repeat, time)}
+      
+            raw_data = array(self.ds.data_vars[self.qubit])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+           
+            for repetition in reshaped_data:
+                time_proba = []
+                    
+                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(self.ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                
+                for i in ans:
+                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                    time_proba.append(p)
+                p_rec.append(time_proba) 
+                        
+                            
+            self.plot_item["time"] = array(self.ds.data_vars[f"{self.qubit}_x"])[0][0][0][0]*1e6
+            signals = array(p_rec)
+    
+        else:
+            raw_data = self.ds[var]
+            
+            self.plot_item["time"] =  array(self.ds[f"{var}_x"])[0][0]*1e6
+            reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+            for idx, data in enumerate(reshaped):
+                if len(ref) == 1:
+                    signals.append(rotate_data(data,ref[0])[0]) # I
+                else:
+                    signals.append(sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2))
+
+
 
 
         self.T2_fit = []
-        for idx, data in enumerate(reshaped):
-            self.echo:bool=False if raw_data.attrs["spin_num"] == 0 else True
-            if len(ref) == 1:
-                self.data_n = rotate_data(data,ref[0])[0]
-            else:
-                self.data_n = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)
-            self.plot_item = {"data":self.data_n*1000,"time":array(time_samples)*1e6}
+        for data in signals:
+            
+            self.plot_item["data"] = array(data)
+            
             if not self.echo:
-                self.ans = T2_fit_analysis(self.plot_item["data"]/1000,self.plot_item["time"]/1e6)
+                self.ans = T2_fit_analysis(self.plot_item["data"],self.plot_item["time"]/1e6)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
+                self.fit_packs["phase"] = self.ans.attrs["phase"]
+                
             else:
+                
                 da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
                 da.name = "dummy"
                 my_ana = RelaxationAnalysis(da)
@@ -506,6 +603,156 @@ class analysis_tools():
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
     
+
+
+    def parity_ana(self, var: str, ref: list, OSmodel: GMMROFidelity, t_interval: float):
+        """
+        分析方法：對輸入的資料進行判定、FFT 分析與 Lorentzian 擬合，
+        並將結果存入 self.plot_item 中。
+        """
+
+        from scipy.optimize import curve_fit
+        from scipy.signal import welch  
+
+        # 判斷 echo 狀態
+        self.echo: bool = False if self.ds[var].attrs["spin_num"] == 0 else True
+        self.qubit = var
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
+        self.plot_item = {}
+        if self.method.lower() in ['oneshot','singleshot','shot']:
+            p_rec = []  # 存放各個 repeat 的判定結果
+            
+            # 讀取原始資料，單位乘以 1000
+            # 原始資料形狀: ("mixer", "prepared_state", "repeat", "index", "time_idx")
+            raw_data = array(self.ds.data_vars[self.qubit]) * 1000
+            # 轉換維度順序: ("repeat", "mixer", "time_idx", "prepared_state", "index")
+            reshaped_data = moveaxis(moveaxis(raw_data, 2, 0), -1, 2)
+            
+            # 逐個處理每個 repeat
+            for repetition in reshaped_data:
+                time_proba = []
+                # 建立 DataArray，固定 prepared_state=1 與 time_idx（取自原始 ds）
+                da = DataArray(
+                    repetition,
+                    coords=[
+                        ("mixer", array(["I", "Q"])),
+                        ("time_idx", array(self.ds.coords["time_idx"])),
+                        ("prepared_state", array([1])),
+                        ("index", array(self.ds.coords["index"]))
+                    ]
+                )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                # 假設 ans 為一組分類結果，轉成一維後為 list of 0/1
+                for i in ans:
+                    p = list(i.reshape(-1))
+                    time_proba.append(p)
+                p_rec.append(time_proba)
+
+            # 將時間尺度轉換：原 ds.coords["index"] 乘上 21 μs，轉換成秒 (21e-6 s)
+            self.plot_item["time"] = array(self.ds.coords["index"]) * t_interval  # 單位: s
+            # 假設每個 repeat 只有一筆結果，signals shape: (n_repeat, 1, n_index)
+            signals = array(p_rec)
+            n_rep = signals.shape[0]
+            classification_all = []
+            for r in range(n_rep):
+                classification_all.append(array(signals[r][0]).flatten())
+            classification_all = array(classification_all)  # shape (n_rep, n_index)
+            
+            # ---------------------------
+            # 使用 Welch 取代原本的 FFT
+            # 對每個 repeat 的相鄰變化訊號計算 PSD
+            # ---------------------------
+            dt = t_interval  # 取樣間隔 (s)
+            fs = 1.0 / dt  # 取樣率 (Hz)
+            welch_amplitudes = []
+            print(t_interval)
+            for r in range(n_rep):
+                cl = classification_all[r]
+                # 若相鄰相同則輸出 1，否則 -1
+                adjacent = where(cl[:-1] == cl[1:], 1, -1)
+
+                # 使用 welch 計算功率譜
+                # nperseg、noverlap 可依需求調整，scaling='density' 表示 PSD
+                freq, psd = welch(
+                    adjacent, fs=fs, nperseg = adjacent.shape[0], noverlap = 0, scaling='density')
+                # freq, psd = welch(adjacent, fs=fs, nperseg = 25 , scaling='density')
+
+                # 只取 freq>0 的部分 (若想保留 freq=0 亦可)
+                mask = freq > 0
+                freq_positive = freq[mask]
+                psd_positive = psd[mask]
+
+                welch_amplitudes.append(psd_positive)
+                if r == 0:
+                    Welch_freq = freq_positive  # 所有 repeat 頻率軸應相同
+
+            welch_amplitudes = array(welch_amplitudes)  # shape: (n_rep, n_freq)
+            avg_welch_amp = mean(welch_amplitudes, axis=0)
+            err_welch_amp = std(welch_amplitudes, axis=0, ddof=1) / sqrt(n_rep)
+            
+            # 存入 plot_item 供後續繪圖
+            self.plot_item["Welch_freq"] = Welch_freq
+            self.plot_item["Welch_amp"] = avg_welch_amp
+            self.plot_item["Welch_err"] = err_welch_amp
+
+            # ---------------------------
+            # Lorentzian 擬合：基於 Welch 平均後的 PSD 資料
+            # L(x) = A*(4*gamma)/((2*pi*x)^2 + 4*gamma^2) + c
+            # ---------------------------
+            
+            def lorentzian(x, A, gamma, c):
+                return A * (4 * gamma) / ((2 * pi * x)**2 + 4 * gamma**2) + c
+            
+            p0 = [max(avg_welch_amp) * 25000, 30000, 0]
+
+            lower_bounds = [0, 0, 0]
+            upper_bounds = [max(avg_welch_amp) * 50000, inf, inf] #np.min(avg_welch_amp)]
+
+            popt, pcov = curve_fit(lorentzian, Welch_freq, avg_welch_amp, p0=p0, 
+                                   bounds=(lower_bounds, upper_bounds), maxfev=100000)
+            x_fit = linspace(min(Welch_freq), max(Welch_freq), 1000)
+            y_fit = lorentzian(x_fit, *popt)
+
+            self.plot_item["Lorentzian_x"] = x_fit
+            self.plot_item["Lorentzian_y"] = y_fit
+            self.plot_item["Lorentzian_params"] = (
+                f'Lorentzian Fit Parameters:\n'
+                f'A = {popt[0]:.3e}\n'
+                f'gamma = {popt[1]:.3e}\n'
+                f'c = {popt[2]:.3e}'
+            )
+        else:
+            pass
+
+    def parity_plot(self, save_pic_path: str = None):
+        """
+        繪圖方法：根據 parity_ana 計算結果繪製 FFT 平均結果與 Lorentzian 擬合圖，
+        並依據傳入的 save_pic_path 儲存圖片（若未提供則顯示圖形）。
+        """
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_ParitySwitch_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(self.plot_item["Welch_freq"], self.plot_item["Welch_amp"],'o', markersize=3, label="Welch Data")
+        ax.plot(self.plot_item["Lorentzian_x"], self.plot_item["Lorentzian_y"], '-', label="Lorentzian Fit")
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Welch Amplitude")
+        ax.set_title("Averaged Welch Analysis with Lorentzian Fit")
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.grid(True, which="both")
+        ax.legend()
+        ax.text(0.04, 0.1, self.plot_item["Lorentzian_params"], transform=ax.transAxes, fontsize=10,
+                verticalalignment='bottom', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        plt.tight_layout()
+        if save_pic_path != "":
+            slightly_print(f"pic saved located:\n{save_pic_path}")
+            plt.savefig(save_pic_path)
+            plt.close()
+        else:
+            plt.show()
+
     def XYF_cali_ana(self,var:str,ref:list):
         raw_data = self.ds[f'{var}']
         time_samples =  array(self.ds[f'{var}_x'])[0][0]
@@ -528,12 +775,18 @@ class analysis_tools():
     def T2_plot(self,save_pic_path:str=None):
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
+        
+        
         if not self.echo:
-            Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
+            Fit_analysis_plot(self.ans,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,spin_echo=self.echo,save_path=save_pic_path,q=self.qubit)
         else:
             fig, ax = plt.subplots()
             ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
             ax.set_title(f"{self.qubit} T2 = {round(self.ans.params['tau'].value,1)} µs" )
+            if self.method.lower() == "shot":
+                ax.set_ylabel("|1> probability")
+                pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
+                ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
             if save_pic_path != "" : 
                 plt.savefig(save_pic_path)
                 plt.close()
@@ -548,35 +801,73 @@ class analysis_tools():
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
-    def T1_ana(self,var:str,ref:list):
-        raw_data = self.ds[var]
-        time_samples = array(self.ds[f"{var}_x"])[0][0]
-        reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+    def T1_ana(self,var:str,ref:list,OSmodel:GMMROFidelity=None):
+        
         self.qubit = var
-        self.plot_item = {"time":array(time_samples)*1e6}
+        self.plot_item = {}
         self.T1_fit = []
-        for idx, data in enumerate(reshaped):
-            if len(ref) == 1:
-                self.plot_item["data"] = rotate_data(data,ref[0])[0]*1000 # I
-            else:
-                self.plot_item["data"] = sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000
+
+        self.method = self.ds.attrs['method'] if 'method' in self.ds.attrs else "Average"
+
+        signals = []
+        if self.method.lower() in ['oneshot','singleshot','shot']:
+            p_rec = []  # (repeat, time, )
+            raw_data = array(self.ds.data_vars[self.qubit])*1000 # Shape ("mixer","prepared_state","repeat","index","time_idx")
+            reshaped_data = moveaxis(moveaxis(raw_data,2,0),-1,2)   # raw shape -> ("repeat","mixer","time_idx","prepared_state","index")
+            for repetition in reshaped_data:
+                time_proba = []
+                    
+                da = DataArray(repetition, coords= [("mixer",array(["I","Q"])), ("time_idx",array(self.ds.coords["time_idx"])), ("prepared_state",array([1])), ("index",array(self.ds.coords["index"]))] )
+                OSmodel.discriminator._import_data(da)
+                OSmodel.discriminator._start_analysis()
+                ans = OSmodel.discriminator._export_result()
+                
+                for i in ans:
+                    p = list(i.reshape(-1)).count(1)/len(list(i.reshape(-1)))
+                    time_proba.append(p)
+                p_rec.append(time_proba) 
             
-            da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
-            da.name = "dummy"
+            signals = array(p_rec) 
+            self.plot_item["time"] = array(self.ds.data_vars[f"{self.qubit}_x"])[0][0][0][0]*1e6
+            
+                
+        else:
+            raw_data = self.ds[var]
+            self.plot_item["time"] = array(self.ds[f"{var}_x"])[0][0]*1e6
+            reshaped = moveaxis(array(raw_data),0,1)  # (repeat, IQ, idx)
+            for idx, data in enumerate(reshaped):
+                if len(ref) == 1:
+                    signals.append(rotate_data(data,ref[0])[0]*1000) # I
+                else:
+                    signals.append(sqrt((data[0]-ref[0])**2+(data[1]-ref[1])**2)*1000)
+
+        for repetition in signals:
+            da = DataArray(data=array(repetition), coords={"time":self.plot_item["time"]*1e3})
+            # da.name = "dummy"
             my_ana = RelaxationAnalysis(da)
             my_ana._start_analysis()
             self.ans = my_ana.fit_result
-            
+            if len(self.T1_fit) == 0 or self.ans.params["tau"].value > max(self.T1_fit):
+                self.plot_item["data"] = repetition
+
             self.T1_fit.append(self.ans.params["tau"].value)
+        
         self.fit_packs["median_T1"] = median(array(self.T1_fit))
         self.fit_packs["mean_T1"] = mean(array(self.T1_fit))
         self.fit_packs["std_T1"] = std(array(self.T1_fit))
     
     def T1_plot(self,save_pic_path:str=None):
+        
         save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_T1_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         fig, ax = plt.subplots()
+        
         ax = plot_qubit_relaxation(self.plot_item["time"],self.plot_item["data"], ax, self.ans)
         ax.set_title(f"{self.qubit} T1 = {round(self.ans.params['tau'].value,1)} µs" )
+        if self.method.lower() == "shot":
+            ax.set_ylabel("|1> probability")
+            pi_fidelity = round((self.ans.params['c']+self.plot_item['data'][0])*100,2)
+            ax.legend(["data",f"Offset={round(self.ans.params['c']*100,2)} %, pi-fidelity~{pi_fidelity} %"])
+
         if save_pic_path != "" : 
             slightly_print(f"pic saved located:\n{save_pic_path}")
             plt.savefig(save_pic_path)
@@ -974,14 +1265,15 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
         self.fit_packs = {}
 
 
-    def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None):
+    def _import_data( self, data:Dataset|DataArray, var_dimension:int, refIQ:list=[], fit_func:callable=None, fq_Hz:float=None, method:str="AVG"):
         self.ds = data
         self.dim = var_dimension
         self.refIQ = refIQ if len(refIQ) != 0 else [0,0]
         self.fit_func:callable = fit_func
         self.transition_freq = fq_Hz
+        self.method = method
 
-    def _start_analysis(self,**kwargs):
+    def _start_analysis(self, **kwargs):
         match self.exp_name:
             case 'm5':
                 self.fluxCoupler_ana(kwargs["var_name"],self.refIQ)
@@ -992,13 +1284,13 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm9': 
                 self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
-                self.rabi_ana(kwargs["var_name"])
-            case 'm14': 
-                self.oneshot_ana(self.ds,self.transition_freq)
+                self.rabi_ana(kwargs["var_name"], OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
+            case 'm14':
+                self.oneshot_ana(kwargs["var_name"], self.ds, self.transition_freq)
             case 'm12':
-                self.T2_ana(kwargs["var_name"],self.refIQ)
+                self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
-                self.T1_ana(kwargs["var_name"],self.refIQ)
+                self.T1_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
@@ -1015,6 +1307,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ZgateT1_ana(**kwargs)
             case 't1':
                 self.gateError_ana(kwargs["var_name"],self.transition_freq)
+            case 'a3':
+                self.parity_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None, t_interval = kwargs["t_interval"])
             case _:
                 raise KeyError(f"Unknown measurement = {self.exp_name} was given !")
 
@@ -1032,6 +1326,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
+            case 'm14b':
+                self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
             case 'm12':
                 self.T2_plot(pic_save_folder)
             case 'm13':
@@ -1052,6 +1348,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.ZgateT1_plot(pic_save_folder)
             case 't1':
                 self.gateError_plot(pic_save_folder)
+            case 'a3':
+                self.parity_plot(pic_save_folder)
 
 
 

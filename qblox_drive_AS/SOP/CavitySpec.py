@@ -211,7 +211,10 @@ class CavitySearch(ScheduleConductor):
                 dict_[q] = (["mixer","freq"],array([i_data,q_data]))
                 dict_[f'{q}_freq'] = (["mixer","freq"],array([self._ro_elements[q],self._ro_elements[q]]))
             
-            self.dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"freq":self.__datapoint_idx})
+            dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"freq":self.__datapoint_idx})
+            dataset.attrs["method"] = "Average"
+            dataset.attrs["system"] = "qblox"
+            self.dataset = dataset
         
         else:
             pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)

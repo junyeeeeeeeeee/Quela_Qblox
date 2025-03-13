@@ -71,6 +71,8 @@ def fluxCoupler_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements
         rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":flux_samples,"freq":freq_datapoint_idx})
         rfs_ds.attrs["execution_time"] = Data_manager().get_time_now()
         rfs_ds.attrs["cntrl_couplers"] =  "_".join(bias_elements)
+        rfs_ds.attrs["method"] = "Average"
+        rfs_ds.attrs["system"] = "qblox"
         
     else:
         preview_para = {}

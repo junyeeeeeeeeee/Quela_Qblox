@@ -76,6 +76,8 @@ def Zgate_T1(QD_agent:QDmanager,meas_ctrl:MeasurementControl,time_samples:dict,z
         zT1_ds.attrs["execution_time"] = Data_manager().get_time_now()
         zT1_ds.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
         zT1_ds.attrs["prepare_excited"] = 0 if no_pi_pulse else 1
+        zT1_ds.attrs["method"] = "Average"
+        zT1_ds.attrs["system"] = "qblox"
 
     else:
         preview_para = {}

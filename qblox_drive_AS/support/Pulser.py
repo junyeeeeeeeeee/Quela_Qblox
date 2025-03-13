@@ -28,6 +28,12 @@ class ScheduleConductor(ABC):
     @dataset.setter
     def dataset(self,ds:Dataset):
         self.__dataset = ds
+    @property
+    def execution( self ):
+        return self._execution
+    @execution.setter
+    def execution( self, exec:bool):
+        self._execution = exec
     
     @abstractmethod
     def __PulseSchedule__(self,*args,**kwargs):

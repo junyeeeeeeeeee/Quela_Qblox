@@ -83,6 +83,8 @@ def Two_tone_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,xyf_guess:dict
         
         ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"xy_amp":array(xyl_guess),"freq":freq_datapoint_idx})
         ds.attrs["execution_time"] = Data_manager().get_time_now()
+        ds.attrs["method"] = "Average"
+        ds.attrs["system"] = "qblox"
         
         
     else:

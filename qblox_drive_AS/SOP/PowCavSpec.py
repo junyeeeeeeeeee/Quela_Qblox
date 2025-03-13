@@ -270,7 +270,9 @@ class PowerDepCavity(ScheduleConductor):
                 dict_[q] = (["mixer","ro_amp","freq"],array([i_data,q_data]))
                 dict_[f'{q}_freq'] = (["mixer","ro_amp","freq"],array(list(self._ro_elements[q])*2*self._power_samples.shape[0]).reshape(2,self._power_samples.shape[0],self._ro_elements[q].shape[0]))
             
-            self.dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"ro_amp":self._power_samples,"freq":self.__freq_datapoint_idx})
-        
+            dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"ro_amp":self._power_samples,"freq":self.__freq_datapoint_idx})
+            dataset.attrs["method"] = "Average"
+            dataset.attrs["system"] = "qblox"
+            self.dataset = dataset
         else:
             pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)
