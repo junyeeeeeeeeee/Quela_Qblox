@@ -214,7 +214,7 @@ class QDmanager():
 
         try:  
             manager_ver = gift.manager_version
-            if manager_ver.lower() != "v2.0":
+            if manager_ver.lower() not in  ["v2.0","v2.1"]:
                 update = True   
         except:
             update = True
@@ -230,13 +230,16 @@ class QDmanager():
             self.Waveformer = gift.Waveformer
             self.quantum_device = gift.quantum_device
             try:
-                self.StateDiscriminator = gift.StateDiscriminator
+                if manager_ver.lower() == "v2.1":
+                    self.StateDiscriminator = gift.StateDiscriminator
+                else:
+                    self.StateDiscriminator:Statifier = Statifier()
             except:
                 print("Generating Statifier ...")
                 self.StateDiscriminator:Statifier = Statifier()
 
             # string/ int
-            # self.manager_version = gift.manager_version
+            self.manager_version = gift.manager_version
             self.chip_name:str = gift.chip_name
             self.chip_type:str = gift.chip_type
             self.Identity:str = gift.Identity

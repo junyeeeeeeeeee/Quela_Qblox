@@ -13,6 +13,7 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
+        
     
     def comment(self, message:str=None):
         if message is not None:
@@ -235,7 +236,7 @@ if __name__ == "__main__":
     QMaster.set_XYF(xyfs_Hz = {})                         # xyfs_Hz = {"q0":4e9, "q1":4.5e9}, ** unit: Hz
 
     """ Set pi pulse amplitude """
-    QMaster.set_XY_amp(pi_amps = {"q0":0.9,"q2":0.9})                      # pi_amps = {"q0":0.2, "q1":0.15, ...}
+    QMaster.set_XY_amp(pi_amps = {})                      # pi_amps = {"q0":0.2, "q1":0.15, ...}
 
     """ Set pi pulse duration """
     QMaster.set_XY_duration(pi_duras = {})                # pi_duras = {"q0":40e-9, "q1":48e-9, ...}
