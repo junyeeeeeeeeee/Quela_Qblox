@@ -279,7 +279,7 @@ class QDmanager():
             print(f'Summarized info had successfully saved to the given path!')
 
     def version_converter(self, gift):
-        
+        from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
         # string and int
         self.chip_name:str = gift["chip_info"]["name"]
         self.chip_type:str = gift["chip_info"]["type"]
@@ -301,7 +301,10 @@ class QDmanager():
         self.quantum_device :QuantumDevice = gift["QD"]
 
         if "Discriminator" in list(gift.keys()):
-            self.StateDiscriminator = gift["Discriminator"]
+            if type(gift["Discriminator"]) != GMMROFidelity:
+                self.StateDiscriminator = gift["Discriminator"]
+            else:
+                self.StateDiscriminator:Statifier = Statifier()
         else:
             self.StateDiscriminator:Statifier = Statifier()
         

@@ -460,32 +460,7 @@ class analysis_tools():
         
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,q=self.qubit)
 
-    def oneshot_ana(self,data:DataArray,tansition_freq_Hz:float=None):
-        self.fq = tansition_freq_Hz
-        self.gmm2d_fidelity = GMMROFidelity()
-        self.gmm2d_fidelity._import_data(data)
-        self.gmm2d_fidelity._start_analysis()
-        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-        
-        p00 = g1d_fidelity.g1d_dist[0][0][0]
-        self.thermal_populations = g1d_fidelity.g1d_dist[0][0][1]
-        p11 = g1d_fidelity.g1d_dist[1][0][1]
-        if self.fq is not None:
-            self.effT_mK = p01_to_Teff(self.thermal_populations, self.fq)*1000
-        else:
-            self.effT_mK = 0
-        self.RO_fidelity_percentage = (p00+p11)*100/2
-
-
-        _, self.RO_rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
-        z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
-        self.rotated_data = empty_like(array(data))
-        for state_idx, state_data in enumerate(z):
-            self.rotated_data[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
-        
-        self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
-
-    def n_oneshot_ana(self, var:str,data:DataArray,tansition_freq_Hz:float=None):
+    def oneshot_ana(self, var:str,data:DataArray,tansition_freq_Hz:float=None):
         """ data shape (repeat, mixer, prepared_state, index)""" 
         
         self.fq = tansition_freq_Hz
@@ -504,7 +479,7 @@ class analysis_tools():
             self.thermal_populations.append(g1d_fidelity.g1d_dist[0][0][1])
             p11 = g1d_fidelity.g1d_dist[1][0][1]
             if self.fq is not None:
-                self.effT_mK.append(p01_to_Teff(self.thermal_populations, self.fq)*1000)
+                self.effT_mK.append(p01_to_Teff(self.thermal_populations[-1], self.fq)*1000)
             else:
                 self.effT_mK.append(0)
             self.RO_fidelity_percentage.append((p00+p11)*100/2)
@@ -512,12 +487,13 @@ class analysis_tools():
 
             _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
             self.RO_rotate_angle.append(rotate_angle)
-            z = moveaxis(array(data),0,1) # (IQ, state, shots) -> (state, IQ, shots)
+            z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
             
-            container = empty_like(array(data))
+            container = empty_like(array(repetition))
             
             for state_idx, state_data in enumerate(z):
-                container[state_idx] = rotate_data(state_data,self.RO_rotate_angle)
+                
+                container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
 
             rot_data.append(moveaxis(container,0,1).tolist())
             
@@ -525,11 +501,11 @@ class analysis_tools():
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
         self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
     
-    def n_oneshot_plot(self,save_pic_path:str=None):
+    def oneshot_plot(self,save_pic_path:str=None):
         
         for var in self.rotated_ds.data_vars:
             for repetition in array(self.rotated_ds[var]):
-                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
+                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(repetition).shape[2]))] )
                 self.gmm2d_fidelity._import_data(da)
                 self.gmm2d_fidelity._start_analysis()
                 g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
@@ -537,19 +513,11 @@ class analysis_tools():
                 plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
                 plt.close()
 
-    def oneshot_plot(self,save_pic_path:str=None):
-        da = DataArray(moveaxis(self.rotated_data,0,1), coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(self.rotated_data).shape[2]))] )
-        self.gmm2d_fidelity._import_data(da)
-        self.gmm2d_fidelity._start_analysis()
-        g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-
-        plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
-        plt.close()
     
     def oneshot_urgent_plot(self, data:ndarray, save_pic_path:str=None):
         """ data shape: ("mixer", "prepared_state", "index")"""
         
-        data = moveaxis(data,0,1)
+        data = moveaxis(data[0],0,1)
         Plotter = Artist(f"SingleShot raw data", save_pic_path)
         fig, axs = Plotter.build_up_plot_frame((2,1),(6,9))
         color = ['blue','red']
@@ -618,6 +586,8 @@ class analysis_tools():
                 self.ans = T2_fit_analysis(self.plot_item["data"],self.plot_item["time"]/1e6)
                 self.T2_fit.append(self.ans.attrs["T2_fit"]*1e6)
                 self.fit_packs["freq"] = self.ans.attrs['f']
+                self.fit_packs["phase"] = self.ans.attrs["phase"]
+                
             else:
                 
                 da = DataArray(data=self.plot_item["data"], coords={"time":self.plot_item["time"]*1e3})
@@ -1315,10 +1285,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.fluxQb_ana(kwargs["var_name"],self.fit_func,self.refIQ)
             case 'm11': 
                 self.rabi_ana(kwargs["var_name"], OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
-            case 'm14': 
-                self.oneshot_ana(self.ds,self.transition_freq)
-            case 'm14n':
-                self.n_oneshot_ana(kwargs["var_name"], self.ds, self.transition_freq)
+            case 'm14':
+                self.oneshot_ana(kwargs["var_name"], self.ds, self.transition_freq)
             case 'm12':
                 self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
@@ -1358,8 +1326,6 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.rabi_plot(pic_save_folder)
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
-            case 'm14n':
-                self.n_oneshot_plot(pic_save_folder)
             case 'm14b':
                 self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
             case 'm12':

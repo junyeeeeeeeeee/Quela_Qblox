@@ -7,7 +7,7 @@ from numpy import ndarray, array, median, std, mean
 from datetime import datetime 
 from qblox_drive_AS.support.UserFriend import *
 from matplotlib.gridspec import GridSpec as GS
-from qblox_drive_AS.support.ExpFrames import SingleShot, SpinEcho, CPMG, Ramsey, EnergyRelaxation
+from qblox_drive_AS.support.ExpFrames import nSingleShot, SpinEcho, CPMG, Ramsey, EnergyRelaxation
 
 
 def time_label_sort(nc_file_name:str):
@@ -166,24 +166,25 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     T1_raw[var][ds.attrs["end_time"]] = Anaer.ANA.plot_item["data"]
                     T1_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["median_T1"]
             case "singleshot":
-                counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
-                for var in ds.data_vars:
-                    SS_picsave_folder = os.path.join(folder_path,f"{var}_SingleShot_pics") if save_every_fit_pic else None
-                    if counters["SS"] == 1:
-                        SS_rec[var] = {}
-                        if save_every_fit_pic:
-                            if not os.path.exists(SS_picsave_folder):
-                                os.mkdir(SS_picsave_folder)
+                pass
+                # counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
+                # for var in ds.data_vars:
+                #     SS_picsave_folder = os.path.join(folder_path,f"{var}_SingleShot_pics") if save_every_fit_pic else None
+                #     if counters["SS"] == 1:
+                #         SS_rec[var] = {}
+                #         if save_every_fit_pic:
+                #             if not os.path.exists(SS_picsave_folder):
+                #                 os.mkdir(SS_picsave_folder)
                     
-                    ds.close()
-                    Anaer = SingleShot(QD_path="")
-                    Anaer.keep_QD = False
-                    Anaer.save_pics = False
-                    Anaer.execution = True
-                    Anaer.histos = 1
-                    Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=SS_picsave_folder)
+                #     ds.close()
+                #     Anaer = nSingleShot(QD_path="")
+                #     Anaer.keep_QD = False
+                #     Anaer.save_pics = False
+                #     Anaer.execution = True
+                #     Anaer.histos = 1
+                #     Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=SS_picsave_folder)
                     
-                    SS_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["effT_mK"]
+                #     SS_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["effT_mK"][0]
             case "ramsey":
                 counters["T2s"] = 1 if "T2s" not in list(counters.keys()) else counters["T2s"]+1
 
@@ -203,15 +204,16 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     ds.close()
                     
                     Anaer = Ramsey(QD_path="")
+                    Anaer.sec_phase = 'y'
                     Anaer.keep_QD = False
                     Anaer.save_pics = False
                     Anaer.execution = True
                     Anaer.histos = 1
                     Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T2_picsave_folder)
-
+                    
                     # keep values
                     T2_raw["ramsey"][var][ds.attrs["end_time"]] = Anaer.ANA.plot_item["data"]
-                    detu_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["freq"]*1e-6
+                    detu_rec[var][ds.attrs["end_time"]] = Anaer.corrected_detune[var]*1e-6
                     T2_rec["ramsey"][var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["median_T2"]
 
             case "spinecho":
@@ -391,8 +393,8 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
 
 
 if __name__ == "__main__":
-    QD_path = "qblox_drive_AS/QD_backup/20250220/DR1#11_SumInfo.pkl"
-    folder_path = "qblox_drive_AS/Meas_raw/20250220/H17M47S34"
+    QD_path = "qblox_drive_AS/QD_backup/20250313/DR1#11_SumInfo.pkl"
+    folder_path = "qblox_drive_AS/Meas_raw/20250313/H17M03S52"
     save_every_fit_fig:bool = False
 
     QD_agent = QDmanager(QD_path)
