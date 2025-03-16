@@ -112,6 +112,14 @@ def find_path_by_clock(hardware_config, port, clock):
     else:
         return answers
 
+
+def find_flux_lines(hcfg:dict)->dict:
+    answer = {}
+    for port_loc, port_name in hcfg["connectivity"]["graph"]:
+        if port_name.split(":")[-1] == 'fl':
+            answer[port_name.split(":")[0]] = port_loc
+    return answer
+
 class QDmanager():
     def __init__(self,QD_path:str=''):
         self.manager_version:str = "v2.0" # Only RatisWu can edit it
@@ -139,28 +147,29 @@ class QDmanager():
         self.Identity = which_dr.upper()+"#"+self.machine_IP.split(".")[-1] # Ex. DR2#171
         self.chip_name = chip_name
         self.chip_type = chip_type
-    
+
     def made_mobileFctrl(self):
         """ Turn attrs about `cluster.module.out0_offset` into str."""
         self.Fctrl_str_ver = {}
         try:
-            ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
+            ans = find_flux_lines(self.Hcfg)
             qbits_registered = self.quantum_device.elements()
+            
             for q in qbits_registered:
                 if q in ans:
-                    cluster_name = ans[q][0].split("_")[0]
-                    module_name = ans[q][0].split("_")[1]
-                    func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+                    cluster_name = ans[q].split(".")[0]
+                    module_name = ans[q].split(".")[1]
+                    func_name = f"out{ans[q].split('_')[-1]}_offset"
 
                     self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
                 else:
-                    self.Fctrl_str_ver[q] = f"pass" 
+                        self.Fctrl_str_ver[q] = f"pass"
         except:
             ans = self.quantum_device.elements()
             eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")
             for q in ans:
                self.Fctrl_str_ver[q] = f"pass" 
-        
+              
 
     def activate_str_Fctrl(self,cluster:Cluster):
         """ From string translate to attributes, made callable Fctl """

@@ -1,20 +1,18 @@
 from numpy import ndarray
 from abc import ABC
-import traceback
-import os
+import traceback, os
 from datetime import datetime
-from xarray import Dataset, DataArray
+from xarray import DataArray
 from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer, sort_timeLabel
+from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
-from numpy import array, linspace, arange, logspace, mean, median, std, sort, moveaxis
+from numpy import array, linspace, logspace, median, std
 from abc import abstractmethod
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
-from quantify_scheduler.helpers.collections import find_port_clock_path
+from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, qs_on_a_boat
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
-# from qblox_drive_AS.analysis.TimeTraceAna import time_monitor_data_ana
+
 
 
 class ExpGovernment(ABC):
@@ -61,19 +59,24 @@ class BroadBand_CavitySearching(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, target_qs:list,freq_start:float, freq_end:float, freq_pts:int):
-        self.counter:int = len(target_qs)
-        self.target_qs = target_qs
+    def SetParameters(self, freq_start:float, freq_end:float, freq_pts:float, res_name:str='q'):
+        self.target_q = res_name
         self.freq_start = freq_start
         self.freq_end = freq_end
         self.freq_pts = freq_pts
     
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        hcfg = self.QD_agent.quantum_device.hardware_config()
         # Set the system attenuations
-        init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[len(self.target_qs)-self.counter], 'ro'))
+        qs = qs_on_a_boat(hcfg, self.target_q)
+        for q in qs:
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'))
         # Readout select
-        qrmRF_slot_idx = int(find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),"q:res",f"{self.target_qs[int(len(self.target_qs)-self.counter)]}.ro")[1].split("_")[-1][6:])
+        
+        for port_loc, port_name in hcfg["connectivity"]["graph"]:
+            if port_name == f'{self.target_q}:res':
+                qrmRF_slot_idx = int(port_loc.split(".")[1][6:])
         self.readout_module = self.cluster.modules[qrmRF_slot_idx-1]
     
     def RunMeasurement(self):
@@ -89,7 +92,6 @@ class BroadBand_CavitySearching(ExpGovernment):
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
-        self.counter -= 1
 
 
     def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
@@ -114,16 +116,17 @@ class BroadBand_CavitySearching(ExpGovernment):
 
         plot_S21(ds,fig_path)
         ds.close()
-        # QD_savior.QD_keeper()
+        QD_savior.QD_keeper()
 
 
     def WorkFlow(self):
-        while self.counter > 0 :
-            self.PrepareHardware()
+        
+        self.PrepareHardware()
 
-            self.RunMeasurement()
+        self.RunMeasurement()
 
-            self.CloseMeasurement()
+        self.CloseMeasurement()
+
 
 class Zoom_CavitySearching(ExpGovernment):
     """ Helps you get the **BARE** cavities. """

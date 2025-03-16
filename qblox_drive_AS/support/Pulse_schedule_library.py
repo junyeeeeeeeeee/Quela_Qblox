@@ -2366,36 +2366,6 @@ def twotone_comp_plot(results:xr.core.dataset.Dataset,substrate_backgroung:any=[
     else:
         plt.close()
 
-#%%    
-def set_LO_frequency(quantum_device:QuantumDevice,q:str,module_type:str,LO_frequency:float):
-    
-    qubit= quantum_device.get_element(q)
-    if module_type== 'drive':
-        clock=qubit.name + ".01"
-        port=qubit.ports.microwave()
-        
-    elif module_type== 'readout':
-        clock=qubit.name + ".ro"
-        port= "q:res"#qubit.ports.readout()
-        
-    else: raise KeyError ('module_type is not drive or readout')  
-    
-    hw_config = quantum_device.hardware_config()
-    
-    output_path = find_port_clock_path(
-        hw_config, port=port, clock= clock)
-    
-    cluster_key, module_key, output_key, _, _ = tuple(output_path)
-    
-    module = hw_config[cluster_key][module_key]
-    module[output_key]["lo_freq"] = LO_frequency
-    
-    if "interm_freq" in module[output_key]["portclock_configs"][0]:
-        del module[output_key]["portclock_configs"][0]["interm_freq"]
-    else: pass
-
-        
-    quantum_device.hardware_config(hw_config)
 
 
 
