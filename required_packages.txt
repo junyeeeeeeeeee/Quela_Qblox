@@ -5,6 +5,5 @@ colorama
 scikit-learn
 scipy
 sympy
-numpy==1.26.2
 matplotlib>=3.9
 xarray>=2023.12.0

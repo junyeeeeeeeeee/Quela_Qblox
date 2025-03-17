@@ -4,11 +4,11 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support import QDmanager
 
 
-cluster_IP:str = "192.168.1.10"
-dr_name:str = "dr2"
+cluster_IP:str = "192.168.1.11"
+dr_name:str = "dr1"
 qubit_number_onChip:int = 2
 coupler_number_onChip:int = 2
-chip_name:str = "5Q4C_Test"
+chip_name:str = "firmware_update_test"
 chip_type:str = "5Q4C"
 old_QD_path:str = "" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
