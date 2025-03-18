@@ -114,7 +114,7 @@ def find_path_by_clock(hardware_config, port, clock):
 
 class QDmanager():
     def __init__(self,QD_path:str=''):
-        self.manager_version:str = "v2.0" # Only RatisWu can edit it
+        self.manager_version:str = "v2.1" # Only RatisWu can edit it
         self.path = QD_path
         self.StateDiscriminator:Statifier = Statifier()
         self.Waveformer:GateGenesis = None
