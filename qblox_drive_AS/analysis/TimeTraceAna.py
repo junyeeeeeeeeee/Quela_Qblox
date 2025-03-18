@@ -166,23 +166,22 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     T1_raw[var][ds.attrs["end_time"]] = Anaer.ANA.plot_item["data"]
                     T1_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["median_T1"]
             case "singleshot":
-                pass
-                # counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
-                # for var in ds.data_vars:
-                #     SS_picsave_folder = os.path.join(folder_path,f"{var}_SingleShot_pics") if save_every_fit_pic else None
-                #     if counters["SS"] == 1:
-                #         SS_rec[var] = {}
-                #         if save_every_fit_pic:
-                #             if not os.path.exists(SS_picsave_folder):
-                #                 os.mkdir(SS_picsave_folder)
+                counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
+                for var in ds.data_vars:
+                    SS_picsave_folder = os.path.join(folder_path,f"{var}_SingleShot_pics") if save_every_fit_pic else None
+                    if counters["SS"] == 1:
+                        SS_rec[var] = {}
+                        if save_every_fit_pic:
+                            if not os.path.exists(SS_picsave_folder):
+                                os.mkdir(SS_picsave_folder)
                     
-                #     ds.close()
-                #     Anaer = nSingleShot(QD_path="")
-                #     Anaer.keep_QD = False
-                #     Anaer.save_pics = False
-                #     Anaer.execution = True
-                #     Anaer.histos = 1
-                #     Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=SS_picsave_folder)
+                    ds.close()
+                    Anaer = nSingleShot(QD_path="")
+                    Anaer.keep_QD = False
+                    Anaer.save_pics = False
+                    Anaer.execution = True
+                    Anaer.histos = 1
+                    Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=SS_picsave_folder)
                     
                 #     SS_rec[var][ds.attrs["end_time"]] = Anaer.ANA.fit_packs["effT_mK"][0]
             case "ramsey":
