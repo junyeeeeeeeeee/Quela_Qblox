@@ -1,11 +1,9 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ".."))
+import os, rich
 from qblox_drive_AS.support.QDmanager import QDmanager
 from qblox_drive_AS.support.UserFriend import *
-from quantify_scheduler.helpers.collections import find_port_clock_path
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency
-from qblox_drive_AS.support.QDmanager import find_path_by_port
+from quantify_scheduler.backends.qblox_backend import QbloxHardwareCompilationConfig
 from qblox_drive_AS.support.StatifyContainer import Statifier
+from qblox_drive_AS.support import set_LO_frequency, qs_on_a_boat
 
 class QD_modifier():
     def __init__(self,QD_path:str):
@@ -97,28 +95,27 @@ class QD_modifier():
                     self.QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=q,bias=offsets[q])
                 self.to_modifiy_item.append("Sweet_Offset")
 
-    def set_roLOfreq(self,LO_Hz:float,target_q:str='q0'):
+    def set_roLOfreq(self,LO_Hz:float,target_q:str='q'):
         """ ## *Warning*: 
             Set the LO for those qubits who shares the same readout module with the `target_q`.
         """
         if LO_Hz is not None:
-            slightly_print(f"Set {find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-LO = {round(LO_Hz*1e-9,2)} GHz")
+            slightly_print(f"Set RO-LO = {round(LO_Hz*1e-9,2)} GHz")
             set_LO_frequency(self.QD_agent.quantum_device,target_q,'readout',LO_Hz)
             self.to_modifiy_item.append("RO_LO")
 
-    def set_roAtte(self, ro_atte:int, target_q:str='q0'):
+    def set_roAtte(self, ro_atte:int, target_q:str='q'):
         """ ## *Warning*: 
             * Set the readout attenuation for those qubits who shares the same readout module with the `target_q`.\n
             ## Args:\n
             ro_atte (int): multiple of 2.
         """
         if ro_atte is not None:
-            slightly_print(f"Set {find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),'q:res',f'{target_q}.ro')[1]} RO-attenuation = {int(ro_atte)} dB")
-            who_onTheSameBoat:dict = find_path_by_port(self.QD_agent.quantum_device.hardware_config(),"q:res")
+            slightly_print(f"Set RO-attenuation = {int(ro_atte)} dB")
+            who_onTheSameBoat:list = qs_on_a_boat(self.QD_agent.quantum_device.hardware_config(),target_q)
             for q in who_onTheSameBoat:
-                if who_onTheSameBoat[q][0] == who_onTheSameBoat[target_q][0]:
-                    print(f"set {q} ...")
-                    self.QD_agent.Notewriter.save_DigiAtte_For(ro_atte,q,'ro')
+                print(f"set {q} ...")
+                self.QD_agent.Notewriter.save_DigiAtte_For(ro_atte,q,'ro')
             self.to_modifiy_item.append("RO_Atte")
 
     def set_sweet_g(self, g_dict:dict=None):
@@ -174,7 +171,13 @@ class QD_modifier():
             else:
                 slightly_print("Your modifications got denied !")
         else:
-            slightly_print("Nothing to change ~ ")
+            slightly_print("Nothing changed ~ ")
+    
+    def show_hcfg(self, switch:bool=False):
+        if switch:
+            Hcfg = self.QD_agent.quantum_device.hardware_config()
+            # Hcfg = QbloxHardwareCompilationConfig.model_validate(Hcfg)
+            rich.print(Hcfg)
 
     def export(self, target_q:list=[]):
         """ Give a list contains qubit names you want to read info like: ['q0','q1'] or you can set target_q = 'all' to print all qubits."""
@@ -208,7 +211,7 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20250313/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250318/DR2#10_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
 
     ### Readout
@@ -222,8 +225,8 @@ if __name__ == "__main__":
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=None, target_q='q0') # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_q='q0') # RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=None, target_q='q') # LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_q='q') # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
     QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
@@ -239,7 +242,7 @@ if __name__ == "__main__":
     QMaster.set_XY_amp(pi_amps = {})                      # pi_amps = {"q0":0.2, "q1":0.15, ...}
 
     """ Set pi pulse duration """
-    QMaster.set_XY_duration(pi_duras = {})                # pi_duras = {"q0":40e-9, "q1":48e-9, ...}
+    QMaster.set_XY_duration(pi_duras = {"q1":800e-9})                # pi_duras = {"q0":40e-9, "q1":48e-9, ...}
 
     """ Set driving attenuation (All qubits blobal) """     # xy_atte = 10 recommended, all qubits are shared with a same value. Must be multiples of 2.
     QMaster.setGlobally_driving_atte(xy_atte=None)
@@ -268,9 +271,12 @@ if __name__ == "__main__":
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
     ### Export a toml to see the QD info
-    QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]     
+    QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]  
 
-    # Reset the whole Statifier
+    ### print HCFG on terminal
+    QMaster.show_hcfg(switch=False)   # You can see the HCFG in the terminal if you switch on
+
+    ### Reset the whole Statifier
     QMaster.reset_discriminator(switch=False)  # trun on the switch if you wanna initialize it
     
     QMaster.save_modifications()

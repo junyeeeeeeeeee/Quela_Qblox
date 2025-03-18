@@ -1,6 +1,6 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, arange, sqrt, ndarray, NaN
+
+from numpy import array, arange, sqrt, ndarray
+from numpy import nan as NaN
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing

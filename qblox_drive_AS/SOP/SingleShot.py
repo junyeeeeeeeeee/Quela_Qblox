@@ -122,7 +122,6 @@ class ReadoutFidelityPS( ScheduleConductor ):
                 i_data = array(ds[f'y{2*q_idx}']).reshape(self._repeat,self._shots,2)
                 q_data = array(ds[f'y{2*q_idx+1}']).reshape(self._repeat,self._shots,2)
                 raw_data = moveaxis(moveaxis(array([i_data,q_data]),0,1),2,-1)  # (mixer, repeat, index, prepared_state) -> (repeat, mixer, prepared_state, index)
-                print(raw_data.shape)
                 dict_[q] = (["repeat","mixer","prepared_state","index"],raw_data)
         
             dataset = Dataset(dict_,coords={"repeat":self.__repeat_data_idx,"mixer":array(["I","Q"]),"prepared_state":array([0, 1]),"index":arange(self._shots)})

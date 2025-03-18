@@ -1,17 +1,17 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import PowerConti2tone
-#// test okay.
+#// 0.9.2 okay
 
 ''' fill in '''
-Execution:bool = True
+Execution:bool = 1
 RO_XY_overlap:bool = False
 DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_range:dict = {"q0":[4.6e9,4.8e9], "q1":[4.05e9,4.25e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
-xyl_range:list = [0.1]                                 # driving power [from, end, pts/step]
+freq_range:dict = {"q1":[2.4e9, 2.55e9]}    # [freq_start, freq_end] use linspace, or [0] system calculate fq for you.
+xyl_range:list = [0,1,10]                                 # driving power [from, end, pts/step]
 xyl_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
-freq_pts:int = 100
+freq_pts:int = 250
 AVG:int = 100
 
 ''' Don't Touch '''

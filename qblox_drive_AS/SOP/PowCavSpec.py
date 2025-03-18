@@ -1,11 +1,10 @@
 """ 
 Base on a BARE cavity observe a dispersive shift in RO-freq with the variable RO-amp.  
 """
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import os
 from numpy import array, sqrt, mean, arange, ndarray
 from xarray import Dataset
-from numpy import NaN
+from numpy import nan as NaN
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support import QDmanager, compose_para_for_multiplexing
 from quantify_scheduler.gettables import ScheduleGettable

@@ -1,6 +1,6 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN, array, arange, minimum, maximum, cos, sin, pi, linspace
+import os
+from numpy import array, arange, minimum, maximum, cos, sin, pi, linspace
+from numpy import nan as NaN
 from xarray import Dataset
 import matplotlib.pyplot as plt
 from qblox_drive_AS.support.UserFriend import *

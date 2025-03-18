@@ -1,6 +1,5 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN
+
+from numpy import nan as NaN
 from numpy import ndarray
 from xarray import Dataset
 from numpy import array, arange, sqrt

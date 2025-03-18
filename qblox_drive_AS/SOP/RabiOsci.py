@@ -9,7 +9,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import compose_para_for_multiplexing
 from xarray import Dataset
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, electrical_delay, pulse_preview 
 from quantify_scheduler.operations.gate_library import Reset
 
 #? The way to merge two dict a and b : c = {**a,**b}
@@ -256,3 +256,6 @@ class RabiPS(ScheduleConductor):
                     dataset.attrs[f"{q}_pidura"] = self.duras[q]
             
             self.dataset = dataset
+    
+        else:
+            pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__sched_kwargs)

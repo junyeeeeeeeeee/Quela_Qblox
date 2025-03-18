@@ -450,6 +450,12 @@ def set_LO_frequency(quantum_device:QuantumDevice,q:str,module_type:str,LO_frequ
    
     quantum_device.hardware_config(hw_config)
 
+def check_OS_model_ready(QD_agent:QDmanager, qs:list):
+    OS_models = QD_agent.StateDiscriminator.elements
+    for q in qs:
+        if q not in OS_models:
+            QD_agent.StateDiscriminator.summon_discriminator(q) # will raise NameError
+
 
 if __name__ == "__main__":
     a = {"a1":10,"a2":12}

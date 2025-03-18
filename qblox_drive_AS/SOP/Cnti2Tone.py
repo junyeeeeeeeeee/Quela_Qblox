@@ -1,7 +1,6 @@
 
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import array, NaN, arange
+from numpy import nan as NaN
+from numpy import array, arange
 from xarray import Dataset
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *

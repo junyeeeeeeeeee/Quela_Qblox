@@ -9,7 +9,7 @@ from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
 from numpy import array, linspace, logspace, median, std
 from abc import abstractmethod
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, qs_on_a_boat
+from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, qs_on_a_boat, check_OS_model_ready
 from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 
@@ -253,7 +253,7 @@ class PowerCavity(ExpGovernment):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
         # Set the system attenuations
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
-        
+
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.PowCavSpec import PowerDep_spec
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
@@ -768,7 +768,7 @@ class PowerConti2tone(ExpGovernment):
                     raise ValueError(f"Attempting to set {q} driving LO @ {round((advised_fq-IF_minus)*1e-9,1)} GHz")
                 set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=advised_fq-IF_minus)
                 self.freq_range[q] = linspace(advised_fq-IF_minus-500e6,advised_fq-IF_minus,self.f_pts)
-
+              
         dataset = Two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.xyl_samples,self.avg_n,self.execution,self.overlap)
         if self.execution:
             if self.save_dir is not None:
@@ -979,7 +979,7 @@ class PowerRabiOsci(ExpGovernment):
             for q in self.pi_amp_samples:
                 if self.avg_n * self.pi_amp_samples[q].shape[0] > 131000:
                     raise MemoryError(f"Due to Qblox FPGA memory limit, amp_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.pi_amp_samples[q].shape[0]} for {q}")
-        
+
         
         
 
@@ -989,7 +989,8 @@ class PowerRabiOsci(ExpGovernment):
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and driving atte
         self.pi_dura = {}
-        
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
@@ -1114,6 +1115,8 @@ class TimeRabiOsci(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1125,7 +1128,7 @@ class TimeRabiOsci(ExpGovernment):
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
             # self.pi_amp[q] = self.QD_agent.quantum_device.get_element(q).rxy.amp180()
-            
+          
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.RabiOsci import RabiPS
 
@@ -1335,6 +1338,7 @@ class nSingleShot(ExpGovernment):
                 ds.close()
                 if self.keep_QD:
                     QD_savior.QD_keeper()
+
             else:
                 for var in ds.data_vars:
                     self.ANA = Multiplex_analyzer("m14")
@@ -1414,6 +1418,8 @@ class Ramsey(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1589,6 +1595,8 @@ class SpinEcho(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1750,6 +1758,8 @@ class CPMG(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1911,6 +1921,8 @@ class EnergyRelaxation(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -2800,7 +2812,7 @@ class QubitMonitor():
                     if len(self.OS_target_qs) == 0:
                         self.OS_target_qs = list(set(list(self.T1_time_range.keys())+list(self.T2_time_range.keys())))
                     eyeson_print("Measuring Effective temperature .... ")
-                    EXP = SingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP = nSingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
                     EXP.SetParameters(self.OS_target_qs,1,self.OS_shots,self.Execution)
                     EXP.WorkFlow()
             slightly_print(f"It's the {self.idx}-th measurement, about {round((datetime.now() - start_time).total_seconds()/3600,2)} hrs recorded.")

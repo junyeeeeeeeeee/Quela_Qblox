@@ -1,51 +1,29 @@
-QD_file: qblox_drive_AS/QD_backup/20250313/DR1#11_SumInfo.pkl
-Comments: New manager version = 'v2.1'
+QD_file: qblox_drive_AS/QD_backup/20250318/DR2#10_SumInfo.pkl
+Comments: ---
 
 RO-atte = 30 dB
 XY-atte = 0 dB
-Reset time = 1000 µs
+Reset time = 700 µs
 
 [q0]
-    bare   = 4.811025351547285 GHz
-    ROF    = 4.8111915957817 GHz
-    RO-amp = 0.132 V
-    ROT    = 15.0 µs
-    XYF    = 2.4261070721201525 GHz
-    Pi-amp = 0.9 V
+    bare   = 4.811044804136798 GHz
+    ROF    = 4.811192627336396 GHz
+    RO-amp = 0.24 V
+    ROT    = 8.0 µs
+    XYF    = 2.4258963535696756 GHz
+    Pi-amp = 0.6932427200833905 V
     Pi-dura= 240.0 ns
-    x      = 0.16624423441505431 MHz
-    g      = 19.91177826076008 MHz
+    x      = 0.14782319959831236 MHz
+    g      = 18.777121064714052 MHz
 
 [q1]
-    bare   = 4.911525428864408 GHz
-    ROF    = 4.911646342343027 GHz
-    RO-amp = 0.25 V
-    ROT    = 15.0 µs
-    XYF    = 2.35 GHz
-    Pi-amp = 0.07164186940774885 V
-    Pi-dura= 40.0 ns
-    x      = 0.12091347861957549 MHz
-    g      = nan MHz
-
-[q2]
-    bare   = 5.0117467432916065 GHz
-    ROF    = 5.011887648029938 GHz
-    RO-amp = 0.162 V
-    ROT    = 15.0 µs
-    XYF    = 2.4829164088174367 GHz
-    Pi-amp = 0.9 V
-    Pi-dura= 700.0 ns
-    x      = 0.14090473833179473 MHz
-    g      = 18.876550971129205 MHz
-
-[q3]
-    bare   = 5.112212015059563 GHz
-    ROF    = 5.1123088416868 GHz
-    RO-amp = 0.35 V
+    bare   = 5.011894160831259 GHz
+    ROF    = 5.011887236912849 GHz
+    RO-amp = 0.24 V
     ROT    = 8.0 µs
-    XYF    = 4.0 GHz
-    Pi-amp = 0.05 V
-    Pi-dura= 500.0 ns
-    x      = 0.09682662723731994 MHz
-    g      = 20.0 MHz
+    XYF    = 2.484 GHz
+    Pi-amp = 0.8146788298069193 V
+    Pi-dura= 800.0 ns
+    x      = -0.006923918410301208 MHz
+    g      = 4.186089903533877 MHz
 

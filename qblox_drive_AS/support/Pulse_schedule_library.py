@@ -437,7 +437,7 @@ def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_ind
     # Trace acquisition does not support APPEND bin mode !!!
     if get_trace==False:
         return sche.add(SSBIntegrationComplex(
-            duration=R_inte_duration[q],
+            duration=R_inte_duration[q]-4e-9,
             port="q:res",
             clock=q+".ro",
             acq_index=acq_index,
@@ -563,7 +563,7 @@ def RabiSplitting_multi_sche(
             
             sched.add(Reset(q))
             sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+            sched.add(IdlePulse(duration=4e-9))
 
             
             if qubit_idx == 0:

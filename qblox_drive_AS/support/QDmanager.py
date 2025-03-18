@@ -122,7 +122,7 @@ def find_flux_lines(hcfg:dict)->dict:
 
 class QDmanager():
     def __init__(self,QD_path:str=''):
-        self.manager_version:str = "v2.0" # Only RatisWu can edit it
+        self.manager_version:str = "v2.1" # Only RatisWu can edit it
         self.path = QD_path
         self.StateDiscriminator:Statifier = Statifier()
         self.Waveformer:GateGenesis = None
@@ -242,6 +242,7 @@ class QDmanager():
                 if manager_ver.lower() == "v2.1":
                     self.StateDiscriminator = gift.StateDiscriminator
                 else:
+                    print("New Statifier generated ... ")
                     self.StateDiscriminator:Statifier = Statifier()
             except:
                 print("Generating Statifier ...")
