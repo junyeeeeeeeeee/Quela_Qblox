@@ -23,8 +23,6 @@ QM.time_sampling_func = "linspace"
 QM.time_ptsORstep = 100
 QM.AVG = 1000
 
-#? If use one-shot method, QM.time_ptsORstep * QM.AVG < 131000
-QM.OSmode = False
 
 """ While looping start """
 QM.StartMonitoring()

@@ -22,6 +22,8 @@ class ExpGovernment(ABC):
         self.QD_path:str = ""
         self.save_pics:bool = True
         self.keep_QD:bool = True
+        self.save_os_model:bool = True
+        self.sum_dict = {}
     
     @abstractmethod
     def SetParameters(self,*args,**kwargs):
@@ -1312,11 +1314,12 @@ class nSingleShot(ExpGovernment):
                         self.ANA._start_analysis(var_name=var)
                         if self.save_pics:
                             self.ANA._export_result(pic_path)
-                        
-                        QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
-                        da = DataArray(array(ds[var])[0]*1000, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(ds.coords["prepared_state"])), ("index",array(ds.coords["index"]))] )
-                        QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
-                        
+                        if self.save_os_model:
+                            QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
+                            da = DataArray(array(ds[var])[0]*1000, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(ds.coords["prepared_state"])), ("index",array(ds.coords["index"]))] )
+                            QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
+                        self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                        self.sum_dict[var] = self.ANA.fit_packs
                         highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'][0],2)} in degree.")
                         QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
                     except BaseException as err:
@@ -1504,7 +1507,8 @@ class Ramsey(ExpGovernment):
                             sign = 1
                         
                         self.corrected_detune[var] = sign*self.ANA.fit_packs['freq']
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1668,7 +1672,8 @@ class SpinEcho(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1814,7 +1819,7 @@ class CPMG(ExpGovernment):
 
             ds = open_dataset(file_path)
             md = None
-        
+
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
@@ -1829,7 +1834,8 @@ class CPMG(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1971,7 +1977,7 @@ class EnergyRelaxation(ExpGovernment):
 
             ds = open_dataset(file_path)
             md = None  # model for one shot analysis
-        
+            
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     if ds.attrs['method'].lower() == "shot":
@@ -1987,7 +1993,8 @@ class EnergyRelaxation(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T1_for(self.ANA.fit_packs["median_T1"],var)
@@ -2797,7 +2804,7 @@ class QubitMonitor():
                     if len(self.OS_target_qs) == 0:
                         self.OS_target_qs = list(set(list(self.T1_time_range.keys())+list(self.T2_time_range.keys())))
                     eyeson_print("Measuring Effective temperature .... ")
-                    EXP = SingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP = nSingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
                     EXP.SetParameters(self.OS_target_qs,1,self.OS_shots,self.Execution)
                     EXP.WorkFlow()
             slightly_print(f"It's the {self.idx}-th measurement, about {round((datetime.now() - start_time).total_seconds()/3600,2)} hrs recorded.")
