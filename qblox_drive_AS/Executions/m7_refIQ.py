@@ -5,8 +5,8 @@ from qblox_drive_AS.support.ExpFrames import IQ_references
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
-RO_amp_factor:dict = {"q0":0.1, "q1":0.1}    # ro-amp *= ro_amp_factor
+DRandIP = {"dr":"dr4","last_ip":"81"}
+RO_amp_factor:dict = {"q1":1}    # ro-amp *= ro_amp_factor
 shots:int = 10000
 
 ''' Don't Touch '''

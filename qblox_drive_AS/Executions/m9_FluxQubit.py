@@ -5,13 +5,13 @@ from qblox_drive_AS.support.ExpFrames import FluxQubit
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr1","last_ip":"11"}
-freq_span_range:dict = {"q0":[-350e6,100e6], "q1":[-300e6,150e6]}    # [freq_span_start, freq_span_end] use linspace, total span should <= 500 MHz
-bias_elements:list = ['q0', 'q1']
-z_amp_range:list = [-0.05, 0.05, 10]                                 # z-pulse amplitude [from, end, pts/step]
+DRandIP = {"dr":"dr4","last_ip":"81"}
+freq_span_range:dict = {"q1":[-400e6,100e6]}    # [freq_span_start, freq_span_end] use linspace, total span should <= 500 MHz
+bias_elements:list = ['c0']
+z_amp_range:list = [-0.3, 0.3, 30]                                 # z-pulse amplitude [from, end, pts/step]
 z_amp_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
-freq_pts:int = 40
+freq_pts:int = 20
 AVG:int = 100
 
 ''' Don't Touch '''
