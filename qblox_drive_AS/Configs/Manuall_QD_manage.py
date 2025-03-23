@@ -11,6 +11,7 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
+        self.export(target_q='all')         
         
     
     def comment(self, message:str=None):
@@ -167,7 +168,9 @@ class QD_modifier():
             permission = mark_input("Is it correct ? [y/n] :")
             
             if permission.lower() in ["y", "yes"]:
+                self.export(target_q='all')   
                 self.QD_agent.QD_keeper() 
+
             else:
                 slightly_print("Your modifications got denied !")
         else:
@@ -188,7 +191,7 @@ class QD_modifier():
             qs = target_q
         
         if len(qs) != 0:
-            with open(os.path.join("qblox_drive_AS","QD_info.toml"), "w") as file:
+            with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
                 file.write(f"QD_file: {self.QD_path}\n")
                 file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
@@ -211,8 +214,11 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
-    QD_path = "qblox_drive_AS/QD_backup/20250318/DR2#10_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250323/DR4#81_SumInfo.pkl"
     QMaster = QD_modifier(QD_path)
+
+    """ Export a toml to see the QD info """
+    
 
     ### Readout
     """ Reset Rotation angle """
@@ -242,7 +248,7 @@ if __name__ == "__main__":
     QMaster.set_XY_amp(pi_amps = {})                      # pi_amps = {"q0":0.2, "q1":0.15, ...}
 
     """ Set pi pulse duration """
-    QMaster.set_XY_duration(pi_duras = {"q1":800e-9})                # pi_duras = {"q0":40e-9, "q1":48e-9, ...}
+    QMaster.set_XY_duration(pi_duras = {})                # pi_duras = {"q0":40e-9, "q1":48e-9, ...}
 
     """ Set driving attenuation (All qubits blobal) """     # xy_atte = 10 recommended, all qubits are shared with a same value. Must be multiples of 2.
     QMaster.setGlobally_driving_atte(xy_atte=None)
@@ -254,7 +260,7 @@ if __name__ == "__main__":
     QMaster.set_drag_coef(Coefs={})    # Coefs = {"q0": -0.5, ....}
 
     """ Set T2 use detuing, unit: Hz """
-    QMaster.set_RamseyT2detuing(detunes={})   # detunes = {"q0": -0.5e6, ....}
+    QMaster.set_RamseyT2detuing(detunes={"q0":1e6, "q1":1e6, "q2":1e6,})   # detunes = {"q0": -0.5e6, ....}
 
     ### z and others
     """ Set coupler bias """
@@ -269,9 +275,6 @@ if __name__ == "__main__":
 
     """ Some comments for this QD file """
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
-
-    ### Export a toml to see the QD info
-    QMaster.export(target_q='all')         # target_q = 'all' or ['q0', 'q1', ...]  
 
     ### print HCFG on terminal
     QMaster.show_hcfg(switch=False)   # You can see the HCFG in the terminal if you switch on

@@ -20,6 +20,8 @@ class ExpGovernment(ABC):
         self.QD_path:str = ""
         self.save_pics:bool = True
         self.keep_QD:bool = True
+        self.save_OS_model:bool = True
+        self.sum_dict = {}
     
     @abstractmethod
     def SetParameters(self,*args,**kwargs):
@@ -1105,7 +1107,7 @@ class TimeRabiOsci(ExpGovernment):
         self.pi_dura_samples = {}
         for q in pi_dura:
             if min(pi_dura[q]) == 0: pi_dura[q] = [4e-9, max(pi_dura[q])]
-            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
+            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,1)*1e-9
             
         self.avg_n = avg_n
         self.execution = execution
@@ -1309,6 +1311,7 @@ class nSingleShot(ExpGovernment):
             date_part = os.path.basename(os.path.dirname(parent_dir))  # "20250122"
             time_part = os.path.basename(parent_dir) 
             ds = open_dataset(file_path)
+            
             if self.histos == 1:
                 for var in ds.data_vars:
                     try:
@@ -1319,10 +1322,11 @@ class nSingleShot(ExpGovernment):
                         if self.save_pics:
                             self.ANA._export_result(pic_path)
                         
-                        QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
-                        da = DataArray(array(ds[var])[0]*1000, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(ds.coords["prepared_state"])), ("index",array(ds.coords["index"]))] )
-                        QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
-                        
+                        if self.save_OS_model:
+                            QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
+                            da = DataArray(array(ds[var])[0]*1000, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(ds.coords["prepared_state"])), ("index",array(ds.coords["index"]))] )
+                            QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
+                        self.sum_dict[var] = self.ANA.fit_packs
                         highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'][0],2)} in degree.")
                         QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
                     except BaseException as err:
@@ -1491,6 +1495,7 @@ class Ramsey(ExpGovernment):
             ds = open_dataset(file_path)
             md = None
             self.corrected_detune = {}
+            
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
@@ -1513,7 +1518,8 @@ class Ramsey(ExpGovernment):
                             sign = 1
                         
                         self.corrected_detune[var] = sign*self.ANA.fit_packs['freq']
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1679,7 +1685,8 @@ class SpinEcho(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1729,7 +1736,7 @@ class CPMG(ExpGovernment):
         self.spin_num = pi_num
         if sampling_func in [linspace, logspace]:
             for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,(int(pi_num[q]))*4)*1e-9
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,(2*int(pi_num[q])))*1e-9
         else:
             for q in time_range:
                 self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
@@ -1827,7 +1834,7 @@ class CPMG(ExpGovernment):
 
             ds = open_dataset(file_path)
             md = None
-        
+            
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
@@ -1842,7 +1849,9 @@ class CPMG(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
-
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
+                    
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -2003,6 +2012,9 @@ class EnergyRelaxation(ExpGovernment):
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
 
+                    self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                    self.sum_dict[var] = self.ANA.fit_packs
+                    
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T1_for(self.ANA.fit_packs["median_T1"],var)

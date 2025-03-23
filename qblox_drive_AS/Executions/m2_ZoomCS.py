@@ -5,9 +5,10 @@ from qblox_drive_AS.support import Data_manager
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_range:dict = {"q0":[4.806e9, 4.816e9],
-                   "q1":[5.007e9, 5.017e9]
+DRandIP = {"dr":"dr4","last_ip":"81"}
+freq_range:dict = {"q0":[6.03e9, 6.07e9],
+                   "q1":[6.055e9, 6.095e9],
+                   "q2":[5.97e9, 5.99e9]
                    }
 freq_pts:int = 100
 AVG:int = 100

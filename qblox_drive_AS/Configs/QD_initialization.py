@@ -4,13 +4,13 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', "
 from qblox_drive_AS.support import QDmanager
 
 
-cluster_IP:str = "192.168.1.10"
-dr_name:str = "dr2"
-qubit_number_onChip:int = 2
-coupler_number_onChip:int = 0
-chip_name:str = "firmware_update_test"
+cluster_IP:str = "192.168.1.81"
+dr_name:str = "dr4"
+qubit_number_onChip:int = 3
+coupler_number_onChip:int = 1
+chip_name:str = "2FQ1FC_0321_DR4"
 chip_type:str = "5Q4C"
-old_QD_path:str = "" # set the path in string When you want to update the Hcfg. Otherwise, set it None
+old_QD_path:str = "qblox_drive_AS/QD_backup/20250321/DR4#81_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 Hcfg = {
@@ -25,7 +25,7 @@ Hcfg = {
                 "12": {
                     "instrument_type": "QCM_RF"
                 },
-                "8": {
+                "18": {
                     "instrument_type": "QRM_RF"
                 },
                 "14": {
@@ -40,7 +40,9 @@ Hcfg = {
         "output_att": {
             "q0:mw-q0.01": 0,
             "q1:mw-q1.01": 0,
+            "q2:mw-q2.01": 0,
             "q:res-q0.ro": 0,
+            "q:res-q2.ro": 0,
             "q:res-q1.ro": 0
         },
         "mixer_corrections": {
@@ -60,6 +62,14 @@ Hcfg = {
                 # "amp_ratio": 1.0,
                 # "phase_error": 0.0
             },
+            "q2:mw-q2.01": {
+                "auto_lo_cal": "on_lo_interm_freq_change",
+                "auto_sideband_cal": "on_interm_freq_change",
+                # "dc_offset_i": 0.0,
+                # "dc_offset_q": 0.0,
+                # "amp_ratio": 1.0,
+                # "phase_error": 0.0
+            },
             "q:res-q0.ro": {
                 "auto_lo_cal": "on_lo_interm_freq_change",
                 "auto_sideband_cal": "on_interm_freq_change",
@@ -75,6 +85,14 @@ Hcfg = {
                 # "dc_offset_q": 0.0,
                 # "amp_ratio": 1.0,
                 # "phase_error": 0.0
+            },
+            "q:res-q2.ro": {
+                "auto_lo_cal": "on_lo_interm_freq_change",
+                "auto_sideband_cal": "on_interm_freq_change",
+                # "dc_offset_i": 0.0,
+                # "dc_offset_q": 0.0,
+                # "amp_ratio": 1.0,
+                # "phase_error": 0.0
             }
         },
         "modulation_frequencies": {
@@ -84,7 +102,13 @@ Hcfg = {
             "q1:mw-q1.01": {
                 "lo_freq": 4e9
             },
+            "q2:mw-q2.01": {
+                "lo_freq": 4e9
+            },
             "q:res-q0.ro": {
+                "lo_freq": 6.03e9
+            },
+            "q:res-q2.ro": {
                 "lo_freq": 6.03e9
             },
             "q:res-q1.ro": {
@@ -103,15 +127,23 @@ Hcfg = {
                 "q1:mw"
             ],
             [
-                f"cluster{dr_name}.module2.real_output_2",
+                f"cluster{dr_name}.module14.complex_output_0",
+                "q2:mw"
+            ],
+            [
+                f"cluster{dr_name}.module2.real_output_0",
                 "q0:fl"
             ],
             [
-                f"cluster{dr_name}.module2.real_output_3",
+                f"cluster{dr_name}.module2.real_output_1",
                 "q1:fl"
             ],
             [
-                f"cluster{dr_name}.module8.complex_output_0",
+                f"cluster{dr_name}.module2.real_output_2",
+                "c0:fl"
+            ],
+            [
+                f"cluster{dr_name}.module18.complex_output_0",
                 "q:res"
             ]
         ]

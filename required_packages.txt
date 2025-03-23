@@ -6,6 +6,6 @@ scikit-learn
 scipy
 sympy
 matplotlib>=3.9
-xarray>=2023.12.0
+xarray==2024.6.0
 pydantic==2.9.2
 pydantic-core==2.23.4

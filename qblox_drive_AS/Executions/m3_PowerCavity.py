@@ -6,8 +6,8 @@ from qblox_drive_AS.support.ExpFrames import PowerCavity
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_span_range:dict = {"q0":[-0.5e6,+0.5e6], "q1":[-0.5e6,+0.5e6]}    # np.linspace(rof+span, rof+span, freq_pts)
+DRandIP = {"dr":"dr4","last_ip":"81"}
+freq_span_range:dict = {"q0":[-3e6,+15e6], "q1":[-3e6,+15e6], "q2":[-3e6,+6e6]}    # np.linspace(rof+span, rof+span, freq_pts)
 ro_amp_range:list = [0, 0.6, 20]                                 # amp [from, end, pts/step]
 ro_amp_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
