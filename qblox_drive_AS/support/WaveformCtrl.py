@@ -55,7 +55,8 @@ class GateGenesis():
             case 'gauss':
                 return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/float(self.__xylog[q]["duraOVERsigma"])),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
             case _:
-                pass
+                 return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/float(self.__xylog[q]["duraOVERsigma"])),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+            
     
     def Z_waveform_controller(self, pulse_sche:Schedule, amp:float, duration:float, q:str, rel_time:float, ref_op:Schedule, ref_pt:str="start", phase:float=0):
         match str(self.__zlog[q]["waveform"]).lower():

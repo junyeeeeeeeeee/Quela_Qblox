@@ -136,6 +136,7 @@ class QDmanager():
         self.chip_name = ""
         self.chip_type = ""
         self.DiscriminatorVersion:str = ""
+        self.activeReset:bool = False
 
             
     
@@ -248,6 +249,10 @@ class QDmanager():
                 print("Generating Statifier ...")
                 self.StateDiscriminator:Statifier = Statifier()
 
+            try:
+                self.activeReset = gift.activeReset
+            except:
+                pass
             # string/ int
             self.manager_version = gift.manager_version
             self.chip_name:str = gift.chip_name

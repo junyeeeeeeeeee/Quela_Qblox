@@ -12,14 +12,14 @@ from lmfit import Model,Parameter
 from quantify_scheduler.enums import BinMode
 from quantify_scheduler.backends.graph_compilation import SerialCompiler
 from quantify_scheduler.schedules.schedule import Schedule
-from quantify_scheduler.operations.acquisition_library import SSBIntegrationComplex,Trace
+from quantify_scheduler.operations.acquisition_library import SSBIntegrationComplex,Trace, ThresholdedAcquisition
 from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse,GaussPulse,SoftSquarePulse,NumericalPulse)
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
 from quantify_scheduler.operations.gate_library import Reset, Measure
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio, GateGenesis
-
+from typing import Hashable, Literal, Optional, Tuple, Union
 """ Global pulse settings """
 electrical_delay:float = 280e-9
 
@@ -430,21 +430,42 @@ def Multi_Readout(sche,q,ref_pulse_sche,R_amp,R_duration,powerDep=False,):
     return sche.add(SquarePulse(duration=Du,amp=amp,port="q:res",clock=q+".ro",t0=4e-9),ref_pt="start",ref_op=ref_pulse_sche,)
 
     
-def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel:int=0,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6):
+def Integration(sche,q,R_inte_delay:float,R_inte_duration,ref_pulse_sche,acq_index,acq_channel:int=0,single_shot:bool=False,get_trace:bool=False,trace_recordlength:float=5*1e-6,
+            RO_protocol:Optional[
+            Literal[
+                "SSBIntegrationComplex",
+                "ThresholdedAcquisition",
+            ]
+        ] = "SSBIntegrationComplex",acq_rotation:float=None,acq_threshold:float=None):
     if single_shot== False:     
         bin_mode=BinMode.AVERAGE
     else: bin_mode=BinMode.APPEND
     # Trace acquisition does not support APPEND bin mode !!!
     if get_trace==False:
-        return sche.add(SSBIntegrationComplex(
-            duration=R_inte_duration[q]-4e-9,
-            port="q:res",
-            clock=q+".ro",
-            acq_index=acq_index,
-            acq_channel=acq_channel,
-            bin_mode=bin_mode,
-            ),rel_time=R_inte_delay
-            ,ref_op=ref_pulse_sche,ref_pt="start")
+        if RO_protocol == "SSBIntegrationComplex":
+            return sche.add(SSBIntegrationComplex(
+                duration=R_inte_duration[q]-4e-9,
+                port="q:res",
+                clock=q+".ro",
+                acq_index=acq_index,
+                acq_channel=acq_channel,
+                bin_mode=bin_mode,
+                ),rel_time=R_inte_delay
+                ,ref_op=ref_pulse_sche,ref_pt="start")
+        else:
+            print("Thresholded acq integration")
+            return sche.add(ThresholdedAcquisition(
+                duration=R_inte_duration[q]-4e-9,
+                port="q:res",
+                clock=q+".ro",
+                feedback_trigger_label=q,
+                acq_index=acq_index,
+                acq_channel=acq_channel,
+                bin_mode=bin_mode,
+                acq_rotation=acq_rotation,
+                acq_threshold=acq_threshold,
+                ),rel_time=R_inte_delay
+                ,ref_op=ref_pulse_sche,ref_pt="start")
     else:  
         return sche.add(Trace(
                 duration=trace_recordlength,

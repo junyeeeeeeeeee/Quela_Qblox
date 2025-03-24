@@ -1328,7 +1328,11 @@ class nSingleShot(ExpGovernment):
                             QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
                         self.sum_dict[var] = self.ANA.fit_packs
                         highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'][0],2)} in degree.")
+                        
                         QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
+                        QD_savior.quantum_device.get_element(var).measure.acq_rotation(self.ANA.fit_packs["RO_rotation_angle"][0])
+                        QD_savior.quantum_device.get_element(var).measure.acq_threshold(self.ANA.fit_packs["threshold_01"][0]/1000)
+                    
                     except BaseException as err:
                         print(f"Get error while analyze your one-shot data: {err}")
                         traceback.print_exc()
@@ -3227,9 +3231,9 @@ class ParitySwitch(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = PowerRabiOsci("")
+    EXP = nSingleShot("")
     EXP.execution = True
     EXP.histos = 1
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250219/DR1#11_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250219/H17M10S20/PowerRabi_20250219171056.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250319/DR2#10_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250319/H09M45S26/SingleShot_20250319094608.nc")
 
     

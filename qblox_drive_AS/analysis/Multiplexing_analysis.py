@@ -464,7 +464,7 @@ class analysis_tools():
         """ data shape (repeat, mixer, prepared_state, index)""" 
         
         self.fq = tansition_freq_Hz
-        self.effT_mK, self.thermal_populations, self.RO_fidelity_percentage, self.RO_rotate_angle = [], [], [], []
+        self.effT_mK, self.thermal_populations, self.RO_fidelity_percentage, self.RO_rotate_angle, self.threshold_01 = [], [], [], [], []
 
         rot_data = []
 
@@ -474,6 +474,7 @@ class analysis_tools():
             self.gmm2d_fidelity._import_data(da)
             self.gmm2d_fidelity._start_analysis()
             g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
+            self.threshold_01.append(self.gmm2d_fidelity.threshold)
             
             p00 = g1d_fidelity.g1d_dist[0][0][0]
             self.thermal_populations.append(g1d_fidelity.g1d_dist[0][0][1])
@@ -486,6 +487,7 @@ class analysis_tools():
 
 
             _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
+            
             self.RO_rotate_angle.append(rotate_angle)
             z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
             
@@ -498,7 +500,7 @@ class analysis_tools():
             rot_data.append(moveaxis(container,0,1).tolist())
             
             
-        self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle}
+        self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle, "threshold_01":self.threshold_01}
         self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
     
     def oneshot_plot(self,save_pic_path:str=None):

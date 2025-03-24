@@ -1,7 +1,6 @@
 import os, rich
 from qblox_drive_AS.support.QDmanager import QDmanager
 from qblox_drive_AS.support.UserFriend import *
-from quantify_scheduler.backends.qblox_backend import QbloxHardwareCompilationConfig
 from qblox_drive_AS.support.StatifyContainer import Statifier
 from qblox_drive_AS.support import set_LO_frequency, qs_on_a_boat
 
@@ -19,6 +18,13 @@ class QD_modifier():
             if message != "":
                 self.QD_agent.refresh_log(str(message))
                 self.to_modifiy_item.append("Comments")
+
+    def active_reset_switch(self, switch:bool = False):
+        if isinstance(switch,bool) or switch in [0,1]:
+            if self.QD_agent.activeReset != switch:
+                print("Current ActiveReset status: ", self.QD_agent.activeReset)
+                self.QD_agent.activeReset = switch
+                self.to_modifiy_item.append("ActiveReset ON" if switch else "ActiveReset OFF")
     
     def reset_discriminator(self, switch:bool):
         if switch:
@@ -179,7 +185,6 @@ class QD_modifier():
     def show_hcfg(self, switch:bool=False):
         if switch:
             Hcfg = self.QD_agent.quantum_device.hardware_config()
-            # Hcfg = QbloxHardwareCompilationConfig.model_validate(Hcfg)
             rich.print(Hcfg)
 
     def export(self, target_q:list=[]):
@@ -189,15 +194,20 @@ class QD_modifier():
                 qs = self.QD_agent.quantum_device.elements()
         else:
             qs = target_q
-        
+
+        qubit = self.QD_agent.quantum_device.get_element("q0")
+        print(qubit.generate_device_config())
+
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
                 file.write(f"QD_file: {self.QD_path}\n")
                 file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
                 file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
-                file.write(f"Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} µs\n\n")
-
+                if not self.QD_agent.activeReset:
+                    file.write(f"Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} µs\n\n")
+                else:
+                    file.write(f"Active Reset ON\n\n")
                 for q in qs:
                     file.write(f'[{q}]\n')  
                     qubit = self.QD_agent.quantum_device.get_element(q)
@@ -214,13 +224,18 @@ class QD_modifier():
 
 if __name__ == "__main__":
 
+
     QD_path = "qblox_drive_AS/QD_backup/20250323/DR4#81_SumInfo.pkl"
+
     QMaster = QD_modifier(QD_path)
 
     """ Export a toml to see the QD info """
     
 
     ### Readout
+    """ Active Reset switch """
+    QMaster.active_reset_switch(switch = True)   # True -> turn on the active reset. Otherwise, False for turning it off. 
+
     """ Reset Rotation angle """
     QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
 
@@ -276,10 +291,10 @@ if __name__ == "__main__":
     """ Some comments for this QD file """
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
-    ### print HCFG on terminal
+
     QMaster.show_hcfg(switch=False)   # You can see the HCFG in the terminal if you switch on
 
-    ### Reset the whole Statifier
+    """ Reset the whole Statifier """
     QMaster.reset_discriminator(switch=False)  # trun on the switch if you wanna initialize it
     
     QMaster.save_modifications()

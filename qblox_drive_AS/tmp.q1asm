@@ -1,0 +1,1262 @@
+ set_mrk 1 # set markers to 1
+ set_latch_en 1,4 
+ wait_sync 4 
+ upd_param 4 
+ wait 4 # latency correction of 4 + 0 ns
+ move 1024,R0 # iterator for loop with label start
+start:   
+ reset_ph  
+ upd_param 4 
+ wait 104 # auto generated wait (104 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 1360 # auto generated wait (1360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 1760 # auto generated wait (1760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 2160 # auto generated wait (2160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 2560 # auto generated wait (2560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 2960 # auto generated wait (2960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 3360 # auto generated wait (3360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 3760 # auto generated wait (3760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 4160 # auto generated wait (4160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 4560 # auto generated wait (4560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 4960 # auto generated wait (4960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 5360 # auto generated wait (5360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 5760 # auto generated wait (5760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 6160 # auto generated wait (6160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 6560 # auto generated wait (6560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 6960 # auto generated wait (6960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 7360 # auto generated wait (7360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 7760 # auto generated wait (7760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 8160 # auto generated wait (8160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 8560 # auto generated wait (8560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 8960 # auto generated wait (8960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 9360 # auto generated wait (9360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 9760 # auto generated wait (9760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 10160 # auto generated wait (10160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 10560 # auto generated wait (10560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 10960 # auto generated wait (10960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 11360 # auto generated wait (11360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 11760 # auto generated wait (11760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 12160 # auto generated wait (12160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 12560 # auto generated wait (12560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 12960 # auto generated wait (12960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 13360 # auto generated wait (13360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 13760 # auto generated wait (13760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 14160 # auto generated wait (14160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 14560 # auto generated wait (14560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 14960 # auto generated wait (14960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 15360 # auto generated wait (15360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 15760 # auto generated wait (15760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16160 # auto generated wait (16160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16560 # auto generated wait (16560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16960 # auto generated wait (16960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 17360 # auto generated wait (17360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 17760 # auto generated wait (17760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 18160 # auto generated wait (18160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 18560 # auto generated wait (18560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 18960 # auto generated wait (18960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 19360 # auto generated wait (19360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 19760 # auto generated wait (19760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 20160 # auto generated wait (20160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 20560 # auto generated wait (20560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 20960 # auto generated wait (20960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 21360 # auto generated wait (21360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 21760 # auto generated wait (21760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 22160 # auto generated wait (22160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 22560 # auto generated wait (22560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 22960 # auto generated wait (22960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 23360 # auto generated wait (23360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 23760 # auto generated wait (23760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 24160 # auto generated wait (24160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 24560 # auto generated wait (24560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 24960 # auto generated wait (24960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 25360 # auto generated wait (25360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 25760 # auto generated wait (25760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 26160 # auto generated wait (26160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 26560 # auto generated wait (26560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 26960 # auto generated wait (26960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 27360 # auto generated wait (27360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 27760 # auto generated wait (27760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 28160 # auto generated wait (28160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 28560 # auto generated wait (28560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 28960 # auto generated wait (28960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 29360 # auto generated wait (29360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 29760 # auto generated wait (29760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 30160 # auto generated wait (30160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 30560 # auto generated wait (30560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 30960 # auto generated wait (30960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 31360 # auto generated wait (31360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 31760 # auto generated wait (31760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 32160 # auto generated wait (32160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 32560 # auto generated wait (32560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 32960 # auto generated wait (32960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 33360 # auto generated wait (33360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 33760 # auto generated wait (33760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 34160 # auto generated wait (34160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 34560 # auto generated wait (34560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 34960 # auto generated wait (34960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 35360 # auto generated wait (35360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 35760 # auto generated wait (35760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 36160 # auto generated wait (36160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 36560 # auto generated wait (36560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 36960 # auto generated wait (36960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 37360 # auto generated wait (37360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 37760 # auto generated wait (37760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 38160 # auto generated wait (38160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 38560 # auto generated wait (38560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 38960 # auto generated wait (38960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 39360 # auto generated wait (39360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 39760 # auto generated wait (39760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 40160 # auto generated wait (40160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 40560 # auto generated wait (40560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 40960 # auto generated wait (40960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 41360 # auto generated wait (41360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 41760 # auto generated wait (41760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 42160 # auto generated wait (42160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 42560 # auto generated wait (42560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 42960 # auto generated wait (42960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 43360 # auto generated wait (43360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 43760 # auto generated wait (43760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 44160 # auto generated wait (44160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 44560 # auto generated wait (44560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 44960 # auto generated wait (44960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 45360 # auto generated wait (45360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 45760 # auto generated wait (45760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 46160 # auto generated wait (46160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 46560 # auto generated wait (46560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 46960 # auto generated wait (46960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 47360 # auto generated wait (47360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 47760 # auto generated wait (47760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 48160 # auto generated wait (48160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 48560 # auto generated wait (48560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 48960 # auto generated wait (48960 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 49360 # auto generated wait (49360 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 49760 # auto generated wait (49760 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 50160 # auto generated wait (50160 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 50560 # auto generated wait (50560 ns)
+ latch_rst 4 # reset trigger count
+ wait 1356 # auto generated wait (1356 ns)
+ set_cond 1,1,0,10 # start conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 16 # auto generated wait (16 ns)
+ set_cond 0,0,0,0 # stop conditional playback
+ set_awg_gain 4911,0 # setting gain for X q0
+ play 0,0,4 # play X q0 (20 ns)
+ wait 50856 # auto generated wait (50856 ns)
+ loop R0,@start 
+ stop  
