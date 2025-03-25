@@ -2,7 +2,8 @@ import os, rich
 from qblox_drive_AS.support.QDmanager import QDmanager
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.StatifyContainer import Statifier
-from qblox_drive_AS.support import set_LO_frequency, qs_on_a_boat
+from qblox_drive_AS.support import set_LO_frequency
+from typing import Literal, Optional
 
 class QD_modifier():
     def __init__(self,QD_path:str):
@@ -10,7 +11,7 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
-        self.export(target_q='all')         
+        self.export(target_q='all') 
         
     
     def comment(self, message:str=None):
@@ -19,12 +20,13 @@ class QD_modifier():
                 self.QD_agent.refresh_log(str(message))
                 self.to_modifiy_item.append("Comments")
 
-    def active_reset_switch(self, switch:bool = False):
-        if isinstance(switch,bool) or switch in [0,1]:
-            if self.QD_agent.activeReset != switch:
+    def active_reset_switch(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch in ["ON", "OFF"]:
+            status = True if switch == "ON" else False
+            if self.QD_agent.activeReset != status:
                 print("Current ActiveReset status: ", self.QD_agent.activeReset)
-                self.QD_agent.activeReset = switch
-                self.to_modifiy_item.append("ActiveReset ON" if switch else "ActiveReset OFF")
+                self.QD_agent.activeReset = False # status
+                self.to_modifiy_item.append("ActiveReset ON" if status else "ActiveReset OFF")
     
     def reset_discriminator(self, switch:bool):
         if switch:
@@ -102,16 +104,17 @@ class QD_modifier():
                     self.QD_agent.Fluxmanager.save_sweetspotBias_for(target_q=q,bias=offsets[q])
                 self.to_modifiy_item.append("Sweet_Offset")
 
-    def set_roLOfreq(self,LO_Hz:float,target_q:str='q'):
+    def set_roLOfreq(self,LO_Hz:float,target_qs:list=['q0']):
         """ ## *Warning*: 
             Set the LO for those qubits who shares the same readout module with the `target_q`.
         """
         if LO_Hz is not None:
             slightly_print(f"Set RO-LO = {round(LO_Hz*1e-9,2)} GHz")
-            set_LO_frequency(self.QD_agent.quantum_device,target_q,'readout',LO_Hz)
+            for q in target_qs:
+                set_LO_frequency(self.QD_agent.quantum_device,q,'readout',LO_Hz)
             self.to_modifiy_item.append("RO_LO")
 
-    def set_roAtte(self, ro_atte:int, target_q:str='q'):
+    def set_roAtte(self, ro_atte:int, target_qs:list=['q0']):
         """ ## *Warning*: 
             * Set the readout attenuation for those qubits who shares the same readout module with the `target_q`.\n
             ## Args:\n
@@ -119,8 +122,7 @@ class QD_modifier():
         """
         if ro_atte is not None:
             slightly_print(f"Set RO-attenuation = {int(ro_atte)} dB")
-            who_onTheSameBoat:list = qs_on_a_boat(self.QD_agent.quantum_device.hardware_config(),target_q)
-            for q in who_onTheSameBoat:
+            for q in target_qs:
                 print(f"set {q} ...")
                 self.QD_agent.Notewriter.save_DigiAtte_For(ro_atte,q,'ro')
             self.to_modifiy_item.append("RO_Atte")
@@ -196,7 +198,7 @@ class QD_modifier():
             qs = target_q
 
         qubit = self.QD_agent.quantum_device.get_element("q0")
-        print(qubit.generate_device_config())
+        # print(qubit.generate_device_config())
 
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
@@ -205,7 +207,7 @@ class QD_modifier():
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
                 file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
                 if not self.QD_agent.activeReset:
-                    file.write(f"Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} µs\n\n")
+                    file.write(f"Active Reset OFF, Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} us\n\n")
                 else:
                     file.write(f"Active Reset ON\n\n")
                 for q in qs:
@@ -214,7 +216,7 @@ class QD_modifier():
                     file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
                     file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
                     file.write(f"    RO-amp = {round(qubit.measure.pulse_amp(),3)} V\n")
-                    file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} µs\n")
+                    file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} us\n")
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
@@ -225,16 +227,13 @@ class QD_modifier():
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250323/DR4#81_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250325/DR4#81_SumInfo.pkl"
 
     QMaster = QD_modifier(QD_path)
 
-    """ Export a toml to see the QD info """
-    
-
     ### Readout
     """ Active Reset switch """
-    QMaster.active_reset_switch(switch = True)   # True -> turn on the active reset. Otherwise, False for turning it off. 
+    QMaster.active_reset_switch(switch="OFF")   # On -> turn on the active reset. Otherwise, OFF for turning it off. 
 
     """ Reset Rotation angle """
     QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
@@ -246,8 +245,8 @@ if __name__ == "__main__":
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=None, target_q='q') # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_q='q') # RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=None, target_qs=[]) # LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_qs=['q0','q1','q2']) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
     QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
@@ -275,7 +274,7 @@ if __name__ == "__main__":
     QMaster.set_drag_coef(Coefs={})    # Coefs = {"q0": -0.5, ....}
 
     """ Set T2 use detuing, unit: Hz """
-    QMaster.set_RamseyT2detuing(detunes={"q0":1e6, "q1":1e6, "q2":1e6,})   # detunes = {"q0": -0.5e6, ....}
+    QMaster.set_RamseyT2detuing(detunes={ })   # detunes = {"q0": -0.5e6, ....}
 
     ### z and others
     """ Set coupler bias """

@@ -18,13 +18,17 @@ from utils.tutorial_utils import (
     set_drive_attenuation,
     set_readout_attenuation,
 )
-
-from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
+from quantify_core.data.handling import gen_tuid
+from quantify_core.analysis.readout_calibration_analysis import (
+    ReadoutCalibrationAnalysis,
+)
+from xarray import Dataset
+from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager, BasicTransmonElement
 import qblox_drive_AS.support.UI_Window as uw
 import qblox_drive_AS.support.Chip_Data_Store as cds
 from numpy import ndarray
-from numpy import asarray, real, vstack, array, imag
-from numpy import arctan2, pi, cos, sin, exp
+from numpy import asarray, real, vstack, array, imag, arange
+from numpy import arctan2, pi, cos, sin, exp, rad2deg
 from qblox_drive_AS.support.UserFriend import *
 
 def qs_on_a_boat(hcfg:dict, q:str='q')->list:
@@ -39,6 +43,14 @@ def multiples_of_x(raw_number:float, x:float):
     multiples = int(raw_number//x) + 1
     return x * multiples
     
+def check_acq_channels(QD_agent:QDmanager, join_measure_qs:list)->QDmanager:
+    join_measure_qs.sort(key=lambda x: int(x[1:]))
+    for idx, q in enumerate(join_measure_qs):
+        QD_agent.quantum_device.get_element(q).measure.acq_channel(idx)
+    
+    return QD_agent
+
+
 
 def find_nearest(ary:ndarray, value:float):
     """ find the element  which is closest to the given target_value in the given array"""
@@ -252,7 +264,7 @@ def set_atte_for(quantum_device:QuantumDevice,atte_value:int,mode:str,target_q:l
     # set atte.
     if mode.lower() == 'ro':
         for q_name in target_q:
-            quantum_device.hardware_config()["hardware_options"]["output_att"][f"q:res-{q_name}.ro"] = atte_value
+            quantum_device.hardware_config()["hardware_options"]["output_att"][f"{q_name}:res-{q_name}.ro"] = atte_value
     elif mode.lower() == 'xy':
         
         for q_name in target_q:
@@ -416,15 +428,14 @@ def rotate_onto_Inphase(point_1:ndarray, point_2:ndarray, angle_degree:float=Non
     vector_21 = (point_2 - point_1)
     
     if angle_degree is None:
-        angle = arctan2(vector_21[1], vector_21[0])  # Angle to align with x-axis
-    else:
-        angle = angle_degree*pi/180
-
+        angle_degree = rad2deg(arctan2(vector_21[1], vector_21[0])) % 360 # Angle to align with x-axis
+        
+    angle = angle_degree*pi/180
     data = array([[point_1[0], point_2[0]],[point_1[1], point_2[1]]])
     rotated = rotate_data(data, angle)
 
 
-    return rotated, angle*180/pi
+    return rotated, angle_degree
 
 
 def rotate_data(data:ndarray, angle_degree:float)->ndarray:
@@ -457,7 +468,35 @@ def check_OS_model_ready(QD_agent:QDmanager, qs:list):
             QD_agent.StateDiscriminator.summon_discriminator(q) # will raise NameError
 
 
+def ReadoutFidelity_acq_analyzer(QD_agent:QDmanager, dataset:Dataset, ask_repe_idx:bool=False)->QDmanager:
+    repe_idx_to_fit = 0
+    
+    if dataset.coords["repeat"].size > 1:
+        if ask_repe_idx:
+            repe_idx_to_fit = int(input(f"There are {dataset.coords['repeat'].size} repetitions, what index of repetition you will use to fit ? [0~{dataset.coords['repeat'].size-1}]"))
+        
+    for q in dataset.data_vars:
+        dict_ = {}
+        I = array(dataset.data_vars[q].values[repe_idx_to_fit][0])
+        Q = array(dataset.data_vars[q].values[repe_idx_to_fit][1])
+        dict_["y0"] = ("dim_0", I.transpose().reshape(-1))
+        dict_["y1"] = ("dim_0", Q.transpose().reshape(-1))
+        n_dataset = Dataset(dict_,coords={"x0":("dim_0", array([0,1]*dataset.coords['index'].size))})
+        n_dataset.y0.attrs['units'] = "V"
+        n_dataset.y1.attrs['units'] = "V"
+        n_dataset.attrs = dataset.attrs
+        n_dataset.attrs["tuid"] = gen_tuid()
+        n_dataset.attrs["name"] = f"{q}_Readout_Fidelity"
+        analysis = ReadoutCalibrationAnalysis(n_dataset)
+        analysis.run()
+        fit_results = analysis.fit_results["linear_discriminator"].params   
+        acq_threshold = fit_results["acq_threshold"].value
+        acq_rotation = (rad2deg(fit_results["acq_rotation_rad"].value)) % 360
+        qubit_element:BasicTransmonElement = QD_agent.quantum_device.get_element(q)
+        qubit_element.measure.acq_threshold(acq_threshold)
+        qubit_element.measure.acq_rotation(acq_rotation)
+        
+    return QD_agent
+
 if __name__ == "__main__":
-    a = {"a1":10,"a2":12}
-    b = {}
-    print({**a,**b})
+    check_acq_channels(QD_agent="", join_measure_qs=["q0", "q12", "q3", "q9", "q4"])

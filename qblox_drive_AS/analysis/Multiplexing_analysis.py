@@ -474,8 +474,7 @@ class analysis_tools():
             self.gmm2d_fidelity._import_data(da)
             self.gmm2d_fidelity._start_analysis()
             g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-            self.threshold_01.append(self.gmm2d_fidelity.threshold)
-            
+    
             p00 = g1d_fidelity.g1d_dist[0][0][0]
             self.thermal_populations.append(g1d_fidelity.g1d_dist[0][0][1])
             p11 = g1d_fidelity.g1d_dist[1][0][1]
@@ -485,18 +484,16 @@ class analysis_tools():
                 self.effT_mK.append(0)
             self.RO_fidelity_percentage.append((p00+p11)*100/2)
 
-
-            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
             
+            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
             self.RO_rotate_angle.append(rotate_angle)
             z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
             
             container = empty_like(array(repetition))
             
             for state_idx, state_data in enumerate(z):
-                
                 container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
-
+            
             rot_data.append(moveaxis(container,0,1).tolist())
             
             
@@ -511,7 +508,6 @@ class analysis_tools():
                 self.gmm2d_fidelity._import_data(da)
                 self.gmm2d_fidelity._start_analysis()
                 g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-
                 plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
                 plt.close()
 

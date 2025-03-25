@@ -6,94 +6,17 @@ from numpy import array, sqrt, mean, arange, ndarray
 from xarray import Dataset
 from numpy import nan as NaN
 from qcodes.parameters import ManualParameter
-from qblox_drive_AS.support import QDmanager, compose_para_for_multiplexing
+from qblox_drive_AS.support import QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
-from quantify_core.measurement.control import MeasurementControl
 import matplotlib.pyplot as plt
-
-from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
+from qblox_drive_AS.support import check_acq_channels
+from qblox_drive_AS.support.Pulse_schedule_library import Measure, Schedule, pulse_preview, BinMode
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, pulse_preview
 from quantify_scheduler.operations.gate_library import Reset
 from quantify_scheduler.operations.pulse_library import IdlePulse,SetClockFrequency
 from quantify_scheduler.resources import ClockResource
 
-def PowerDep_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,ro_elements:dict,power_samples:ndarray,n_avg:int=100,run:bool=True)->Dataset:
 
-    sche_func = One_tone_multi_sche
-    freq_datapoint_idx = arange(0,len(list(list(ro_elements.values())[0])))
-    original_rof = {}
-     
-    
-    for q in ro_elements:
-        
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        original_rof[q] = qubit_info.clock_freqs.readout()
-        # avoid frequency conflicts
-        qubit_info.clock_freqs.readout(NaN)
-
-    freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
-    freq.batched = True
-    
-    ro_pulse_amp = ManualParameter(name="ro_amp", unit="", label="Readout pulse amplitude")
-    ro_pulse_amp.batched = False
-    
-    
-    spec_sched_kwargs = dict(   
-        frequencies=ro_elements,
-        R_amp=ro_pulse_amp,
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
-        powerDep=True,
-    )
-
-    
-    if run:
-        gettable = ScheduleGettable(
-            QD_agent.quantum_device,
-            schedule_function=sche_func, 
-            schedule_kwargs=spec_sched_kwargs,
-            real_imag=True,
-            batched=True,
-            num_channels=len(list(ro_elements.keys())),
-        )
-        QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
-        meas_ctrl.gettables(gettable)
-        meas_ctrl.settables([freq,ro_pulse_amp])
-        meas_ctrl.setpoints_grid((freq_datapoint_idx,power_samples)) # -> (x0, x1) if do dh.to_gridded_dataset(ds)
-        
-        
-        
-        rp_ds = meas_ctrl.run("One-tone-powerDep")
-        dict_ = {}
-        for q_idx, q in enumerate(ro_elements):
-            i_data = array(rp_ds[f'y{2*q_idx}']).reshape(power_samples.shape[0],ro_elements[q].shape[0])
-            q_data = array(rp_ds[f'y{2*q_idx+1}']).reshape(power_samples.shape[0],ro_elements[q].shape[0])
-            dict_[q] = (["mixer","ro_amp","freq"],array([i_data,q_data]))
-            dict_[f'{q}_freq'] = (["mixer","ro_amp","freq"],array(list(ro_elements[q])*2*power_samples.shape[0]).reshape(2,power_samples.shape[0],ro_elements[q].shape[0]))
-            
-        DS = Dataset(dict_,coords={"mixer":array(["I","Q"]),"ro_amp":power_samples,"freq":freq_datapoint_idx})
-
-        
-
-        
-    else:
-        n_s = 2
-        preview_para = {}
-        for q in ro_elements:
-            preview_para[q] = ro_elements[q][:n_s]
-        sweep_para2 = array(power_samples[:2])
-        spec_sched_kwargs['frequencies']= preview_para
-        spec_sched_kwargs['R_amp']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
-        pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
-        DS = {}
-    
-    for q in ro_elements:
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        original_rof[q] = qubit_info.clock_freqs.readout(original_rof[q])
-
-    return DS
 
 def plot_powerCavity_S21(ds:Dataset, QD_agent:QDmanager=None, save_fig_folder:str=None):
     """
@@ -139,7 +62,7 @@ def plot_powerCavity_S21(ds:Dataset, QD_agent:QDmanager=None, save_fig_folder:st
                 plt.show()
 
 
-class PowerDepCavity(ScheduleConductor):
+class PowerDepCavityPS(ScheduleConductor):
     def __init__(self):
         super().__init__() 
         self._ro_elements:dict = {}
@@ -176,10 +99,7 @@ class PowerDepCavity(ScheduleConductor):
 
     def __PulseSchedule__(self, 
         frequencies: dict,
-        R_amp: dict,
-        R_duration: dict,
-        R_integration:dict,
-        R_inte_delay:dict,
+        R_amp: any,
         repetitions:int=1,    
     ) -> Schedule:
         
@@ -198,15 +118,9 @@ class PowerDepCavity(ScheduleConductor):
                 sched.add(Reset(q))
                 sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
                 sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
-
+            
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE, pulse_amp=R_amp))
                 
-                if qubit_idx == 0:
-                    spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=True)
-                else:
-                    Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=True)
-                
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-        
         self.schedule =  sched  
         return sched
     
@@ -220,7 +134,7 @@ class PowerDepCavity(ScheduleConductor):
             original_rof[q] = quantum_device.get_element(q).clock_freqs.readout()
             quantum_device.get_element(q).clock_freqs.readout(NaN) # avoid cluster clock warning
             
-
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
         self.__freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
         self.__freq.batched = True
         self.__ro_pulse_amp = ManualParameter(name="ro_amp", unit="", label="Readout pulse amplitude")
@@ -229,9 +143,6 @@ class PowerDepCavity(ScheduleConductor):
         self.__spec_sched_kwargs = dict(   
         frequencies=self._ro_elements,
         R_amp=self.__ro_pulse_amp,
-        R_duration=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r2')
         )
     
     def __Compose__(self, *args, **kwargs):
@@ -247,15 +158,16 @@ class PowerDepCavity(ScheduleConductor):
             )
             self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
             self.meas_ctrl.gettables(self.__gettable)
-            self.meas_ctrl.settables(self.__freq)
-            self.meas_ctrl.setpoints(self.__freq_datapoint_idx)
+            self.meas_ctrl.settables([self.__freq, self.__ro_pulse_amp])
+            self.meas_ctrl.setpoints_grid([self.__freq_datapoint_idx, self._power_samples])
         
         else:
             n_s = 2
             preview_para = {}
             for q in self._ro_elements:
                 preview_para[q] = self._ro_elements[q][:n_s]
-        
+             
+            self.__spec_sched_kwargs['R_amp']= self._power_samples[-1]
             self.__spec_sched_kwargs['frequencies']= preview_para
 
     def __RunAndGet__(self, *args, **kwargs):
@@ -275,3 +187,5 @@ class PowerDepCavity(ScheduleConductor):
             self.dataset = dataset
         else:
             pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)
+
+

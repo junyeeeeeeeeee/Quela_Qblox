@@ -15,7 +15,8 @@ from quantify_scheduler.schedules.schedule import Schedule
 from quantify_scheduler.operations.acquisition_library import SSBIntegrationComplex,Trace, ThresholdedAcquisition
 from quantify_scheduler.operations.pulse_library import (IdlePulse,SetClockFrequency,SquarePulse,DRAGPulse,GaussPulse,SoftSquarePulse,NumericalPulse)
 from quantify_scheduler.device_under_test.quantum_device import QuantumDevice
-from quantify_scheduler.operations.gate_library import Reset, Measure
+from quantify_scheduler.operations.gate_library import *
+from quantify_scheduler.backends.qblox.operations.gate_library import ConditionalReset
 from quantify_scheduler.resources import ClockResource, BasebandClockResource
 from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio, GateGenesis
@@ -486,181 +487,6 @@ def pulse_preview(quantum_device:QuantumDevice,sche_func:Schedule, sche_kwargs:d
     )
     comp_sched.plot_pulse_diagram(plot_backend="plotly",**kwargs).show() 
     
-#%% schedule function
-
-def One_tone_sche(
-    frequencies: np.ndarray,
-    q:str,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    powerDep:bool,
-    repetitions:int=1,    
-) -> Schedule:
-    
-    sched = Schedule("One tone spectroscopy (NCO sweep)",repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+ ".ro", freq=frequencies.flat[0]))
-    
-    for acq_idx, freq in enumerate(frequencies):
-        
-        sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
-        sched.add(Reset(q))
-        
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-        
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-     
-    return sched
-
-
-# ? Doing...
-
-def One_tone_multi_sche(
-    frequencies: dict,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    powerDep:bool,
-    bias:any=0,
-    bias_dura:float=0,
-    repetitions:int=1,    
-) -> Schedule:
-    
-    qubits2read = list(frequencies.keys())
-    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
-    sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
-
-
-    for acq_idx in range(sameple_idx):    
-
-        for qubit_idx, q in enumerate(qubits2read):
-            freq = frequencies[q][acq_idx]
-            if acq_idx == 0:
-                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
-            
-            sched.add(Reset(q))
-            sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
-
-            
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-            else:
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
-            
-            if bias != 0 and bias_dura != 0: 
-                Z(sched,bias,bias_dura,q,spec_pulse,0,ref_position='end')
-
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-          
-    return sched
-
-def RabiSplitting_multi_sche(
-    frequencies: dict,
-    bias_couplers:list,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    powerDep:bool,
-    bias:any=0,
-    bias_dura:float=0,
-    repetitions:int=1,    
-) -> Schedule:
-    
-    qubits2read = list(frequencies.keys())
-    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
-    sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
-
-
-    for acq_idx in range(sameple_idx):    
-
-        for qubit_idx, q in enumerate(qubits2read):
-            freq = frequencies[q][acq_idx]
-            if acq_idx == 0:
-                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
-            
-            sched.add(Reset(q))
-            sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-            sched.add(IdlePulse(duration=4e-9))
-
-            
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=powerDep)
-                if bias != 0 and bias_dura != 0 and len(list(bias_couplers)):
-                    for qc in bias_couplers:
-                        Z(sched,bias,bias_dura,qc,spec_pulse,0,ref_position='end')
-            else:
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=powerDep)
-
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-          
-    return sched 
-
-def Two_tone_sche(
-    frequencies: np.ndarray,
-    q:str,
-    spec_amp:float,
-    spec_Du:float,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    repetitions:int=1,   
-    ref_pt:str='end'
-    
-) -> Schedule:
-    sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
-    sched.add_resource(ClockResource(name=q+".01", freq=frequencies.flat[0]))
-    for acq_idx, freq in enumerate(frequencies):
-        sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
-        sched.add(Reset(q))
-        # sched.add(IdlePulse(duration=5000*1e-9), label=f"buffer {acq_idx}")
-        spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-
-        Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
-        Integration(sched,q,R_inte_delay,R_integration,spec_pulse,acq_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-
-     
-    return sched
-
-def multi_Two_tone_sche(
-    frequencies:dict,
-    spec_amp:any,
-    spec_Du:float,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    repetitions:int=1,   
-    ref_pt:str='end'
-    
-) -> Schedule:
-    sched = Schedule("Two tone spectroscopy (NCO sweep)",repetitions=repetitions)
-    qubits2read = list(frequencies.keys())
-    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
-
-    for acq_idx in range(sameple_idx):    
-        for qubit_idx, q in enumerate(qubits2read):
-            freq = frequencies[q][acq_idx]
-            if acq_idx == 0:
-                sched.add_resource(ClockResource(name=q+ ".01", freq=array(frequencies[q]).flat[0]))
-        
-            sched.add(SetClockFrequency(clock= q+".01", clock_freq_new=freq))
-            sched.add(Reset(q))
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-            else:
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
-
-            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay, ref_point=ref_pt)
-
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-
-     
-    return sched
 
 # try to put a bias on RO part 03/20
 def Z_gate_two_tone_sche(
@@ -693,45 +519,7 @@ def Z_gate_two_tone_sche(
     return sched
 
 #? Warning: Should avoid add the z-gate on the same channel at the same time
-def multi_Z_gate_two_tone_sche(
-    frequencies: dict,
-    bias_qs:list,
-    Z_amp:any,
-    spec_amp:float,
-    spec_Du:float,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    repetitions:int=1,     
-) -> Schedule:
-    
-    sched = Schedule("Zgate_two_tone spectroscopy (NCO sweep)",repetitions=repetitions)
 
-    qubits2read = list(frequencies.keys())
-    sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
-
-    for acq_idx in range(sameple_idx):    
-        for qubit_idx, q in enumerate(qubits2read):
-            freq = frequencies[q][acq_idx]
-            if acq_idx == 0:
-                sched.add_resource(ClockResource(name=q+".01", freq=array(frequencies[q]).flat[0]))
-   
-            sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
-            sched.add(Reset(q))
-            
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,R_amp,R_duration)
-                for qb in bias_qs:
-                    Z(sched,Z_amp,spec_Du,qb,spec_pulse,electrical_delay)
-            else:
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
-            
-            Spec_pulse(sched,spec_amp,spec_Du,q,spec_pulse,electrical_delay)
-
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-     
-    return sched
 
 def Qubit_state_heterodyne_spec_sched_nco(
     frequencies: np.ndarray,
@@ -1414,64 +1202,7 @@ def Zz_Interaction(
         
     return sched
 
-def Qubit_SS_sche(
-    q:str,
-    ini_state:str,
-    pi_amp: dict,
-    pi_dura:dict,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    repetitions:int=1,
-) -> Schedule:
 
-    sched = Schedule("Single shot", repetitions=repetitions)
-    
-    sched.add(Reset(q))
-    
-    sched.add(IdlePulse(duration=5000*1e-9))
-    
-    spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-    
-    if ini_state=='e': 
-        X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
-        
-    else: None
-    
-    Integration(sched,q,R_inte_delay,R_integration,spec_pulse,0,single_shot=True,get_trace=False,trace_recordlength=0)
-
-    return sched
-
-def multi_Qubit_SS_sche(
-    ini_state:str,
-    waveformer:GateGenesis,
-    pi_amp: dict,
-    pi_dura:dict,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    repetitions:int=1,
-) -> Schedule:
-
-    sched = Schedule("Single shot", repetitions=repetitions)
-
-    for qubit_idx, q in enumerate(R_integration):
-
-        sched.add(Reset(q))
-        if qubit_idx == 0:
-            spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-        else:
-            Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
-    
-        if ini_state=='e': 
-            waveformer.X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
-        
-    
-        Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=0,acq_channel=qubit_idx,single_shot=True,get_trace=False,trace_recordlength=0)
-
-    return sched
 
 def Gate_Test_SS_sche(
     pulse_num:int,
@@ -1786,9 +1517,6 @@ def drag_coef_cali(
         
     return sched
 
-def StarkShift_cali():
-    """ N * (X,-X)"""
-    pass
 
 def Qubit_amp_SS_sche(
     q:str,

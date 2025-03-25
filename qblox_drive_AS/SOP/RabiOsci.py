@@ -4,12 +4,12 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from numpy import array, arange, ndarray, round, full, concatenate
-from qblox_drive_AS.support import QDmanager, Data_manager
+from qblox_drive_AS.support import QDmanager, Data_manager, check_acq_channels
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import compose_para_for_multiplexing
 from xarray import Dataset
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, electrical_delay, pulse_preview 
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, IdlePulse, X, Y, BinMode, electrical_delay, pulse_preview 
 from quantify_scheduler.operations.gate_library import Reset
 
 #? The way to merge two dict a and b : c = {**a,**b}
@@ -113,10 +113,6 @@ class RabiPS(ScheduleConductor):
     def __PulseSchedule__(self,
         pi_amp:dict,
         pi_dura:dict,
-        R_amp: dict,
-        R_duration: dict,
-        R_integration:dict,
-        R_inte_delay:dict,
         XY_theta:str,
         repetitions:int=1,
         OS_or_not:bool=False
@@ -128,26 +124,23 @@ class RabiPS(ScheduleConductor):
 
         match XY_theta:
             case 'Y_theta':
-                gate:callable = self.QD_agent.Waveformer.Y_pi_p
+                gate:callable = Y
             case _:
-                gate:callable = self.QD_agent.Waveformer.X_pi_p
+                gate:callable = X
 
         
-        for acq_idx in range(sample_len):    
+        for acq_idx in range(sample_len):
+            align_pulse = sched.add(IdlePulse(4e-9))    
             for qubit_idx, q in enumerate(qubits2read):
-                sched.add(Reset(q))
-                if qubit_idx == 0:
-                    spec_pulse = Readout(sched,q,R_amp,R_duration)
-                else:
-                    Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
-                
+                reset = sched.add(Reset(q), ref_op=align_pulse)
+
                 if self._RabiType.lower() == 'power':
-                    gate(sched,{q:pi_amp[q][acq_idx]},q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
+                    sched.add(gate(qubit=q, amp180=pi_amp[q][acq_idx]), ref_op=reset)
                 else:
-                    gate(sched,{q:pi_amp[q]},q,pi_dura[q][acq_idx],spec_pulse,freeDu=electrical_delay)
+                    sched.add(gate(qubit=q, duration=pi_dura[q][acq_idx]), ref_op=reset)
             
-            
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=OS_or_not,get_trace=False,trace_recordlength=0)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND if OS_or_not else BinMode.AVERAGE),rel_time=electrical_delay)
+        
         self.schedule = sched
         return sched
 
@@ -176,13 +169,10 @@ class RabiPS(ScheduleConductor):
         if self._os_mode:
             self.__one_shot_para =  ManualParameter(name="Shot")
         
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._variables.keys()))
         self.__sched_kwargs = dict(
             pi_amp = self.amps,
             pi_dura = self.duras,
-            R_amp=compose_para_for_multiplexing(self.QD_agent,self._variables,'r1'),
-            R_duration=compose_para_for_multiplexing(self.QD_agent,self._variables,'r3'),
-            R_integration=compose_para_for_multiplexing(self.QD_agent,self._variables,'r4'),
-            R_inte_delay=compose_para_for_multiplexing(self.QD_agent,self._variables,'r2'),
             XY_theta='X_theta',
             OS_or_not=self._os_mode
             )

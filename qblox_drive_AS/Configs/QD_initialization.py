@@ -10,7 +10,7 @@ qubit_number_onChip:int = 3
 coupler_number_onChip:int = 1
 chip_name:str = "2FQ1FC_0321_DR4"
 chip_type:str = "5Q4C"
-old_QD_path:str = "qblox_drive_AS/QD_backup/20250321/DR4#81_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
+old_QD_path:str = "qblox_drive_AS/QD_backup/20250324/DR4#81_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 Hcfg = {
@@ -41,9 +41,9 @@ Hcfg = {
             "q0:mw-q0.01": 0,
             "q1:mw-q1.01": 0,
             "q2:mw-q2.01": 0,
-            "q:res-q0.ro": 0,
-            "q:res-q2.ro": 0,
-            "q:res-q1.ro": 0
+            "q0:res-q0.ro": 0,
+            "q2:res-q2.ro": 0,
+            "q1:res-q1.ro": 0
         },
         "mixer_corrections": {
             "q0:mw-q0.01": {
@@ -70,7 +70,7 @@ Hcfg = {
                 # "amp_ratio": 1.0,
                 # "phase_error": 0.0
             },
-            "q:res-q0.ro": {
+            "q0:res-q0.ro": {
                 "auto_lo_cal": "on_lo_interm_freq_change",
                 "auto_sideband_cal": "on_interm_freq_change",
                 # "dc_offset_i": 0.0,
@@ -78,7 +78,7 @@ Hcfg = {
                 # "amp_ratio": 1.0,
                 # "phase_error": 0.0
             },
-            "q:res-q1.ro": {
+            "q1:res-q1.ro": {
                 "auto_lo_cal": "on_lo_interm_freq_change",
                 "auto_sideband_cal": "on_interm_freq_change",
                 # "dc_offset_i": 0.0,
@@ -86,7 +86,7 @@ Hcfg = {
                 # "amp_ratio": 1.0,
                 # "phase_error": 0.0
             },
-            "q:res-q2.ro": {
+            "q2:res-q2.ro": {
                 "auto_lo_cal": "on_lo_interm_freq_change",
                 "auto_sideband_cal": "on_interm_freq_change",
                 # "dc_offset_i": 0.0,
@@ -105,13 +105,13 @@ Hcfg = {
             "q2:mw-q2.01": {
                 "lo_freq": 4e9
             },
-            "q:res-q0.ro": {
+            "q0:res-q0.ro": {
                 "lo_freq": 6.03e9
             },
-            "q:res-q2.ro": {
+            "q2:res-q2.ro": {
                 "lo_freq": 6.03e9
             },
-            "q:res-q1.ro": {
+            "q1:res-q1.ro": {
                 "lo_freq": 6.03e9
             }
         }
@@ -144,8 +144,16 @@ Hcfg = {
             ],
             [
                 f"cluster{dr_name}.module18.complex_output_0",
-                "q:res"
-            ]
+                "q0:res"
+            ],
+            [
+                f"cluster{dr_name}.module18.complex_output_0",
+                "q1:res"
+            ],
+            [
+                f"cluster{dr_name}.module18.complex_output_0",
+                "q2:res"
+            ],
         ]
     }
 }

@@ -3,91 +3,16 @@ from numpy import array, arange, ndarray
 from numpy import nan as NaN
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
-from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
+from qblox_drive_AS.support import QDmanager, check_acq_channels
 from quantify_scheduler.gettables import ScheduleGettable
-from quantify_core.measurement.control import MeasurementControl
-from qblox_drive_AS.support.Pulse_schedule_library import One_tone_multi_sche, pulse_preview
+from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview, BinMode
+from qblox_drive_AS.support.Pulser import ScheduleConductor
+from qblox_drive_AS.support.Pulse_schedule_library import Measure, Schedule, pulse_preview, SquarePulse
+from quantify_scheduler.operations.pulse_library import IdlePulse,SetClockFrequency
+from quantify_scheduler.resources import ClockResource
 from qblox_drive_AS.SOP.FluxQubit import z_pulse_amp_OVER_const_z
 from xarray import Dataset
 
-def FluxCav_spec(QD_agent:QDmanager,meas_ctrl:MeasurementControl,flux_ctrl:dict,ro_elements:dict,flux_samples:ndarray,n_avg:int=300,run:bool=True)->Dataset:
-    sche_func = One_tone_multi_sche
-    original_rof = {}
-    flux_dura = 0
-    for q in ro_elements:
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        flux_dura = qubit_info.reset.duration()+qubit_info.measure.integration_time()
-        original_rof[q] = qubit_info.clock_freqs.readout()
-        qubit_info.clock_freqs.readout(NaN)
-        freq_datapoint_idx = arange(ro_elements[q].shape[0])
-
-    freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
-    freq.batched = True
-    bias = ManualParameter(name="bias", unit="V", label="Flux voltage")
-    bias.batched = False
-    
-    spec_sched_kwargs = dict(   
-        frequencies=ro_elements,
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
-        powerDep=False,
-        bias = bias,
-        bias_dura = flux_dura
-    )
-
-    
-    if run:
-        gettable = ScheduleGettable(
-            QD_agent.quantum_device,
-            schedule_function=sche_func, 
-            schedule_kwargs=spec_sched_kwargs,
-            real_imag=True,
-            batched=True,
-            num_channels=len(list(ro_elements.keys())),
-        )
-        QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
-        meas_ctrl.gettables(gettable)
-        meas_ctrl.settables((freq,bias))
-        meas_ctrl.setpoints_grid((freq_datapoint_idx,flux_samples*z_pulse_amp_OVER_const_z)) # x0, x1
-        
-        ds = meas_ctrl.run("One-tone-Flux")
-        dict_ = {}
-        for idx, q in enumerate(ro_elements):
-            freq_values = 2*flux_samples.shape[0]*list(ro_elements[q])
-            i_data = array(ds[f'y{2*idx}']).reshape(flux_samples.shape[0],array(ro_elements[q]).shape[0])
-            q_data = array(ds[f'y{2*idx+1}']).reshape(flux_samples.shape[0],array(ro_elements[q]).shape[0])
-            dict_[q] = (["mixer","bias","freq"],array([i_data,q_data]))
-            dict_[f"{q}_freq"] = (["mixer","bias","freq"],array(freq_values).reshape(2,flux_samples.shape[0],array(ro_elements[q]).shape[0]))
-
-        
-        rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":flux_samples,"freq":freq_datapoint_idx})
-        rfs_ds.attrs["execution_time"] = Data_manager().get_time_now()
-        rfs_ds.attrs["method"] = "Average"
-        rfs_ds.attrs["system"] = "qblox"
-        
-
-        # reset flux bias
-        for q in ro_elements:
-            flux_ctrl[q](0.0)
-        
-    else:
-        n_s = 2
-        preview_para = {}
-        for q in ro_elements:
-            preview_para[q] = ro_elements[q][:n_s]
-        sweep_para2= array(flux_samples[:2])
-        spec_sched_kwargs['frequencies']= preview_para
-        spec_sched_kwargs['bias']= sweep_para2.reshape(sweep_para2.shape or (1,))[1]
-        pulse_preview(QD_agent.quantum_device,sche_func,spec_sched_kwargs)
-
-        rfs_ds = ''
-
-    for q in ro_elements:
-        QD_agent.quantum_device.get_element(q).clock_freqs.readout(original_rof[q])
-    
-    return rfs_ds
 
 def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
     qubit = QD_agent.quantum_device.get_element(qb)
@@ -102,3 +27,137 @@ def update_flux_info_in_results_for(QD_agent:QDmanager,qb:str,FD_results:dict):
         offset=FD_results['offset']
     )
 
+
+
+class FluxDepCavityPS(ScheduleConductor):
+    def __init__(self):
+        super().__init__() 
+        self._ro_elements:dict = {}
+        self._avg_n:int = 100
+        self._flux_samples:ndarray = []
+    
+    @property
+    def ro_elements(self):
+        return self._ro_elements
+    @ro_elements.setter
+    def ro_elements(self, ro_eles:dict):
+        self._ro_elements = ro_eles
+    
+    @property
+    def flux_samples(self):
+        return self._flux_samples
+    @flux_samples.setter
+    def flux_samples(self,fluxs:ndarray):
+        self._flux_samples = fluxs
+
+    @property
+    def n_avg(self):
+        return self._avg_n
+    @n_avg.setter
+    def n_avg(self, avg:int):
+        self._avg_n = avg
+
+    @property
+    def execution(self):
+        return self._execution
+    @execution.setter
+    def execution(self, execu:bool):
+        self._execution = execu
+
+    def __PulseSchedule__(self, 
+        frequencies: dict,
+        bias_dura:float,
+        bias:any,
+        repetitions:int=1,    
+    ) -> Schedule:
+        
+        qubits2read = list(frequencies.keys())
+        sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+        sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
+        
+
+        for acq_idx in range(sameple_idx):    
+            align_pulse = sched.add(IdlePulse(duration=4e-9), label=f"buffer {acq_idx}")
+            for qubit_idx, q in enumerate(qubits2read):
+                freq = frequencies[q][acq_idx]
+                if acq_idx == 0:
+                    sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
+                      
+                sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
+                sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+                sched.add(SquarePulse(bias, bias_dura, port=q+":fl", clock="cl0.baseband"),ref_op=align_pulse)
+                
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_op=align_pulse, ref_pt='end')
+            
+
+        self.schedule =  sched  
+        return sched
+    
+
+    def __SetParameters__(self, *args, **kwargs):
+         
+        self.__freq_datapoint_idx = arange(0,len(list(list(self._ro_elements.values())[0])))
+        original_rof = {}
+        for q in self._ro_elements:
+            qubit_info = self.QD_agent.quantum_device.get_element(q)
+            flux_dura = qubit_info.measure.integration_time()
+            original_rof[q] = qubit_info.clock_freqs.readout()
+            qubit_info.clock_freqs.readout(NaN)
+            
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
+
+        self.__freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
+        self.__freq.batched = True
+        self.__bias = ManualParameter(name="ro_amp", unit="", label="Readout pulse amplitude")
+        self.__bias.batched = False
+
+        self.__spec_sched_kwargs = dict(   
+            frequencies=self._ro_elements,
+            bias_dura=flux_dura,
+            bias=self.__bias
+        )
+    
+    def __Compose__(self, *args, **kwargs):
+        
+        if self._execution:
+            self.__gettable = ScheduleGettable(
+            self.QD_agent.quantum_device,
+            schedule_function=self.__PulseSchedule__, 
+            schedule_kwargs=self.__spec_sched_kwargs,
+            real_imag=True,
+            batched=True,
+            num_channels=len(list(self._ro_elements.keys())),
+            )
+            self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
+            self.meas_ctrl.gettables(self.__gettable)
+            self.meas_ctrl.settables([self.__freq, self.__bias])
+            self.meas_ctrl.setpoints_grid([self.__freq_datapoint_idx, self._flux_samples*z_pulse_amp_OVER_const_z])
+        
+        else:
+            n_s = 2
+            preview_para = {}
+            for q in self._ro_elements:
+                preview_para[q] = self._ro_elements[q][:n_s]
+             
+            self.__spec_sched_kwargs['bias']= self._flux_samples[-1]*z_pulse_amp_OVER_const_z
+            self.__spec_sched_kwargs['frequencies']= preview_para
+
+    def __RunAndGet__(self, *args, **kwargs):
+        
+        if self._execution:
+            ds = self.meas_ctrl.run("One-tone-Flux")
+            dict_ = {}
+            for idx, q in enumerate(self._ro_elements):
+                freq_values = 2*self._flux_samples.shape[0]*list(self._ro_elements[q])
+                i_data = array(ds[f'y{2*idx}']).reshape(self._flux_samples.shape[0],array(self._ro_elements[q]).shape[0])
+                q_data = array(ds[f'y{2*idx+1}']).reshape(self._flux_samples.shape[0],array(self._ro_elements[q]).shape[0])
+                dict_[q] = (["mixer","bias","freq"],array([i_data,q_data]))
+                dict_[f"{q}_freq"] = (["mixer","bias","freq"],array(freq_values).reshape(2,self._flux_samples.shape[0],array(self._ro_elements[q]).shape[0]))
+
+            
+            rfs_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"bias":self._flux_samples,"freq":self.__freq_datapoint_idx})
+            rfs_ds.attrs["method"] = "Average"
+            rfs_ds.attrs["system"] = "qblox"
+            self.dataset = rfs_ds
+        else:
+            pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)

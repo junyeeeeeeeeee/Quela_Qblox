@@ -5,10 +5,10 @@ from qblox_drive_AS.support.UserFriend import *
 from numpy import array, moveaxis, arange, ndarray
 from quantify_scheduler.gettables import ScheduleGettable
 from qcodes.parameters import ManualParameter
-from qblox_drive_AS.support import Data_manager, compose_para_for_multiplexing
+from qblox_drive_AS.support import Data_manager, check_acq_channels
 from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Rxy, IdlePulse, Measure, BinMode, ConditionalReset, electrical_delay
 from quantify_scheduler.operations.gate_library import Reset
 
 
@@ -44,32 +44,25 @@ class ReadoutFidelityPS( ScheduleConductor ):
         self._repeat = int(repeat_num)
 
     def __PulseSchedule__(self,
-        pi_amp: dict,
-        pi_dura:dict,
-        R_amp: dict,
-        R_duration: dict,
-        R_integration:dict,
-        R_inte_delay:dict,
-        states:ndarray = array([0, 1]),
+        meas_qs: list,
+        states:ndarray = array([0,1]),
         repetitions:int=1,
+        activeReset:bool=False
         ) -> Schedule:
         
         sameple_idx = states.shape[0]
         sched = Schedule("Single shot", repetitions=repetitions)
         for acq_idx in range(sameple_idx):
-        
-            for qubit_idx, q in enumerate(R_integration):
+            align_pulse = sched.add(IdlePulse(4e-9))
+            for qubit_idx, q in enumerate(meas_qs):
 
-                sched.add(Reset(q))
-                if qubit_idx == 0:
-                    spec_pulse = Readout(sched,q,R_amp,R_duration,powerDep=False)
-                else:
-                    Multi_Readout(sched,q,spec_pulse,R_amp,R_duration,powerDep=False)
+                reset = sched.add(Reset(q), ref_op=align_pulse)
+                
+                if acq_idx == 1:
+                    pi_pulse = sched.add(Rxy(qubit=q, theta=180, phi=0), ref_op=reset)
+                
+            sched.add(Measure(*meas_qs,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND), rel_time=electrical_delay, ref_op=pi_pulse if acq_idx==1 else reset)
             
-                xyl = {q:pi_amp[q]*states[acq_idx]}
-                self.QD_agent.Waveformer.X_pi_p(sched,xyl,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_idx,acq_channel=qubit_idx,single_shot=True,get_trace=False,trace_recordlength=0)
-        
         self.schedule = sched
         return sched
     
@@ -88,17 +81,15 @@ class ReadoutFidelityPS( ScheduleConductor ):
         self.__repeat_data_idx = arange(self._repeat)
         self.__state_idx = array([0, 1])
         
+        self.QD_agent = check_acq_channels(self.QD_agent, self._target_qs)
         
         self.__sched_kwargs = dict(   
-            pi_amp=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'d1'),
-            pi_dura=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'d3'),
-            R_amp=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'r1'),
-            R_duration=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'r3'),
-            R_integration=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'r4'),
-            R_inte_delay=compose_para_for_multiplexing(self.QD_agent,self._target_qs,'r2'),
+            pi_amp=self._target_qs
         )
+    
 
     def __Compose__(self, *args, **kwargs):
+        
         if self._execution:
             self.__gettable = ScheduleGettable(
                 self.QD_agent.quantum_device,
@@ -108,9 +99,10 @@ class ReadoutFidelityPS( ScheduleConductor ):
                 batched=True,
                 num_channels=len(self._target_qs),
                 )
+            
+            
             self.QD_agent.quantum_device.cfg_sched_repetitions(self._shots)
             self.meas_ctrl.gettables(self.__gettable)
-
             self.meas_ctrl.settables([self.__Para_state,self.__one_shot_para,self.__Para_repeat])
             self.meas_ctrl.setpoints_grid((self.__state_idx,arange(self._shots),self.__repeat_data_idx))
     
