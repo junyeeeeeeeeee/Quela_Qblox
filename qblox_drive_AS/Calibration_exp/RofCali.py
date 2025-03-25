@@ -4,96 +4,141 @@ from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
-from quantify_core.measurement.control import MeasurementControl
-from numpy import array, arange, moveaxis
+from numpy import array, arange
 from numpy import nan as NaN
-from qblox_drive_AS.support import QDmanager, Data_manager, compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import multi_ROF_Cali_sche, pulse_preview
+from qblox_drive_AS.support import Data_manager, check_acq_channels
 
-def rofCali(QD_agent:QDmanager,meas_ctrl:MeasurementControl,rof_samples:dict,n_avg:int=500,run:bool=True)->Dataset:
-    sche_func= multi_ROF_Cali_sche
-    ro_f_origin = {}
-    for q in rof_samples:
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        ro_f_origin[q] = qubit_info.clock_freqs.readout()
-        qubit_info.clock_freqs.readout(NaN)
-        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
-        rof_data_idx = arange(rof_samples[q].shape[0])
-    
-    
-    option_rof = ManualParameter(name="freq", unit="Hz", label="Frequency")
-    option_rof.batched = True
+from qblox_drive_AS.support.Pulser import ScheduleConductor
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Reset, electrical_delay
+from quantify_scheduler.operations.gate_library import Measure
+from quantify_scheduler.operations.pulse_library import IdlePulse,SetClockFrequency
+from quantify_scheduler.resources import ClockResource
 
-    def state_dep_sched(ini_state:str):
-        sched_kwargs = dict(
-            ro_freq=rof_samples,
-            ini_state=ini_state,
-            pi_amp=compose_para_for_multiplexing(QD_agent,rof_samples,'d1'),
-            pi_dura=compose_para_for_multiplexing(QD_agent,rof_samples,'d3'),
-            R_amp=compose_para_for_multiplexing(QD_agent,rof_samples,'r1'),
-            R_duration=compose_para_for_multiplexing(QD_agent,rof_samples,'r3'),
-            R_integration=compose_para_for_multiplexing(QD_agent,rof_samples,'r4'),
-            R_inte_delay=compose_para_for_multiplexing(QD_agent,rof_samples,'r2'),
-            )
+class ROFcalibrationPS(ScheduleConductor):
+    def __init__(self):
+        super().__init__()
+        self._ro_elements:dict = {}
+        self._avg_n:int = 100
+    
+    @property
+    def ro_elements(self):
+        return self._ro_elements
+    @ro_elements.setter
+    def ro_elements(self, ro_eles:dict):
+        self._ro_elements = ro_eles
+
+    @property
+    def n_avg(self):
+        return self._avg_n
+    @n_avg.setter
+    def n_avg(self, avg:int):
+        self._avg_n = avg
+
+    @property
+    def execution(self):
+        return self._execution
+    @execution.setter
+    def execution(self, execu:bool):
+        self._execution = execu
+
+    def __PulseSchedule__(self, 
+        frequencies: dict,
+        state:int,
+        repetitions:int=1,    
+    ) -> Schedule:
         
-        if run:
-            gettable = ScheduleGettable(
-                QD_agent.quantum_device,
-                schedule_function=sche_func,
-                schedule_kwargs=sched_kwargs,
-                real_imag=True,
-                batched=True,
-                num_channels=len(list(rof_samples.keys())),
+        qubits2read = list(frequencies.keys())
+        sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
+        sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
+
+        for acq_idx in range(sameple_idx):    
+            align_pulse = sched.add(IdlePulse(4e-9))
+            for qubit_idx, q in enumerate(qubits2read):
+                freq = frequencies[q][acq_idx]
+                if acq_idx == 0:
+                    sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
+                
+                sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
+                sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
+                reset = sched.add(Reset(q), ref_op=align_pulse)
+                if state:
+                    pi_pulse = sched.add(X(q), ref_op=reset)
+
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), rel_time=electrical_delay, ref_op=pi_pulse if state else reset)
+                
+        self.schedule =  sched  
+        return sched
+        
+    def __SetParameters__(self, *args, **kwargs):
+         
+        self.__datapoint_idx = arange(0,len(list(list(self._ro_elements.values())[0])))
+        self.__prepared_states = array([0, 1])
+        
+        self.__ro_f_origin = {}
+        for q in self._ro_elements:
+            qubit_info = self.QD_agent.quantum_device.get_element(q)
+            self.__ro_f_origin[q] = qubit_info.clock_freqs.readout()
+            qubit_info.clock_freqs.readout(NaN)
+            eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+           
+        self.__freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
+        self.__freq.batched = True
+        self.__state =  ManualParameter(name="prepared_state", unit="", label="state")
+        self.__state.batched = False
+
+
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
+        self.__spec_sched_kwargs = dict(   
+        frequencies=self._ro_elements,
+        state=self.__state
+        )
+
+    def __Compose__(self, *args, **kwargs):
+        
+        if self._execution:
+            self.__gettable = ScheduleGettable(
+            self.QD_agent.quantum_device,
+            schedule_function=self.__PulseSchedule__, 
+            schedule_kwargs=self.__spec_sched_kwargs,
+            real_imag=True,
+            batched=True,
+            num_channels=len(list(self._ro_elements.keys())),
             )
-            
-            QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
-            meas_ctrl.gettables(gettable)
-            meas_ctrl.settables(option_rof)
-            meas_ctrl.setpoints(rof_data_idx)
-            
-            ds = meas_ctrl.run("Rof-Calibrate")
-            dict_ = {}
-            for q_idx, q in enumerate(rof_samples):
-                i_data = array(ds[f'y{2*q_idx}'])
-                q_data = array(ds[f'y{2*q_idx+1}'])
-                dict_[q] = array([i_data.tolist(),q_data.tolist()]) # shape (mixer, rof_idx)
-                dict_[f"{q}_rof"] = array([array(rof_samples[q])]*2) # shape (mixer, rof_idx)
-            
-            return dict_
-    
+            self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
+            self.meas_ctrl.gettables(self.__gettable)
+            self.meas_ctrl.settables([self.__freq, self.__state])
+            self.meas_ctrl.setpoints_grid([self.__datapoint_idx, self.__prepared_states])
+        
         else:
+            n_s = 2
             preview_para = {}
-            for q in rof_samples:
-                preview_para[q] = rof_samples[q][:2]
-            sched_kwargs['ro_freq']= preview_para
-            pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
-
-            return {}
-    
-    slightly_print("Running |0>")
-    data_dict_g = state_dep_sched('g')
-    slightly_print("Running |1>")
-    data_dict_e = state_dep_sched('e')
-    rofcali_ds = ""
-    if run:
-        dict_ = {}
-        for var in data_dict_g :
-            if var.split("_")[-1] != "rof":
-                state_data = []
-                rof_data = [array(data_dict_g[f"{var}_rof"]).tolist()]*2
-                for item in [array(data_dict_g[var]).tolist(), array(data_dict_e[var]).tolist()]: # shape (state, mixer, rof)
-                    state_data.append(item)
-                dict_[var] = (["mixer","state","rof"],moveaxis(array(state_data),0,1)) 
-                dict_[f"{var}_rof"] = (["mixer","state","rof"],moveaxis(array(rof_data),0,1))
+            for q in self._ro_elements:
+                preview_para[q] = self._ro_elements[q][:n_s]
         
-        rofcali_ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"state":["g","e"],"rof":rof_data_idx})
-        rofcali_ds.attrs["execution_time"] = Data_manager().get_time_now()
-        rofcali_ds.attrs["method"] = "Average"
-        rofcali_ds.attrs["system"] = "qblox"
+            self.__spec_sched_kwargs['frequencies']= preview_para
+            self.__spec_sched_kwargs['state']= array([1])
+        
 
-        for q in ro_f_origin:
-            rofcali_ds.attrs[f"{q}_ori_rof"] = ro_f_origin[q]
-            qubit_info = QD_agent.quantum_device.get_element(q)
-            qubit_info.clock_freqs.readout(ro_f_origin[q])
-    
-    return rofcali_ds
+    def __RunAndGet__(self, *args, **kwargs):
+        
+        if self._execution:
+            rs_ds = self.meas_ctrl.run("ROF calibration")
+            dict_ = {}
+            for q_idx, q in enumerate(list(self._ro_elements.keys())):
+                freq_values = 2*self.__prepared_states.shape[0]*list(self._ro_elements[q])
+                i_data = array(rs_ds[f'y{2*q_idx}']).reshape(self.__prepared_states.shape[0],array(self._ro_elements[q]).shape[0])
+                q_data = array(rs_ds[f'y{2*q_idx+1}']).reshape(self.__prepared_states.shape[0],array(self._ro_elements[q]).shape[0])
+                dict_[q] = (["mixer","state","rof"],array([i_data,q_data]))
+                dict_[f'{q}_rof'] = (["mixer","state","rof"],array(freq_values).reshape(2,self.__prepared_states.shape[0],array(self._ro_elements[q]).shape[0]))
+
+            ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"state":self.__prepared_states,"rof":self.__datapoint_idx})
+            
+            ds.attrs["execution_time"] = Data_manager().get_time_now()
+            ds.attrs["method"] = "Average"
+            ds.attrs["system"] = "qblox"
+            for q in self.__ro_f_origin:
+                ds.attrs[f"{q}_ori_rof"] = self.__ro_f_origin[q]
+            self.dataset = ds
+        
+        else:
+            pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)

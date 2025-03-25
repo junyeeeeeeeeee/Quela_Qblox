@@ -1263,76 +1263,6 @@ def ROF_Cali_sche(
 
     return sched
 
-def multi_ROF_Cali_sche(
-    ro_freq:dict,
-    ini_state:str,
-    pi_amp: dict,
-    pi_dura:dict,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    repetitions:int=1,
-) -> Schedule:
-    qubits2read = list(ro_freq.keys())
-    sameple_idx = array(ro_freq[qubits2read[0]]).shape[0]
-    sched = Schedule("ROF calibration", repetitions=repetitions)
-    for acq_idx in range(sameple_idx):    
-
-        for qubit_idx, q in enumerate(qubits2read):
-            freq = ro_freq[q][acq_idx]
-            if acq_idx == 0:
-                sched.add_resource(ClockResource(name=q+ ".ro", freq=array(ro_freq[q]).flat[0]))
-
-            sched.add(SetClockFrequency(clock= q+ ".ro", clock_freq_new=freq))
-            sched.add(Reset(q))
-            sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
-
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,R_amp,R_duration)
-            else:
-                Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
-
-            if ini_state=='e': 
-                X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
-                
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-          
-    return sched
-
-def multi_ROL_Cali_sche(
-    R_amp_coefs: dict,
-    ini_state:str,
-    pi_amp: dict,
-    pi_dura:dict,
-    R_duration: dict,
-    R_amp: dict,
-    R_integration:dict,
-    R_inte_delay:dict,
-    repetitions:int=1,
-) -> Schedule:
-    qubits2read = list(R_amp_coefs.keys())
-    sameple_idx = array(R_amp_coefs[qubits2read[0]]).shape[0]
-    sched = Schedule("ROL calibration", repetitions=repetitions)
-    
-    for acq_idx in range(sameple_idx):    
-
-        for qubit_idx, q in enumerate(qubits2read):
-            rol_coef = R_amp_coefs[q][acq_idx]
-            
-            sched.add(Reset(q))
-    
-            if qubit_idx == 0:
-                spec_pulse = Readout(sched,q,{q:R_amp[q]*rol_coef},R_duration)
-            else:
-                Multi_Readout(sched,q,spec_pulse,{q:R_amp[q]*rol_coef},R_duration)
-
-            if ini_state=='e': 
-                X_pi_p(sched,pi_amp,q,pi_dura[q],spec_pulse,freeDu=electrical_delay)
-                
-            Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-          
-    return sched
 
 def PI_amp_cali_sche(
     q:str,
@@ -1471,51 +1401,6 @@ def pi_half_cali_sche(
 
     return sched
 
-def drag_coef_cali(
-    seq_combin_idx:int,
-    drag_ratios: dict,
-    waveformer:GateGenesis,
-    pi_amp:dict,
-    XY_duration:float,
-    R_amp: dict,
-    R_duration: dict,
-    R_integration:dict,
-    R_inte_delay:float,
-    repetitions:int=1
-    )-> Schedule:
-    """ seq_combin_idx=0 for (X,Y/2), and seq_combin_idx=1 for (Y,X/2)"""
-    qubits2read = list(drag_ratios.keys())
-    sameple_idx = array(drag_ratios[qubits2read[0]]).shape[0]
-    sched = Schedule("drag ratio calibration", repetitions=repetitions)
-
-    ori_drag_ratio = {}
-    for q in qubits2read:
-        ori_drag_ratio[q] = waveformer.get_dragRatio_for(q)
-        
-
-    for acq_idx in range(sameple_idx):
-        for qubit_idx, q in enumerate(qubits2read):
-            waveformer.set_dragRatio_for(q, drag_ratios[q][acq_idx])
-            sched.add(Reset(q))
-            if qubit_idx == 0:
-                read_pulse = Readout(sched,q,R_amp,R_duration)
-            else:
-                Multi_Readout(sched,q,read_pulse,R_amp,R_duration)
-         
-            
-            if seq_combin_idx == 0:
-                spec_pulse = waveformer.Y_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse,freeDu=electrical_delay)
-                spec_pulse = waveformer.X_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
-            else:
-                spec_pulse = waveformer.X_pi_2_p(sched,pi_amp,q,XY_duration[q],read_pulse,freeDu=electrical_delay)
-                spec_pulse = waveformer.Y_pi_p(sched,pi_amp,q,XY_duration[q], spec_pulse,freeDu=0)
-            
-            Integration(sched,q,R_inte_delay[q],R_integration,read_pulse,acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-
-    for q in ori_drag_ratio:
-        waveformer.set_dragRatio_for(q, ori_drag_ratio[q])
-        
-    return sched
 
 
 def Qubit_amp_SS_sche(

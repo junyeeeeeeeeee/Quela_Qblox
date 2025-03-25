@@ -3,7 +3,7 @@ from abc import ABC
 import traceback, os
 from datetime import datetime
 from xarray import DataArray
-from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
+from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager, BasicTransmonElement
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
@@ -2286,9 +2286,16 @@ class ROFcali(ExpGovernment):
             self.freq_samples[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.RofCali import rofCali
-    
-        dataset = rofCali(self.QD_agent,self.meas_ctrl,self.freq_samples,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.RofCali import ROFcalibrationPS
+        meas = ROFcalibrationPS()
+        meas.ro_elements = self.freq_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"ROFcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2631,9 +2638,16 @@ class ROLcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.RO_ampCali import rolCali
-    
-        dataset = rolCali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.RO_ampCali import ROLcalibrationPS
+        meas = ROLcalibrationPS()
+        meas.power_samples = self.amp_coef_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"ROLcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2934,11 +2948,11 @@ class DragCali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, drag_coef_range:list ,target_qs:list, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
-            * amp_sampling_funct: str, `linspace` or `arange`.\n
-            * pi_pair_num: list, like [2, 3] will try 2 exp, the first uses 2\*2 pi-pulse, and the second exp uses 3*2 pi-pulse
+            * drag_coef_range: [-2, 2]\n
+            * target_qs: ["q0", "q1"]\n
+            * coef_sampling_funct: str, `linspace` or `arange`.\n
         """
         if coef_sampling_funct in ['linspace','logspace','arange']:
             sampling_func:callable = eval(coef_sampling_funct)
@@ -2946,12 +2960,12 @@ class DragCali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_funct}")
         
         self.drag_coef_samples = {}
-        for q in drag_coef_range:
-           self.drag_coef_samples[q] = sampling_func(*drag_coef_range[q],coef_ptsORstep)
+        for q in target_qs:
+           self.drag_coef_samples[q] = sampling_func(*drag_coef_range,coef_ptsORstep)
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(self.drag_coef_samples.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2968,9 +2982,17 @@ class DragCali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.DRAGcali import drag_cali 
+        from qblox_drive_AS.Calibration_exp.DRAGcali import DRAGcalibrationPS 
+        meas = DRAGcalibrationPS()
+        meas.ro_elements = self.drag_coef_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.avg_n,self.execution)
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"DragCali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -3021,12 +3043,15 @@ class DragCali(ExpGovernment):
             ds.close()
 
             permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            
             if permi in list(answer.keys()):
-                QD_savior.Waveformer.set_dragRatio_for(permi,answer[permi]["optimal_drag_coef"])
+                q_element:BasicTransmonElement = QD_savior.quantum_device.get_element(permi)
+                q_element.rxy.motzoi(float(answer[permi]["optimal_drag_coef"]))
                 QD_savior.QD_keeper()
             elif permi in ["all",'y','yes']:
                 for q in answer:
-                    QD_savior.Waveformer.set_dragRatio_for(q, answer[q]["optimal_drag_coef"])
+                    q_element:BasicTransmonElement = QD_savior.quantum_device.get_element(q)
+                    q_element.rxy.motzoi(float(answer[q]["optimal_drag_coef"]))
                 QD_savior.QD_keeper()
             else:
                 print("Updating got denied ~")
