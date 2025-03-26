@@ -1,12 +1,10 @@
 """This program includes PowerRabi and TimeRabi. When it's PoweRabi, default ctrl pulse duration is 20ns."""
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from numpy import array, arange, ndarray, round, full, concatenate
 from qblox_drive_AS.support import QDmanager, Data_manager, check_acq_channels
 from quantify_scheduler.gettables import ScheduleGettable
-from qblox_drive_AS.support import compose_para_for_multiplexing
 from xarray import Dataset
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, IdlePulse, X, Y, BinMode, electrical_delay, pulse_preview 
@@ -68,8 +66,7 @@ class RabiPS(ScheduleConductor):
         super().__init__()
         self._RabiType:str = "power"
         self._variables:dict = {}
-        self._os_mode:bool = False 
-        self._avg_n:int = 300
+    
 
     @property
     def RabiType( self ):
@@ -89,26 +86,6 @@ class RabiPS(ScheduleConductor):
         if not isinstance(samples, dict):
             raise TypeError("Arg 'samples' must be a dict !")
         self._variables = samples
-    @property
-    def os_mode( self ):
-        return self._os_mode
-    @os_mode.setter
-    def set_os_mode( self, mode:bool):
-        if not isinstance(mode,bool):
-            if mode in [0,1]:
-                pass
-            else:
-                raise TypeError("Arg 'mode' must be a bool, 0 or 1 !")
-        
-        self._os_mode = mode
-    @property
-    def n_avg( self ):
-        return self._avg_n
-    @n_avg.setter
-    def set_n_avg(self, avg_num:int):
-        if not isinstance(avg_num,(int,float)):
-            raise TypeError("Ard 'avg_num' must be a int or float !")
-        self._avg_n = int(avg_num)
 
     def __PulseSchedule__(self,
         pi_amp:dict,

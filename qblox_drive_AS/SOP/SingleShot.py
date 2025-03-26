@@ -1,15 +1,13 @@
-import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import time
 from xarray import Dataset
 from qblox_drive_AS.support.UserFriend import *
 from numpy import array, moveaxis, arange, ndarray
 from quantify_scheduler.gettables import ScheduleGettable
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support import Data_manager, check_acq_channels
-from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Rxy, IdlePulse, Measure, BinMode, ConditionalReset, electrical_delay
-from quantify_scheduler.operations.gate_library import Reset
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Rxy, IdlePulse, Measure, BinMode, Reset, pulse_preview, electrical_delay
+
 
 
 class ReadoutFidelityPS( ScheduleConductor ):

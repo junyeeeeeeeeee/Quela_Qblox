@@ -1,27 +1,22 @@
-import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import time
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
 from qblox_drive_AS.support.UserFriend import *
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import arange, array, arange, rad2deg
 from qblox_drive_AS.support import Data_manager, check_acq_channels
-from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, X90, Y90, Measure, IdlePulse, X, ConditionalReset, BinMode, Rxy, electrical_delay
-from quantify_scheduler.operations.gate_library import Reset
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, X90, Y90, Measure, IdlePulse, Reset, X, ConditionalReset, BinMode, Rxy, pulse_preview, electrical_delay
 from numpy import pi as PI
-from quantify_scheduler.schedules import ramsey_sched
+
 class RamseyT2PS(ScheduleConductor):
     def __init__(self):
         super().__init__()
         self._time_samples:dict = {}
-        self._os_mode:bool = False
         self._use_arti_detune:bool = False
         self._repeat:int = 1
         self._spin_num:dict = {}
         self._second_phase:str = 'x'
-        self._avg_n:int = 300
 
     @property
     def time_samples( self ):
@@ -52,26 +47,6 @@ class RamseyT2PS(ScheduleConductor):
         
         self._use_arti_detune = switch
 
-    @property
-    def os_mode( self ):
-        return self._os_mode
-    @os_mode.setter
-    def set_os_mode(self, os_mode:bool):
-        if not isinstance(os_mode,bool):
-            if os_mode in [0,1]:
-                pass
-            else:
-                raise TypeError("Arg 'os_mode' must be a bool, 0 or 1 !")
-        
-        self._os_mode = os_mode
-    @property
-    def n_avg( self ):
-        return self._avg_n
-    @n_avg.setter
-    def set_n_avg(self, avg_num:int):
-        if not isinstance(avg_num,(int,float)):
-            raise TypeError("Ard 'avg_num' must be a int or float !")
-        self._avg_n = int(avg_num)
     @property
     def spin_num( self ):
         return self._spin_num

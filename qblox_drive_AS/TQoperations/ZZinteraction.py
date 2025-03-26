@@ -23,8 +23,7 @@ class ZZinteractionPS(ScheduleConductor):
         self._zc_elements:list = []
         self._time_samples:dict = {}
         self._zamp_samples:ndarray = []
-        self._os_mode:bool = False
-        self._avg_n:int = 300
+
 
     @property
     def time_samples( self ):
@@ -34,26 +33,7 @@ class ZZinteractionPS(ScheduleConductor):
         if not isinstance(time_samples,dict):
             raise TypeError("Arg 'time_samples' must be a dict !")
         self._time_samples = time_samples
-    @property
-    def os_mode( self ):
-        return self._os_mode
-    @os_mode.setter
-    def set_os_mode(self, os_mode:bool):
-        if not isinstance(os_mode,bool):
-            if os_mode in [0,1]:
-                pass
-            else:
-                raise TypeError("Arg 'os_mode' must be a bool, 0 or 1 !")
-        
-        self._os_mode = os_mode
-    @property
-    def n_avg( self ):
-        return self._avg_n
-    @n_avg.setter
-    def set_n_avg(self, avg_num:int):
-        if not isinstance(avg_num,(int,float)):
-            raise TypeError("Ard 'avg_num' must be a int or float !")
-        self._avg_n = int(avg_num)
+    
     
     @property
     def xy_elements( self ):
@@ -245,7 +225,7 @@ class ZZinteraction(ExpGovernment):
 
     def SetParameters(self)->None:
 
-        self.time_samples = sort_elements_2_multiples_of(self.time_samples*1e9, 8)*1e-9
+        self.time_samples = sort_elements_2_multiples_of(self.time_samples*1e9, 2)*1e-9
         
         self.time_samples_dict = {}
         for q in self.read_qs:
@@ -284,7 +264,7 @@ class ZZinteraction(ExpGovernment):
         meas.set_zc_elements = self.bias_cs
         meas.set_time_samples = self.time_samples_dict
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
         meas.execution = self.execution

@@ -1,5 +1,4 @@
-import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+import time
 from numpy import array, arange, ndarray
 from xarray import Dataset
 from qblox_drive_AS.support.UserFriend import *

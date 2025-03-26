@@ -1,5 +1,4 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
@@ -9,9 +8,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 
 from qblox_drive_AS.support import check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Y, Y90, X90, Reset, electrical_delay
-from quantify_scheduler.operations.gate_library import Measure
-from quantify_scheduler.operations.pulse_library import IdlePulse
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Y, Y90, X90, Reset, IdlePulse, Measure, electrical_delay
 
 class DRAGcalibrationPS(ScheduleConductor):
     def __init__(self):

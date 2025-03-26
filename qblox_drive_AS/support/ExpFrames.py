@@ -1077,7 +1077,7 @@ class PowerRabiOsci(ExpGovernment):
         meas.set_samples = self.pi_amp_samples
         meas.set_RabiType = "power"
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
         
@@ -1206,7 +1206,7 @@ class TimeRabiOsci(ExpGovernment):
         meas.set_samples = self.pi_dura_samples
         meas.set_RabiType = "time"
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
         meas.execution = self.execution
@@ -1466,7 +1466,7 @@ class Ramsey(ExpGovernment):
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
             for q in target_qs:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time,time_pts_or_step)*1e9,4)*1e-9
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
             for q in target_qs: 
                 self.time_samples[q] = sampling_func(0, max_evo_time,time_pts_or_step)
@@ -1514,7 +1514,7 @@ class Ramsey(ExpGovernment):
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
         meas.enable_arti_detune = True
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = self.sec_phase
@@ -1646,7 +1646,7 @@ class SpinEcho(ExpGovernment):
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
             for q in target_qs:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0,max_evo_time,time_pts_or_step)*1e9,4)*1e-9
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0,max_evo_time,time_pts_or_step)*1e9,2)*1e-9
         else:
             for q in target_qs:
                 self.time_samples[q] = sampling_func(0,max_evo_time,time_pts_or_step)
@@ -1693,7 +1693,7 @@ class SpinEcho(ExpGovernment):
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'x'
@@ -1812,7 +1812,7 @@ class CPMG(ExpGovernment):
         if sampling_func in [linspace, logspace]:
             for q in target_qs:
                 self.spin_num[q] = pi_num
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time, time_pts_or_step)*1e9,(2*4*int(pi_num)))*1e-9
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time, time_pts_or_step)*1e9,(2*int(pi_num)))*1e-9
         else:
             for q in target_qs:
                 self.spin_num[q] = pi_num
@@ -1860,7 +1860,7 @@ class CPMG(ExpGovernment):
         meas.set_time_samples = self.time_samples
         meas._execution
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'x'
@@ -2025,7 +2025,7 @@ class EnergyRelaxation(ExpGovernment):
         meas = EnergyRelaxPS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
@@ -2406,9 +2406,18 @@ class PiAcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.PI_ampCali import pi_amp_cali
+        from qblox_drive_AS.Calibration_exp.PI_ampCali import PiAcalibrationPS
+        meas = PiAcalibrationPS()
+        meas.ro_elements = self.amp_coef_samples
+        meas.pi_pairs = self.pi_pair_num
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = pi_amp_cali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.pi_pair_num,self.avg_n,self.execution)
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"PIampcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2488,9 +2497,10 @@ class hPiAcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, half_piamp_coef_range:list, target_qs:list, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[...], ...], this is the coef tiles to QDmanager.Waveformer.__xylog[q]["halfPI_ratio"].\n
+            * piamp_coef_range: [0.9, 1.1].\n
+            *target_qs: ["q0", "q1", ...]
             * amp_sampling_funct: str, `linspace` or `arange`.\n
             * pi_pair_num: list, like [3, 5] will try 2 exp, the first uses 3\*4 half pi-pulse, and the second exp uses 5*4 half pi-pulse
         """
@@ -2500,13 +2510,13 @@ class hPiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in piamp_coef_range:
-           self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
+        for q in target_qs:
+           self.amp_coef_samples[q] = sampling_func(*half_piamp_coef_range,coef_ptsORstep)
         self.halfPi_pair_num = halfPi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(piamp_coef_range.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2523,9 +2533,17 @@ class hPiAcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.halfPI_ampCali import half_pi_amp_cali
-    
-        dataset = half_pi_amp_cali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.halfPi_pair_num,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.halfPI_ampCali import hPiAcalibrationPS
+        meas = hPiAcalibrationPS()
+        meas.ro_elements = self.amp_coef_samples
+        meas.hpi_quads = self.halfPi_pair_num
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"halfPIampcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")

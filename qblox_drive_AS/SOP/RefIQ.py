@@ -50,7 +50,7 @@ class RefIQPS(ScheduleConductor):
     def __init__(self):
         super().__init__()
         self._ro_elements:dict = {}
-        self._avg_n:int = 100
+        
     
     @property
     def ro_elements(self):
@@ -59,19 +59,6 @@ class RefIQPS(ScheduleConductor):
     def ro_elements(self, ro_eles:dict):
         self._ro_elements = ro_eles
 
-    @property
-    def n_avg(self):
-        return self._avg_n
-    @n_avg.setter
-    def n_avg(self, avg:int):
-        self._avg_n = avg
-
-    @property
-    def execution(self):
-        return self._execution
-    @execution.setter
-    def execution(self, execu:bool):
-        self._execution = execu
 
     def __PulseSchedule__(self, 
         meas_qs:list,

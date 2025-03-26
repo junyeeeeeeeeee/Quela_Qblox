@@ -102,7 +102,9 @@ class GateGenesis():
         return self.__xylog[target_q]["drag_ratio"]
 
     def set_halfPIratio_for(self,target_q:str,halfPI_ratio:float):
+        """ theta ratio (Rxy) or amp ratio (self.X_pi_p)"""
         self.__xylog[target_q]["halfPI_ratio"] = halfPI_ratio
+    
     def get_halfPIratio_for(self,target_q:str):
         return self.__xylog[target_q]["halfPI_ratio"]
 

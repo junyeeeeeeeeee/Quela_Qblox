@@ -18,7 +18,6 @@ class FluxDepCouplerPS(ScheduleConductor):
         super().__init__() 
         self._ro_elements:dict = {}
         self._bias_elements:list = []
-        self._avg_n:int = 100
         self._flux_samples:ndarray = []
     
     @property
@@ -44,19 +43,6 @@ class FluxDepCouplerPS(ScheduleConductor):
     def flux_samples(self,fluxs:ndarray):
         self._flux_samples = fluxs
 
-    @property
-    def n_avg(self):
-        return self._avg_n
-    @n_avg.setter
-    def n_avg(self, avg:int):
-        self._avg_n = avg
-
-    @property
-    def execution(self):
-        return self._execution
-    @execution.setter
-    def execution(self, execu:bool):
-        self._execution = execu
 
     def __PulseSchedule__(self, 
         frequencies: dict,

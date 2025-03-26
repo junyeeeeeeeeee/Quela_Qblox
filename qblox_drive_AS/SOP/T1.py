@@ -1,7 +1,6 @@
-import os, sys, time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import time
 from xarray import Dataset
-from numpy import array, arange, linspace, ndarray
+from numpy import array, arange
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support import Data_manager
@@ -17,9 +16,8 @@ class EnergyRelaxPS(ScheduleConductor):
     def __init__(self):
         super().__init__()
         self._time_samples:dict = {}
-        self._os_mode:bool = False
         self._repeat:int = 1
-        self._avg_n:int = 300
+       
 
     @property
     def time_samples( self ):
@@ -37,26 +35,7 @@ class EnergyRelaxPS(ScheduleConductor):
         if not isinstance(repeat_num,(int,float)):
             raise TypeError("Ard 'repeat_num' must be a int or float !")
         self._repeat = int(repeat_num)
-    @property
-    def os_mode( self ):
-        return self._os_mode
-    @os_mode.setter
-    def set_os_mode(self, os_mode:bool):
-        if not isinstance(os_mode,bool):
-            if os_mode in [0,1]:
-                pass
-            else:
-                raise TypeError("Arg 'os_mode' must be a bool, 0 or 1 !")
-        
-        self._os_mode = os_mode
-    @property
-    def n_avg( self ):
-        return self._avg_n
-    @n_avg.setter
-    def set_n_avg(self, avg_num:int):
-        if not isinstance(avg_num,(int,float)):
-            raise TypeError("Ard 'avg_num' must be a int or float !")
-        self._avg_n = int(avg_num)
+
 
 
     def __PulseSchedule__(self, 

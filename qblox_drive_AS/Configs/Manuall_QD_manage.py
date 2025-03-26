@@ -1,5 +1,5 @@
 import os, rich
-from qblox_drive_AS.support.QDmanager import QDmanager
+from qblox_drive_AS.support.QDmanager import QDmanager, BasicTransmonElement
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.StatifyContainer import Statifier
 from qblox_drive_AS.support import set_LO_frequency
@@ -43,7 +43,8 @@ class QD_modifier():
         if xyfs_Hz is not None:
             if len(list(xyfs_Hz.keys())) != 0:
                 for q in xyfs_Hz:
-                    self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyfs_Hz[q])
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.clock_freqs.f01(xyfs_Hz[q])
                 self.to_modifiy_item.append("XYF")
 
     def set_RamseyT2detuing(self, detunes:dict={}):
@@ -57,8 +58,10 @@ class QD_modifier():
         if inte_time_s is not None:
             if len(list(inte_time_s.keys())) != 0:
                 for q in inte_time_s:
-                    self.QD_agent.quantum_device.get_element(q).measure.integration_time(inte_time_s[q])
-                    self.QD_agent.quantum_device.get_element(q).measure.pulse_duration(inte_time_s[q])
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.measure.integration_time(inte_time_s[q])
+                    Xmon.measure.pulse_duration(inte_time_s[q]+4e-9)
+                    Xmon.measure.acq_delay(4e-9)
                 self.to_modifiy_item.append("inte_time")
 
     def set_drag_coef(self, Coefs:dict={}):
@@ -72,7 +75,8 @@ class QD_modifier():
         
         if reset_time_s is not None:
             for q in self.QD_agent.quantum_device.elements():
-                self.QD_agent.quantum_device.get_element(q).reset.duration(reset_time_s)
+                Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                Xmon.reset.duration(reset_time_s)
             self.to_modifiy_item.append("reset_time")
 
     def set_drivin_IF(self, driving_IF_Hz:dict=None):
@@ -94,7 +98,8 @@ class QD_modifier():
         if ROFs is not None:
             if len(list(ROFs.keys())) != 0:
                 for q in ROFs:
-                    self.QD_agent.quantum_device.get_element(q).clock_freqs.readout(ROFs[q])
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.clock_freqs.readout(ROFs[q])
                 self.to_modifiy_item.append("ROF")
 
     def set_sweet_bias(self, offsets:dict={}):
@@ -139,21 +144,24 @@ class QD_modifier():
         if roAmp_coef_dict is not None:
             if len(list(roAmp_coef_dict.keys())) != 0:
                 for q in roAmp_coef_dict:
-                    self.QD_agent.quantum_device.get_element(q).measure.pulse_amp( self.QD_agent.quantum_device.get_element(q).measure.pulse_amp()*float(roAmp_coef_dict[q]))
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.measure.pulse_amp( Xmon.measure.pulse_amp()*float(roAmp_coef_dict[q]))
                 self.to_modifiy_item.append("RO_amp")
 
     def set_XY_amp(self, pi_amps:dict={}):
         if pi_amps is not None:
             if len(list(pi_amps.keys())) != 0:
                 for q in pi_amps:
-                    self.QD_agent.quantum_device.get_element(q).rxy.amp180(pi_amps[q]) #rxy.duration
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.rxy.amp180(pi_amps[q]) #rxy.duration
                 self.to_modifiy_item.append("PI-amp")
     
     def set_XY_duration(self, pi_duras:dict={}):
         if pi_duras is not None:
             if len(list(pi_duras.keys())) != 0:
                 for q in pi_duras:
-                    self.QD_agent.quantum_device.get_element(q).rxy.duration(pi_duras[q]) #rxy.duration
+                    Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+                    Xmon.rxy.duration(pi_duras[q]) #rxy.duration
                 self.to_modifiy_item.append("PI-duration")
 
     def update_coupler_bias(self,cp_elements:dict):
@@ -212,11 +220,11 @@ class QD_modifier():
                     file.write(f"Active Reset ON\n\n")
                 for q in qs:
                     file.write(f'[{q}]\n')  
-                    qubit = self.QD_agent.quantum_device.get_element(q)
+                    qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
                     file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
                     file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
                     file.write(f"    RO-amp = {round(qubit.measure.pulse_amp(),3)} V\n")
-                    file.write(f"    ROT    = {round(self.QD_agent.quantum_device.get_element(q).measure.integration_time()*1e6,2)} us\n")
+                    file.write(f"    ROT    = {round(qubit.measure.integration_time()*1e6,2)} us\n")
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
@@ -249,7 +257,7 @@ if __name__ == "__main__":
     QMaster.set_roAtte(ro_atte=None, target_qs=['q0','q1','q2']) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
-    QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
+    QMaster.set_integration_time(inte_time_s={"q0":0.75e-6}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
     """ Set reset time (All qubits global) """
     QMaster.setGlobally_reset_time(reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value
