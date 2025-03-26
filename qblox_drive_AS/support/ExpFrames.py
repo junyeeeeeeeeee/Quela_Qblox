@@ -2876,9 +2876,11 @@ class QubitMonitor():
         self.QD_path = QD_path
         self.save_dir = save_dir
         self.Execution = execution
-        self.T1_time_range:dict = {}
-        self.T2_time_range:dict = {}
-        self.OS_target_qs:list = []
+        self.T1_max_evo_time:float = 100e-6
+        self.T1_target_qs:list = []
+        self.T2_max_evo_time:float = 100e-6
+        self.T2_target_qs:list = []
+        self.OS_target_qs:list = [] 
         self.echo_pi_num:list = [0]
         self.OSmode:bool = False
         self.time_sampling_func = 'linspace'
@@ -2912,40 +2914,35 @@ class QubitMonitor():
         start_time = datetime.now()
         
         while True:
-            if self.T1_time_range is not None:
-                if len(list(self.T1_time_range.keys())) != 0:
-                    eyeson_print("Measuring T1 ....")
-                    EXP = EnergyRelaxation(QD_path=self.QD_path,data_folder=self.save_dir)
-                    EXP.SetParameters(self.T1_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                    EXP.WorkFlow()
+            if len(self.T1_target_qs) and self.T1_max_evo_time:
+                eyeson_print("Measuring T1 ....")
+                EXP = EnergyRelaxation(QD_path=self.QD_path,data_folder=self.save_dir)
+                EXP.SetParameters(self.T1_max_evo_time,self.T1_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                EXP.WorkFlow()
 
-            if self.T2_time_range is not None:
-                if len(list(self.T2_time_range.keys())) != 0:
-                    if self.ramsey:
-                        eyeson_print("Measuring T2* ....")
-                        EXP = Ramsey(QD_path=self.QD_path,data_folder=self.save_dir)
-                        EXP.sec_phase = 'y'
-                        EXP.SetParameters(self.T2_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+            if len(self.T2_target_qs) and self.T2_max_evo_time:
+                if self.ramsey:
+                    eyeson_print("Measuring T2* ....")
+                    EXP = Ramsey(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.sec_phase = 'y'
+                    EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                    EXP.WorkFlow()
+                if self.echo:
+                    eyeson_print("Measuring T2 ....")
+                    EXP = SpinEcho(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                    EXP.WorkFlow()
+                if self.CPMG:
+                    for pi_num in self.echo_pi_num:
+                        eyeson_print(f"Doing CPMG for {pi_num} pi-pulses inside ....")
+                        EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
+                        EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,pi_num,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
                         EXP.WorkFlow()
-                    if self.echo:
-                        eyeson_print("Measuring T2 ....")
-                        EXP = SpinEcho(QD_path=self.QD_path,data_folder=self.save_dir)
-                        EXP.SetParameters(self.T2_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                        EXP.WorkFlow()
-                    if self.CPMG:
-                        for pi_num in self.echo_pi_num:
-                            pi_num_dict = {}
-                            for q in self.T2_time_range:
-                                pi_num_dict[q] = pi_num
-                            eyeson_print(f"Doing CPMG for {pi_num} pi-pulses inside ....")
-                            EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
-                            EXP.SetParameters(self.T2_time_range,pi_num_dict,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                            EXP.WorkFlow()
 
             if self.OS_target_qs is not None:
                 if  self.OS_shots != 0:
                     if len(self.OS_target_qs) == 0:
-                        self.OS_target_qs = list(set(list(self.T1_time_range.keys())+list(self.T2_time_range.keys())))
+                        self.OS_target_qs = list(set(self.T1_target_qs+self.T2_target_qs))
                     eyeson_print("Measuring Effective temperature .... ")
                     EXP = nSingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
                     EXP.SetParameters(self.OS_target_qs,1,self.OS_shots,self.Execution)

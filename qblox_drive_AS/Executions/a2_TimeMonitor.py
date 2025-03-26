@@ -9,14 +9,17 @@ QM = QubitMonitor(QD_path=find_latest_QD_pkl_for_dr(DRandIP["dr"],DRandIP["last_
 
 
 # T1 settings
-QM.T1_time_range = {"q0":[0,40e-6],"q1":[0,40e-6],"q2":[0,40e-6]} # skip if empty.
+QM.T1_target_qs = ["q0", "q1"]   # skip T1 exp if empty. 
+QM.T1_max_evo_time = 40e-6
+
 # T2 settings
-QM.T2_time_range = {"q0":[0,20e-6],"q1":[0,20e-6],"q2":[0,20e-6]} # skip if empty.
+QM.T2_target_qs = ["q0", "q1"]   # skip T1 exp if empty. 
+QM.T2_max_evo_time = 40e-6
 QM.echo_pi_num = [0,1,2]                               # list [0, 1, 2, ....], it will do the T2 according to the pi-number you assigned
+
 # SingleShot settings, skip if 0 shot
 QM.OS_shots = 10000     
-QM.OS_target_qs = ["q0","q1","q2"]
-
+QM.OS_target_qs = ["q0","q1"]
 
 # T1, T2 shared settings
 QM.time_sampling_func = "linspace"
