@@ -84,7 +84,8 @@ class ReadoutFidelityPS( ScheduleConductor ):
         self.QD_agent = check_acq_channels(self.QD_agent, self._target_qs)
         
         self.__sched_kwargs = dict(   
-            pi_amp=self._target_qs
+            meas_qs=self._target_qs,
+            states=self.__state_idx
         )
     
 

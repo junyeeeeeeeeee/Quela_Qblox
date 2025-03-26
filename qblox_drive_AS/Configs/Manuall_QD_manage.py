@@ -227,7 +227,7 @@ class QD_modifier():
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250325/DR4#81_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250326/DR4#81_SumInfo.pkl"
 
     QMaster = QD_modifier(QD_path)
 

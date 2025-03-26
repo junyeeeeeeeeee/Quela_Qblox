@@ -95,7 +95,6 @@ class EnergyRelaxPS(ScheduleConductor):
         self.__time_data_idx = arange(len(list(self._time_samples.values())[0]))
         for q in self._time_samples:
             qubit_info = self.QD_agent.quantum_device.get_element(q)
-            qubit_info.measure.acq_threshold(1e-6)
             if max(self._time_samples[q]) >= qubit_info.reset.duration():
                 qubit_info.reset.duration(qubit_info.reset.duration()+50e-6)
             if self.QD_agent.activeReset:

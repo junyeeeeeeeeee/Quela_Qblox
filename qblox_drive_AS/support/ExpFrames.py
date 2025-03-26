@@ -2712,9 +2712,11 @@ class ZgateEnergyRelaxation(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, time_sampling_func:str, bias_range:list, prepare_excited:bool=True, bias_sample_func:str='linspace', time_pts_or_step:int|float=100,Whileloop:bool=False, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, time_sampling_func:str, bias_range:list, prepare_excited:bool=True, bias_sample_func:str='linspace', time_pts_or_step:int|float=100,Whileloop:bool=False, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
+            * max_evo_time: 100e-6\n
+            * target_qs: ["q0", "q1", ...]
+            * prepare_excited: True, prepare excited state, False prepare ground state
             * whileloop: bool, use while loop or not.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step.\n
@@ -2729,11 +2731,11 @@ class ZgateEnergyRelaxation(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+            for q in target_qs:
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(4e-9, max_evo_time)*1e9,4)*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs:
+                self.time_samples[q] = sampling_func(4e-9, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
         if bias_sample_func in ['linspace', 'arange']:
@@ -2741,10 +2743,10 @@ class ZgateEnergyRelaxation(ExpGovernment):
         else:
             raise ValueError(f"bias sampling function must be 'linspace' or 'arange' !")
         self.want_while = Whileloop
-        self.prepare_1 = prepare_excited
+        self.prepare_1 = int(prepare_excited)
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2760,9 +2762,20 @@ class ZgateEnergyRelaxation(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.aux_measurement.ZgateT1 import Zgate_T1
+        from qblox_drive_AS.aux_measurement.ZgateT1 import ZEnergyRelaxPS
+        meas = ZEnergyRelaxPS()
+        meas.set_time_samples = self.time_samples
+        meas.z_samples = self.bias_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.pre_state = self.prepare_1
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.execution = self.execution
+        
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = Zgate_T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.bias_samples,self.avg_n,self.execution,no_pi_pulse= not self.prepare_1)
         if self.execution:
             if self.save_dir is not None:
                 if self.want_while:

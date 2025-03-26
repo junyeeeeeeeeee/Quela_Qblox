@@ -1,9 +1,9 @@
-QD_file: qblox_drive_AS/QD_backup/20250325/DR4#81_SumInfo.pkl
+QD_file: qblox_drive_AS/QD_backup/20250326/DR4#81_SumInfo.pkl
 Comments: ---
 
 RO-atte = 30 dB
 XY-atte = 0 dB
-Active Reset ON
+Active Reset OFF, Reset time = 250 us
 
 [q0]
     bare   = 6.047219376269859 GHz
