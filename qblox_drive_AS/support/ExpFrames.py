@@ -2159,7 +2159,7 @@ class XYFcali(ExpGovernment):
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = 1
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'y'

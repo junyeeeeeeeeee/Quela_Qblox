@@ -1,4 +1,4 @@
-QD_file: qblox_drive_AS/QD_backup/20250326/DR4#81_SumInfo.pkl
+QD_file: qblox_drive_AS/QD_backup/20250327/DR4#81_SumInfo.pkl
 Comments: ---
 
 RO-atte = 30 dB
@@ -11,8 +11,8 @@ Active Reset OFF, Reset time = 250 us
     RO-amp = 0.1 V
     ROT    = 0.75 us
     XYF    = 4.873516558279392 GHz
-    Pi-amp = 0.24323421237523518 V
-    Pi-dura= 40.0 ns
+    Pi-amp = 0.8217346152304728 V
+    Pi-dura= 12.0 ns
     x      = 7.915374956813812 MHz
     g      = 96.39780548499309 MHz
 
@@ -21,9 +21,9 @@ Active Reset OFF, Reset time = 250 us
     ROF    = 6.085629208743943 GHz
     RO-amp = 0.1 V
     ROT    = 0.5 us
-    XYF    = 5.311256573047882 GHz
-    Pi-amp = 0.17656112177281594 V
-    Pi-dura= 40.0 ns
+    XYF    = 5.311152002257311 GHz
+    Pi-amp = 0.616731577592236 V
+    Pi-dura= 25.0 ns
     x      = 10.544943378870963 MHz
     g      = 89.60616533325374 MHz
 
