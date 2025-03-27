@@ -5,7 +5,7 @@ from numpy import asarray, ndarray, linspace, array
 from quantify_scheduler.backends.qblox.constants import MIN_TIME_BETWEEN_OPERATIONS
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.randomized_benchmarking import randomized_benchmarking_sequence
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.two_qubit_clifford_group import SingleQubitClifford, common_cliffords
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, Reset, X, X90, Y, Y90, Rxy, CZ, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, Reset, X, X90, Y, Y90, Rxy, CZ, electrical_delay, IdlePulse
 from quantify_scheduler.gettables import ScheduleGettable
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
@@ -21,18 +21,18 @@ from qblox_drive_AS.analysis.SQRBana import SQRB_ana
 class SQRBPS(ScheduleConductor):
     def __init__(self):
         super().__init__()
-        self._target_q:str = "q0"
+        self._target_qs:Iterable = ["q0"]
         self._GateNum_samples:ndarray = []
 
 
     @property
-    def target_q( self ):
-        return self._target_q
-    @target_q.setter
-    def target_q(self, q:str):
-        if not isinstance(q, str):
-            raise TypeError("q must be a str !")
-        self._target_q = q
+    def target_qs( self ):
+        return self._target_qs
+    @target_qs.setter
+    def target_qs(self, qs:Iterable):
+        if not isinstance(qs, Iterable):
+            raise TypeError("q must be an iterable type !")
+        self._target_qs = qs
     
     @property
     def GateeNum_samples( self ):
@@ -45,7 +45,7 @@ class SQRBPS(ScheduleConductor):
         self._GateNum_samples = gates_samples
 
     def __PulseSchedule__(self,
-        qubit_specifier: str | Iterable[str],
+        qubit_names: Iterable[str],
         lengths: Iterable[int],
         desired_net_clifford_index: int | None = common_cliffords["I"],
         seed: int | None = None,
@@ -84,22 +84,10 @@ class SQRBPS(ScheduleConductor):
             for each measurement.
 
         """
-        # ---- Error handling and argument parsing ----#
-        lengths = asarray(lengths, dtype=int)
-
-        if isinstance(qubit_specifier, str):
-            qubit_names = [qubit_specifier]
-        else:
-            qubit_names = [q for q in qubit_specifier]
-
-        n = len(qubit_names)
-        if n not in (1, 2):
-            raise ValueError("Only single and two-qubit randomized benchmarking supported.")
-        if len(set(qubit_names)) != n:
-            raise ValueError("Two-qubit randomized benchmarking on the same qubit is ill-defined.")
 
         # ---- PycQED mappings ----#
         pycqed_qubit_map = {f"q{idx}": name for idx, name in enumerate(qubit_names)}
+        
         pycqed_operation_map = {
             "X180": lambda q: X(pycqed_qubit_map[q]),
             "X90": lambda q: X90(pycqed_qubit_map[q]),
@@ -107,55 +95,54 @@ class SQRBPS(ScheduleConductor):
             "Y90": lambda q: Y90(pycqed_qubit_map[q]),
             "mX90": lambda q: Rxy(qubit=pycqed_qubit_map[q], phi=0.0, theta=-90.0),
             "mY90": lambda q: Rxy(qubit=pycqed_qubit_map[q], phi=90.0, theta=-90.0),
-            "CZ": lambda q: CZ(qC=pycqed_qubit_map[q[0]], qT=pycqed_qubit_map[q[1]]),
         }
 
         # ---- Build RB schedule ----#
         sched = Schedule(
             "Randomized benchmarking on " + " and ".join(qubit_names), repetitions=repetitions
         )
-        clifford_class = SingleQubitClifford
+        
 
         # two-qubit RB needs buffer time for phase corrections on drive lines
-        operation_buffer_time = [0.0, MIN_TIME_BETWEEN_OPERATIONS * 4e-9][n - 1]
+        operation_buffer_time = 0.0
 
         for idx, m in enumerate(lengths):
-            sched.add(Reset(*qubit_names))
+            align_pulse = sched.add(IdlePulse(4e-9))
             if m > 0:
                 # m-sized random sample of representatives in the quotient group C_n / U(1)
                 # where C_n is the n-qubit Clifford group and U(1) is the circle group
                 rb_sequence_m: list[int] = randomized_benchmarking_sequence(
-                    m, number_of_qubits=n, seed=seed, desired_net_cl=desired_net_clifford_index
+                    m, number_of_qubits=1, seed=seed, desired_net_cl=desired_net_clifford_index
                 )
-
-                for clifford_gate_idx in rb_sequence_m:
-                    cl_decomp = clifford_class(clifford_gate_idx).gate_decomposition
-
-                    operations = [
-                        pycqed_operation_map[gate](q) for (gate, q) in cl_decomp if gate != "I"
-                    ]
-
-                    for op in operations:
-                        sched.add(op, rel_time=operation_buffer_time)
-
-            sched.add(Measure(*qubit_names, acq_index=idx),rel_time=electrical_delay)
+                for q in qubit_names:    
+                    sched.add(Reset(q), ref_op=align_pulse)
+                    for clifford_gate_idx in rb_sequence_m:
+                        cl_decomp = SingleQubitClifford(clifford_gate_idx).gate_decomposition
+                        for gate, _ in  cl_decomp:
+                            if gate != "I":
+                                sched.add(pycqed_operation_map[gate](q), rel_time=operation_buffer_time)
+        
+                    sched.add(Measure(q, acq_index=idx),rel_time=electrical_delay)
+            else:
+                sched.add(Reset(*qubit_names), ref_op=align_pulse)
+                sched.add(Measure(*qubit_names, acq_index=idx),rel_time=electrical_delay)
 
         return sched
         
 
     def __SetParameters__(self, *args, **kwargs):
 
-        
-        qubit_info:BasicTransmonElement = self.QD_agent.quantum_device.get_element(self._target_q)
-        eyeson_print(f"{self._target_q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+        for q in self._target_qs:
+            qubit_info:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+            eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
         
         self.__length = ManualParameter(name="length", unit="#", label="Number of Clifford gates")
         self.__length.batched = True
         self.__length.batch_size = 10
 
-        self.QD_agent = check_acq_channels(self.QD_agent, [self._target_q])
+        self.QD_agent = check_acq_channels(self.QD_agent, self._target_qs)
         
-        self.__sched_kwargs = {"qubit_specifier": self._target_q, "lengths": self.__length}
+        self.__sched_kwargs = {"qubit_names": self._target_qs, "lengths": self.__length}
     
     def __Compose__(self, *args, **kwargs):
         
@@ -166,7 +153,7 @@ class SQRBPS(ScheduleConductor):
                 schedule_kwargs=self.__sched_kwargs,
                 real_imag=True,
                 batched=True,
-                num_channels=1,
+                num_channels=len(list(self._target_qs)),
                 )
             self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
             self.meas_ctrl.gettables(self.__gettable)
@@ -174,7 +161,7 @@ class SQRBPS(ScheduleConductor):
             self.meas_ctrl.setpoints(self._GateNum_samples)
             
         else:
-            self.__sched_kwargs['lengths']= array([self._GateNum_samples[-1]])
+            self.__sched_kwargs['lengths']= array([self._GateNum_samples[1], self._GateNum_samples[-1]])
             
     
     def __RunAndGet__(self, *args, **kwargs):
@@ -183,7 +170,7 @@ class SQRBPS(ScheduleConductor):
             ds = self.meas_ctrl.run('SQRB')
             dict_ = {}
             
-            for q_idx, q in enumerate([self._target_q]):
+            for q_idx, q in enumerate(self._target_qs):
                 i_data = ds[f'y{2*q_idx}'].values
                 q_data = ds[f'y{2*q_idx+1}'].values
                 dict_[q] = (["mixer","gate_length"],array([i_data,q_data]))
@@ -209,7 +196,7 @@ class SQRB(ExpGovernment):
         self.JOBID = JOBID
         self.avg_n:int = 300
         self.execution:bool = True
-        self.q:str = "q0"
+        self.qs:list = ["q0"]
         self.max_gate_num:int = 100
         self.gate_pts:int = 50
 
@@ -228,17 +215,17 @@ class SQRB(ExpGovernment):
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
-        
-        self.Fctrl[self.q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=self.q))
-        IF_minus = self.QD_agent.Notewriter.get_xyIFFor(self.q)
-        xyf = self.QD_agent.quantum_device.get_element(self.q).clock_freqs.f01()
-        set_LO_frequency(self.QD_agent.quantum_device,q=self.q,module_type='drive',LO_frequency=xyf-IF_minus)
-        init_system_atte(self.QD_agent.quantum_device,[self.q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.q,'xy'))
+        for q in self.qs:
+            self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
+            IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
+            set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
 
     def RunMeasurement(self):
         meas = SQRBPS()
-        meas.target_q = self.q
+        meas.target_qs = self.qs
         meas.set_gate_samples = self.gate_length
         meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
