@@ -10,9 +10,9 @@ Active Reset OFF, Reset time = 250 us
     ROF    = 6.055134751226673 GHz
     RO-amp = 0.1 V
     ROT    = 0.75 us
-    XYF    = 4.873516558279392 GHz
-    Pi-amp = 0.42657653717143795 V
-    Pi-dura= 17.0 ns
+    XYF    = 4.873493116318457 GHz
+    Pi-amp = 0.585030594957192 V
+    Pi-dura= 12.0 ns
     x      = 7.915374956813812 MHz
     g      = 96.39780548499309 MHz
 
@@ -21,9 +21,9 @@ Active Reset OFF, Reset time = 250 us
     ROF    = 6.085629208743943 GHz
     RO-amp = 0.1 V
     ROT    = 0.5 us
-    XYF    = 5.311152002257311 GHz
-    Pi-amp = 0.31716068672068537 V
-    Pi-dura= 23.0 ns
+    XYF    = 5.311150396463914 GHz
+    Pi-amp = 0.30887529247321427 V
+    Pi-dura= 12.0 ns
     x      = 10.544943378870963 MHz
     g      = 89.60616533325374 MHz
 

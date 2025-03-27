@@ -19,6 +19,9 @@ EXP.qs = ["q0", "q1"]
 EXP.max_gate_num = 300  # 300 is maximum, max usage of sequencer memory  
 # gate sampliing number
 EXP.gate_pts = 75
+# how many random circuits
+EXP.circuits_num = 10
+
 # AVG times
 EXP.avg_n = 1000
 

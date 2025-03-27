@@ -1,7 +1,7 @@
 import os, time
 from datetime import datetime
 from typing import Iterable
-from numpy import asarray, ndarray, linspace, array
+from numpy import asarray, ndarray, linspace, array, arange
 from quantify_scheduler.backends.qblox.constants import MIN_TIME_BETWEEN_OPERATIONS
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.randomized_benchmarking import randomized_benchmarking_sequence
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.two_qubit_clifford_group import SingleQubitClifford, common_cliffords
@@ -23,6 +23,7 @@ class SQRBPS(ScheduleConductor):
         super().__init__()
         self._target_qs:Iterable = ["q0"]
         self._GateNum_samples:ndarray = []
+        self._circuits_num:int = 10
 
 
     @property
@@ -43,6 +44,13 @@ class SQRBPS(ScheduleConductor):
             raise TypeError("gates_samples must be a ndarray !")
         
         self._GateNum_samples = gates_samples
+    @property
+    def randoms(self):
+        return self._circuits_num
+    @randoms.setter
+    def set_random_times(self, num:int):
+        if not isinstance(num,int):
+            raise TypeError("Random number must be a int !")
 
     def __PulseSchedule__(self,
         qubit_names: Iterable[str],
@@ -131,18 +139,19 @@ class SQRBPS(ScheduleConductor):
         
 
     def __SetParameters__(self, *args, **kwargs):
-
+        
         for q in self._target_qs:
             qubit_info:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
             eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
-        
+        self.__circuits = arange(self._circuits_num)
         self.__length = ManualParameter(name="length", unit="#", label="Number of Clifford gates")
         self.__length.batched = True
         self.__length.batch_size = 10
-
+        self.__random_circuit = ManualParameter(name="Circuit", unit="#", label="randoms")
+        self.__random_circuit.batched = False
         self.QD_agent = check_acq_channels(self.QD_agent, self._target_qs)
         
-        self.__sched_kwargs = {"qubit_names": self._target_qs, "lengths": self.__length}
+        self.__sched_kwargs = {"qubit_names": self._target_qs, "lengths": self.__length, "seed":self.__random_circuit}
     
     def __Compose__(self, *args, **kwargs):
         
@@ -157,8 +166,8 @@ class SQRBPS(ScheduleConductor):
                 )
             self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
             self.meas_ctrl.gettables(self.__gettable)
-            self.meas_ctrl.settables(self.__length)
-            self.meas_ctrl.setpoints(self._GateNum_samples)
+            self.meas_ctrl.settables([self.__length, self.__random_circuit])
+            self.meas_ctrl.setpoints_grid([self._GateNum_samples, self.__circuits])
             
         else:
             self.__sched_kwargs['lengths']= array([self._GateNum_samples[1], self._GateNum_samples[-1]])
@@ -171,10 +180,10 @@ class SQRBPS(ScheduleConductor):
             dict_ = {}
             
             for q_idx, q in enumerate(self._target_qs):
-                i_data = ds[f'y{2*q_idx}'].values
-                q_data = ds[f'y{2*q_idx+1}'].values
-                dict_[q] = (["mixer","gate_length"],array([i_data,q_data]))
-            dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"gate_length":self._GateNum_samples})
+                i_data = ds[f'y{2*q_idx}'].values.reshape(self._circuits_num, self._GateNum_samples.shape[0])
+                q_data = ds[f'y{2*q_idx+1}'].values.reshape(self._circuits_num, self._GateNum_samples.shape[0])
+                dict_[q] = (["mixer","random_circuits","gate_length"],array([i_data,q_data]))
+            dataset = Dataset(dict_,coords={"mixer":array(["I","Q"]),"random_circuits":self.__circuits,"gate_length":self._GateNum_samples})
                 
             dataset.attrs["end_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
             dataset.attrs["execution_time"] = Data_manager().get_time_now()
@@ -198,6 +207,7 @@ class SQRB(ExpGovernment):
         self.execution:bool = True
         self.qs:list = ["q0"]
         self.max_gate_num:int = 100
+        self.circuits_num:int=10
         self.gate_pts:int = 50
 
     @property
@@ -226,6 +236,7 @@ class SQRB(ExpGovernment):
     def RunMeasurement(self):
         meas = SQRBPS()
         meas.target_qs = self.qs
+        meas.set_random_times = self.circuits_num
         meas.set_gate_samples = self.gate_length
         meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl

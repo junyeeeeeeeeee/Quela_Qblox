@@ -1,6 +1,6 @@
 import os
 from xarray import open_dataset, Dataset
-from numpy import array, inf
+from numpy import array, inf, moveaxis, average, std
 from qblox_drive_AS.support.QDmanager import QDmanager, QuantumDevice
 from qblox_drive_AS.support import rotate_data
 import matplotlib.pyplot as plt
@@ -52,16 +52,24 @@ def fit_rb_decay(m_values, data):
 
 def SQRB_ana(ds:Dataset, rotation_angle_degree:dict, pic_save_folder:str, quantum_device:QuantumDevice):
     g_n = ds.coords["gate_length"].data
+    
     for var in ds.data_vars:
         tg = quantum_device.get_element(var).rxy.duration()
+        data = moveaxis(ds[var].data, 0, 1)*1000  # ["mixer","random_circuits","gate_length"] -> ["random_circuits","mixer","gate_length"]
+        circuit_dep_data = []
+        for circuit_idx, a_rand_circuit_data in enumerate(data):
 
-        avg_IQ_data = ds[var].data*1000
-        Ir = rotate_data(avg_IQ_data, rotation_angle_degree[var][0])[0]
+            Ir = rotate_data(a_rand_circuit_data, rotation_angle_degree[var][0])[0]
+            circuit_dep_data.append(Ir)
 
-        arams, covariance, fitted_curve, (F_cliford, F_gate) = fit_rb_decay(g_n, Ir)
+        avg_signal = average(array(circuit_dep_data), axis=0)
 
-        plt.scatter(g_n, Ir)
-        plt.plot(g_n,fitted_curve,c='red')
+        arams, covariance, fitted_curve, (F_cliford, F_gate) = fit_rb_decay(g_n, avg_signal)
+
+        # for a_result in circuit_dep_data:
+        #     plt.scatter(g_n, a_result, c='#87CEFA',s=10)
+        plt.errorbar(g_n, avg_signal,yerr=std(array(circuit_dep_data), axis=0), c='red', fmt='*')
+        plt.plot(g_n,fitted_curve,c='orange')
         plt.ylabel("I (mV)")
         plt.xlabel("Gates")
         plt.title(f"{var}, tg = {round(tg*1e9)} ns \n Gate Fidelity = {round(100*F_gate,2)} %")
@@ -70,9 +78,13 @@ def SQRB_ana(ds:Dataset, rotation_angle_degree:dict, pic_save_folder:str, quantu
         plt.savefig(os.path.join(pic_save_folder,f"{var}_SQRB.png"))
         plt.close()
 
-        
+
+if __name__=="__main__":
+    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250327/DR4#81_SumInfo.pkl")
+    QD_agent.QD_loader()
+    ds = open_dataset("qblox_drive_AS/Meas_raw/20250327/H14M08S31/SQRB_20250327141515.nc")
 
 
-
+    SQRB_ana(ds,QD_agent.rotate_angle,"qblox_drive_AS/Meas_raw/20250327/H14M08S31",QD_agent.quantum_device)
 
 
