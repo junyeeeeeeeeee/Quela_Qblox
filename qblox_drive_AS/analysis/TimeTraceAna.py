@@ -150,11 +150,13 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
         match exp_type.lower():
             case "t1":
                 counters["T1"] = 1 if "T1" not in list(counters.keys()) else counters["T1"]+1
+
                 this_exp_time = ds.attrs["end_time"]
                 qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
                 for var in qbs:
                     if counters["T1"] == 1:
                         T1_picsave_folder = os.path.join(folder_path,f"T1_pics") if save_every_fit_pic else None
+
                         T1_rec[var], T1_raw[var] = {}, {}
                         if save_every_fit_pic:
                             if not os.path.exists(T1_picsave_folder):
@@ -166,14 +168,18 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                     else:
                         os_mode = True
                         T1_evo_time[var] = ds[f"{var}_x"].values[0][0][0][0]
+
                 ds.close()
 
                 Anaer = EnergyRelaxation(QD_path="")
                 Anaer.keep_QD = False
+
                 Anaer.save_pics = save_every_fit_pic
+
                 Anaer.execution = True
                 Anaer.histos = 1
                 Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T1_picsave_folder)
+
 
                 for q in Anaer.sum_dict:
                     T1_raw[q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
@@ -182,12 +188,15 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
                 qbs = ds.data_vars
                 for var in qbs:
+
                     if counters["SS"] == 1:
+                        SS_picsave_folder = os.path.join(folder_path,f"SingleShot_pics") if save_every_fit_pic else None
                         SS_rec[var] = {}
                         SS_picsave_folder = os.path.join(folder_path,f"SingleShot_pics") if save_every_fit_pic else None
                         if save_every_fit_pic:
                             if not os.path.exists(SS_picsave_folder):
                                 os.mkdir(SS_picsave_folder)
+
                     
                 this_exp_time = ds.attrs["end_time"]
                 ds.close()
@@ -220,6 +229,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                         if save_every_fit_pic:
                             if not os.path.exists(T2_picsave_folder):
                                 os.mkdir(T2_picsave_folder)
+
                     if ds.attrs["method"].lower() != 'shot':
                         T2_evo_time[var] = ds[f"{var}_x"].values[0][0]
                     else:
@@ -232,15 +242,18 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 Anaer.sec_phase = 'y'
                 Anaer.keep_QD = False
                 Anaer.save_pics = save_every_fit_pic
+
                 Anaer.execution = True
                 Anaer.histos = 1
                 Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T2_picsave_folder)
                 
                 # keep values
+
                 for q in Anaer.sum_dict:
                     T2_raw["ramsey"][q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
                     detu_rec[q][this_exp_time] = Anaer.corrected_detune[var]*1e-6
                     T2_rec["ramsey"][q][this_exp_time] = Anaer.sum_dict[q]["median_T2"]
+
 
             case "spinecho":
                 counters["T2"] = 1 if "T2" not in list(counters.keys()) else counters["T2"]+1
@@ -248,12 +261,15 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
                 for var in qbs: 
                     # create raw data fitting folder
+
                     if counters["T2"] == 1:
                         spin_picsave_folder = os.path.join(folder_path,f"SpinEcho_pics") if save_every_fit_pic else None
+
                         if "spinecho" not in list(T2_rec.keys()):
                             T2_rec["spinecho"], T2_raw["spinecho"] = {}, {}
                         T2_rec["spinecho"][var], T2_raw["spinecho"][var] = {}, {}
                         if save_every_fit_pic:
+
                             if not os.path.exists(spin_picsave_folder):
                                 os.mkdir(spin_picsave_folder)
                     if ds.attrs["method"].lower() != 'shot':
@@ -289,8 +305,9 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 for var in qbs:
                     # create raw data fitting folder
                     if counters[f"T2cpmg_{pi_num}"] == 1:
-                       
+                 
                         cpmg_picsave_folder = os.path.join(folder_path,f"CPMG{pi_num}_pics") if save_every_fit_pic else None
+
                         if "T2cpmg" not in list(T2_rec.keys()):
                             
                             T2_rec["T2cpmg"], T2_raw["T2cpmg"] = {}, {}
@@ -299,6 +316,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                             T2_rec["T2cpmg"][pi_num], T2_raw["T2cpmg"][pi_num] = {}, {}
                         T2_rec["T2cpmg"][pi_num][var], T2_raw["T2cpmg"][pi_num][var] = {}, {}
                         
+
                         if save_every_fit_pic:
                             if not os.path.exists(cpmg_picsave_folder):
                                 os.mkdir(cpmg_picsave_folder)
@@ -321,6 +339,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 for q in Anaer.sum_dict:
                     T2_raw["T2cpmg"][pi_num][q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
                     T2_rec["T2cpmg"][pi_num][q][this_exp_time] = Anaer.sum_dict[q]["median_T2"]
+
             
     
     items_2_plot = list(counters.keys())

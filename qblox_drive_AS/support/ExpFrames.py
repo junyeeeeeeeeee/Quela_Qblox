@@ -21,6 +21,7 @@ class ExpGovernment(ABC):
         self.save_pics:bool = True
         self.keep_QD:bool = True
         self.save_OS_model:bool = True
+
         self.sum_dict = {}
     
     @abstractmethod
@@ -1389,6 +1390,7 @@ class nSingleShot(ExpGovernment):
                         self.ANA._start_analysis(var_name=var)
                         if self.save_pics:
                             self.ANA._export_result(pic_path)
+
                         
                         if self.save_OS_model:
                             QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
@@ -1396,6 +1398,7 @@ class nSingleShot(ExpGovernment):
                             QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
                         
                         self.sum_dict[var] = self.ANA.fit_packs
+
                         QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
                     
                     except BaseException as err:
@@ -1911,7 +1914,7 @@ class CPMG(ExpGovernment):
 
             ds = open_dataset(file_path)
             md = None
-            
+
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
@@ -1928,7 +1931,7 @@ class CPMG(ExpGovernment):
                         self.ANA._export_result(fig_path)
                     self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
                     self.sum_dict[var] = self.ANA.fit_packs
-                    
+
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -2073,7 +2076,7 @@ class EnergyRelaxation(ExpGovernment):
 
             ds = open_dataset(file_path)
             md = None  # model for one shot analysis
-        
+            
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     if ds.attrs['method'].lower() == "shot":
@@ -2090,9 +2093,11 @@ class EnergyRelaxation(ExpGovernment):
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
 
+
                     self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
                     self.sum_dict[var] = self.ANA.fit_packs
                     
+
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T1_for(self.ANA.fit_packs["median_T1"],var)
