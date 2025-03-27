@@ -69,7 +69,7 @@ def plot_coherence_timetrace(raw_data:ndarray, time_samples:ndarray, ans:ndarray
     plt.savefig(os.path.join(raw_data_folder,f"{exp.upper()}_{q}_timeDep.png"))
     plt.close()
 
-def colormap(x:ndarray, y:ndarray, z:ndarray, fit_values:ndarray, ax:plt.Axes=None, fig_path:str=None):
+def colormap(x:ndarray, y:ndarray, z:ndarray, fit_values:ndarray, ax:plt.Axes=None, fig_path:str=None, os_mode:bool=False):
     if ax is None:
         fig, ax = plt.subplots()
     c = ax.pcolormesh(x, y, z.transpose(), cmap='RdBu')
@@ -79,7 +79,10 @@ def colormap(x:ndarray, y:ndarray, z:ndarray, fit_values:ndarray, ax:plt.Axes=No
     ax.axhline(median(fit_values)-std(fit_values),linestyle='--',c='orange')
     ax.set_xlabel('Time past (min)',fontsize=20)
     ax.set_ylabel("Free evolution time (us)",fontsize=20)
-    plt.colorbar(c, ax=ax, label='I channel (mV)')
+    if not os_mode:
+        plt.colorbar(c, ax=ax, label='I channel (mV)')
+    else:
+        plt.colorbar(c, ax=ax, label='$P_{1}$')
     plt.title(os.path.split(fig_path)[-1].split(".")[0])
     plt.tight_layout()
     if fig_path is not None:
@@ -136,64 +139,87 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
     cpmg_pi_nums = []
     T1_rec, detu_rec, T2_rec, SS_rec = {}, {}, {}, {}
     T1_raw, T2_raw = {}, {}
-    T1_evo_time, T2_evo_time = {}, {}
+    T1_evo_time, T2_evo_time, spin_evo_timie, cpmg_evo_time = {}, {}, {}, {}
+    os_mode:bool = False
     for idx, file in enumerate(files) :
         slightly_print(f"Analysis for the {idx}-th files ...")
         exp_type:str = file.split("_")[0]
         path = os.path.join(folder_path,file)
+        print(file)
         ds = open_dataset(path)
         match exp_type.lower():
             case "t1":
                 counters["T1"] = 1 if "T1" not in list(counters.keys()) else counters["T1"]+1
-                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x'] :
+
+                this_exp_time = ds.attrs["end_time"]
+                qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
+                for var in qbs:
                     if counters["T1"] == 1:
-                        T1_picsave_folder = os.path.join(folder_path,"T1_pics") if save_every_fit_pic else None
+                        T1_picsave_folder = os.path.join(folder_path,f"T1_pics") if save_every_fit_pic else None
+
                         T1_rec[var], T1_raw[var] = {}, {}
                         if save_every_fit_pic:
                             if not os.path.exists(T1_picsave_folder):
                                 os.mkdir(T1_picsave_folder)
-        
-                    T1_evo_time[var] = array(ds[f"{var}_x"])[0][0]
-                this_exp_time = ds.attrs["end_time"]
+
+
+                    if ds.attrs["method"].lower() != 'shot':
+                        T1_evo_time[var] = ds[f"{var}_x"].values[0][0]
+                    else:
+                        os_mode = True
+                        T1_evo_time[var] = ds[f"{var}_x"].values[0][0][0][0]
+
                 ds.close()
 
                 Anaer = EnergyRelaxation(QD_path="")
                 Anaer.keep_QD = False
-                Anaer.save_pics = False
+
+                Anaer.save_pics = save_every_fit_pic
+
                 Anaer.execution = True
                 Anaer.histos = 1
                 Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T1_picsave_folder)
 
-                for var in Anaer.sum_dict:
-                    T1_raw[var][this_exp_time] = Anaer.sum_dict[var]["plot_item"]["data"]
-                    T1_rec[var][this_exp_time] = Anaer.sum_dict[var]["median_T1"]
-            
+
+                for q in Anaer.sum_dict:
+                    T1_raw[q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
+                    T1_rec[q][this_exp_time] = Anaer.sum_dict[q]["median_T1"]
             case "singleshot":
                 counters["SS"] = 1 if "SS" not in list(counters.keys()) else counters["SS"]+1
-                for var in ds.data_vars:
+                qbs = ds.data_vars
+                for var in qbs:
+
                     if counters["SS"] == 1:
                         SS_picsave_folder = os.path.join(folder_path,f"SingleShot_pics") if save_every_fit_pic else None
                         SS_rec[var] = {}
+                        SS_picsave_folder = os.path.join(folder_path,f"SingleShot_pics") if save_every_fit_pic else None
                         if save_every_fit_pic:
                             if not os.path.exists(SS_picsave_folder):
                                 os.mkdir(SS_picsave_folder)
+
+                    
                 this_exp_time = ds.attrs["end_time"]
                 ds.close()
+        
                 Anaer = nSingleShot(QD_path="")
                 Anaer.keep_QD = False
-                Anaer.save_pics = False
+                Anaer.save_pics = save_every_fit_pic
                 Anaer.execution = True
-                Anaer.save_os_model = False
                 Anaer.histos = 1
+                Anaer.save_OS_model = False
                 Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=SS_picsave_folder)
-                
-                for var in Anaer.sum_dict:
-                    SS_rec[var][this_exp_time] = Anaer.sum_dict[var]["effT_mK"][0]
-            
+
+                for q in Anaer.sum_dict:
+                    try:
+                        SS_rec[q][this_exp_time] = Anaer.sum_dict[q]["effT_mK"][0]
+                    except:
+                        SS_rec[q][this_exp_time] = 0
+
             case "ramsey":
                 counters["T2s"] = 1 if "T2s" not in list(counters.keys()) else counters["T2s"]+1
-
-                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                this_exp_time = ds.attrs["end_time"]
+                qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
+                for var in qbs:
                     # create raw data fitting folder
                     if counters["T2s"] == 1:
                         T2_picsave_folder = os.path.join(folder_path,f"ramsey_pics") if save_every_fit_pic else None
@@ -203,90 +229,117 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                         if save_every_fit_pic:
                             if not os.path.exists(T2_picsave_folder):
                                 os.mkdir(T2_picsave_folder)
-                    # start analysis 
-                    T2_evo_time[var] = array(ds[f"{var}_x"])[0][0]
-                this_exp_time = ds.attrs["end_time"]
+
+                    if ds.attrs["method"].lower() != 'shot':
+                        T2_evo_time[var] = ds[f"{var}_x"].values[0][0]
+                    else:
+                        os_mode = True
+                        T2_evo_time[var] = ds[f"{var}_x"].values[0][0][0][0]
                 ds.close()
-                
+
+                # start analysis 
                 Anaer = Ramsey(QD_path="")
                 Anaer.sec_phase = 'y'
                 Anaer.keep_QD = False
-                Anaer.save_pics = False
+                Anaer.save_pics = save_every_fit_pic
+
                 Anaer.execution = True
                 Anaer.histos = 1
                 Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T2_picsave_folder)
                 
                 # keep values
-                for var in Anaer.sum_dict:
-                    T2_raw["ramsey"][var][this_exp_time] = Anaer.sum_dict[var]["plot_item"]["data"]
-                    detu_rec[var][this_exp_time] = Anaer.corrected_detune[var]*1e-6
-                    T2_rec["ramsey"][var][this_exp_time] = Anaer.sum_dict[var]["median_T2"]
+
+                for q in Anaer.sum_dict:
+                    T2_raw["ramsey"][q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
+                    detu_rec[q][this_exp_time] = Anaer.corrected_detune[var]*1e-6
+                    T2_rec["ramsey"][q][this_exp_time] = Anaer.sum_dict[q]["median_T2"]
+
 
             case "spinecho":
                 counters["T2"] = 1 if "T2" not in list(counters.keys()) else counters["T2"]+1
-                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+                this_exp_time = ds.attrs["end_time"]
+                qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
+                for var in qbs: 
                     # create raw data fitting folder
-                    
+
                     if counters["T2"] == 1:
-                        T2_picsave_folder = os.path.join(folder_path,f"SpinEcho_pics") if save_every_fit_pic else None
+                        spin_picsave_folder = os.path.join(folder_path,f"SpinEcho_pics") if save_every_fit_pic else None
+
                         if "spinecho" not in list(T2_rec.keys()):
                             T2_rec["spinecho"], T2_raw["spinecho"] = {}, {}
                         T2_rec["spinecho"][var], T2_raw["spinecho"][var] = {}, {}
                         if save_every_fit_pic:
-                            if not os.path.exists(T2_picsave_folder):
-                                os.mkdir(T2_picsave_folder)
-                    # start analysis 
-                    T2_evo_time[var] = array(ds[f"{var}_x"])[0][0]
-                this_exp_time = ds.attrs["end_time"]
-                ds.close()
 
+                            if not os.path.exists(spin_picsave_folder):
+                                os.mkdir(spin_picsave_folder)
+                    if ds.attrs["method"].lower() != 'shot':
+                        spin_evo_timie[var] = ds[f"{var}_x"].values[0][0]
+                    else:
+                        os_mode = True
+                        spin_evo_timie[var] = ds[f"{var}_x"].values[0][0][0][0]
+                ds.close()
+                # start analysis 
+                
                 Anaer = SpinEcho(QD_path="")
                 Anaer.keep_QD = False
-                Anaer.save_pics = False
+                Anaer.save_pics = save_every_fit_pic
                 Anaer.execution = True
                 Anaer.histos = 1
-                Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T2_picsave_folder)
+                Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=spin_picsave_folder)
 
                 # keep values
-                for var in Anaer.sum_dict:
-                    T2_raw["spinecho"][var][this_exp_time] = Anaer.sum_dict[var]["plot_item"]["data"]
-                    T2_rec["spinecho"][var][this_exp_time] = Anaer.sum_dict[var]["median_T2"]
+                for q in Anaer.sum_dict:
+                    T2_raw["spinecho"][q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
+                    T2_rec["spinecho"][q][this_exp_time] = Anaer.sum_dict[q]["median_T2"]
             
             case "cpmg": # There may do different pi_num CPMG
                 a_q = [q for q in list(ds.data_vars) if q[0]=='q' and "_" not in q][0]
-                pi_num =  ds[a_q].attrs["spin_num"]
+                pi_num =  str(ds[a_q].attrs["spin_num"])
                 if pi_num not in cpmg_pi_nums: cpmg_pi_nums.append(pi_num) 
                 counters[f"T2cpmg_{pi_num}"] = 1 if f"T2cpmg_{pi_num}" not in list(counters.keys()) else counters[f"T2cpmg_{pi_num}"]+1
                 
-                for var in [ var for var in ds.data_vars if var.split("_")[-1] != 'x']:
+
+                this_exp_time = ds.attrs["end_time"]
+                qbs = [ var for var in ds.data_vars if var.split("_")[-1] != 'x']
+                
+                for var in qbs:
                     # create raw data fitting folder
                     if counters[f"T2cpmg_{pi_num}"] == 1:
-                        T2_picsave_folder = os.path.join(folder_path,f"CPMG{pi_num}_pics") if save_every_fit_pic else None
+                 
+                        cpmg_picsave_folder = os.path.join(folder_path,f"CPMG{pi_num}_pics") if save_every_fit_pic else None
+
                         if "T2cpmg" not in list(T2_rec.keys()):
+                            
                             T2_rec["T2cpmg"], T2_raw["T2cpmg"] = {}, {}
                         if pi_num not in list(T2_rec["T2cpmg"].keys()):
+                            
                             T2_rec["T2cpmg"][pi_num], T2_raw["T2cpmg"][pi_num] = {}, {}
                         T2_rec["T2cpmg"][pi_num][var], T2_raw["T2cpmg"][pi_num][var] = {}, {}
-                        if save_every_fit_pic:
-                            if not os.path.exists(T2_picsave_folder):
-                                os.mkdir(T2_picsave_folder)
                         
-                    # start analysis 
-                    T2_evo_time[var] = array(ds[f"{var}_x"])[0][0]
-                this_exp_time = ds.attrs["end_time"]
-                ds.close()
 
+                        if save_every_fit_pic:
+                            if not os.path.exists(cpmg_picsave_folder):
+                                os.mkdir(cpmg_picsave_folder)
+                    if ds.attrs["method"].lower() != 'shot':
+                        cpmg_evo_time[var] = ds[f"{var}_x"].values[0][0]
+                    else:
+                        os_mode = True
+                        cpmg_evo_time[var] = ds[f"{var}_x"].values[0][0][0][0]
+                ds.close()
+                    
+                # start analysis
                 Anaer = CPMG(QD_path="")
                 Anaer.keep_QD = False
-                Anaer.save_pics = False
+                Anaer.save_pics = save_every_fit_pic
                 Anaer.execution = True
                 Anaer.histos = 1
-                Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=T2_picsave_folder)
-                    
+                Anaer.RunAnalysis(new_file_path=path,new_QDagent=QD_agent,new_pic_save_place=cpmg_picsave_folder)
+                
                 # keep values
-                for var in Anaer.sum_dict:
-                    T2_raw["T2cpmg"][pi_num][var][this_exp_time] = Anaer.sum_dict[var]["plot_item"]["data"]
-                    T2_rec["T2cpmg"][pi_num][var][this_exp_time] = Anaer.sum_dict[var]["median_T2"]
+                for q in Anaer.sum_dict:
+                    T2_raw["T2cpmg"][pi_num][q][this_exp_time] = Anaer.sum_dict[q]["plot_item"]["data"]
+                    T2_rec["T2cpmg"][pi_num][q][this_exp_time] = Anaer.sum_dict[q]["median_T2"]
+
             
     
     items_2_plot = list(counters.keys())
@@ -312,13 +365,13 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                 sorted_values_ans.append(value)
                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
-            
-            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_T1_timeDep_colormap.png"))
+            colormap(array(time_diffs),array(T1_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_T1_timeDep_colormap.png"),os_mode=os_mode)
             plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t1", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_T1_timeDep.png"))
         items_2_plot.remove("T1")
     if "SS" in list(counters.keys()):
         for q in SS_rec:
             sorted_item_ans = sorted(SS_rec[q].items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S"))
+            
             earliest_time = datetime.strptime(sorted_item_ans[0][0], "%Y-%m-%d %H:%M:%S")
             
             time_diffs = []
@@ -356,7 +409,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                             sorted_values_raw.append(sorted_item_raw[idx][1])
 
                         
-                        colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_Ramsey_timeDep_colormap.png"))
+                        colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_Ramsey_timeDep_colormap.png"),os_mode=os_mode)
                         plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2*", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_Ramsey_timeDep.png"))
                         plot_timeDepCohe(array(time_diffs), array(sorted_values_detu)-array(sorted_values_detu)[0], "δf", units={"x":"min","y":"MHz"}, fig_path=os.path.join(pic_folder,f"{q}_Detune_timeDep.png"))
                 case "spinecho":
@@ -376,7 +429,7 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                             sorted_values_ans.append(value)
                             sorted_values_raw.append(sorted_item_raw[idx][1])
 
-                        colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_SpinEcho_timeDep_colormap.png"))
+                        colormap(array(time_diffs),array(spin_evo_timie[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_SpinEcho_timeDep_colormap.png"),os_mode=os_mode)
                         plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "t2", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_SpinEcho_timeDep.png"))
                 
                 case "T2cpmg":
@@ -397,15 +450,17 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
                                 sorted_values_ans.append(value)
                                 sorted_values_raw.append(sorted_item_raw[idx][1])
 
-                            colormap(array(time_diffs),array(T2_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_CPMG_{pi_num}pi_timeDep_colormap.png"))
+                            colormap(array(time_diffs),array(cpmg_evo_time[q])*1e6,array(sorted_values_raw),array(sorted_values_ans),fig_path=os.path.join(pic_folder,f"{q}_CPMG_{pi_num}pi_timeDep_colormap.png"),os_mode=os_mode)
                             plot_timeDepCohe(array(time_diffs), array(sorted_values_ans), "cpmg", units={"x":"min","y":"µs"}, fig_path=os.path.join(pic_folder,f"{q}_CPMG_{pi_num}pi_timeDep.png"))
 
     eyeson_print(f"\nProcedures done ! ")
 
 
 if __name__ == "__main__":
-    QD_path = "qblox_drive_AS/QD_backup/20250313/DR1#11_SumInfo.pkl"
-    folder_path = "qblox_drive_AS/Meas_raw/20250313/H17M03S52"
+    #// 0.9.2 okay
+
+    QD_path = "qblox_drive_AS/QD_backup/20250323/DR4#81_SumInfo.pkl"
+    folder_path = "qblox_drive_AS/Meas_raw/20250323/H15M03S37"
     save_every_fit_fig:bool = False
 
     QD_agent = QDmanager(QD_path)

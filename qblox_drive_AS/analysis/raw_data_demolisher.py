@@ -30,7 +30,7 @@ def ZgateT1_dataReducer(raw_data_folder:str)->dict:
             file_path = os.path.join(raw_data_folder,path)
             if file_path.split(".")[-1] == 'nc':
                 datasets.append(open_dataset(file_path))
-                print(datasets[-1].attrs)
+                
     # make VIP folder for each qubit
     vip_folders:dict = {}
     for q in [var for var in datasets[0].data_vars if var.split("_")[-1] != "time"]:

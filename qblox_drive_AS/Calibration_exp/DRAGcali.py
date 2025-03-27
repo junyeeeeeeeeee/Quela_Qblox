@@ -1,91 +1,132 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
+
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from xarray import Dataset
-from numpy import array, arange, moveaxis
-from qblox_drive_AS.support import QDmanager, Data_manager
+from numpy import array, arange, ndarray
+from qblox_drive_AS.support import Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
-from quantify_core.measurement.control import MeasurementControl
-from qblox_drive_AS.support import compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import drag_coef_cali, pulse_preview
 
+from qblox_drive_AS.support import check_acq_channels
+from qblox_drive_AS.support.Pulser import ScheduleConductor
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Y, Y90, X90, Reset, IdlePulse, Measure, electrical_delay
 
-def drag_cali(QD_agent:QDmanager,meas_ctrl:MeasurementControl, drag_samples:dict, n_avg:int=300,run:bool=True):
-    results = {}
+class DRAGcalibrationPS(ScheduleConductor):
+    def __init__(self):
+        super().__init__()
+        self._ro_elements:dict = {}
+        self._avg_n:int = 100
     
-    sche_func= drag_coef_cali
-    
-    dataset_2_nc = ""
-    for q in drag_samples:
-        results[q], results[f"{q}_dragcoef"] = [], []
-        data_sample_idx = arange(drag_samples[q].shape[0])
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+    @property
+    def ro_elements(self):
+        return self._ro_elements
+    @ro_elements.setter
+    def ro_elements(self, ro_eles:dict):
+        self._ro_elements = ro_eles
 
-    
-    Sweep_para = ManualParameter(name="drag_coef")
-    Sweep_para.batched = True
-    
-    def operation_dep_exe(operation_idx:int)->dict:
-        dict_ = {}
-        sched_kwargs = dict(
-            seq_combin_idx=operation_idx,
-            drag_ratios=drag_samples,
-            waveformer=QD_agent.Waveformer,
-            pi_amp=compose_para_for_multiplexing(QD_agent,drag_samples,'d1'),
-            XY_duration=compose_para_for_multiplexing(QD_agent,drag_samples,'d3'),
-            R_amp=compose_para_for_multiplexing(QD_agent,drag_samples,'r1'),
-            R_duration=compose_para_for_multiplexing(QD_agent,drag_samples,'r3'),
-            R_integration=compose_para_for_multiplexing(QD_agent,drag_samples,'r4'),
-            R_inte_delay=compose_para_for_multiplexing(QD_agent,drag_samples,'r2'),
-            )
+    @property
+    def n_avg(self):
+        return self._avg_n
+    @n_avg.setter
+    def n_avg(self, avg:int):
+        self._avg_n = avg
+
+    @property
+    def execution(self):
+        return self._execution
+    @execution.setter
+    def execution(self, execu:bool):
+        self._execution = execu
+
+    def __PulseSchedule__(self, 
+        drag_samples:ndarray,
+        qubits2read:list,
+        operation:str,
+        repetitions:int=1,    
+    ) -> Schedule:
         
+
+        sched = Schedule("Motzoi Calibration",repetitions=repetitions)
+
+        for acq_idx, motzoi in enumerate(drag_samples):    
+            align_pulse = sched.add(IdlePulse(4e-9))
+            for q in qubits2read:
+                reset = sched.add(Reset(q), ref_op=align_pulse)
+                match operation:
+                    case "(X,Y/2)":
+                        sched.add(X(q, motzoi=motzoi), ref_op=reset)
+                        final_pulse = sched.add(Y90(q, motzoi=motzoi))
+                    case "(Y,X/2)":
+                        sched.add(Y(q, motzoi=motzoi), ref_op=reset)
+                        final_pulse = sched.add(X90(q, motzoi=motzoi))
+                    
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), rel_time=electrical_delay, ref_op=final_pulse)
+                
+        self.schedule =  sched  
+        return sched
         
-        if run:
-            gettable = ScheduleGettable(
-            QD_agent.quantum_device,
-            schedule_function=sche_func,
-            schedule_kwargs=sched_kwargs,
+    def __SetParameters__(self, *args, **kwargs):
+         
+        self.__datapoint_idx = arange(0,len(list(list(self._ro_elements.values())[0])))
+        self.__motzoi_samples = array(list(self._ro_elements.values())[0])
+        self.__operations = array(["(X,Y/2)", "(Y,X/2)"])
+        
+        for q in self._ro_elements:
+            qubit_info = self.QD_agent.quantum_device.get_element(q)
+            eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
+           
+        self.__motzoi = ManualParameter(name="motzoi", unit="", label="motzoi")
+        self.__motzoi.batched = True
+        self.__op =  ManualParameter(name="operation", unit="", label="operation")
+        self.__op.batched = False
+
+
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
+        self.__spec_sched_kwargs = dict(   
+        drag_samples=self.__motzoi_samples,
+        qubits2read=list(self._ro_elements.keys()),
+        operation=self.__op
+        )
+
+    def __Compose__(self, *args, **kwargs):
+        
+        if self._execution:
+            self.__gettable = ScheduleGettable(
+            self.QD_agent.quantum_device,
+            schedule_function=self.__PulseSchedule__, 
+            schedule_kwargs=self.__spec_sched_kwargs,
             real_imag=True,
             batched=True,
-            num_channels=len(list(drag_samples.keys())),
+            num_channels=len(list(self._ro_elements.keys())),
             )
-            
-    
-            QD_agent.quantum_device.cfg_sched_repetitions(n_avg)
-            meas_ctrl.gettables(gettable)
-            meas_ctrl.settables(Sweep_para)
-            meas_ctrl.setpoints(data_sample_idx)
+            self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
+            self.meas_ctrl.gettables(self.__gettable)
+            self.meas_ctrl.settables([self.__motzoi, self.__op])
+            self.meas_ctrl.setpoints_grid([self.__motzoi_samples, self.__operations])
         
-        
-            ds = meas_ctrl.run("drag coef calibration")
-            
-            for q_idx, q in enumerate(drag_samples):
-                I_data, Q_data = array(ds[f"y{2*q_idx}"]).tolist(), array(ds[f"y{2*q_idx+1}"]).tolist()
-                dict_[q] = [I_data,Q_data] # shape in (mixer, dragcoef)
-                dict_[f"{q}_dragcoef"] = [list(drag_samples[q])]*2
         else:
-            preview_para = {}
-            for q in drag_samples:
-                preview_para[q] = array([drag_samples[q][0],drag_samples[q][-1]])
-            sched_kwargs['drag_ratios']= preview_para
-            pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
+            preview_para = array([self.__motzoi_samples[1],self.__motzoi_samples[-2]])
+            self.__spec_sched_kwargs['drag_samples']= preview_para
+            self.__spec_sched_kwargs['operation']= array(["(X,Y/2)"])
+        
 
-        return dict_
-    
-    for operation_idx, operations in enumerate(["(X,Y/2)","(Y,X/2)"]):
-        slightly_print(f"operations: {operations} ...")
-        dataDict = operation_dep_exe(operation_idx) # {"q0":[],"q0_dragcoef":[], ...}
-        for var in dataDict:
-            results[var].append(dataDict[var])
-            if operation_idx == 1: results[var] = (["mixer", "operations", "dragCoef"],moveaxis(array(results[var]),0,1)) # shape (operations, mixer, dragCoef) -> (mixer, operations, dragCoef)
+    def __RunAndGet__(self, *args, **kwargs):
+        
+        if self._execution:
+            rs_ds = self.meas_ctrl.run("DRAG calibration")
+            dict_ = {}
+            for q_idx, q in enumerate(list(self._ro_elements.keys())):
+                coefs = 2*2*list(self._ro_elements[q])
+                i_data = array(rs_ds[f'y{2*q_idx}']).reshape(self.__operations.shape[0],array(self._ro_elements[q]).shape[0])
+                q_data = array(rs_ds[f'y{2*q_idx+1}']).reshape(self.__operations.shape[0],array(self._ro_elements[q]).shape[0])
+                dict_[q] = (["mixer", "operations", "dragCoef"],array([i_data,q_data]))
+                dict_[f'{q}_dragcoef'] = (["mixer", "operations", "dragCoef"],array(coefs).reshape(2,self.__operations.shape[0],self.__motzoi_samples.shape[0]))
+
+            ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"operations":self.__operations,"dragCoef":self.__motzoi_samples})
             
-    
-    if run:
-        dataset_2_nc = Dataset(results,coords={"mixer":array(["I","Q"]),"operations":array(["(X,Y/2)","(Y,X/2)"]),"dragCoef":data_sample_idx})
-        dataset_2_nc.attrs["execution_time"] = Data_manager().get_time_now()
-        dataset_2_nc.attrs["method"] = "Average"
-        dataset_2_nc.attrs["system"] = "qblox"
-   
-    return dataset_2_nc
+            ds.attrs["execution_time"] = Data_manager().get_time_now()
+            ds.attrs["method"] = "Average"
+            ds.attrs["system"] = "qblox"
+            self.dataset = ds
+        
+        else:
+            pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)

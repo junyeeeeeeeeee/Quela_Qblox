@@ -55,7 +55,8 @@ class GateGenesis():
             case 'gauss':
                 return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/float(self.__xylog[q]["duraOVERsigma"])),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
             case _:
-                pass
+                 return pulse_sche.add(GaussPulse(G_amp=amp, phase=phase,duration=duration, port=q+":mw", clock=q+".01",sigma=duration/float(self.__xylog[q]["duraOVERsigma"])),rel_time=rel_time,ref_op=ref_op,ref_pt=ref_pt)
+            
     
     def Z_waveform_controller(self, pulse_sche:Schedule, amp:float, duration:float, q:str, rel_time:float, ref_op:Schedule, ref_pt:str="start", phase:float=0):
         match str(self.__zlog[q]["waveform"]).lower():
@@ -101,7 +102,9 @@ class GateGenesis():
         return self.__xylog[target_q]["drag_ratio"]
 
     def set_halfPIratio_for(self,target_q:str,halfPI_ratio:float):
+        """ theta ratio (Rxy) or amp ratio (self.X_pi_p)"""
         self.__xylog[target_q]["halfPI_ratio"] = halfPI_ratio
+    
     def get_halfPIratio_for(self,target_q:str):
         return self.__xylog[target_q]["halfPI_ratio"]
 

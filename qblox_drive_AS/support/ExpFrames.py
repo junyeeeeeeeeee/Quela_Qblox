@@ -1,20 +1,18 @@
 from numpy import ndarray
 from abc import ABC
-import traceback
-import os
+import traceback, os
 from datetime import datetime
-from xarray import Dataset, DataArray
-from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager
-from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer, sort_timeLabel
+from xarray import DataArray
+from qblox_drive_AS.support.QDmanager import QDmanager, Data_manager, BasicTransmonElement
+from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
 from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
-from numpy import array, linspace, arange, logspace, mean, median, std, sort, moveaxis
+from numpy import array, linspace, logspace, median, std
 from abc import abstractmethod
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq
-from qblox_drive_AS.support.Pulse_schedule_library import set_LO_frequency, QS_fit_analysis
-from quantify_scheduler.helpers.collections import find_port_clock_path
+from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, ReadoutFidelity_acq_analyzer, check_OS_model_ready
+from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
-# from qblox_drive_AS.analysis.TimeTraceAna import time_monitor_data_ana
+
 
 
 class ExpGovernment(ABC):
@@ -22,7 +20,8 @@ class ExpGovernment(ABC):
         self.QD_path:str = ""
         self.save_pics:bool = True
         self.keep_QD:bool = True
-        self.save_os_model:bool = True
+        self.save_OS_model:bool = True
+
         self.sum_dict = {}
     
     @abstractmethod
@@ -63,35 +62,48 @@ class BroadBand_CavitySearching(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, target_qs:list,freq_start:float, freq_end:float, freq_pts:int):
-        self.counter:int = len(target_qs)
-        self.target_qs = target_qs
+    def SetParameters(self, freq_start:float, freq_end:float, freq_pts:float, res_name:list=['q0']):
+        self.target_qs = res_name
         self.freq_start = freq_start
         self.freq_end = freq_end
         self.freq_pts = freq_pts
     
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        hcfg = self.QD_agent.quantum_device.hardware_config()
         # Set the system attenuations
-        init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[len(self.target_qs)-self.counter], 'ro'))
+        
+        for q in self.target_qs:
+            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'))
         # Readout select
-        qrmRF_slot_idx = int(find_port_clock_path(self.QD_agent.quantum_device.hardware_config(),"q:res",f"{self.target_qs[int(len(self.target_qs)-self.counter)]}.ro")[1].split("_")[-1][6:])
-        self.readout_module = self.cluster.modules[qrmRF_slot_idx-1]
+        self.qrmRF_slot_idx = []
+
+        for port_loc, port_name in hcfg["connectivity"]["graph"]:
+            for q in self.target_qs:
+                if port_name == f'{q}:res':
+                    if int(port_loc.split(".")[1][6:]) not in self.qrmRF_slot_idx:
+                        self.qrmRF_slot_idx.append(int(port_loc.split(".")[1][6:]))
+        
+        if len(self.qrmRF_slot_idx) == 0:
+            raise ValueError("Can not search any QRM-RF module in your cluster, check it please !")
+        
     
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.wideCS import wideCS
-        dataset = wideCS(self.readout_module,self.freq_start,self.freq_end,self.freq_pts)
-        if self.save_dir is not None:
-            self.save_path = os.path.join(self.save_dir,f"BroadBandCS_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
-            self.__raw_data_location = self.save_path + ".nc"
-            dataset.to_netcdf(self.__raw_data_location)
-            self.save_fig_path = self.save_path+".png"
-        else:
-            self.save_fig_path = None
+        self.plot_item = {}
+        for slot_idx in self.qrmRF_slot_idx:
+            self.readout_module = self.cluster.modules[slot_idx-1]
+            dataset = wideCS(self.readout_module,self.freq_start,self.freq_end,self.freq_pts)
+            if self.save_dir is not None:
+                self.save_path = os.path.join(self.save_dir,f"BroadBandCS_Slot{slot_idx}_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                self.__raw_data_location = self.save_path + ".nc"
+                dataset.to_netcdf(self.__raw_data_location)
+                self.plot_item[self.__raw_data_location] = self.save_path+".png"
+            else:
+                self.save_fig_path = None
         
     def CloseMeasurement(self):
         shut_down(self.cluster,self.Fctrl)
-        self.counter -= 1
 
 
     def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
@@ -103,29 +115,31 @@ class BroadBand_CavitySearching(ExpGovernment):
             QD_file = new_QD_path
 
         if new_file_path is None:
-            file_path = self.__raw_data_location
-            fig_path = self.save_fig_path
+            file_path = list(self.plot_item.keys())
+            fig_path = list(self.plot_item.values())
         else:
-            file_path = new_file_path
-            fig_path = os.path.join(os.path.split(new_file_path)[0],"S21.png")
+            file_path = [new_file_path]
+            fig_path = [os.path.join(os.path.split(new_file_path)[0],"S21.png")]
 
         QD_savior = QDmanager(QD_file)
         QD_savior.QD_loader()
+        
+        for idx, file in enumerate(file_path):
+            ds = open_dataset(file)
 
-        ds = open_dataset(file_path)
-
-        plot_S21(ds,fig_path)
-        ds.close()
-        # QD_savior.QD_keeper()
+            plot_S21(ds,fig_path[idx])
+            ds.close()
+        #QD_savior.QD_keeper()
 
 
     def WorkFlow(self):
-        while self.counter > 0 :
-            self.PrepareHardware()
+        
+        self.PrepareHardware()
 
-            self.RunMeasurement()
+        self.RunMeasurement()
 
-            self.CloseMeasurement()
+        self.CloseMeasurement()
+
 
 class Zoom_CavitySearching(ExpGovernment):
     """ Helps you get the **BARE** cavities. """
@@ -252,9 +266,9 @@ class PowerCavity(ExpGovernment):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
         # Set the system attenuations
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
-        
+
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.PowCavSpec import PowerDep_spec
+        from qblox_drive_AS.SOP.PowCavSpec import  PowerDepCavityPS
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         
         # set self.freq_range
@@ -262,7 +276,17 @@ class PowerCavity(ExpGovernment):
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
         QD_RO_init(self.QD_agent,self.freq_range)
-        dataset = PowerDep_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.roamp_samples,self.avg_n,self.execution)
+        
+        meas = PowerDepCavityPS()
+        meas.ro_elements = self.freq_range
+        meas.power_samples = self.roamp_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"PowerCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -445,14 +469,25 @@ class FluxCoupler(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.CouplerFluxSpec import fluxCoupler_spec
+        from qblox_drive_AS.SOP.CouplerFluxSpec import FluxDepCouplerPS
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         # set self.freq_range
         for q in self.tempor_freq[0]:
             rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
         QD_RO_init(self.QD_agent,self.freq_range)
-        dataset = fluxCoupler_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_targets,self.flux_samples,self.avg_n,self.execution)
+        
+        meas = FluxDepCouplerPS()
+        meas.ro_elements = self.freq_range
+        meas.flux_samples = self.flux_samples
+        meas.set_bias_elements = self.bias_targets
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"FluxCoupler_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -540,7 +575,7 @@ class FluxCavity(ExpGovernment):
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.FluxCavSpec import FluxCav_spec
+        from qblox_drive_AS.SOP.FluxCavSpec import FluxDepCavityPS
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         # set self.freq_range
         for q in self.tempor_freq[0]:
@@ -548,7 +583,19 @@ class FluxCavity(ExpGovernment):
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
             
         QD_RO_init(self.QD_agent,self.freq_range)
-        dataset = FluxCav_spec(self.QD_agent,self.meas_ctrl,self.Fctrl,self.freq_range,self.flux_samples,self.avg_n,self.execution)
+
+        meas = FluxDepCavityPS()
+        meas.ro_elements = self.freq_range
+        meas.flux_samples = self.flux_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+
+
+        # dataset = FluxCav_spec(self.QD_agent,self.meas_ctrl,self.Fctrl,self.freq_range,self.flux_samples,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"FluxCavity_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -648,10 +695,16 @@ class IQ_references(ExpGovernment):
             self.Fctrl[q](float(self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q)))
     
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.RefIQ import Single_shot_ref_spec
-       
+        from qblox_drive_AS.SOP.RefIQ import RefIQPS
+        meas = RefIQPS()
+        meas.ro_elements = self.ro_amp
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
 
-        dataset = Single_shot_ref_spec(self.QD_agent,self.ro_amp,self.avg_n,self.execution)
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"IQref_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -756,7 +809,7 @@ class PowerConti2tone(ExpGovernment):
                 set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.Cnti2Tone import Two_tone_spec
+        from qblox_drive_AS.SOP.Cnti2Tone import PowerDepQubitPS
         # set self.freq_range
         for q in self.freq_range:
             if not isinstance(self.freq_range[q],ndarray):
@@ -768,7 +821,17 @@ class PowerConti2tone(ExpGovernment):
                 set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=advised_fq-IF_minus)
                 self.freq_range[q] = linspace(advised_fq-IF_minus-500e6,advised_fq-IF_minus,self.f_pts)
 
-        dataset = Two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.xyl_samples,self.avg_n,self.execution,self.overlap)
+        meas = PowerDepQubitPS()
+        meas.ro_elements = self.freq_range
+        meas.power_samples = array(self.xyl_samples)
+        meas.overlap = self.overlap
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"PowerCnti2tone_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -865,7 +928,7 @@ class FluxQubit(ExpGovernment):
             self.Fctrl[q](self.z_ref[q])
         
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.FluxQubit import Zgate_two_tone_spec
+        from qblox_drive_AS.SOP.FluxQubit import FluxDepQubitPS
         
         # set self.freq_range
         for q in self.target_qs:
@@ -874,8 +937,18 @@ class FluxQubit(ExpGovernment):
                 raise ValueError(f"Attempting to span over 500 MHz for driving on {q}")
             self.freq_range[q] = linspace(xyf+self.tempor_freq[0][q][0],xyf+self.tempor_freq[0][q][1],self.tempor_freq[1])
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=max(self.freq_range[q]))
-            
-        dataset = Zgate_two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_elements,self.z_amp_samples,self.avg_n,self.execution)
+        
+        meas = FluxDepQubitPS()
+        meas.ro_elements = self.freq_range
+        meas.flux_samples = self.z_amp_samples
+        meas.bias_elements = self.bias_elements
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset  
+        # dataset = Zgate_two_tone_spec(self.QD_agent,self.meas_ctrl,self.freq_range,self.bias_elements,self.z_amp_samples,self.avg_n,self.execution)
         if self.execution:
             for q in self.z_ref:
                 dataset.attrs[f"{q}_z_ref"] = self.z_ref[q]
@@ -978,7 +1051,7 @@ class PowerRabiOsci(ExpGovernment):
             for q in self.pi_amp_samples:
                 if self.avg_n * self.pi_amp_samples[q].shape[0] > 131000:
                     raise MemoryError(f"Due to Qblox FPGA memory limit, amp_pts * shots must be less than 131000. And you are trying to set {self.avg_n * self.pi_amp_samples[q].shape[0]} for {q}")
-        
+
         
         
 
@@ -988,7 +1061,8 @@ class PowerRabiOsci(ExpGovernment):
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and driving atte
         self.pi_dura = {}
-        
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         for q in self.target_qs:
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
@@ -1004,7 +1078,7 @@ class PowerRabiOsci(ExpGovernment):
         meas.set_samples = self.pi_amp_samples
         meas.set_RabiType = "power"
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
         
@@ -1053,7 +1127,6 @@ class PowerRabiOsci(ExpGovernment):
                 if str(var).split("_")[-1] != 'variable':
                     ANA = Multiplex_analyzer("m11")
                     if ds.attrs['method'].lower() == "shot":
-                        print("shot")
                         md = QD_savior.StateDiscriminator.summon_discriminator(var)   
                     
                     ANA._import_data(ds,1,QD_savior.refIQ[var] if QD_savior.rotate_angle[var][0] == 0 else QD_savior.rotate_angle[var])
@@ -1103,7 +1176,7 @@ class TimeRabiOsci(ExpGovernment):
         self.pi_dura_samples = {}
         for q in pi_dura:
             if min(pi_dura[q]) == 0: pi_dura[q] = [4e-9, max(pi_dura[q])]
-            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,4)*1e-9
+            self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,1)*1e-9
             
         self.avg_n = avg_n
         self.execution = execution
@@ -1113,6 +1186,8 @@ class TimeRabiOsci(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1124,7 +1199,7 @@ class TimeRabiOsci(ExpGovernment):
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
             # self.pi_amp[q] = self.QD_agent.quantum_device.get_element(q).rxy.amp180()
-            
+          
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.RabiOsci import RabiPS
 
@@ -1132,7 +1207,7 @@ class TimeRabiOsci(ExpGovernment):
         meas.set_samples = self.pi_dura_samples
         meas.set_RabiType = "time"
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
         meas.execution = self.execution
@@ -1278,7 +1353,7 @@ class nSingleShot(ExpGovernment):
 
     def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None,new_QDagent:QDmanager=None,new_pic_save_place:str=None):
         """ if histo_ana, it will check all the data in the same folder with the given new_file_path """
-    
+
         if self.execution:
             if new_QD_path is None:
                 QD_file = self.QD_path
@@ -1305,6 +1380,7 @@ class nSingleShot(ExpGovernment):
             date_part = os.path.basename(os.path.dirname(parent_dir))  # "20250122"
             time_part = os.path.basename(parent_dir) 
             ds = open_dataset(file_path)
+            
             if self.histos == 1:
                 for var in ds.data_vars:
                     try:
@@ -1314,14 +1390,17 @@ class nSingleShot(ExpGovernment):
                         self.ANA._start_analysis(var_name=var)
                         if self.save_pics:
                             self.ANA._export_result(pic_path)
-                        if self.save_os_model:
+
+                        
+                        if self.save_OS_model:
                             QD_savior.StateDiscriminator.serialize(var,self.ANA.gmm2d_fidelity, version=f"{date_part}_{time_part}") # will be in the future
                             da = DataArray(array(ds[var])[0]*1000, coords= [("mixer",array(["I","Q"])), ("prepared_state",array(ds.coords["prepared_state"])), ("index",array(ds.coords["index"]))] )
                             QD_savior.StateDiscriminator.check_model_alive(da, var, show_plot=False)
-                        self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
+                        
                         self.sum_dict[var] = self.ANA.fit_packs
-                        highlight_print(f"{var} rotate angle = {round(self.ANA.fit_packs['RO_rotation_angle'][0],2)} in degree.")
+
                         QD_savior.rotate_angle[var] = self.ANA.fit_packs["RO_rotation_angle"]
+                    
                     except BaseException as err:
                         print(f"Get error while analyze your one-shot data: {err}")
                         traceback.print_exc()
@@ -1332,9 +1411,13 @@ class nSingleShot(ExpGovernment):
                         if self.save_pics:
                             self.ANA._export_result(pic_path)
                         
+                if self.save_OS_model:
+                    QD_savior = ReadoutFidelity_acq_analyzer(QD_savior, ds)
+
                 ds.close()
                 if self.keep_QD:
                     QD_savior.QD_keeper()
+
             else:
                 for var in ds.data_vars:
                     self.ANA = Multiplex_analyzer("m14")
@@ -1369,9 +1452,10 @@ class Ramsey(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
+            * max_evo_time: 100e-6\n
+            * target_qs: ["q0", "q1", ...]
             * histo_counts: int, larger than 100 use while loop.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
@@ -1384,11 +1468,11 @@ class Ramsey(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+            for q in target_qs:
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs: 
+                self.time_samples[q] = sampling_func(0, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
 
@@ -1402,7 +1486,7 @@ class Ramsey(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.spin_num = {}
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
         
         # FPGA memory limit guard
         if self.OSmode:
@@ -1414,6 +1498,8 @@ class Ramsey(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1421,8 +1507,7 @@ class Ramsey(ExpGovernment):
             self.Fctrl[q](self.QD_agent.Fluxmanager.get_proper_zbiasFor(target_q=q))
             IF_minus = self.QD_agent.Notewriter.get_xyIFFor(q)
             slightly_print(f"{q} arti-detune = {round(self.QD_agent.Notewriter.get_artiT2DetuneFor(q)*1e-6,2)} MHz")
-            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()+self.QD_agent.Notewriter.get_artiT2DetuneFor(q)
-            self.QD_agent.quantum_device.get_element(q).clock_freqs.f01(xyf)
+            xyf = self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()
             set_LO_frequency(self.QD_agent.quantum_device,q=q,module_type='drive',LO_frequency=xyf-IF_minus)
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
@@ -1431,7 +1516,8 @@ class Ramsey(ExpGovernment):
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.enable_arti_detune = True
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = self.sec_phase
@@ -1485,6 +1571,7 @@ class Ramsey(ExpGovernment):
             ds = open_dataset(file_path)
             md = None
             self.corrected_detune = {}
+            
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'x':
                     self.ANA = Multiplex_analyzer("m12")
@@ -1544,9 +1631,10 @@ class SpinEcho(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
+            * max_evo_time: 100e-6\n
+            * target_qs: ["q0", "q1", ...]
             * histo_counts: int, larger than 100 use while loop.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
@@ -1560,11 +1648,11 @@ class SpinEcho(ExpGovernment):
         self.time_samples = {}
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,8)*1e-9
+            for q in target_qs:
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0,max_evo_time,time_pts_or_step)*1e9,2)*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs:
+                self.time_samples[q] = sampling_func(0,max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
 
@@ -1578,7 +1666,7 @@ class SpinEcho(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -1590,6 +1678,8 @@ class SpinEcho(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1606,7 +1696,7 @@ class SpinEcho(ExpGovernment):
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'x'
@@ -1705,10 +1795,11 @@ class CPMG(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, pi_num:dict, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, pi_num:int, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
-            * pi_num: {"q0":1, "q1":2, ...}
+            * max_evo_time = 100e-6\n
+            * target_qs = ["q0", "q1", ...]
+            * pi_num: 2
             * histo_counts: int, larger than 100 use while loop.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
@@ -1720,13 +1811,15 @@ class CPMG(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {time_sampling_func}")
         
         self.time_samples = {}
-        self.spin_num = pi_num
+        self.spin_num = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,(int(pi_num[q]))*4)*1e-9
+            for q in target_qs:
+                self.spin_num[q] = pi_num
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time, time_pts_or_step)*1e9,(2*int(pi_num)))*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs:
+                self.spin_num[q] = pi_num
+                self.time_samples[q] = sampling_func(0, max_evo_time, time_pts_or_step)
         
         self.avg_n = avg_n
 
@@ -1740,7 +1833,7 @@ class CPMG(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -1752,6 +1845,8 @@ class CPMG(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1768,7 +1863,7 @@ class CPMG(ExpGovernment):
         meas.set_time_samples = self.time_samples
         meas._execution
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'x'
@@ -1836,6 +1931,7 @@ class CPMG(ExpGovernment):
                         self.ANA._export_result(fig_path)
                     self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
                     self.sum_dict[var] = self.ANA.fit_packs
+
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_echoT2_for(self.ANA.fit_packs["median_T2"],var)
@@ -1871,9 +1967,10 @@ class EnergyRelaxation(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, time_sampling_func:str, time_pts_or_step:int|float=100,histo_counts:int=1, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
+            * max_evo_time: 200e-6\n
+            * target_qs: ["q0", "q1", ..]
             * histo_counts: int, larger than 100 use while loop.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step. 
@@ -1886,11 +1983,11 @@ class EnergyRelaxation(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+            for q in target_qs:
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(4e-9,max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs:
+                self.time_samples[q] = sampling_func(4e-9,max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
 
@@ -1903,7 +2000,7 @@ class EnergyRelaxation(ExpGovernment):
         
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -1914,6 +2011,8 @@ class EnergyRelaxation(ExpGovernment):
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
+        if self.OSmode:
+            check_OS_model_ready(self.QD_agent, self.target_qs)
         # bias coupler
         self.Fctrl = coupler_zctrl(self.Fctrl,self.QD_agent.Fluxmanager.build_Cctrl_instructions([cp for cp in self.Fctrl if cp[0]=='c' or cp[:2]=='qc'],'i'))
         # offset bias, LO and atte
@@ -1929,7 +2028,7 @@ class EnergyRelaxation(ExpGovernment):
         meas = EnergyRelaxPS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = self.histos
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
@@ -1993,8 +2092,12 @@ class EnergyRelaxation(ExpGovernment):
                     self.ANA._start_analysis(var_name=var, OSmodel=md)
                     if self.save_pics:
                         self.ANA._export_result(fig_path)
+
+
                     self.ANA.fit_packs.update({"plot_item":self.ANA.plot_item})
                     self.sum_dict[var] = self.ANA.fit_packs
+                    
+
                     """ Storing """
                     if self.histos >= 50:
                         QD_savior.Notewriter.save_T1_for(self.ANA.fit_packs["median_T1"],var)
@@ -2061,7 +2164,7 @@ class XYFcali(ExpGovernment):
         meas = RamseyT2PS()
         meas.set_time_samples = self.time_samples
         meas.set_os_mode = self.OSmode
-        meas.set_n_avg = self.avg_n
+        meas.n_avg = self.avg_n
         meas.set_repeat = 1
         meas.set_spin_num = self.spin_num
         meas.set_second_phase = 'y'
@@ -2188,9 +2291,16 @@ class ROFcali(ExpGovernment):
             self.freq_samples[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.RofCali import rofCali
-    
-        dataset = rofCali(self.QD_agent,self.meas_ctrl,self.freq_samples,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.RofCali import ROFcalibrationPS
+        meas = ROFcalibrationPS()
+        meas.ro_elements = self.freq_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"ROFcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2301,9 +2411,18 @@ class PiAcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.PI_ampCali import pi_amp_cali
+        from qblox_drive_AS.Calibration_exp.PI_ampCali import PiAcalibrationPS
+        meas = PiAcalibrationPS()
+        meas.ro_elements = self.amp_coef_samples
+        meas.pi_pairs = self.pi_pair_num
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = pi_amp_cali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.pi_pair_num,self.avg_n,self.execution)
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"PIampcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2383,9 +2502,10 @@ class hPiAcali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, piamp_coef_range:dict, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, half_piamp_coef_range:list, target_qs:list, amp_sampling_funct:str, coef_ptsORstep:int=100, halfPi_pair_num:list=[3,5], avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[...], ...], this is the coef tiles to QDmanager.Waveformer.__xylog[q]["halfPI_ratio"].\n
+            * piamp_coef_range: [0.9, 1.1].\n
+            *target_qs: ["q0", "q1", ...]
             * amp_sampling_funct: str, `linspace` or `arange`.\n
             * pi_pair_num: list, like [3, 5] will try 2 exp, the first uses 3\*4 half pi-pulse, and the second exp uses 5*4 half pi-pulse
         """
@@ -2395,13 +2515,13 @@ class hPiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in piamp_coef_range:
-           self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
+        for q in target_qs:
+           self.amp_coef_samples[q] = sampling_func(*half_piamp_coef_range,coef_ptsORstep)
         self.halfPi_pair_num = halfPi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(piamp_coef_range.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2418,9 +2538,17 @@ class hPiAcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.halfPI_ampCali import half_pi_amp_cali
-    
-        dataset = half_pi_amp_cali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.halfPi_pair_num,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.halfPI_ampCali import hPiAcalibrationPS
+        meas = hPiAcalibrationPS()
+        meas.ro_elements = self.amp_coef_samples
+        meas.hpi_quads = self.halfPi_pair_num
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"halfPIampcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2533,9 +2661,16 @@ class ROLcali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.RO_ampCali import rolCali
-    
-        dataset = rolCali(self.QD_agent,self.meas_ctrl,self.amp_coef_samples,self.avg_n,self.execution)
+        from qblox_drive_AS.Calibration_exp.RO_ampCali import ROLcalibrationPS
+        meas = ROLcalibrationPS()
+        meas.power_samples = self.amp_coef_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"ROLcali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2600,9 +2735,11 @@ class ZgateEnergyRelaxation(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, time_range:dict, time_sampling_func:str, bias_range:list, prepare_excited:bool=True, bias_sample_func:str='linspace', time_pts_or_step:int|float=100,Whileloop:bool=False, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, max_evo_time:float, target_qs:list, time_sampling_func:str, bias_range:list, prepare_excited:bool=True, bias_sample_func:str='linspace', time_pts_or_step:int|float=100,Whileloop:bool=False, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * time_range: {"q0":[time_start, time_end], ...}\n
+            * max_evo_time: 100e-6\n
+            * target_qs: ["q0", "q1", ...]
+            * prepare_excited: True, prepare excited state, False prepare ground state
             * whileloop: bool, use while loop or not.\n
             * time_sampling_func (str): 'linspace', 'arange', 'logspace'\n
             * time_pts_or_step: Depends on what sampling func you use, `linspace` or `logspace` set pts, `arange` set step.\n
@@ -2617,11 +2754,11 @@ class ZgateEnergyRelaxation(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in time_range:
-                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(*time_range[q],time_pts_or_step)*1e9,4)*1e-9
+            for q in target_qs:
+                self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(4e-9, max_evo_time)*1e9,4)*1e-9
         else:
-            for q in time_range:
-                self.time_samples[q] = sampling_func(*time_range[q],time_pts_or_step)
+            for q in target_qs:
+                self.time_samples[q] = sampling_func(4e-9, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
         if bias_sample_func in ['linspace', 'arange']:
@@ -2629,10 +2766,10 @@ class ZgateEnergyRelaxation(ExpGovernment):
         else:
             raise ValueError(f"bias sampling function must be 'linspace' or 'arange' !")
         self.want_while = Whileloop
-        self.prepare_1 = prepare_excited
+        self.prepare_1 = int(prepare_excited)
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(time_range.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2648,9 +2785,20 @@ class ZgateEnergyRelaxation(ExpGovernment):
             init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q,'xy'))
         
     def RunMeasurement(self):
-        from qblox_drive_AS.aux_measurement.ZgateT1 import Zgate_T1
+        from qblox_drive_AS.aux_measurement.ZgateT1 import ZEnergyRelaxPS
+        meas = ZEnergyRelaxPS()
+        meas.set_time_samples = self.time_samples
+        meas.z_samples = self.bias_samples
+        meas.set_os_mode = self.OSmode
+        meas.set_n_avg = self.avg_n
+        meas.pre_state = self.prepare_1
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.execution = self.execution
+        
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = Zgate_T1(self.QD_agent,self.meas_ctrl,self.time_samples,self.bias_samples,self.avg_n,self.execution,no_pi_pulse= not self.prepare_1)
         if self.execution:
             if self.save_dir is not None:
                 if self.want_while:
@@ -2733,9 +2881,11 @@ class QubitMonitor():
         self.QD_path = QD_path
         self.save_dir = save_dir
         self.Execution = execution
-        self.T1_time_range:dict = {}
-        self.T2_time_range:dict = {}
-        self.OS_target_qs:list = []
+        self.T1_max_evo_time:float = 100e-6
+        self.T1_target_qs:list = []
+        self.T2_max_evo_time:float = 100e-6
+        self.T2_target_qs:list = []
+        self.OS_target_qs:list = [] 
         self.echo_pi_num:list = [0]
         self.OSmode:bool = False
         self.time_sampling_func = 'linspace'
@@ -2769,40 +2919,35 @@ class QubitMonitor():
         start_time = datetime.now()
         
         while True:
-            if self.T1_time_range is not None:
-                if len(list(self.T1_time_range.keys())) != 0:
-                    eyeson_print("Measuring T1 ....")
-                    EXP = EnergyRelaxation(QD_path=self.QD_path,data_folder=self.save_dir)
-                    EXP.SetParameters(self.T1_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                    EXP.WorkFlow()
+            if len(self.T1_target_qs) and self.T1_max_evo_time:
+                eyeson_print("Measuring T1 ....")
+                EXP = EnergyRelaxation(QD_path=self.QD_path,data_folder=self.save_dir)
+                EXP.SetParameters(self.T1_max_evo_time,self.T1_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                EXP.WorkFlow()
 
-            if self.T2_time_range is not None:
-                if len(list(self.T2_time_range.keys())) != 0:
-                    if self.ramsey:
-                        eyeson_print("Measuring T2* ....")
-                        EXP = Ramsey(QD_path=self.QD_path,data_folder=self.save_dir)
-                        EXP.sec_phase = 'y'
-                        EXP.SetParameters(self.T2_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+            if len(self.T2_target_qs) and self.T2_max_evo_time:
+                if self.ramsey:
+                    eyeson_print("Measuring T2* ....")
+                    EXP = Ramsey(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.sec_phase = 'y'
+                    EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                    EXP.WorkFlow()
+                if self.echo:
+                    eyeson_print("Measuring T2 ....")
+                    EXP = SpinEcho(QD_path=self.QD_path,data_folder=self.save_dir)
+                    EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
+                    EXP.WorkFlow()
+                if self.CPMG:
+                    for pi_num in self.echo_pi_num:
+                        eyeson_print(f"Doing CPMG for {pi_num} pi-pulses inside ....")
+                        EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
+                        EXP.SetParameters(self.T2_max_evo_time,self.T2_target_qs,pi_num,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
                         EXP.WorkFlow()
-                    if self.echo:
-                        eyeson_print("Measuring T2 ....")
-                        EXP = SpinEcho(QD_path=self.QD_path,data_folder=self.save_dir)
-                        EXP.SetParameters(self.T2_time_range,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                        EXP.WorkFlow()
-                    if self.CPMG:
-                        for pi_num in self.echo_pi_num:
-                            pi_num_dict = {}
-                            for q in self.T2_time_range:
-                                pi_num_dict[q] = pi_num
-                            eyeson_print(f"Doing CPMG for {pi_num} pi-pulses inside ....")
-                            EXP = CPMG(QD_path=self.QD_path,data_folder=self.save_dir)
-                            EXP.SetParameters(self.T2_time_range,pi_num_dict,self.time_sampling_func,self.time_ptsORstep,1,self.AVG,self.Execution,self.OSmode)
-                            EXP.WorkFlow()
 
             if self.OS_target_qs is not None:
                 if  self.OS_shots != 0:
                     if len(self.OS_target_qs) == 0:
-                        self.OS_target_qs = list(set(list(self.T1_time_range.keys())+list(self.T2_time_range.keys())))
+                        self.OS_target_qs = list(set(self.T1_target_qs+self.T2_target_qs))
                     eyeson_print("Measuring Effective temperature .... ")
                     EXP = nSingleShot(QD_path=self.QD_path,data_folder=self.save_dir)
                     EXP.SetParameters(self.OS_target_qs,1,self.OS_shots,self.Execution)
@@ -2836,11 +2981,11 @@ class DragCali(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, drag_coef_range:dict, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
+    def SetParameters(self, drag_coef_range:list ,target_qs:list, coef_sampling_funct:str, coef_ptsORstep:int=100, avg_n:int=100, execution:bool=True, OSmode:bool=False)->None:
         """ ### Args:
-            * piamp_coef_range: {"q0":[0.9, 1.1], "q1":[0.95, 1.15], ...]\n
-            * amp_sampling_funct: str, `linspace` or `arange`.\n
-            * pi_pair_num: list, like [2, 3] will try 2 exp, the first uses 2\*2 pi-pulse, and the second exp uses 3*2 pi-pulse
+            * drag_coef_range: [-2, 2]\n
+            * target_qs: ["q0", "q1"]\n
+            * coef_sampling_funct: str, `linspace` or `arange`.\n
         """
         if coef_sampling_funct in ['linspace','logspace','arange']:
             sampling_func:callable = eval(coef_sampling_funct)
@@ -2848,12 +2993,12 @@ class DragCali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_funct}")
         
         self.drag_coef_samples = {}
-        for q in drag_coef_range:
-           self.drag_coef_samples[q] = sampling_func(*drag_coef_range[q],coef_ptsORstep)
+        for q in target_qs:
+           self.drag_coef_samples[q] = sampling_func(*drag_coef_range,coef_ptsORstep)
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(self.drag_coef_samples.keys())
+        self.target_qs = target_qs
         
 
     def PrepareHardware(self):
@@ -2870,9 +3015,17 @@ class DragCali(ExpGovernment):
 
         
     def RunMeasurement(self):
-        from qblox_drive_AS.Calibration_exp.DRAGcali import drag_cali 
+        from qblox_drive_AS.Calibration_exp.DRAGcali import DRAGcalibrationPS 
+        meas = DRAGcalibrationPS()
+        meas.ro_elements = self.drag_coef_samples
+        meas.execution = self.execution
+        meas.n_avg = self.avg_n
+        meas.meas_ctrl = self.meas_ctrl
+        meas.QD_agent = self.QD_agent
+        meas.run()
+        dataset = meas.dataset
     
-        dataset = drag_cali(self.QD_agent,self.meas_ctrl,self.drag_coef_samples,self.avg_n,self.execution)
+        
         if self.execution:
             if self.save_dir is not None:
                 self.save_path = os.path.join(self.save_dir,f"DragCali_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
@@ -2923,12 +3076,15 @@ class DragCali(ExpGovernment):
             ds.close()
 
             permi = mark_input(f"What qubit can be updated ? {list(answer.keys())}/ all/ no ").lower()
+            
             if permi in list(answer.keys()):
-                QD_savior.Waveformer.set_dragRatio_for(permi,answer[permi]["optimal_drag_coef"])
+                q_element:BasicTransmonElement = QD_savior.quantum_device.get_element(permi)
+                q_element.rxy.motzoi(float(answer[permi]["optimal_drag_coef"]))
                 QD_savior.QD_keeper()
             elif permi in ["all",'y','yes']:
                 for q in answer:
-                    QD_savior.Waveformer.set_dragRatio_for(q, answer[q]["optimal_drag_coef"])
+                    q_element:BasicTransmonElement = QD_savior.quantum_device.get_element(q)
+                    q_element.rxy.motzoi(float(answer[q]["optimal_drag_coef"]))
                 QD_savior.QD_keeper()
             else:
                 print("Updating got denied ~")
@@ -3207,9 +3363,9 @@ class ParitySwitch(ExpGovernment):
 
 
 if __name__ == "__main__":
-    EXP = PowerRabiOsci("")
+    EXP = nSingleShot("")
     EXP.execution = True
     EXP.histos = 1
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250219/DR1#11_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250219/H17M10S20/PowerRabi_20250219171056.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250325/DR4#81_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250325/H10M33S33/SingleShot_20250325103352.nc")
 
     

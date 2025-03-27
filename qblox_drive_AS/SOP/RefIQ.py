@@ -1,65 +1,17 @@
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN, array, arange, minimum, maximum, cos, sin, pi, linspace
+import os
+from numpy import array, arange, minimum, maximum, cos, sin, pi, linspace
+from numpy import nan as NaN
 from xarray import Dataset
 import matplotlib.pyplot as plt
+from qblox_drive_AS.support import check_acq_channels
 from qblox_drive_AS.support.UserFriend import *
-from qblox_drive_AS.support import QDmanager
 from quantify_scheduler.gettables import ScheduleGettable
-from qblox_drive_AS.support import compose_para_for_multiplexing
-from qblox_drive_AS.support.Pulse_schedule_library import multi_Qubit_SS_sche, Single_shot_ref_fit_analysis, pulse_preview
+from qblox_drive_AS.support.Pulse_schedule_library import Single_shot_ref_fit_analysis, pulse_preview
+from qblox_drive_AS.support.Pulser import ScheduleConductor
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule
+from quantify_scheduler.operations.gate_library import Measure, Reset
 
-def Single_shot_ref_spec(QD_agent:QDmanager,ro_elements:dict,shots:int=1000,run:bool=True):
-    print("Single shot start")
-    sche_func = multi_Qubit_SS_sche   
 
-    for q in ro_elements:
-        qubit_info = QD_agent.quantum_device.get_element(q)
-        
-        eyeson_print(f"Inte_time= {round(qubit_info.measure.integration_time()*1e6,1)} µs")
-        eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
-       
-        qubit_info.measure.pulse_amp(ro_elements[q]*float(qubit_info.measure.pulse_amp()))
-        if qubit_info.rxy.amp180() is NaN:
-            qubit_info.rxy.amp180(0)
-        if qubit_info.rxy.duration() is NaN:
-            qubit_info.rxy.duration(0)
-
-    sched_kwargs = dict(   
-        ini_state='g',
-        waveformer=QD_agent.Waveformer,
-        pi_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'d1'),
-        pi_dura=compose_para_for_multiplexing(QD_agent,ro_elements,'d3'),
-        R_amp=compose_para_for_multiplexing(QD_agent,ro_elements,'r1'),
-        R_duration=compose_para_for_multiplexing(QD_agent,ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(QD_agent,ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(QD_agent,ro_elements,'r2'),
-    )
-    
-    if run:
-        gettable = ScheduleGettable(
-            QD_agent.quantum_device,
-            schedule_function=sche_func, 
-            schedule_kwargs=sched_kwargs,
-            real_imag=True,
-            batched=True,
-            num_channels=len(list(ro_elements.keys())),
-        )
-        QD_agent.quantum_device.cfg_sched_repetitions(shots)
-        iq_tuples = gettable.get() # tuple?
-        dict_ = {}
-        for q_idx, q in enumerate(ro_elements):
-            IQ_array = array([iq_tuples[2*q_idx],iq_tuples[2*q_idx+1]])
-            dict_[q] = (["mixer","shots"],IQ_array)
-        ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"shots":arange(shots)})
-        ds.attrs["system"] = "qblox"
-        
-    else:
-        pulse_preview(QD_agent.quantum_device,sche_func,sched_kwargs)
-        ds = ""
-        
-        
-    return ds
 
 def Single_shot_fit_plot(results:dict,title_qubit:str=None,save_pic_folder:str=None):
     c_I,c_Q,sig=1000*results['fit_pack'][0],1000*results['fit_pack'][1],1000*results['fit_pack'][2]
@@ -91,4 +43,91 @@ def IQ_ref_ana(ds:Dataset, q:str, save_pic_folder:str=None):
     ref_IQ = array([analysis_result['fit_pack'][0],analysis_result['fit_pack'][1]])
     Single_shot_fit_plot(analysis_result,q,save_pic_folder)
     return ref_IQ
+
+
+
+class RefIQPS(ScheduleConductor):
+    def __init__(self):
+        super().__init__()
+        self._ro_elements:dict = {}
+        
     
+    @property
+    def ro_elements(self):
+        return self._ro_elements
+    @ro_elements.setter
+    def ro_elements(self, ro_eles:dict):
+        self._ro_elements = ro_eles
+
+
+    def __PulseSchedule__(self, 
+        meas_qs:list,
+        repetitions:int=1,    
+    ) -> Schedule:
+        
+        
+        sched = Schedule("Ref IQ positioning Sche",repetitions=repetitions)
+
+        for q in meas_qs:
+            sched.add(Reset(q))
+            
+        sched.add(Measure(*meas_qs,  acq_index=0, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND) )
+        
+        self.schedule =  sched  
+        return sched
+        
+    def __SetParameters__(self, *args, **kwargs):
+         
+        for q in self._ro_elements:
+            qubit_info = self.QD_agent.quantum_device.get_element(q)
+        
+            eyeson_print(f"Inte_time= {round(qubit_info.measure.integration_time()*1e6,1)} µs")
+            eyeson_print(f"Reset_time= {round(qubit_info.reset.duration()*1e6,1)} µs")
+        
+            qubit_info.measure.pulse_amp(self._ro_elements[q]*float(qubit_info.measure.pulse_amp()))
+            if qubit_info.rxy.amp180() is NaN:
+                qubit_info.rxy.amp180(0)
+            if qubit_info.rxy.duration() is NaN:
+                qubit_info.rxy.duration(0)
+
+        
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
+
+        self.__spec_sched_kwargs = dict(   
+        meas_qs=list(self._ro_elements.keys())
+        )
+
+    def __Compose__(self, *args, **kwargs):
+        
+        if self._execution:
+            self.__gettable = ScheduleGettable(
+            self.QD_agent.quantum_device,
+            schedule_function=self.__PulseSchedule__, 
+            schedule_kwargs=self.__spec_sched_kwargs,
+            real_imag=True,
+            batched=True,
+            num_channels=len(list(self._ro_elements.keys())),
+            )
+            self.QD_agent.quantum_device.cfg_sched_repetitions(self._avg_n)
+            
+        
+
+    def __RunAndGet__(self, *args, **kwargs):
+        
+        if self._execution:
+            iq_tuples = self.__gettable.get()
+            
+            dict_ = {}
+            for q_idx, q in enumerate(self._ro_elements):
+                IQ_array = array([iq_tuples[2*q_idx],iq_tuples[2*q_idx+1]])
+                dict_[q] = (["mixer","shots"],IQ_array)
+            ds = Dataset(dict_,coords={"mixer":array(["I","Q"]),"shots":arange(self._avg_n)})
+            ds.attrs["system"] = "qblox"
+            ds.attrs["method"] = "Average"
+            
+            self.dataset = ds
+        
+        else:
+            pulse_preview(self.QD_agent.quantum_device,self.__PulseSchedule__,self.__spec_sched_kwargs)
+
+  

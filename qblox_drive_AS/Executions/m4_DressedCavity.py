@@ -2,14 +2,15 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import Dressed_CavitySearching
-#// test okay.
-
+#// 0.9.2 okay
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_range:dict = {"q0":[5.9925e9, 5.9975e9], "q1":[6.075e9, 6.080e9]}    # np.linspace(rof+span, rof+span, freq_pts)
-ro_amp = {"q0":0.2, "q1":0.2}
+DRandIP = {"dr":"dr4","last_ip":"81"}
+freq_range:dict = {"q0":[6.035e9, 6.065e9],
+                   "q1":[6.075e9, 6.095e9],
+                   "q2":[5.975e9, 5.995e9],}    # np.linspace(rof+span, rof+span, freq_pts)
+ro_amp = {"q0":0.1, "q1":0.1, "q2":0.1}
 
 freq_pts:int = 100
 AVG:int = 100

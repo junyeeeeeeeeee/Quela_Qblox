@@ -15,6 +15,8 @@ class ScheduleConductor(ABC):
         self._execution:bool = True
         self.__dataset:Dataset = {}
         self.__sche = Schedule("dummy")
+        self._avg_n:int = 300
+        self._os_mode:bool = False
     
     @property
     def schedule(self):
@@ -34,6 +36,24 @@ class ScheduleConductor(ABC):
     @execution.setter
     def execution( self, exec:bool):
         self._execution = exec
+    @property
+    def n_avg(self):
+        return self._avg_n
+    @n_avg.setter
+    def n_avg(self, avg:int):
+        self._avg_n = avg
+    @property
+    def os_mode( self ):
+        return self._os_mode
+    @os_mode.setter
+    def set_os_mode(self, os_mode:bool):
+        if not isinstance(os_mode,bool):
+            if os_mode in [0,1]:
+                pass
+            else:
+                raise TypeError("Arg 'os_mode' must be a bool, 0 or 1 !")
+        
+        self._os_mode = os_mode
     
     @abstractmethod
     def __PulseSchedule__(self,*args,**kwargs):

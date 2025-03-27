@@ -1,17 +1,17 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import FluxCoupler
-#// test okay.
+#// 0.9.2 okay.
 
 ''' fill in '''
 Execution:bool = 1
-DRandIP = {"dr":"dr2","last_ip":"10"}
-freq_span_range:dict = {"q0":[-4e6,+5e6], "q1":[-5e6,+10e6]}    # np.linspace(rof+span, rof+span, freq_pts)
-bias_elements:list = ["c0", "c1"]
-flux_range:list = [-0.2, 0.2, 40]                                 # flux [from, end, pts/step]
+DRandIP = {"dr":"dr4","last_ip":"81"}
+freq_span_range:dict = {"q0":[-5e6,+5e6]}    # np.linspace(rof+span, rof+span, freq_pts)
+bias_elements:list = ["c0"]
+flux_range:list = [-0.3, 0.3, 20]                                 # flux [from, end, pts/step]
 flux_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 
-freq_pts:int = 40
+freq_pts:int = 30
 AVG:int = 100
 
 ''' Don't Touch '''

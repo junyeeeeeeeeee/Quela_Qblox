@@ -112,6 +112,14 @@ def find_path_by_clock(hardware_config, port, clock):
     else:
         return answers
 
+
+def find_flux_lines(hcfg:dict)->dict:
+    answer = {}
+    for port_loc, port_name in hcfg["connectivity"]["graph"]:
+        if port_name.split(":")[-1] == 'fl':
+            answer[port_name.split(":")[0]] = port_loc
+    return answer
+
 class QDmanager():
     def __init__(self,QD_path:str=''):
         self.manager_version:str = "v2.1" # Only RatisWu can edit it
@@ -128,6 +136,7 @@ class QDmanager():
         self.chip_name = ""
         self.chip_type = ""
         self.DiscriminatorVersion:str = ""
+        self.activeReset:bool = False
 
             
     
@@ -139,28 +148,29 @@ class QDmanager():
         self.Identity = which_dr.upper()+"#"+self.machine_IP.split(".")[-1] # Ex. DR2#171
         self.chip_name = chip_name
         self.chip_type = chip_type
-    
+
     def made_mobileFctrl(self):
         """ Turn attrs about `cluster.module.out0_offset` into str."""
         self.Fctrl_str_ver = {}
         try:
-            ans = find_path_by_clock(self.Hcfg,":fl","cl0.baseband")
+            ans = find_flux_lines(self.Hcfg)
             qbits_registered = self.quantum_device.elements()
+            
             for q in qbits_registered:
                 if q in ans:
-                    cluster_name = ans[q][0].split("_")[0]
-                    module_name = ans[q][0].split("_")[1]
-                    func_name = f"out{ans[q][1].split('_')[-1]}_offset"
+                    cluster_name = ans[q].split(".")[0]
+                    module_name = ans[q].split(".")[1]
+                    func_name = f"out{ans[q].split('_')[-1]}_offset"
 
                     self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
                 else:
-                    self.Fctrl_str_ver[q] = f"pass" 
+                        self.Fctrl_str_ver[q] = f"pass"
         except:
             ans = self.quantum_device.elements()
             eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")
             for q in ans:
                self.Fctrl_str_ver[q] = f"pass" 
-        
+              
 
     def activate_str_Fctrl(self,cluster:Cluster):
         """ From string translate to attributes, made callable Fctl """
@@ -233,11 +243,16 @@ class QDmanager():
                 if manager_ver.lower() == "v2.1":
                     self.StateDiscriminator = gift.StateDiscriminator
                 else:
+                    print("New Statifier generated ... ")
                     self.StateDiscriminator:Statifier = Statifier()
             except:
                 print("Generating Statifier ...")
                 self.StateDiscriminator:Statifier = Statifier()
 
+            try:
+                self.activeReset = gift.activeReset
+            except:
+                pass
             # string/ int
             self.manager_version = gift.manager_version
             self.chip_name:str = gift.chip_name
@@ -354,9 +369,9 @@ class QDmanager():
             qubit.measure.acq_channel(qb_idx)
             qubit.reset.duration(250e-6)
             qubit.clock_freqs.readout(6e9)
-            qubit.measure.acq_delay(0)
+            qubit.measure.acq_delay(4e-9)
             qubit.measure.pulse_amp(0.5)
-            qubit.measure.pulse_duration(1e-6)
+            qubit.measure.pulse_duration(1e-6+4e-9)
             qubit.measure.integration_time(1e-6)
             qubit.clock_freqs.f01(4e9)
             qubit.rxy.amp180(0.05)

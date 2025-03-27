@@ -1,13 +1,13 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import XYFcali
-#// test okay
+#// 0.9.2 okay
 
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr1","last_ip":"11"}
-target_qs:list = ["q4"]
+DRandIP = {"dr":"dr4","last_ip":"81"}
+target_qs:list = ["q1"]
 AVG:int = 500
 
 """ try change it ONLY when fitting goes wrong """

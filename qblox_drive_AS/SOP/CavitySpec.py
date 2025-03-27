@@ -1,19 +1,18 @@
 """
 Use the results from m1 and a light attenuation (10 ~ 16 is recommended) to find the BARE cavity frequency.\n
 """
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-from numpy import NaN
+
+from numpy import nan as NaN
 from xarray import Dataset
 import matplotlib.pyplot as plt
 from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import array, arange, real, imag, arctan2
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
-from qblox_drive_AS.support import Data_manager, QDmanager, compose_para_for_multiplexing 
+from qblox_drive_AS.support import Data_manager, QDmanager, check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Readout, Multi_Readout, Integration, pulse_preview
-from quantify_scheduler.operations.gate_library import Reset
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview
+from quantify_scheduler.operations.gate_library import Measure
 from quantify_scheduler.operations.pulse_library import IdlePulse,SetClockFrequency
 from quantify_scheduler.resources import ClockResource
 
@@ -97,7 +96,7 @@ class CavitySearch(ScheduleConductor):
     def __init__(self):
         super().__init__()
         self._ro_elements:dict = {}
-        self._avg_n:int = 100
+        
     
     @property
     def ro_elements(self):
@@ -106,33 +105,16 @@ class CavitySearch(ScheduleConductor):
     def ro_elements(self, ro_eles:dict):
         self._ro_elements = ro_eles
 
-    @property
-    def n_avg(self):
-        return self._avg_n
-    @n_avg.setter
-    def n_avg(self, avg:int):
-        self._avg_n = avg
 
-    @property
-    def execution(self):
-        return self._execution
-    @execution.setter
-    def execution(self, execu:bool):
-        self._execution = execu
 
     def __PulseSchedule__(self, 
         frequencies: dict,
-        R_amp: dict,
-        R_duration: dict,
-        R_integration:dict,
-        R_inte_delay:dict,
         repetitions:int=1,    
     ) -> Schedule:
         
         qubits2read = list(frequencies.keys())
         sameple_idx = array(frequencies[qubits2read[0]]).shape[0]
         sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
-
 
         for acq_idx in range(sameple_idx):    
 
@@ -141,18 +123,12 @@ class CavitySearch(ScheduleConductor):
                 if acq_idx == 0:
                     sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
                 
-                sched.add(Reset(q))
+                # sched.add(Reset(q))
                 sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
                 sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
 
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE) )
                 
-                if qubit_idx == 0:
-                    spec_pulse = Readout(sched,q,R_amp,R_duration)
-                else:
-                    Multi_Readout(sched,q,spec_pulse,R_amp,R_duration)
-                
-                Integration(sched,q,R_inte_delay[q],R_integration,spec_pulse,acq_index=acq_idx,acq_channel=qubit_idx,single_shot=False,get_trace=False,trace_recordlength=0)
-        
         self.schedule =  sched  
         return sched
         
@@ -167,12 +143,10 @@ class CavitySearch(ScheduleConductor):
         self.__freq = ManualParameter(name="freq", unit="Hz", label="Frequency")
         self.__freq.batched = True
 
+
+        self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
         self.__spec_sched_kwargs = dict(   
-        frequencies=self._ro_elements,
-        R_amp=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r1'),
-        R_duration=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r3'),
-        R_integration=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r4'),
-        R_inte_delay=compose_para_for_multiplexing(self.QD_agent,self._ro_elements,'r2')
+        frequencies=self._ro_elements
         )
 
     def __Compose__(self, *args, **kwargs):
