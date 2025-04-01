@@ -21,7 +21,7 @@ def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
         qubit:BasicTransmonElement = QD_agent.quantum_device.get_element(target_q)
         qubit.measure.pulse_duration(100e-6)
-        qubit.measure.integration_time(100e-6)
+        qubit.measure.integration_time(100e-6-4e-9)
         
 
 

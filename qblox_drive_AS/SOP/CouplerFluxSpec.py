@@ -66,14 +66,14 @@ class FluxDepCouplerPS(ScheduleConductor):
                     sched.add_resource(ClockResource(name=q+ ".ro", freq=array(frequencies[q]).flat[0]))
                 
                 sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
-                sched.add(IdlePulse(4e-9))
+                brief = sched.add(IdlePulse(4e-9),ref_op=align_pulse)
                 
                 
             if bias != 0 and bias_dura != 0 and len(list(bias_couplers)):
                 for qc in bias_couplers:
-                    sched.add(SquarePulse(bias, bias_dura, port=qc+":fl", clock="cl0.baseband"),ref_op=align_pulse)
+                    sched.add(SquarePulse(bias, bias_dura, port=qc+":fl", clock="cl0.baseband"),ref_op=brief)
             
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_op=align_pulse, ref_pt='end')
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_op=brief, ref_pt='end')
             
         return sched 
     

@@ -76,8 +76,8 @@ class FluxDepQubitPS(ScheduleConductor):
                     sched.add_resource(ClockResource(name=q+".01", freq=array(frequencies[q]).flat[0]))
     
                 sched.add(SetClockFrequency(clock= q+ ".01", clock_freq_new=freq))
-                sched.add(IdlePulse(4e-9))
-                reset = sched.add(Reset(q), ref_op=align_pulse)
+                brief = sched.add(IdlePulse(4e-9),ref_op=align_pulse)
+                reset = sched.add(Reset(q), ref_op=brief)
                 
                 if qubit_idx == 0:
                     for qb in bias_qs:
