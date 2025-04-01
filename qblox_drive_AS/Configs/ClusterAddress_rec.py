@@ -9,8 +9,8 @@ from quantify_scheduler.backends.graph_compilation import SerialCompiler
 # Please register the dr and its corresponding cluster ip here first!
 ip_register = {
     "dr1":"192.168.1.11",
-    "dr2":"192.168.1.10",
-    "dr3":"192.168.1.13",
+    "dr2":"192.168.1.13",
+    "dr3":"192.168.1.10",
     "dr4":"192.168.1.81",
     "drke":"192.168.1.242"
 } # all keys in lower

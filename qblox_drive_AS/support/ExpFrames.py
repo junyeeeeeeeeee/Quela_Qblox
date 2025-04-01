@@ -165,12 +165,16 @@ class Zoom_CavitySearching(ExpGovernment):
         self.target_qs = list(self.freq_range.keys())
 
 
+
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
         # Set the system attenuations
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
-        
-        
+        # check QRM output voltage
+        for q in self.target_qs:
+            if self.QD_agent.quantum_device.get_element(q).measure.pulse_amp() > 0.99/len(self.target_qs):
+                print(f"{q} ro amp had been decreased !")
+                self.QD_agent.quantum_device.get_element(q).measure.pulse_amp(0.98/len(self.target_qs))
     
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, CavitySearch
@@ -256,11 +260,18 @@ class PowerCavity(ExpGovernment):
         self.avg_n = avg_n
         self.execution = execution
         self.target_qs = list(freq_span_range.keys())
+
+        if roamp_range[1] > 0.99/len(self.target_qs):
+            roamp_range[1] = 0.98/len(self.target_qs)
+
+
         if roamp_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(roamp_sampling_func)
         else:
             sampling_func:callable = linspace
         self.roamp_samples = sampling_func(*roamp_range)
+
+        
 
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)

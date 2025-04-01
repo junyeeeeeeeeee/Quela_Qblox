@@ -9,7 +9,7 @@ from qcodes.parameters import ManualParameter
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import array, arange, real, imag, arctan2
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
-from qblox_drive_AS.support import Data_manager, QDmanager, check_acq_channels
+from qblox_drive_AS.support import Data_manager, QDmanager, BasicTransmonElement, check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview
 from quantify_scheduler.operations.gate_library import Measure
@@ -19,9 +19,10 @@ from quantify_scheduler.resources import ClockResource
 
 def QD_RO_init(QD_agent:QDmanager, ro_elements:dict):
     for target_q in list(ro_elements.keys()):
-        qubit = QD_agent.quantum_device.get_element(target_q)
+        qubit:BasicTransmonElement = QD_agent.quantum_device.get_element(target_q)
         qubit.measure.pulse_duration(100e-6)
         qubit.measure.integration_time(100e-6)
+        
 
 
 def multiplexing_CS_ana(QD_agent:QDmanager, ds:Dataset, save_pic_folder:str=None)->dict:
