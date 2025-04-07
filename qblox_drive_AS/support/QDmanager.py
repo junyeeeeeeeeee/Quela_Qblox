@@ -164,7 +164,15 @@ class QDmanager():
 
                     self.Fctrl_str_ver[q] = f"{cluster_name}.{module_name}.{func_name}"
                 else:
-                        self.Fctrl_str_ver[q] = f"pass"
+                    self.Fctrl_str_ver[q] = f"pass"
+            # check couplers
+            for ele in ans:
+                if ele[0] == 'c':
+                    cluster_name = ans[ele].split(".")[0]
+                    module_name = ans[ele].split(".")[1]
+                    func_name = f"out{ans[ele].split('_')[-1]}_offset"
+
+                    self.Fctrl_str_ver[ele] = f"{cluster_name}.{module_name}.{func_name}" 
         except:
             ans = self.quantum_device.elements()
             eyeson_print("Your Hcfg didn't assign the flux connections so the Fctrl will be empty! ")
