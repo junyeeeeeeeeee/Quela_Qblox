@@ -113,7 +113,7 @@ class ROLcalibrationPS(ScheduleConductor):
             rp_ds = self.meas_ctrl.run("PowerCavity")
             dict_ = {}
             for q_idx, q in enumerate(list(self.__r_amps.keys())):
-                rol = 2*self.__prepared_states.shape[0]*list(self.__r_amps[q])
+                rol = 2*self.__prepared_states.shape[0]*list(self._power_samples[q])
                 i_data = array(rp_ds[f'y{2*q_idx}']).reshape(self.__prepared_states.shape[0],self.__r_amps[q].shape[0])
                 q_data = array(rp_ds[f'y{2*q_idx+1}']).reshape(self.__prepared_states.shape[0],self.__r_amps[q].shape[0])
                 dict_[q] = (["mixer","state","rol"],array([i_data,q_data]))
