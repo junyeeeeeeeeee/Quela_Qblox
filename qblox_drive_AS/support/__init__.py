@@ -31,6 +31,10 @@ from numpy import asarray, real, vstack, array, imag, arange
 from numpy import arctan2, pi, cos, sin, exp, rad2deg
 from qblox_drive_AS.support.UserFriend import *
 
+import quantify_core.data.handling as dh
+meas_datadir = '.data'
+dh.set_datadir(meas_datadir)
+
 def qs_on_a_boat(hcfg:dict, q:str='q')->list:
     qs = []
     for name in hcfg["hardware_options"]["modulation_frequencies"]:
@@ -68,11 +72,7 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
     mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
     from qblox_drive_AS.support.UserFriend import warning_print
-    import quantify_core.data.handling as dh
-    meas_datadir = '.data'
-    dh.set_datadir(meas_datadir)
-
-
+    
     cfg, pth = {}, QuantumDevice_path 
     dr_loc = get_dr_loca(QuantumDevice_path)
     cluster_ip = ip_register[dr_loc.lower()]

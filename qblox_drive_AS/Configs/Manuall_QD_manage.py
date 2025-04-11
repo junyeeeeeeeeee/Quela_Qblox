@@ -85,6 +85,13 @@ class QD_modifier():
                     Xmon.measure.acq_delay(4e-9)
                 self.to_modifiy_item.append("inte_time")
 
+    def set_EF_duration(self, EF_driving_duras:dict={}):
+        if EF_driving_duras is not None:
+            if len(list(EF_driving_duras.keys())) != 0:
+                for q in EF_driving_duras:
+                    self.QD_agent.Notewriter.save_12duration_for(q, EF_driving_duras[q])
+                self.to_modifiy_item.append("EF-driving-duration")
+
     def set_drag_coef(self, Coefs:dict={}):
         if Coefs is not None:
             if len(list(Coefs.keys())) != 0:
@@ -243,17 +250,18 @@ class QD_modifier():
                 for q in qs:
                     file.write(f'[{q}]\n')  
                     qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
-                    file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
-                    file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
-                    file.write(f"    RO-amp = {round(qubit.measure.pulse_amp(),3)} V\n")
-                    file.write(f"    ROT    = {round(qubit.measure.integration_time()*1e6,2)} us\n")
-                    file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
-                    file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
-                    file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
-                    file.write(f"    Motzoi = {qubit.rxy.motzoi()}\n")
-                    file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
-                    file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
-                    file.write(f"    Ec     = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
+                    file.write(f"    bare    = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
+                    file.write(f"    ROF     = {qubit.clock_freqs.readout()*1e-9} GHz\n")
+                    file.write(f"    RO-amp  = {round(qubit.measure.pulse_amp(),3)} V\n")
+                    file.write(f"    ROT     = {round(qubit.measure.integration_time()*1e6,2)} us\n")
+                    file.write(f"    f01     = {qubit.clock_freqs.f01()*1e-9} GHz\n")
+                    file.write(f"    GE-amp  = {qubit.rxy.amp180()} V\n")
+                    file.write(f"    GE-dura = {round(qubit.rxy.duration()*1e9,0)} ns\n")
+                    file.write(f"    EF-dura = {round(self.QD_agent.Notewriter.get_12durationFor(q)*1e9,0)} ns\n")
+                    file.write(f"    Motzoi  = {qubit.rxy.motzoi()}\n")
+                    file.write(f"    x       = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
+                    file.write(f"    g       = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
+                    file.write(f"    Ec      = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
                     file.write("\n")
 
 if __name__ == "__main__":
@@ -333,7 +341,10 @@ if __name__ == "__main__":
     """ 1-2 state hardware setting initialize """
     QMaster.init_12_settings(switch="OFF")     # hardware config settings for 12 transition clock   
 
+    """ 1-2 driving pulse duration """
+    QMaster.set_EF_duration(EF_driving_duras= {})   # EF_driving_duras = {"q0":40e-9, ...}. Keep it empty if you don't wanna change it.
+
     """ 1-2 state frequency artificial detuning """
-    QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz
+    QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz. Keep it empty if you don't wanna change it.
     
     QMaster.save_modifications()

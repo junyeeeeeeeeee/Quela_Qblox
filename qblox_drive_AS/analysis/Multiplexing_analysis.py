@@ -16,7 +16,7 @@ from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.analysis.state_discrimination.discriminator import get_proj_distance
-from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from qcat.visualization.readout_fidelity import plot_readout_fidelity, plot_readout_fidelity_GEF
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
@@ -495,10 +495,8 @@ class analysis_tools():
                 self.RO_rotate_angle = [0]
 
             z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
-            # (3, 2, 5000)
+            
             container = empty_like(array(z))
-            print(repetition.shape) # 2, 3, 5000
-            print(container.shape) # 3, 2, 5000
             for state_idx, state_data in enumerate(z):
                 container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
             
@@ -516,7 +514,10 @@ class analysis_tools():
                 self.gmm2d_fidelity._import_data(da)
                 self.gmm2d_fidelity._start_analysis()
                 g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-                plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                if array(self.rotated_ds.coords["prepared_state"]).shape[0] == 3:
+                    plot_readout_fidelity_GEF(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                else:
+                    plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
                 plt.close()
 
     

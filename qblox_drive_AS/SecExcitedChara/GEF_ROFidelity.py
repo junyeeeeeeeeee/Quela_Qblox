@@ -292,3 +292,11 @@ class GEF_ROFidelity(ExpGovernment):
         self.RunMeasurement()
 
         self.CloseMeasurement() 
+
+if __name__ == "__main__":
+    EXP = GEF_ROFidelity("")
+    EXP.execution = True
+    EXP.histos = 1
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250411/H17M21S09/GEF_SingleShot_20250411172138.nc")
+
+    
