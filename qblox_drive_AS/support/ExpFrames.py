@@ -773,7 +773,7 @@ class PowerConti2tone(ExpGovernment):
         self.save_dir = data_folder
         self.__raw_data_location:str = ""
         self.JOBID = JOBID
-
+        self.fit_half_f02:bool=False
     @property
     def RawDataPath(self):
         return self.__raw_data_location
@@ -845,7 +845,11 @@ class PowerConti2tone(ExpGovernment):
 
         if self.execution:
             if self.save_dir is not None:
-                self.save_path = os.path.join(self.save_dir,f"PowerCnti2tone_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                if not self.fit_half_f02:
+                    self.save_path = os.path.join(self.save_dir,f"PowerCnti2tone_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                else:
+                    self.save_path = os.path.join(self.save_dir,f"f02Half_{datetime.now().strftime('%Y%m%d%H%M%S') if self.JOBID is None else self.JOBID}")
+                
                 self.__raw_data_location = self.save_path + ".nc"
                 dataset.to_netcdf(self.__raw_data_location)
                 
@@ -883,7 +887,8 @@ class PowerConti2tone(ExpGovernment):
                     ANA._export_result(fig_path)
                     if ANA.fit_packs != {}:
                         analysis_result = QS_fit_analysis(ANA.fit_packs[var]["contrast"],f=ANA.fit_packs[var]["xyf_data"])
-                        update_2toneResults_for(QD_savior,var,{str(var):analysis_result},ANA.xyl[0])
+                        update_2toneResults_for(QD_savior,var,{str(var):analysis_result},ANA.xyl[0],self.fit_half_f02)
+                        print(f"{var} f12 = {QD_savior.quantum_device.get_element(var).clock_freqs.f12()*1e-9} GHz")
             ds.close()
             QD_savior.QD_keeper()
 

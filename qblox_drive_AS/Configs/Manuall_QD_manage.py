@@ -11,7 +11,7 @@ class QD_modifier():
         self.QD_path = QD_path
         self.QD_agent = QDmanager(QD_path)
         self.QD_agent.QD_loader()
-        self.export(target_q='all') 
+        self.export(target_q='all')
         
     
     def comment(self, message:str=None):
@@ -211,6 +211,7 @@ class QD_modifier():
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
                 file.write(f"QD_file: {self.QD_path}\n")
+                file.write(f"Chip name: {self.QD_agent.chip_name}\n")
                 file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
                 file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
@@ -230,12 +231,13 @@ class QD_modifier():
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
                     file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
                     file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
+                    file.write(f"    Ec     = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
                     file.write("\n")
 
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250326/DR4#81_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl"
 
     QMaster = QD_modifier(QD_path)
 
@@ -254,10 +256,10 @@ if __name__ == "__main__":
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
     QMaster.set_roLOfreq(LO_Hz=None, target_qs=[]) # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_qs=['q0','q1','q2']) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_qs=[]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
-    QMaster.set_integration_time(inte_time_s={"q0":0.75e-6}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
+    QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
 
     """ Set reset time (All qubits global) """
     QMaster.setGlobally_reset_time(reset_time_s=None)      # reset_time_s = 250e-6, all the qubit in the quantum_device will share the same value

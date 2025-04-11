@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey"] # all in float
+        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec"] # all in float
 
         self.init_dict()
 
@@ -10,7 +10,7 @@ class Notebook():
         for i in range(self.q_num):
             self.__InfoDict[f"q{i}"] = {}
             for cata in self.cata:
-                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey"]: # float type
+                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey", "Ec"]: # float type
                     self.__InfoDict[f"q{i}"][cata] = 0.0
                 elif cata in ["meas_options"]: # list type
                     self.__InfoDict[f"q{i}"][cata] = []  
@@ -29,6 +29,13 @@ class Notebook():
         else:
             return self.__InfoDict
         
+    def save_Ec_for(self, target_q:str, Ec:float):
+        """ Save Ec for target_q """
+        self.__InfoDict[target_q]["Ec"] = Ec
+    def get_EcFor(self, target_q:str):
+        """ Get the Ec for target_q """
+        return self.__InfoDict[target_q]["Ec"]
+    
     def save_artiT2Detune_for(self, target_q:str, arti_detu:float):
         """ Save artificial detuning only used on Ramsey"""
         self.__InfoDict[target_q]["arti_detu_ramsey"] = arti_detu
@@ -163,7 +170,7 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey"]:
+                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec"]:
                             self.__InfoDict[qu][cata] = 0.0
                         elif cata in ["meas_options"]:
                             self.__InfoDict[qu][cata] = []
