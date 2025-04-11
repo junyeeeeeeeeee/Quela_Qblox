@@ -3,7 +3,7 @@
 from qblox_drive_AS.support.UserFriend import *
 from qcodes.parameters import ManualParameter
 from numpy import array, arange, ndarray, round, full, concatenate
-from qblox_drive_AS.support import QDmanager, Data_manager, check_acq_channels
+from qblox_drive_AS.support import QDmanager, Data_manager, check_acq_channels, BasicTransmonElement
 from quantify_scheduler.gettables import ScheduleGettable
 from xarray import Dataset
 from qblox_drive_AS.support.Pulser import ScheduleConductor
@@ -48,15 +48,22 @@ def sort_elements_2_multiples_of(x:ndarray, specific_multiple:int=None):
     return adjusted_array.astype(int)
 
 
-def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,target_q:str):
+def conditional_update_qubitInfo(QD_agent:QDmanager,fit_results:Dataset,target_q:str,fit_12:bool=False):
+    
     if fit_results.attrs['pi_2'] >= min(fit_results.coords['samples']) and fit_results.attrs['pi_2'] <= max(fit_results.coords['samples']) :
-        qubit = QD_agent.quantum_device.get_element(target_q)
+        qubit:BasicTransmonElement = QD_agent.quantum_device.get_element(target_q)
         match str(fit_results.attrs['Rabi_type']).lower():
             case 'powerrabi':
-                qubit.rxy.amp180(fit_results.attrs['pi_2'])
+                if fit_12:
+                    QD_agent.Notewriter.save_12amp_for(target_q, fit_results.attrs['pi_2'])
+                else:
+                    qubit.rxy.amp180(fit_results.attrs['pi_2'])
     
             case 'timerabi':
-                qubit.rxy.duration(fit_results.attrs['pi_2'])
+                if fit_12:
+                    QD_agent.Notewriter.save_12duration_for(target_q, fit_results.attrs['pi_2'])
+                else:
+                    qubit.rxy.duration(fit_results.attrs['pi_2'])
     else:
         warning_print(f"Results for {target_q} didn't satisfy the update condition !")
 

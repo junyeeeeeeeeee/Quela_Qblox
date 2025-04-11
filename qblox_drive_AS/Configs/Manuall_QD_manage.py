@@ -20,6 +20,20 @@ class QD_modifier():
                 self.QD_agent.refresh_log(str(message))
                 self.to_modifiy_item.append("Comments")
 
+    def init_12_settings(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
+            qubits = list(self.QD_agent.quantum_device.elements())
+            HCfg:dict = self.QD_agent.quantum_device.hardware_config()
+
+            for q in qubits:
+                # 12 Driving attenuation
+                HCfg['hardware_options']['output_att'][f"{q}:mw-{q}.12"] = 0
+                # 12 LO settings (The same LO as 01-driving)
+                HCfg['hardware_options']["modulation_frequencies"][f"{q}:mw-{q}.12"] = {"lo_freq":self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()-self.QD_agent.Notewriter.get_xyIFFor(q)}
+
+            self.to_modifiy_item.append("12_initializations")
+
+
     def active_reset_switch(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
         if switch in ["ON", "OFF"]:
             status = True if switch == "ON" else False
@@ -28,8 +42,8 @@ class QD_modifier():
                 self.QD_agent.activeReset = False # status
                 self.to_modifiy_item.append("ActiveReset ON" if status else "ActiveReset OFF")
     
-    def reset_discriminator(self, switch:bool):
-        if switch:
+    def reset_discriminator(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
             self.QD_agent.StateDiscriminator = Statifier()
             self.to_modifiy_item.append("Discriminators")
 
@@ -192,8 +206,8 @@ class QD_modifier():
         else:
             slightly_print("Nothing changed ~ ")
     
-    def show_hcfg(self, switch:bool=False):
-        if switch:
+    def show_hcfg(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
             Hcfg = self.QD_agent.quantum_device.hardware_config()
             rich.print(Hcfg)
 
@@ -301,9 +315,12 @@ if __name__ == "__main__":
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
 
-    QMaster.show_hcfg(switch=False)   # You can see the HCFG in the terminal if you switch on
+    QMaster.show_hcfg(switch="ON")   # You can see the HCFG in the terminal if you switch on
 
     """ Reset the whole Statifier """
-    QMaster.reset_discriminator(switch=False)  # trun on the switch if you wanna initialize it
+    QMaster.reset_discriminator(switch="OFF")  # trun on the switch if you wanna initialize it
+
+    """ 1-2 state hardware setting initialize """
+    QMaster.init_12_settings(switch="OFF")
     
     QMaster.save_modifications()

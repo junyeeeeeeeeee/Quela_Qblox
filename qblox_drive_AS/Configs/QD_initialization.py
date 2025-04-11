@@ -10,7 +10,7 @@ qubit_number_onChip:int = 3
 coupler_number_onChip:int = 1
 chip_name:str = "2FQ1FC_0321_DR4"
 chip_type:str = "5Q4C"
-old_QD_path:str = "qblox_drive_AS/QD_backup/20250326/DR4#81_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
+old_QD_path:str = "qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl" # set the path in string When you want to update the Hcfg. Otherwise, set it None
 
 
 Hcfg = {

@@ -453,9 +453,13 @@ class analysis_tools():
     
         self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
         self.fit_packs.attrs["fix_variable"] = fixed
+        if "states" in self.ds.attrs:
+            self.fit_packs.attrs["states"] = self.ds.attrs["states"]
+        else:
+            self.fit_packs.attrs["states"] = "GE"
 
     def rabi_plot(self, save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.fit_packs.attrs['states']}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,q=self.qubit)

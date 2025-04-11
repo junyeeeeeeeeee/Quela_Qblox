@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec"] # all in float
+        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec", "12_amp", "12_duration"] # all in float
 
         self.init_dict()
 
@@ -10,10 +10,12 @@ class Notebook():
         for i in range(self.q_num):
             self.__InfoDict[f"q{i}"] = {}
             for cata in self.cata:
-                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey", "Ec"]: # float type
+                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey", "Ec", "12_amp"]: # float type
                     self.__InfoDict[f"q{i}"][cata] = 0.0
                 elif cata in ["meas_options"]: # list type
                     self.__InfoDict[f"q{i}"][cata] = []  
+                elif cata == "12_duration":
+                    self.__InfoDict[f"q{i}"][cata] = 40e-9
                 elif cata == 'xy_if':
                     self.__InfoDict[f"q{i}"][cata] = -150e6
                 else: # dict type
@@ -28,7 +30,24 @@ class Notebook():
             return self.__InfoDict[target_q]
         else:
             return self.__InfoDict
-        
+    
+    # 12 transition driving amplitude
+    def save_12amp_for(self, target_q:str, amp_12:float):
+        """ Save the driving amplitude for 12 state transition """
+        self.__InfoDict[target_q]["12_amp"] = amp_12
+    def get_12ampFor(self, target_q:str):
+        """ Get the driving amplitude for 12 state transition """
+        return self.__InfoDict[target_q]["12_amp"]
+
+    # 12 transition driving duration
+    def save_12duration_for(self, target_q:str, dura_12:float):
+        """ Save the driving duration for 12 state transition """
+        self.__InfoDict[target_q]["12_duration"] = dura_12
+    def get_12durationFor(self, target_q:str):
+        """ Get the driving duration for 12 state transition """
+        return self.__InfoDict[target_q]["12_duration"]
+
+    # Ec
     def save_Ec_for(self, target_q:str, Ec:float):
         """ Save Ec for target_q """
         self.__InfoDict[target_q]["Ec"] = Ec
@@ -36,6 +55,7 @@ class Notebook():
         """ Get the Ec for target_q """
         return self.__InfoDict[target_q]["Ec"]
     
+    # driving detuning for Ramsey T2
     def save_artiT2Detune_for(self, target_q:str, arti_detu:float):
         """ Save artificial detuning only used on Ramsey"""
         self.__InfoDict[target_q]["arti_detu_ramsey"] = arti_detu
@@ -170,10 +190,12 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec"]:
+                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec","12_amp"]:
                             self.__InfoDict[qu][cata] = 0.0
                         elif cata in ["meas_options"]:
                             self.__InfoDict[qu][cata] = []
+                        elif cata == "12_duration":
+                            self.__InfoDict[qu][cata] = 40e-9
                         elif cata == 'xy_if':
                             self.__InfoDict[qu][cata] = -150e6
                         else:

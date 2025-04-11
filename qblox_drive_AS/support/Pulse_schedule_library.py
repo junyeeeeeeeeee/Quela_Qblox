@@ -1230,6 +1230,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             x= results.coords['samples']*1e9
             x_fit= results.coords['para_fit']*1e9
 
+        title += f"_{results.attrs['states']}"
+
         if abs(float(pi_2)) > max(x):
             plot_fit = False
 
