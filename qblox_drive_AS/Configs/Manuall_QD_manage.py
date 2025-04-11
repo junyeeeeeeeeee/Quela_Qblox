@@ -67,6 +67,13 @@ class QD_modifier():
                 for q in detunes:
                     self.QD_agent.Notewriter.save_artiT2Detune_for(q,detunes[q])
                 self.to_modifiy_item.append("RamseyT2_detuning")
+    
+    def set_f12ArtifDetuing(self, detunes:dict={}):
+        if detunes is not None:
+            if len(list(detunes.keys())) != 0:
+                for q in detunes:
+                    self.QD_agent.Notewriter.save_12artiDetune_for(q,detunes[q])
+                self.to_modifiy_item.append("f12_artificial_detuning")
 
     def set_integration_time(self, inte_time_s:dict=None):
         if inte_time_s is not None:
@@ -243,6 +250,7 @@ class QD_modifier():
                     file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
                     file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
                     file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
+                    file.write(f"    Motzoi = {qubit.rxy.motzoi()}\n")
                     file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
                     file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
                     file.write(f"    Ec     = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
@@ -315,12 +323,17 @@ if __name__ == "__main__":
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
 
-    QMaster.show_hcfg(switch="ON")   # You can see the HCFG in the terminal if you switch on
+    QMaster.show_hcfg(switch="OFF")   # You can see the HCFG in the terminal if you switch on
 
     """ Reset the whole Statifier """
     QMaster.reset_discriminator(switch="OFF")  # trun on the switch if you wanna initialize it
 
+
+    ### 12 state settings
     """ 1-2 state hardware setting initialize """
-    QMaster.init_12_settings(switch="OFF")
+    QMaster.init_12_settings(switch="OFF")     # hardware config settings for 12 transition clock   
+
+    """ 1-2 state frequency artificial detuning """
+    QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz
     
     QMaster.save_modifications()

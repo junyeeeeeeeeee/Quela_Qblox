@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec", "12_amp", "12_duration"] # all in float
+        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec", "12_amp", "12_duration", "arti_detune_f12"] # all in float
 
         self.init_dict()
 
@@ -10,7 +10,7 @@ class Notebook():
         for i in range(self.q_num):
             self.__InfoDict[f"q{i}"] = {}
             for cata in self.cata:
-                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey", "Ec", "12_amp"]: # float type
+                if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp","arti_detu_ramsey", "Ec", "12_amp", "arti_detune_f12"]: # float type
                     self.__InfoDict[f"q{i}"][cata] = 0.0
                 elif cata in ["meas_options"]: # list type
                     self.__InfoDict[f"q{i}"][cata] = []  
@@ -30,7 +30,15 @@ class Notebook():
             return self.__InfoDict[target_q]
         else:
             return self.__InfoDict
-    
+        
+    # f12 artificial detuning
+    def save_12artiDetune_for(self, target_q:str, arti_detune_12:float):
+        """ Save artificial detune for target_q f12, unit in Hz """
+        self.__InfoDict[target_q]["arti_detune_f12"] = arti_detune_12
+    def get_12artiDetuneFor(self, target_q:str):
+        """ Get artificial detune for target_q f12, unit in Hz """
+        return self.__InfoDict[target_q]["arti_detune_f12"]
+
     # 12 transition driving amplitude
     def save_12amp_for(self, target_q:str, amp_12:float):
         """ Save the driving amplitude for 12 state transition """
@@ -190,7 +198,7 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec","12_amp"]:
+                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec","12_amp", "arti_detune_f12"]:
                             self.__InfoDict[qu][cata] = 0.0
                         elif cata in ["meas_options"]:
                             self.__InfoDict[qu][cata] = []

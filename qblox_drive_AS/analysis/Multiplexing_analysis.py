@@ -488,27 +488,31 @@ class analysis_tools():
                 self.effT_mK.append(0)
             self.RO_fidelity_percentage.append((p00+p11)*100/2)
 
-            
-            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
-            self.RO_rotate_angle.append(rotate_angle)
+            if array(self.ds.coords["prepared_state"]).shape[0] == 2:
+                _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
+                self.RO_rotate_angle.append(rotate_angle)
+            else:
+                self.RO_rotate_angle = [0]
+
             z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
-            
-            container = empty_like(array(repetition))
-            
+            # (3, 2, 5000)
+            container = empty_like(array(z))
+            print(repetition.shape) # 2, 3, 5000
+            print(container.shape) # 3, 2, 5000
             for state_idx, state_data in enumerate(z):
                 container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
             
             rot_data.append(moveaxis(container,0,1).tolist())
-            
+        
             
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle, "threshold_01":self.threshold_01}
-        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
+        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array(self.ds.coords["prepared_state"]), "index":array(self.ds.coords["index"])})
     
     def oneshot_plot(self,save_pic_path:str=None):
         
         for var in self.rotated_ds.data_vars:
             for repetition in array(self.rotated_ds[var]):
-                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(repetition).shape[2]))] )
+                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",array(self.rotated_ds.coords["prepared_state"])), ("index",arange(array(repetition).shape[2]))] )
                 self.gmm2d_fidelity._import_data(da)
                 self.gmm2d_fidelity._start_analysis()
                 g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
@@ -518,20 +522,20 @@ class analysis_tools():
     
     def oneshot_urgent_plot(self, data:ndarray, save_pic_path:str=None):
         """ data shape: ("mixer", "prepared_state", "index")"""
-        
-        data = moveaxis(data[0],0,1)
+        state_n = data.shape[1]
+        print(state_n)
+        data = moveaxis(data,1,0)
         Plotter = Artist(f"SingleShot raw data", save_pic_path)
-        fig, axs = Plotter.build_up_plot_frame((2,1),(6,9))
-        color = ['blue','red']
+        fig, axs = Plotter.build_up_plot_frame((state_n,1),(6,9))
+        color = ['blue','red',"green"]
+        sub_titles = []
         for idx, state in enumerate(data):
             ax = Plotter.add_scatter_on_ax(state[0],state[1],ax=axs[idx],c=color[idx],s=1)
             ax.set_aspect('equal')
             Plotter.includes_axes([ax])
+            sub_titles.append({'subtitle':f"Prepare |{idx}>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"})
 
-        Plotter.set_LabelandSubtitles(
-            [{'subtitle':"Prepare |0>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},
-            {'subtitle':"Prepare |1>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},]
-        )
+        Plotter.set_LabelandSubtitles(sub_titles)
         Plotter.export_results()
 
 
@@ -600,6 +604,10 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
+        if "states" in self.ds.attrs:
+            self.ans.attrs["states"] = self.ds.attrs["states"]
+        else:
+            self.ans.attrs["states"] = "GE"
         
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
@@ -772,10 +780,16 @@ class analysis_tools():
             # Normalize to range [0, 360)
             self.fit_packs['phase'] = (p_deg % 360 + 360) % 360
             self.fit_packs["freq"] = self.ans.attrs['f']
+            
+            if "states" in self.ds.attrs:
+                self.ans.attrs["states"] = self.ds.attrs["states"]
+            else:
+                self.ans.attrs["states"] = "GE"
+            
             eyeson_print(f"phase fit = {round(self.fit_packs['phase'],2)} deg")
         
     def T2_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'+'_'+self.ans.attrs['states']}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         
         
@@ -799,7 +813,7 @@ class analysis_tools():
             Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}",pic_folder=os.path.split(save_pic_path)[0])
 
     def XYF_cali_plot(self,save_pic_path:str=None,fq_MHz:int=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_XYFcalibration_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_FreqCalibration_{self.ans.attrs['states']}_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
@@ -1329,7 +1343,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
             case 'm14b':
-                self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
+                self.oneshot_urgent_plot(array(self.ds)[0],pic_save_folder)
             case 'm12':
                 self.T2_plot(pic_save_folder)
             case 'm13':

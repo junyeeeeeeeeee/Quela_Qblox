@@ -1194,6 +1194,9 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey' if q =="" else f"{q} Ramsey"
+        if "states" in results.attrs:
+            title += f'_{results.attrs["states"]}'
+
         if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
