@@ -122,7 +122,7 @@ def find_flux_lines(hcfg:dict)->dict:
 
 class QDmanager():
     def __init__(self,QD_path:str=''):
-        self.manager_version:str = "v2.1" # Only RatisWu can edit it
+        self.manager_version:str = "v2.2" # Only RatisWu can edit it
         self.path = QD_path
         self.StateDiscriminator:Statifier = Statifier()
         self.Waveformer:GateGenesis = None
@@ -232,7 +232,7 @@ class QDmanager():
 
         try:  
             manager_ver = gift.manager_version
-            if manager_ver.lower() not in  ["v2.0","v2.1"]:
+            if float(manager_ver.split("v")[-1]) < 2.0:
                 update = True   
         except:
             update = True
@@ -244,7 +244,12 @@ class QDmanager():
         else:
             # class
             self.Fluxmanager = gift.Fluxmanager
-            self.Notewriter = gift.Notewriter
+            self.q_num:int = len(list(filter(ret_q,self.Fluxmanager.get_bias_dict())))
+            self.c_num:int = len(list(filter(ret_c,self.Fluxmanager.get_bias_dict())))
+            # the notebook needa active from the old one to avoid some new items didn't be initialize, like Ec, ...
+            self.Notewriter: Notebook = Notebook(q_number=self.q_num)
+            self.Notewriter.activate_from_dict(gift.Notewriter.get_notebook())
+            
             self.Waveformer = gift.Waveformer
             self.quantum_device = gift.quantum_device
             try:
@@ -269,8 +274,7 @@ class QDmanager():
             self.Log:str = gift.Log
             self.Fctrl_str_ver = gift.Fctrl_str_ver
             self.machine_IP:str = gift.machine_IP
-            self.q_num:int = len(list(filter(ret_q,self.Fluxmanager.get_bias_dict())))
-            self.c_num:int = len(list(filter(ret_c,self.Fluxmanager.get_bias_dict())))
+            
             
             # dict
             self.refIQ = gift.refIQ

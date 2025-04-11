@@ -4,7 +4,7 @@ from numpy import array, arange, ndarray
 from xarray import Dataset
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
-from qblox_drive_AS.support import QDmanager, Data_manager
+from qblox_drive_AS.support import QDmanager, Data_manager, BasicTransmonElement
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support.QuFluxFit import calc_Gcoef_inFbFqFd, calc_g
 from qblox_drive_AS.support import check_acq_channels
@@ -15,17 +15,24 @@ from quantify_scheduler.operations.gate_library import Reset
 from quantify_scheduler.operations.pulse_library import SetClockFrequency,SquarePulse, IdlePulse
 from quantify_scheduler.resources import ClockResource
 
-def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float):
-    qubit = QD_agent.quantum_device.get_element(qb)
-    Revised_f01 = QS_results[qb].attrs['f01_fit']
-    fb = float(QD_agent.Notewriter.get_bareFreqFor(target_q=qb))*1e-6
-    fd = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()*1e-6
-    A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
-    sweet_g = calc_g(fb,Revised_f01*1e-6,A)
-    qubit.clock_freqs.f01(Revised_f01)
-    QD_agent.Notewriter.save_2tone_piamp_for(qb,XYL)
-    QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
-    QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
+def update_2toneResults_for(QD_agent:QDmanager,qb:str,QS_results:dict,XYL:float, fit_f02:bool=False):
+    qubit:BasicTransmonElement = QD_agent.quantum_device.get_element(qb)
+    if not fit_f02:
+        Revised_f01 = QS_results[qb].attrs['f01_fit']
+        fb = float(QD_agent.Notewriter.get_bareFreqFor(target_q=qb))*1e-6
+        fd = QD_agent.quantum_device.get_element(qb).clock_freqs.readout()*1e-6
+        A = calc_Gcoef_inFbFqFd(fb,Revised_f01*1e-6,fd)
+        sweet_g = calc_g(fb,Revised_f01*1e-6,A)
+        qubit.clock_freqs.f01(Revised_f01)
+        QD_agent.Notewriter.save_2tone_piamp_for(qb,XYL)
+        QD_agent.Notewriter.save_CoefInG_for(target_q=qb,A=A)
+        QD_agent.Notewriter.save_sweetG_for(target_q=qb,g_Hz=sweet_g*1e6)
+    else:
+        f02_half = QS_results[qb].attrs['f01_fit']
+        # 2*(0.5f02-f01) = -Ec
+        QD_agent.Notewriter.save_Ec_for(qb, Ec=-2*(f02_half-qubit.clock_freqs.f01()))        
+        # f12 = f01 - Ec 
+        qubit.clock_freqs.f12(qubit.clock_freqs.f01()-QD_agent.Notewriter.get_EcFor(qb))
 
 def tune_away_setup(QD_agent:QDmanager,Fctrl:dict,bias_setup:dict,ro_qs:list,zero_mode:bool=False):
     for q in ro_qs:
