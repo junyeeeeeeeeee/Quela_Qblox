@@ -99,9 +99,11 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
     ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
-    QRM_nco_init(cluster)
+    
     Qmanager = QDmanager(pth)
     Qmanager.QD_loader()
+
+    QRM_nco_init(cluster, int(Qmanager.Notewriter.get_NcoPropDelay()*1e9))
     bias_controller = Qmanager.activate_str_Fctrl(cluster)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
@@ -330,12 +332,12 @@ def enable_QCMRF_LO(cluster):
     print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
 
 
-def QRM_nco_init(cluster):
+def QRM_nco_init(cluster, prop_delay_ns:float=50):
     QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type and mod.is_rf_type)
     for slot_idx in QRM_RFs:
         for i in range(6):
             getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp_en(True)      
-            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp(50)
+            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp(prop_delay_ns)
     
     print(f" NCO in QRM_RF: {list(QRM_RFs.keys())} had initialized NCO successfully!")
 

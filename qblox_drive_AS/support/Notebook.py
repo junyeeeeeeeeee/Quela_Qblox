@@ -2,7 +2,7 @@ class Notebook():
     def __init__(self,q_number:str):
         self.__InfoDict = {}
         self.q_num = q_number
-        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec", "12_amp", "12_duration", "arti_detune_f12"] # all in float
+        self.cata = ["bareF","T1","T2","T2*","CoefInG","sweetG","digitalAtte","realAtte","meas_options","2tone_piamp","xy_if", "arti_detu_ramsey", "Ec", "12_amp", "12_duration", "arti_detune_f12","nco_prop_delay"] # all in float
 
         self.init_dict()
 
@@ -14,6 +14,8 @@ class Notebook():
                     self.__InfoDict[f"q{i}"][cata] = 0.0
                 elif cata in ["meas_options"]: # list type
                     self.__InfoDict[f"q{i}"][cata] = []  
+                elif cata == "nco_prop_delay":
+                    self.__InfoDict[f"q{i}"][cata] = 50e-9  
                 elif cata == "12_duration":
                     self.__InfoDict[f"q{i}"][cata] = 40e-9
                 elif cata == 'xy_if':
@@ -30,6 +32,15 @@ class Notebook():
             return self.__InfoDict[target_q]
         else:
             return self.__InfoDict
+        
+    # nco propagating delay (It's global)
+    def save_NcoPropDelay(self, delay_time:float):
+        """ Save the nco_propagation_delay time for all the qubits, unit in s """
+        for q in self.__InfoDict:
+            self.__InfoDict[q]["nco_prop_delay"] = delay_time
+    def get_NcoPropDelay(self)->float:
+        """ Get the nco_propagation_delay time, unit in s"""
+        return self.__InfoDict[list(self.__InfoDict.keys())[0]]["nco_prop_delay"]
         
     # f12 artificial detuning
     def save_12artiDetune_for(self, target_q:str, arti_detune_12:float):
@@ -198,7 +209,7 @@ class Notebook():
                 except:
                     if cata in self.cata:
                         print(f"Old notebook didn't exist cata named '{cata}', initialize it in new notebook.")
-                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec","12_amp", "arti_detune_f12"]:
+                        if cata in ["bareF","T1","T2","T2*","CoefInG","sweetG","2tone_piamp", "arti_detu_ramsey","Ec","12_amp", "arti_detune_f12","nco_prop_delay"]:
                             self.__InfoDict[qu][cata] = 0.0
                         elif cata in ["meas_options"]:
                             self.__InfoDict[qu][cata] = []
