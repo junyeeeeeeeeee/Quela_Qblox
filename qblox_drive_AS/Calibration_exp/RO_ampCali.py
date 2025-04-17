@@ -5,7 +5,7 @@ from xarray import Dataset
 from quantify_scheduler.gettables import ScheduleGettable
 from numpy import array, arange
 from qblox_drive_AS.support import Data_manager, check_acq_channels
-from qblox_drive_AS.support.Pulse_schedule_library import Measure, Schedule, pulse_preview, BinMode, Reset, X, IdlePulse, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Measure, Schedule, pulse_preview, BinMode, Reset, X, IdlePulse
 from qblox_drive_AS.support.Pulser import ScheduleConductor
  
 
@@ -55,7 +55,7 @@ class ROLcalibrationPS(ScheduleConductor):
                 if state:
                     pi_pulse = sched.add(X(q), ref_op=reset)
             
-                sched.add(Measure(q, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE, pulse_amp=R_amp), rel_time=electrical_delay, ref_op=pi_pulse if state else reset)
+                sched.add(Measure(q, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE, pulse_amp=R_amp), ref_op=pi_pulse if state else reset)
                 
         self.schedule =  sched  
         return sched

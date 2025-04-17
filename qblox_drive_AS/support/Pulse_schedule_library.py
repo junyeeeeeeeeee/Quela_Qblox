@@ -22,7 +22,7 @@ from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio, GateGenesis
 from typing import Hashable, Literal, Optional, Tuple, Union
 """ Global pulse settings """
-electrical_delay:float = 280e-9
+electrical_delay:float = 0
 
 
 def FlatTopGaussianPulse(Du:float,amp:float,s_factor:int=8,sampling_rate:float=4e-9):

@@ -7,7 +7,7 @@ from qblox_drive_AS.support import QDmanager, Data_manager, check_acq_channels, 
 from quantify_scheduler.gettables import ScheduleGettable
 from xarray import Dataset
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, IdlePulse, X, Y, BinMode, electrical_delay, pulse_preview 
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, IdlePulse, X, Y, BinMode, pulse_preview 
 from quantify_scheduler.operations.gate_library import Reset
 
 #? The way to merge two dict a and b : c = {**a,**b}
@@ -123,7 +123,7 @@ class RabiPS(ScheduleConductor):
                 else:
                     sched.add(gate(qubit=q, duration=pi_dura[q][acq_idx]), ref_op=reset)
             
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND if OS_or_not else BinMode.AVERAGE),rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND if OS_or_not else BinMode.AVERAGE))
         
         self.schedule = sched
         return sched

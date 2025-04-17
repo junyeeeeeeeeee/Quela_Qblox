@@ -10,7 +10,7 @@ from qblox_drive_AS.support.Notebook import Notebook
 from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X, DRAGPulse, electrical_delay, ConditionalReset, BinMode
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X, DRAGPulse, ConditionalReset, BinMode
 from quantify_scheduler.operations.gate_library import Reset
 from qblox_drive_AS.support.ExpFrames import ExpGovernment
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
@@ -71,7 +71,7 @@ class GEF_ROFidelityPS(ScheduleConductor):
                     sched.add(X(q))
                     pu = sched.add(DRAGPulse(G_amp=Note.get_12ampFor(q),D_amp=0,phase=0,duration=Note.get_12durationFor(q),port=f"{q}:mw",clock=f"{q}.12"))
                 
-            sched.add(Measure(*meas_qs,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND), rel_time=electrical_delay, ref_op=pu if acq_idx in [1,2] else reset)
+            sched.add(Measure(*meas_qs,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND), ref_op=pu if acq_idx in [1,2] else reset)
             
         self.schedule = sched
         return sched

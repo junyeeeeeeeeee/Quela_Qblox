@@ -333,6 +333,7 @@ def enable_QCMRF_LO(cluster):
 
 
 def QRM_nco_init(cluster, prop_delay_ns:float=50):
+    slightly_print(f"Recieved nco_prop_delay = {prop_delay_ns} ns")
     QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type and mod.is_rf_type)
     for slot_idx in QRM_RFs:
         for i in range(6):

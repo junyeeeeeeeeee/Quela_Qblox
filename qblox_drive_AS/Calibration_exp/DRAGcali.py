@@ -8,7 +8,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 
 from qblox_drive_AS.support import check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Y, Y90, X90, Reset, IdlePulse, Measure, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Y, Y90, X90, Reset, IdlePulse, Measure
 
 class DRAGcalibrationPS(ScheduleConductor):
     def __init__(self):
@@ -45,7 +45,7 @@ class DRAGcalibrationPS(ScheduleConductor):
                         sched.add(Y(q, motzoi=motzoi), ref_op=reset)
                         final_pulse = sched.add(X90(q, motzoi=motzoi))
                     
-            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), rel_time=electrical_delay, ref_op=final_pulse)
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_op=final_pulse)
                 
         self.schedule =  sched  
         return sched

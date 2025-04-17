@@ -7,7 +7,7 @@ from qblox_drive_AS.support import Data_manager
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import check_acq_channels, BasicTransmonElement
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, Rxy, Reset, IdlePulse, Measure, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, Rxy, Reset, IdlePulse, Measure
 
 class hPiAcalibrationPS(ScheduleConductor):
     def __init__(self):
@@ -51,7 +51,7 @@ class hPiAcalibrationPS(ScheduleConductor):
                     for pi_idx in range(4):
                         half_pi = sched.add(Rxy(qubit=q, theta=new_theta, phi=0))
 
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol="SSBIntegrationComplex", bin_mode=BinMode.AVERAGE), rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol="SSBIntegrationComplex", bin_mode=BinMode.AVERAGE))
                         
         self.schedule =  sched  
         return sched

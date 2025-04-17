@@ -11,7 +11,7 @@ from qblox_drive_AS.support.Notebook import Notebook
 from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X90, Y90, DRAGPulse, Rxy, X, electrical_delay, ConditionalReset, BinMode
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X90, Y90, DRAGPulse, Rxy, X, ConditionalReset, BinMode
 from quantify_scheduler.operations.gate_library import Reset
 from qblox_drive_AS.support.ExpFrames import ExpGovernment
 from qblox_drive_AS.analysis.Multiplexing_analysis import Multiplex_analyzer
@@ -103,7 +103,7 @@ class Ramsey12PS(ScheduleConductor):
                         sched.add(DRAGPulse(G_amp=Note.get_12ampFor(q)/2,D_amp=0,phase=90,duration=Note.get_12durationFor(q),port=f"{q}:mw",clock=f"{q}.12"), ref_op=first_pulse, rel_time=freeDu)
             
                 sched.add(X(q))
-            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE))
         
         return sched
         

@@ -6,7 +6,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from numpy import arange, array, arange, rad2deg
 from qblox_drive_AS.support import Data_manager, check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, X90, Y90, Measure, IdlePulse, Reset, X, ConditionalReset, BinMode, Rxy, pulse_preview, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, X90, Y90, Measure, IdlePulse, Reset, X, ConditionalReset, BinMode, Rxy, pulse_preview
 from numpy import pi as PI
 
 class RamseyT2PS(ScheduleConductor):
@@ -115,7 +115,7 @@ class RamseyT2PS(ScheduleConductor):
                     else:
                         sched.add(X90(q) if second_pulse_phase.lower()=='x' else Y90(q), ref_op=first_pulse, rel_time=freeDu)  
                 
-            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE))
         
         return sched
         

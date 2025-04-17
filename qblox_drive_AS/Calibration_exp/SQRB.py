@@ -5,7 +5,7 @@ from numpy import asarray, ndarray, linspace, array, arange
 from quantify_scheduler.backends.qblox.constants import MIN_TIME_BETWEEN_OPERATIONS
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.randomized_benchmarking import randomized_benchmarking_sequence
 from qblox_drive_AS.SQRB_utils.pycqed_randomized_benchmarking.two_qubit_clifford_group import SingleQubitClifford, common_cliffords
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, Reset, X, X90, Y, Y90, Rxy, CZ, electrical_delay, IdlePulse
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Measure, Reset, X, X90, Y, Y90, Rxy, CZ, IdlePulse
 from quantify_scheduler.gettables import ScheduleGettable
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
@@ -130,10 +130,10 @@ class SQRBPS(ScheduleConductor):
                             if gate != "I":
                                 sched.add(pycqed_operation_map[gate](q), rel_time=operation_buffer_time)
         
-                    sched.add(Measure(q, acq_index=idx),rel_time=electrical_delay)
+                    sched.add(Measure(q, acq_index=idx))
             else:
                 sched.add(Reset(*qubit_names), ref_op=align_pulse)
-                sched.add(Measure(*qubit_names, acq_index=idx),rel_time=electrical_delay)
+                sched.add(Measure(*qubit_names, acq_index=idx))
 
         return sched
         

@@ -55,6 +55,7 @@ class TOFcaliPS(ScheduleConductor):
     def __Compose__(self, *args, **kwargs):
         
         if self._execution:
+            print(self.__tof_t.batch_size)
             self.__gettable = ScheduleGettable(
                 self.QD_agent.quantum_device,
                 schedule_function=self.__PulseSchedule__,
@@ -114,10 +115,18 @@ class TofCalirator(ExpGovernment):
         
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
-    
+        self.q = self.QD_agent.quantum_device.elements()[0]
+
+        qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(self.q)
+        hcfg = self.QD_agent.quantum_device.hardware_config()
+        qubit.clock_freqs.readout(hcfg["hardware_options"]["modulation_frequencies"][f"{self.q}:res-{self.q}.ro"]["lo_freq"]-273e6)
+        
+        qubit.measure.pulse_duration(300e-9)
+        qubit.measure.integration_time(1e-6)
+        qubit.measure.acq_delay(4e-9)
+        
         # offset bias, LO and atte
-        for q in [self.q]:
-            init_system_atte(self.QD_agent.quantum_device,[q],ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(q, 'ro'), xy_out_att=0)
+        init_system_atte(self.QD_agent.quantum_device,[self.q],ro_out_att=0, xy_out_att=0)
         
 
     def RunMeasurement(self):
@@ -171,6 +180,7 @@ class TofCalirator(ExpGovernment):
             for q in QD_savior.quantum_device.elements():
                 qubit:BasicTransmonElement = QD_savior.quantum_device.get_element(q)
                 qubit.measure.acq_delay(acq_delay)
+                qubit.measure.pulse_duration(qubit.measure.integration_time()+qubit.measure.acq_delay())
             
 
             print(f"nco_prop_delay: {nco_prop_delay},\n acq_delay: {acq_delay}")

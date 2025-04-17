@@ -605,11 +605,12 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
-        if "states" in self.ds.attrs:
-            self.ans.attrs["states"] = self.ds.attrs["states"]
-        else:
-            self.ans.attrs["states"] = "GE"
-        
+        if not self.echo:
+            if "states" in self.ds.attrs:
+                self.ans.attrs["states"] = self.ds.attrs["states"]
+            else:
+                self.ans.attrs["states"] = "GE"
+            
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
@@ -969,6 +970,24 @@ class analysis_tools():
         I_diff = self.I_e-self.I_g
         Q_diff = self.Q_e-self.Q_g
         self.dis_diff = sqrt((I_diff)**2+(Q_diff)**2)
+        self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
+    
+    def GEF_ROF_cali_ana(self,var:str):
+        self.qubit = var
+        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
+        self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
+        self.I_g, self.I_e, self.I_f = IQ_data[0][0], IQ_data[1][0], IQ_data[2][0]
+        self.Q_g, self.Q_e, self.Q_f = IQ_data[0][1], IQ_data[1][1], IQ_data[2][1]
+        I_diff_ge = self.I_e-self.I_g
+        Q_diff_ge = self.Q_e-self.Q_g
+        I_diff_ef = self.I_f-self.I_e
+        Q_diff_ef = self.Q_f-self.Q_e
+        I_diff_gf = self.I_f-self.I_g
+        Q_diff_gf = self.Q_f-self.Q_g
+        
+        
+        
+        self.dis_diff = sqrt((I_diff_ge)**2+(Q_diff_ge)**2)
         self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
 
     def ROF_cali_plot(self,save_pic_folder:str=None):

@@ -110,7 +110,7 @@ class PowerDepQubitPS(ScheduleConductor):
                 sched.add(SquarePulse(amp=mixdrive_amp, duration=mixdrive_dura, port=f'{q}:mw', clock=f'{q}.01'), ref_op=align_pulse)
 
             
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_pt="start" if overlapping else "end", rel_time=280e-9 if not overlapping else 0)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_pt="start" if overlapping else "end")
                    
         return sched
     

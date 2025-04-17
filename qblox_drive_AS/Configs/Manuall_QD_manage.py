@@ -105,6 +105,8 @@ class QD_modifier():
             for q in self.QD_agent.quantum_device.elements():
                 Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
                 Xmon.reset.duration(reset_time_s)
+                Xmon.measure.acq_delay(280e-9)
+                Xmon.measure.pulse_duration(Xmon.measure.integration_time()+Xmon.measure.acq_delay())
             self.to_modifiy_item.append("reset_time")
 
     def set_drivin_IF(self, driving_IF_Hz:dict=None):
@@ -233,9 +235,6 @@ class QD_modifier():
         else:
             qs = target_q
 
-        qubit = self.QD_agent.quantum_device.get_element("q0")
-        # print(qubit.generate_device_config())
-
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
                 file.write(f"QD_file: {self.QD_path}\n")
@@ -267,7 +266,7 @@ class QD_modifier():
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250417/DR1#11_SumInfo.pkl"
 
     QMaster = QD_modifier(QD_path)
 
@@ -285,8 +284,8 @@ if __name__ == "__main__":
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=None, target_qs=[]) # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_qs=[]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=5e9, target_qs=["q0","q1","q2","q3"]) # LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_qs=["q0","q1","q2","q3"]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
     QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
@@ -314,7 +313,7 @@ if __name__ == "__main__":
     QMaster.set_drag_coef(Coefs={})    # Coefs = {"q0": -0.5, ....}
 
     """ Set T2 use detuing, unit: Hz """
-    QMaster.set_RamseyT2detuing(detunes={ })   # detunes = {"q0": -0.5e6, ....}
+    QMaster.set_RamseyT2detuing(detunes={})   # detunes = {"q0": -0.5e6, ....}
 
     ### z and others
     """ Set coupler bias """
