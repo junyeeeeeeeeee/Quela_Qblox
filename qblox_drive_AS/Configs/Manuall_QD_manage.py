@@ -264,7 +264,7 @@ class QD_modifier():
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250417/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl"
 
     QMaster = QD_modifier(QD_path)
 
@@ -273,7 +273,7 @@ if __name__ == "__main__":
     QMaster.active_reset_switch(switch="OFF")   # On -> turn on the active reset. Otherwise, OFF for turning it off. 
 
     """ Reset Rotation angle """
-    QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
+    QMaster.reset_rotation_angle(target_qs=["q1","q3"])    # target_qs = ['q0', 'q1', ...]
 
     """ Set RO amp by a coef. """
     QMaster.set_ROamp_by_coef(roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=5e9, target_qs=["q0","q1","q2","q3"]) # LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=None, target_qs=["q0","q1","q2","q3"]) # LO is global in the same QRM-RF module, set None to bypass 
     QMaster.set_roAtte(ro_atte=None, target_qs=["q0","q1","q2","q3"]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     QMaster.init_12_settings(switch="OFF")     # hardware config settings for 12 transition clock   
 
     """ 1-2 driving pulse duration """
-    QMaster.set_EF_duration(EF_driving_duras= {})   # EF_driving_duras = {"q0":40e-9, ...}. Keep it empty if you don't wanna change it.
+    QMaster.set_EF_duration(EF_driving_duras= {"q3":800e-9})   # EF_driving_duras = {"q0":40e-9, ...}. Keep it empty if you don't wanna change it.
 
     """ 1-2 state frequency artificial detuning """
     QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz. Keep it empty if you don't wanna change it.

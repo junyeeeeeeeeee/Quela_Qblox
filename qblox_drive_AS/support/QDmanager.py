@@ -352,6 +352,13 @@ class QDmanager():
             
             if new_Hcfg is not None:
                 from qblox_drive_AS.support.UserFriend import slightly_print
+                
+                # inherit old RO LO freq
+                old_ro_lo = [self.Hcfg["hardware_options"]["modulation_frequencies"][i]["lo_freq"] for i in self.Hcfg["hardware_options"]["modulation_frequencies"] if i.split(":")[-1].split("-")[0]=='res'][0]
+                for i in new_Hcfg["hardware_options"]["modulation_frequencies"]:
+                    if i.split(":")[-1].split("-")[0] == 'res':
+                        new_Hcfg["hardware_options"]["modulation_frequencies"][i]["lo_freq"] = old_ro_lo
+                
                 self.Hcfg = new_Hcfg
                 self.quantum_device.hardware_config(new_Hcfg)
                 slightly_print("Saved new given Hardware config.")

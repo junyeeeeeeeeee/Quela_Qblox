@@ -98,7 +98,8 @@ class ROfreqGEFPS(ScheduleConductor):
 
 
         self.QD_agent = check_acq_channels(self.QD_agent, list(self._ro_elements.keys()))
-        self.__spec_sched_kwargs = dict(   
+        self.__spec_sched_kwargs = dict(
+        Note=self.QD_agent.Notewriter,   
         frequencies=self._ro_elements,
         state=self.__state
         )
@@ -241,7 +242,7 @@ class GEF_ROFcali(ExpGovernment):
             answer = {}
             for var in ds.data_vars:
                 if var.split("_")[-1] != 'rof':
-                    ANA = Multiplex_analyzer("c1")
+                    ANA = Multiplex_analyzer("s5")
                     ANA._import_data(ds,var_dimension=1)
                     ANA._start_analysis(var_name = var)
                     ANA._export_result(fig_path)

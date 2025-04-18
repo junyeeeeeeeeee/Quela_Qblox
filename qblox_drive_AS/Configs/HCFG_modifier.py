@@ -2,15 +2,23 @@ from os import path
 import rich
 from qblox_drive_AS.support.QDmanager import QDmanager, hcfg_composer
 from qblox_drive_AS.support.UserFriend import mark_input, slightly_print
-QD_path = "qblox_drive_AS/QD_backup/20250417/DR1#11_SumInfo.pkl"
+####### Port Name rules #######
+# 1. Driving port: ":mw", like 'q1:mw', 'q2:mw', ...
+# 2. Readout port: ":res", like 'q0:res', 'q3:res', ...
+# 3. Flux bias port: ":fl", like 'q12:fl', 'q999:fl', ...
 
+
+""" Fill in """
+QD_path = "qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl"
 Hcfg = [
     {"name":"q1:mw", "slot":4, "port":1},
-    {"name":"q2:mw", "slot":4, "port":0},
+    {"name":"q3:mw", "slot":4, "port":0},
     {"name":"q1:res", "slot":6, "port":0},
-    {"name":"q2:res", "slot":6, "port":0},
+    {"name":"q3:res", "slot":6, "port":0},
 ]
 
+
+""" Do NOT touch !!! """
 QD_agent = QDmanager(QD_path)
 QD_agent.QD_loader(new_Hcfg=hcfg_composer(Hcfg, dr_name=path.split(QD_path)[-1].split("#")[0].lower()))
 rich.print(QD_agent.quantum_device.hardware_config())

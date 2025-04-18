@@ -5,14 +5,12 @@ from qblox_drive_AS.SecExcitedChara.EFRabi import PowerRabi_12_Osci
 
 ''' fill in '''
 Execution:bool = 1
-DRandIP = {"dr":"dr4","last_ip":"81"}
-pi_amp_range:dict = {"q2":[-0.9, 0.9]}    # [pi_amp_start, pi_amp_end]
+DRandIP = {"dr":"dr1","last_ip":"11"}
+pi_amp_range:dict = {"q1":[-0.9, 0.9], "q3":[-0.9, 0.9]}    # [pi_amp_start, pi_amp_end]
 pi_amp_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
 pi_amp_ptsORstep:int|float = 100  # Depends on the sampling func you use, 'linspace' or 'logspace' set pts in int, 'arange' set step in float
-AVG:int = 600
+AVG:int = 1000
 
-#?? Notes: While you're using one-shot method, amp samples (pi_amp_pts) * shots (AVG) must less than or equal to 131000. 
-use_OneShot:bool = False
 
 ''' Don't Touch '''
 save_dir = Data_manager().build_packs_folder()

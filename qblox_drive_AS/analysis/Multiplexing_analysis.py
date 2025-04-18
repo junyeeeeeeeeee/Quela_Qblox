@@ -1,6 +1,6 @@
 from numpy import array, mean, median, argmax, linspace, arange, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
-from numpy import sqrt, pi, inf
-from numpy import ndarray
+from numpy import sqrt, pi, inf, percentile
+from numpy import ndarray, logical_and
 from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
@@ -26,6 +26,31 @@ from matplotlib.figure import Figure
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
+
+def find_indices_median_IQR(arrays, IQR_multiplier:float=1.5)->int:
+    """
+    Find the indices where the values in all input arrays are larger than median + 1.5 * IQR.
+
+    Parameters:
+    - arrays (list of np.ndarray): List of 1D numpy arrays representing the distances between |g>, |e>, |f> states.
+
+    Returns:
+    - np.ndarray: Indices where all distances are larger than the threshold (median + 1.5 * IQR).
+    """
+    # Calculate the median and IQR for each array
+    thresholds = []
+    for arr in arrays:
+        med = median(arr)
+        Q1 = percentile(arr, 25)
+        Q3 = percentile(arr, 75)
+        IQR = Q3 - Q1
+        thresholds.append(med + IQR_multiplier * IQR)
+    
+    # Find indices where all arrays are above their respective thresholds
+    conditions = [arr > threshold for arr, threshold in zip(arrays, thresholds)]
+    combined_condition = logical_and.reduce(conditions)
+    print("Cond: ",combined_condition)
+    return where(combined_condition)[0]
 
 
 def find_minima(f, phase, start, stop):
@@ -971,24 +996,6 @@ class analysis_tools():
         Q_diff = self.Q_e-self.Q_g
         self.dis_diff = sqrt((I_diff)**2+(Q_diff)**2)
         self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
-    
-    def GEF_ROF_cali_ana(self,var:str):
-        self.qubit = var
-        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
-        self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
-        self.I_g, self.I_e, self.I_f = IQ_data[0][0], IQ_data[1][0], IQ_data[2][0]
-        self.Q_g, self.Q_e, self.Q_f = IQ_data[0][1], IQ_data[1][1], IQ_data[2][1]
-        I_diff_ge = self.I_e-self.I_g
-        Q_diff_ge = self.Q_e-self.Q_g
-        I_diff_ef = self.I_f-self.I_e
-        Q_diff_ef = self.Q_f-self.Q_e
-        I_diff_gf = self.I_f-self.I_g
-        Q_diff_gf = self.Q_f-self.Q_g
-        
-        
-        
-        self.dis_diff = sqrt((I_diff_ge)**2+(Q_diff_ge)**2)
-        self.fit_packs[var] = {"optimal_rof":self.rof[where(self.dis_diff==max(self.dis_diff))[0][0]]}
 
     def ROF_cali_plot(self,save_pic_folder:str=None):
         
@@ -1005,6 +1012,54 @@ class analysis_tools():
         Plotter.add_plot_on_ax(self.rof,self.dis_diff,ax2,label='diff')
         Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
         Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        
+        Plotter.includes_axes([ax0,ax1,ax2])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Magnitude (V)"},
+                {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Phase (π)"},
+                {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Diff (V)"}]
+        )
+        Plotter.export_results()
+
+    def GEF_ROF_cali_ana(self,var:str):
+        self.qubit = var
+        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
+        self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
+        self.I_g, self.I_e, self.I_f = IQ_data[0][0], IQ_data[1][0], IQ_data[2][0]
+        self.Q_g, self.Q_e, self.Q_f = IQ_data[0][1], IQ_data[1][1], IQ_data[2][1]
+        I_diff_ge = self.I_e-self.I_g
+        Q_diff_ge = self.Q_e-self.Q_g
+        I_diff_ef = self.I_f-self.I_e
+        Q_diff_ef = self.Q_f-self.Q_e
+        I_diff_gf = self.I_f-self.I_g
+        Q_diff_gf = self.Q_f-self.Q_g
+        self.GE_diff = sqrt((I_diff_ge)**2+(Q_diff_ge)**2)
+        self.EF_diff = sqrt((I_diff_ef)**2+(Q_diff_ef)**2)
+        self.GF_diff = sqrt((I_diff_gf)**2+(Q_diff_gf)**2)
+        
+        opti_freq_idx = find_indices_median_IQR([self.GE_diff, self.EF_diff, self.GE_diff])
+        print("idx: ",opti_freq_idx)
+        self.fit_packs[var] = {"optimal_rof":self.rof[opti_freq_idx]}
+    
+    def GEF_ROF_cali_plot(self,save_pic_folder:str=None):
+        
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_GEF_ROF_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_GEF_ROF_calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
+        ax0:plt.Axes = axs[0]
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|g>")
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_e**2+self.Q_e**2),ax0,label="|e>")
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_f**2+self.Q_f**2),ax0,label="|f>")
+        ax1:plt.Axes = axs[1]
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_g,self.I_g)/pi,ax1,label="|g>")
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|e>")
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_f,self.I_f)/pi,ax1,label="|f>")
+        ax2:plt.Axes = axs[2]
+        Plotter.add_plot_on_ax(self.rof,self.GE_diff,ax2,label='GE-diff')
+        Plotter.add_plot_on_ax(self.rof,self.EF_diff,ax2,label='EF-diff')
+        Plotter.add_plot_on_ax(self.rof,self.GF_diff,ax2,label='GF-diff')
+        Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.GE_diff,ax2,label="optimal",colors='black',linestyles='--')
+        Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.GE_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         
         Plotter.includes_axes([ax0,ax1,ax2])
         Plotter.set_LabelandSubtitles(
@@ -1327,6 +1382,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
                 self.T1_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
+            case 's5':
+                self.GEF_ROF_cali_ana(kwargs["var_name"])
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
@@ -1386,6 +1443,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.gateError_plot(pic_save_folder)
             case 'a3':
                 self.parity_plot(pic_save_folder)
+            case 's5':
+                self.GEF_ROF_cali_plot(pic_save_folder)
 
 
 

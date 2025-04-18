@@ -6,9 +6,9 @@ from qblox_drive_AS.SecExcitedChara.EFRamsey import EF_Ramsey, f12_calibration
 ''' fill in '''
 Execution:bool = 1
 Calibrate_mode:bool = 0    # Calibrate f12 or not
-DRandIP = {"dr":"dr4","last_ip":"81"}
-max_evo_time:float = 20e-6
-target_qs:list = ["q2"]
+DRandIP = {"dr":"dr1","last_ip":"11"}
+max_evo_time:float = 10e-6
+target_qs:list = ["q3"]
 time_sampling_func:str = "linspace"
 time_ptsORstep:int|float = 100
 AVG:int = 1000
