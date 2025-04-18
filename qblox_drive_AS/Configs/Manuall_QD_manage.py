@@ -82,7 +82,7 @@ class QD_modifier():
                     Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
                     Xmon.measure.integration_time(inte_time_s[q])
                     Xmon.measure.pulse_duration(inte_time_s[q]+Xmon.measure.acq_delay())
-                    
+
                 self.to_modifiy_item.append("inte_time")
 
     def set_EF_duration(self, EF_driving_duras:dict={}):

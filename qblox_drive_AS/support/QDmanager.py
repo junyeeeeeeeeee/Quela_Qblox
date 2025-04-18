@@ -122,32 +122,38 @@ def find_flux_lines(hcfg:dict)->dict:
 
 
 
-def hcfg_composer(hcfg_connections:dict)->dict:
-    hcfg:dict = {
-                 "config_type": "quantify_scheduler.backends.qblox_backend.QbloxHardwareCompilationConfig",
-                 "allow_off_grid_nco_ops":True,
-                 "connectivity":hcfg_connections["connectivity"]
-                }
+def hcfg_composer(specs:list, dr_name:str)->dict:
+    """
+    specs: [{'name':port_name, 'slot':slot_idx, 'port':port_idx}, ...].
+    ## port_name must follow the rules: 'q_name:type'. type in ['mw', 'res', 'fl'].
+    ### - 'mw' for a driving port.
+    ### - 'res' for a readout port.
+    ### - 'fl' for a flux bias port.
+    - Ex. 'q0:res', 'q1:mw', 'q2:fl' 
+    """
 
-    graph:list = hcfg_connections["connectivity"]["graph"]
-    cluster_name = ""
+    cluster_name = f"cluster{dr_name}"
+    hcfg_connections = {"connectivity":{"graph":[]}}
     modules:dict = {}
     attes:dict = {}
     mixer_corrections:dict = {}
     modulation_frequencies:dict = {}
 
-    for connections, port_name in graph:
-        cluster_name = connections.split(".")[0]
+    for connection in specs:
+        port_name:str = connection["name"]
+        slot:int = connection["slot"]
+        port_idx:int = connection["port"]
+
         match port_name.split(":")[-1]:
-            case 'mw':
+            case "mw":
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.complex_output_{port_idx}",port_name])
                 tp = 'QCM_RF'
                 port_clock_combi = f'{port_name}-{port_name.split(":")[0]}.01'
                 attes[port_clock_combi] = 0
                 mixer_corrections[port_clock_combi] = {"auto_lo_cal": "on_lo_interm_freq_change","auto_sideband_cal": "on_interm_freq_change"}
-                modulation_frequencies[port_clock_combi] = {"lo_freq":4e9}           
-            case 'fl':
-                tp = 'QCM'
-            case 'res':
+                modulation_frequencies[port_clock_combi] = {"lo_freq":4e9}
+            case "res":
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.complex_output_{port_idx}",port_name])
                 tp = 'QRM_RF'
                 port_clock_combi = f'{port_name}-{port_name.split(":")[0]}.ro'
                 attes[port_clock_combi] = 0
@@ -156,8 +162,21 @@ def hcfg_composer(hcfg_connections:dict)->dict:
                                                         "amp_ratio": 1.0,
                                                         "phase_error": 0.0 }
                 modulation_frequencies[port_clock_combi] = {"lo_freq":6e9}
-                
-        modules[connections.split(".")[1][6:]] = {"instrument_type": tp}
+            case "fl":
+                tp = 'QCM'
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.real_output_{port_idx}",port_name])
+            case _:
+                raise NameError(f"Unexpected port name was recieved: {port_name}.")
+
+        modules[str(slot)] = {"instrument_type": tp}
+    
+    
+    hcfg:dict = {
+                 "config_type": "quantify_scheduler.backends.qblox_backend.QbloxHardwareCompilationConfig",
+                 "allow_off_grid_nco_ops":True,
+                 "connectivity":hcfg_connections["connectivity"]
+                }
+
     
     hcfg["hardware_description"] = {cluster_name: {"instrument_type": "Cluster",
                                                    "modules": modules,
