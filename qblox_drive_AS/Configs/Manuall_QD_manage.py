@@ -265,7 +265,9 @@ if __name__ == "__main__":
 
 
 
+
     QD_path = "qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl"
+
 
     QMaster = QD_modifier(QD_path)
 
@@ -340,9 +342,7 @@ if __name__ == "__main__":
     QMaster.init_12_settings(switch="OFF")     # hardware config settings for 12 transition clock   
 
     """ 1-2 driving pulse duration """
-
     QMaster.set_EF_duration(EF_driving_duras= {})   # EF_driving_duras = {"q0":40e-9, ...}. Keep it empty if you don't wanna change it.
-
 
     """ 1-2 state frequency artificial detuning """
     QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz. Keep it empty if you don't wanna change it.
