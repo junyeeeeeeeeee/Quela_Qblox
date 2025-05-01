@@ -889,6 +889,7 @@ class analysis_tools():
                 signals, T1s = zgate_T1_fitting(self.evotime_array,time_dep_data,self.refIQ,self.prepare_excited)
                 if self.prepare_excited:
                     self.T1_per_time.append(T1s)
+            
             self.I_chennel_per_time.append(signals)
 
 
@@ -902,6 +903,7 @@ class analysis_tools():
             self.T1_rec = {}
             for end_time_idx, time_dep_data in enumerate(array(self.ds[self.qubit])):
                 signals, T1s = zgate_T1_fitting(self.evotime_array,time_dep_data,self.refIQ,self.prepare_excited)
+                
                 self.T1_rec[end_times[end_time_idx]] = {}
                 self.T1_rec[end_times[end_time_idx]]["T1s"] = T1s
             self.T1_rec = dict(sorted(self.T1_rec.items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S")))
@@ -930,10 +932,10 @@ class analysis_tools():
             ans_dict = self.T1_rec
             times = [datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S") for time_str in ans_dict.keys()]
             time_diffs = [(t - times[0]).total_seconds() / 60 for t in times]  # Convert to minutes
-
+            
             # Get values
             T1_data = [entry["T1s"] for entry in ans_dict.values()]
-            T1_data = array(T1_data).reshape(z.shape[0],len(times))
+            T1_data = array(T1_data).transpose()
             ax = Plotter.add_colormesh_on_ax(self.z,time_diffs,T1_data,fig,axs[0],"T1 (µs)")
             Plotter.includes_axes([ax])
             Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"Time past (min)"}])
