@@ -882,6 +882,7 @@ class analysis_tools():
         end_times = array(self.ds.coords["end_time"])
         self.evotime_array = array(self.ds[f"{self.qubit}_time"])[0][0][0]*1e6
         z_pulse_amplitudes = array(self.ds.coords["z_voltage"])
+        self.z = z_pulse_amplitudes+self.ds.attrs["z_offset"]
         if not time_sort:
             self.T1_per_time = []
             self.I_chennel_per_time = []  
@@ -908,7 +909,7 @@ class analysis_tools():
                 self.T1_rec[end_times[end_time_idx]]["T1s"] = T1s
             self.T1_rec = dict(sorted(self.T1_rec.items(), key=lambda item: datetime.strptime(item[0], "%Y-%m-%d %H:%M:%S")))
         
-        self.z = z_pulse_amplitudes+self.ds.attrs["z_offset"]
+       
     
     def ZgateT1_plot(self,save_pic_folder:str=None):
         Plotter = Artist(pic_title=f"zgate-T1-{self.qubit}")
@@ -927,14 +928,24 @@ class analysis_tools():
             Plotter.set_LabelandSubtitles([{"subtitle":"","xlabel":f"{self.qubit} flux (V)","ylabel":"Free evolution time (µs)"}])
 
         else:
-            fig, axs = Plotter.build_up_plot_frame([1,1])
-            z = self.z
-            ans_dict = self.T1_rec
-            times = [datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S") for time_str in ans_dict.keys()]
-            time_diffs = [(t - times[0]).total_seconds() / 60 for t in times]  # Convert to minutes
             
+            
+            fig, axs = Plotter.build_up_plot_frame([1,1])
+            times = [datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S") for time_str in self.T1_rec.keys()]
+            time_diffs = [(t - times[0]).total_seconds() / 60 for t in times]  # Convert to minutes
+
             # Get values
-            T1_data = [entry["T1s"] for entry in ans_dict.values()]
+            T1_data = [entry["T1s"] for entry in self.T1_rec.values()]
+
+            # save every time T1 into nc
+            dict_ = {self.qubit:(["time","total_bias"],array(T1_data))}
+            T1_ds = Dataset(dict_,coords={"time":array(times),"total_bias":self.z})
+            T1_ds.attrs["z_offset"] = self.ds.attrs["z_offset"]
+            T1_ds.attrs["T1 unit"] = 'us'
+            T1_ds.attrs["prepare_excited"] = self.prepare_excited
+            T1_ds.to_netcdf(os.path.join(os.path.split(save_pic_folder)[0],f"{self.qubit}_T1_time_dep_rec.nc"))
+            T1_ds.close()
+
             T1_data = array(T1_data).transpose()
             ax = Plotter.add_colormesh_on_ax(self.z,time_diffs,T1_data,fig,axs[0],"T1 (µs)")
             Plotter.includes_axes([ax])
