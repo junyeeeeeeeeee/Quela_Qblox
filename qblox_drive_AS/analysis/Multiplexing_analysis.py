@@ -27,30 +27,33 @@ from matplotlib.figure import Figure
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
 
-def find_indices_median_IQR(arrays, IQR_multiplier:float=1.5)->int:
-    """
-    Find the indices where the values in all input arrays are larger than median + 1.5 * IQR.
-
-    Parameters:
-    - arrays (list of np.ndarray): List of 1D numpy arrays representing the distances between |g>, |e>, |f> states.
-
-    Returns:
-    - np.ndarray: Indices where all distances are larger than the threshold (median + 1.5 * IQR).
-    """
-    # Calculate the median and IQR for each array
-    thresholds = []
-    for arr in arrays:
-        med = median(arr)
-        Q1 = percentile(arr, 25)
-        Q3 = percentile(arr, 75)
-        IQR = Q3 - Q1
-        thresholds.append(med + IQR_multiplier * IQR)
+def find_indices_median_IQR(arrays:list, threshold:float=1.5)->int:
+    """ Give 3 distances vs. ro-freq array in a list, find the maximum distance index  """
+    candidates = {} # always one elements
+    for freq_idx in arange(arrays[0].shape[0]):
+        qualified:bool = True
+        dis_sum = 0
+        for ary_idx, dis in enumerate(arrays):
+            if dis[freq_idx] < mean(dis) + threshold*std(dis):
+                qualified = False  # Once dis lower than the condition, it will not be the candidate.
+            else:
+                dis_sum += dis[freq_idx]
+        
+        if qualified:
+            if len(list(candidates.keys())) == 0:
+                candidates[freq_idx] = dis_sum
+            else:
+                if dis_sum > list(candidates.values())[0]: # new high dis sum, refresh the candidate
+                    candidates = {}
+                    candidates[freq_idx] = dis_sum
     
-    # Find indices where all arrays are above their respective thresholds
-    conditions = [arr > threshold for arr, threshold in zip(arrays, thresholds)]
-    combined_condition = logical_and.reduce(conditions)
-    print("Cond: ",combined_condition)
-    return where(combined_condition)[0]
+    if len(list(candidates.keys())) == 0:
+        return None
+    else:
+        return list(candidates.keys())[0]
+
+
+
 
 
 def find_minima(f, phase, start, stop):
@@ -1050,8 +1053,12 @@ class analysis_tools():
         self.EF_diff = sqrt((I_diff_ef)**2+(Q_diff_ef)**2)
         self.GF_diff = sqrt((I_diff_gf)**2+(Q_diff_gf)**2)
         
-        opti_freq_idx = find_indices_median_IQR([self.GE_diff, self.EF_diff, self.GE_diff])
-        print("idx: ",opti_freq_idx)
+        for restriction in arange(1,3.5,0.5)[::-1]:
+            opti_freq_idx = find_indices_median_IQR([self.GE_diff, self.EF_diff, self.GE_diff], restriction)
+            if opti_freq_idx is not None:
+                slightly_print(f"Threshold = {restriction}")
+                break
+    
         self.fit_packs[var] = {"optimal_rof":self.rof[opti_freq_idx]}
     
     def GEF_ROF_cali_plot(self,save_pic_folder:str=None):

@@ -269,3 +269,8 @@ class GEF_ROFcali(ExpGovernment):
 
         self.CloseMeasurement() 
 
+if __name__ == "__main__":
+    
+    EXP = GEF_ROFcali("")
+    EXP.execution = True
+    EXP.RunAnalysis("qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl","qblox_drive_AS/Meas_raw/20250418/H16M26S32/GEF_ROFcali_20250418162924.nc")
