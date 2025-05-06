@@ -115,7 +115,6 @@ class TofCalirator(ExpGovernment):
         
     def PrepareHardware(self):
         self.QD_agent, self.cluster, self.meas_ctrl, self.ic, self.Fctrl = init_meas(QuantumDevice_path=self.QD_path)
-        self.q = self.QD_agent.quantum_device.elements()[0]
 
         qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(self.q)
         hcfg = self.QD_agent.quantum_device.hardware_config()
