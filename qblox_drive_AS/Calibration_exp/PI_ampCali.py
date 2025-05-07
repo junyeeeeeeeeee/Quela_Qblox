@@ -7,7 +7,7 @@ from qblox_drive_AS.support import Data_manager, BasicTransmonElement
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Reset, IdlePulse, Measure, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Reset, IdlePulse, Measure
 
 class PiAcalibrationPS(ScheduleConductor):
     def __init__(self):
@@ -51,7 +51,7 @@ class PiAcalibrationPS(ScheduleConductor):
                     for pi_idx in range(2):
                         pi = sched.add(X(q, amp180=new_amp180))
 
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol="SSBIntegrationComplex", bin_mode=BinMode.AVERAGE), rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol="SSBIntegrationComplex", bin_mode=BinMode.AVERAGE))
                         
         self.schedule =  sched  
         return sched

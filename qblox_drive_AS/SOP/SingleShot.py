@@ -6,7 +6,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support import Data_manager, check_acq_channels
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Rxy, IdlePulse, Measure, BinMode, Reset, pulse_preview, electrical_delay
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, Rxy, IdlePulse, Measure, BinMode, Reset, pulse_preview
 
 
 
@@ -59,7 +59,7 @@ class ReadoutFidelityPS( ScheduleConductor ):
                 if acq_idx == 1:
                     pi_pulse = sched.add(Rxy(qubit=q, theta=180, phi=0), ref_op=reset)
                 
-            sched.add(Measure(*meas_qs,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND), rel_time=electrical_delay, ref_op=pi_pulse if acq_idx==1 else reset)
+            sched.add(Measure(*meas_qs,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.APPEND), ref_op=pi_pulse if acq_idx==1 else reset)
             
         self.schedule = sched
         return sched

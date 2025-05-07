@@ -3382,6 +3382,6 @@ if __name__ == "__main__":
     EXP = nSingleShot("")
     EXP.execution = True
     EXP.histos = 1
-    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250325/DR4#81_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250325/H10M33S33/SingleShot_20250325103352.nc")
+    EXP.RunAnalysis(new_QD_path="qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl", new_file_path="qblox_drive_AS/Meas_raw/20250410/H17M45S50/SingleShot_20250410174614.nc")
 
     

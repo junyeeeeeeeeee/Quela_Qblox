@@ -7,7 +7,7 @@ from qblox_drive_AS.support import Data_manager, check_acq_channels
 from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.SOP.FluxQubit import z_pulse_amp_OVER_const_z
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview, Schedule, electrical_delay, BinMode, Measure, Reset, X, ConditionalReset, IdlePulse, Reset, SquarePulse
+from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview, Schedule, BinMode, Measure, Reset, X, ConditionalReset, IdlePulse, Reset, SquarePulse
 
 
 class ZEnergyRelaxPS(ScheduleConductor):
@@ -99,7 +99,7 @@ class ZEnergyRelaxPS(ScheduleConductor):
                 
                 z_pulse = sched.add(SquarePulse(amp=Z_amp, duration=freeDu, port=f"{q}:fl", clock="cl0.baseband"), ref_op=pi_pulse)
             
-            sched.add(Measure(*qubits2read,acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), ref_op=z_pulse, rel_time=electrical_delay)
+            sched.add(Measure(*qubits2read,acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), ref_op=z_pulse)
             
         self.schedule = sched
         return sched

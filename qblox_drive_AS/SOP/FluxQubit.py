@@ -86,7 +86,7 @@ class FluxDepQubitPS(ScheduleConductor):
                 sched.add(SquarePulse(amp=spec_amp,duration=spec_Du,port=f"{q}:mw",clock=f"{q}.01"), ref_op=reset)
                 
 
-            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE),rel_time=280e-9)
+            sched.add(Measure(*qubits2read, acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE))
                 
      
         return sched

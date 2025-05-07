@@ -20,6 +20,20 @@ class QD_modifier():
                 self.QD_agent.refresh_log(str(message))
                 self.to_modifiy_item.append("Comments")
 
+    def init_12_settings(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
+            qubits = list(self.QD_agent.quantum_device.elements())
+            HCfg:dict = self.QD_agent.quantum_device.hardware_config()
+
+            for q in qubits:
+                # 12 Driving attenuation
+                HCfg['hardware_options']['output_att'][f"{q}:mw-{q}.12"] = 0
+                # 12 LO settings (The same LO as 01-driving)
+                HCfg['hardware_options']["modulation_frequencies"][f"{q}:mw-{q}.12"] = {"lo_freq":self.QD_agent.quantum_device.get_element(q).clock_freqs.f01()-self.QD_agent.Notewriter.get_xyIFFor(q)}
+
+            self.to_modifiy_item.append("12_initializations")
+
+
     def active_reset_switch(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
         if switch in ["ON", "OFF"]:
             status = True if switch == "ON" else False
@@ -28,8 +42,8 @@ class QD_modifier():
                 self.QD_agent.activeReset = False # status
                 self.to_modifiy_item.append("ActiveReset ON" if status else "ActiveReset OFF")
     
-    def reset_discriminator(self, switch:bool):
-        if switch:
+    def reset_discriminator(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
             self.QD_agent.StateDiscriminator = Statifier()
             self.to_modifiy_item.append("Discriminators")
 
@@ -53,6 +67,13 @@ class QD_modifier():
                 for q in detunes:
                     self.QD_agent.Notewriter.save_artiT2Detune_for(q,detunes[q])
                 self.to_modifiy_item.append("RamseyT2_detuning")
+    
+    def set_f12ArtifDetuing(self, detunes:dict={}):
+        if detunes is not None:
+            if len(list(detunes.keys())) != 0:
+                for q in detunes:
+                    self.QD_agent.Notewriter.save_12artiDetune_for(q,detunes[q])
+                self.to_modifiy_item.append("f12_artificial_detuning")
 
     def set_integration_time(self, inte_time_s:dict=None):
         if inte_time_s is not None:
@@ -60,9 +81,16 @@ class QD_modifier():
                 for q in inte_time_s:
                     Xmon:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
                     Xmon.measure.integration_time(inte_time_s[q])
-                    Xmon.measure.pulse_duration(inte_time_s[q]+4e-9)
-                    Xmon.measure.acq_delay(4e-9)
+                    Xmon.measure.pulse_duration(inte_time_s[q]+Xmon.measure.acq_delay())
+
                 self.to_modifiy_item.append("inte_time")
+
+    def set_EF_duration(self, EF_driving_duras:dict={}):
+        if EF_driving_duras is not None:
+            if len(list(EF_driving_duras.keys())) != 0:
+                for q in EF_driving_duras:
+                    self.QD_agent.Notewriter.save_12duration_for(q, EF_driving_duras[q])
+                self.to_modifiy_item.append("EF-driving-duration")
 
     def set_drag_coef(self, Coefs:dict={}):
         if Coefs is not None:
@@ -192,8 +220,8 @@ class QD_modifier():
         else:
             slightly_print("Nothing changed ~ ")
     
-    def show_hcfg(self, switch:bool=False):
-        if switch:
+    def show_hcfg(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
             Hcfg = self.QD_agent.quantum_device.hardware_config()
             rich.print(Hcfg)
 
@@ -204,9 +232,6 @@ class QD_modifier():
                 qs = self.QD_agent.quantum_device.elements()
         else:
             qs = target_q
-
-        qubit = self.QD_agent.quantum_device.get_element("q0")
-        # print(qubit.generate_device_config())
 
         if len(qs) != 0:
             with open(os.path.join("qblox_drive_AS","Configs","QD_info.toml"), "w") as file:
@@ -222,22 +247,27 @@ class QD_modifier():
                 for q in qs:
                     file.write(f'[{q}]\n')  
                     qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
-                    file.write(f"    bare   = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
-                    file.write(f"    ROF    = {qubit.clock_freqs.readout()*1e-9} GHz\n")
-                    file.write(f"    RO-amp = {round(qubit.measure.pulse_amp(),3)} V\n")
-                    file.write(f"    ROT    = {round(qubit.measure.integration_time()*1e6,2)} us\n")
-                    file.write(f"    XYF    = {qubit.clock_freqs.f01()*1e-9} GHz\n")
-                    file.write(f"    Pi-amp = {qubit.rxy.amp180()} V\n")
-                    file.write(f"    Pi-dura= {round(qubit.rxy.duration()*1e9,0)} ns\n")
-                    file.write(f"    x      = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
-                    file.write(f"    g      = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
-                    file.write(f"    Ec     = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
+                    file.write(f"    bare    = {self.QD_agent.Notewriter.get_bareFreqFor(q)*1e-9} GHz\n")
+                    file.write(f"    ROF     = {qubit.clock_freqs.readout()*1e-9} GHz\n")
+                    file.write(f"    RO-amp  = {round(qubit.measure.pulse_amp(),3)} V\n")
+                    file.write(f"    ROT     = {round(qubit.measure.integration_time()*1e6,2)} us\n")
+                    file.write(f"    f01     = {qubit.clock_freqs.f01()*1e-9} GHz\n")
+                    file.write(f"    GE-amp  = {qubit.rxy.amp180()} V\n")
+                    file.write(f"    GE-dura = {round(qubit.rxy.duration()*1e9,0)} ns\n")
+                    file.write(f"    EF-dura = {round(self.QD_agent.Notewriter.get_12durationFor(q)*1e9,0)} ns\n")
+                    file.write(f"    Motzoi  = {qubit.rxy.motzoi()}\n")
+                    file.write(f"    x       = {(qubit.clock_freqs.readout()-self.QD_agent.Notewriter.get_bareFreqFor(q))*1e-6} MHz\n")
+                    file.write(f"    g       = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
+                    file.write(f"    Ec      = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
                     file.write("\n")
 
 if __name__ == "__main__":
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250411/DR4#81_SumInfo.pkl"
+
+
+    QD_path = "qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl"
+
 
     QMaster = QD_modifier(QD_path)
 
@@ -246,7 +276,7 @@ if __name__ == "__main__":
     QMaster.active_reset_switch(switch="OFF")   # On -> turn on the active reset. Otherwise, OFF for turning it off. 
 
     """ Reset Rotation angle """
-    QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
+    QMaster.reset_rotation_angle(target_qs=["q1","q3"])    # target_qs = ['q0', 'q1', ...]
 
     """ Set RO amp by a coef. """
     QMaster.set_ROamp_by_coef(roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
@@ -255,8 +285,8 @@ if __name__ == "__main__":
     QMaster.set_ROF(ROFs={})                      # ROFs = {"q0":6.0554e9, .....}
 
     """ Set RO-LO, RO-atte ( target_q QRM-RF modlue global) """
-    QMaster.set_roLOfreq(LO_Hz=None, target_qs=[]) # LO is global in the same QRM-RF module, set None to bypass 
-    QMaster.set_roAtte(ro_atte=None, target_qs=[]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roLOfreq(LO_Hz=None, target_qs=["q0","q1","q2","q3"]) # LO is global in the same QRM-RF module, set None to bypass 
+    QMaster.set_roAtte(ro_atte=None, target_qs=["q0","q1","q2","q3"]) # RO-attenuation is global in the same QRM-RF module, set None to bypass 
     
     """ Set Integration time """ 
     QMaster.set_integration_time(inte_time_s={}) # inte_time_s = {"q0":1e-6, "q1":0.75e-6, ...}, set None or {} to bypass 
@@ -284,7 +314,7 @@ if __name__ == "__main__":
     QMaster.set_drag_coef(Coefs={})    # Coefs = {"q0": -0.5, ....}
 
     """ Set T2 use detuing, unit: Hz """
-    QMaster.set_RamseyT2detuing(detunes={ })   # detunes = {"q0": -0.5e6, ....}
+    QMaster.set_RamseyT2detuing(detunes={})   # detunes = {"q0": -0.5e6, ....}
 
     ### z and others
     """ Set coupler bias """
@@ -301,9 +331,20 @@ if __name__ == "__main__":
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
 
-    QMaster.show_hcfg(switch=False)   # You can see the HCFG in the terminal if you switch on
+    QMaster.show_hcfg(switch="OFF")   # You can see the HCFG in the terminal if you switch on
 
     """ Reset the whole Statifier """
-    QMaster.reset_discriminator(switch=False)  # trun on the switch if you wanna initialize it
+    QMaster.reset_discriminator(switch="OFF")  # trun on the switch if you wanna initialize it
+
+
+    ### 12 state settings
+    """ 1-2 state hardware setting initialize """
+    QMaster.init_12_settings(switch="OFF")     # hardware config settings for 12 transition clock   
+
+    """ 1-2 driving pulse duration """
+    QMaster.set_EF_duration(EF_driving_duras= {})   # EF_driving_duras = {"q0":40e-9, ...}. Keep it empty if you don't wanna change it.
+
+    """ 1-2 state frequency artificial detuning """
+    QMaster.set_f12ArtifDetuing(detunes = {})    # artificial detuning for f12, unit in Hz. Keep it empty if you don't wanna change it.
     
     QMaster.save_modifications()

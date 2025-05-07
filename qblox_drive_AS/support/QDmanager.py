@@ -120,6 +120,75 @@ def find_flux_lines(hcfg:dict)->dict:
             answer[port_name.split(":")[0]] = port_loc
     return answer
 
+
+
+def hcfg_composer(specs:list, dr_name:str)->dict:
+    """
+    specs: [{'name':port_name, 'slot':slot_idx, 'port':port_idx}, ...].
+    ## port_name must follow the rules: 'q_name:type'. type in ['mw', 'res', 'fl'].
+    ### - 'mw' for a driving port.
+    ### - 'res' for a readout port.
+    ### - 'fl' for a flux bias port.
+    - Ex. 'q0:res', 'q1:mw', 'q2:fl' 
+    """
+
+    cluster_name = f"cluster{dr_name}"
+    hcfg_connections = {"connectivity":{"graph":[]}}
+    modules:dict = {}
+    attes:dict = {}
+    mixer_corrections:dict = {}
+    modulation_frequencies:dict = {}
+
+    for connection in specs:
+        port_name:str = connection["name"]
+        slot:int = connection["slot"]
+        port_idx:int = connection["port"]
+
+        match port_name.split(":")[-1]:
+            case "mw":
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.complex_output_{port_idx}",port_name])
+                tp = 'QCM_RF'
+                port_clock_combi = f'{port_name}-{port_name.split(":")[0]}.01'
+                attes[port_clock_combi] = 0
+                mixer_corrections[port_clock_combi] = {"auto_lo_cal": "on_lo_interm_freq_change","auto_sideband_cal": "on_interm_freq_change"}
+                modulation_frequencies[port_clock_combi] = {"lo_freq":4e9}
+            case "res":
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.complex_output_{port_idx}",port_name])
+                tp = 'QRM_RF'
+                port_clock_combi = f'{port_name}-{port_name.split(":")[0]}.ro'
+                attes[port_clock_combi] = 0
+                mixer_corrections[port_clock_combi] = { "dc_offset_i": 0.0,
+                                                        "dc_offset_q": 0.0,
+                                                        "amp_ratio": 1.0,
+                                                        "phase_error": 0.0 }
+                modulation_frequencies[port_clock_combi] = {"lo_freq":6e9}
+            case "fl":
+                tp = 'QCM'
+                hcfg_connections["connectivity"]["graph"].append([f"{cluster_name}.module{slot}.real_output_{port_idx}",port_name])
+            case _:
+                raise NameError(f"Unexpected port name was recieved: {port_name}.")
+
+        modules[str(slot)] = {"instrument_type": tp}
+    
+    
+    hcfg:dict = {
+                 "config_type": "quantify_scheduler.backends.qblox_backend.QbloxHardwareCompilationConfig",
+                 "allow_off_grid_nco_ops":True,
+                 "connectivity":hcfg_connections["connectivity"]
+                }
+
+    
+    hcfg["hardware_description"] = {cluster_name: {"instrument_type": "Cluster",
+                                                   "modules": modules,
+                                                   "sequence_to_file": False,
+                                                   "ref": "internal"}}
+    hcfg["hardware_options"] = {"output_att": attes,
+                                "mixer_corrections": mixer_corrections,
+                                "modulation_frequencies": modulation_frequencies}
+    
+    return hcfg
+    
+
 class QDmanager():
     def __init__(self,QD_path:str=''):
         self.manager_version:str = "v2.2" # Only RatisWu can edit it
@@ -253,7 +322,7 @@ class QDmanager():
             self.Waveformer = gift.Waveformer
             self.quantum_device = gift.quantum_device
             try:
-                if manager_ver.lower() == "v2.1":
+                if manager_ver.lower() in ["v2.1", "v2.2"]:
                     self.StateDiscriminator = gift.StateDiscriminator
                 else:
                     print("New Statifier generated ... ")
@@ -283,6 +352,13 @@ class QDmanager():
             
             if new_Hcfg is not None:
                 from qblox_drive_AS.support.UserFriend import slightly_print
+                
+                # inherit old RO LO freq
+                old_ro_lo = [self.Hcfg["hardware_options"]["modulation_frequencies"][i]["lo_freq"] for i in self.Hcfg["hardware_options"]["modulation_frequencies"] if i.split(":")[-1].split("-")[0]=='res'][0]
+                for i in new_Hcfg["hardware_options"]["modulation_frequencies"]:
+                    if i.split(":")[-1].split("-")[0] == 'res':
+                        new_Hcfg["hardware_options"]["modulation_frequencies"][i]["lo_freq"] = old_ro_lo
+                
                 self.Hcfg = new_Hcfg
                 self.quantum_device.hardware_config(new_Hcfg)
                 slightly_print("Saved new given Hardware config.")
@@ -381,9 +457,9 @@ class QDmanager():
             qubit.measure.acq_channel(qb_idx)
             qubit.reset.duration(250e-6)
             qubit.clock_freqs.readout(6e9)
-            qubit.measure.acq_delay(4e-9)
+            qubit.measure.acq_delay(280e-9)
             qubit.measure.pulse_amp(0.5)
-            qubit.measure.pulse_duration(1e-6+4e-9)
+            qubit.measure.pulse_duration(1e-6+280e-9)
             qubit.measure.integration_time(1e-6)
             qubit.clock_freqs.f01(4e9)
             qubit.rxy.amp180(0.05)
@@ -734,8 +810,46 @@ class Data_manager:
 
 
 if __name__ == "__main__":
+    import rich 
+    dr_name = "dr1"
+    init_hcfg = {
+        "connectivity": {
+            "graph": [
+                [
+                    f"cluster{dr_name}.module4.complex_output_0",
+                    "q0:mw"
+                ],
+                [
+                    f"cluster{dr_name}.module4.complex_output_1",
+                    "q1:mw"
+                ],
+                [
+                    f"cluster{dr_name}.module8.complex_output_0",
+                    "q2:mw"
+                ],
+                [
+                    f"cluster{dr_name}.module8.complex_output_1",
+                    "q3:mw"
+                ],
+                [
+                    f"cluster{dr_name}.module6.complex_output_0",
+                    "q0:res"
+                ],
+                [
+                    f"cluster{dr_name}.module6.complex_output_0",
+                    "q1:res"
+                ],
+                [
+                    f"cluster{dr_name}.module6.complex_output_0",
+                    "q2:res"
+                ],
+                [
+                    f"cluster{dr_name}.module6.complex_output_0",
+                    "q3:res"
+                ],
+            ]
+        },
+    }
     
-    QD_agent = QDmanager("qblox_drive_AS/QD_backup/20250218/DR1#11_SumInfo.pkl")
-    QD_agent.QD_loader()
-    print(QD_agent.StateDiscriminator.elements)
-    
+    Hcfg = hcfg_composer(init_hcfg)
+    rich.print(Hcfg)

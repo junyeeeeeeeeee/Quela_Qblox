@@ -1,6 +1,6 @@
 from numpy import array, mean, median, argmax, linspace, arange, moveaxis, empty_like, std, average, transpose, where, arctan2, sort, polyfit, delete, degrees
-from numpy import sqrt, pi, inf
-from numpy import ndarray
+from numpy import sqrt, pi, inf, percentile
+from numpy import ndarray, logical_and
 from xarray import Dataset, DataArray, open_dataset
 from qcat.analysis.base import QCATAna
 import matplotlib.pyplot as plt
@@ -16,7 +16,7 @@ from qblox_drive_AS.support.QuFluxFit import remove_outliers_with_window
 from qcat.analysis.state_discrimination.readout_fidelity import GMMROFidelity
 from qcat.analysis.state_discrimination import p01_to_Teff
 from qcat.analysis.state_discrimination.discriminator import get_proj_distance
-from qcat.visualization.readout_fidelity import plot_readout_fidelity
+from qcat.visualization.readout_fidelity import plot_readout_fidelity, plot_readout_fidelity_GEF
 from qcat.analysis.resonator.photon_dep.res_data import ResonatorData
 from qblox_drive_AS.support import rotate_onto_Inphase, rotate_data
 from qcat.visualization.qubit_relaxation import plot_qubit_relaxation
@@ -26,6 +26,34 @@ from matplotlib.figure import Figure
 
 def parabola(x,a,b,c):
     return a*array(x)**2+b*array(x)+c
+
+def find_indices_median_IQR(arrays:list, threshold:float=1.5)->int:
+    """ Give 3 distances vs. ro-freq array in a list, find the maximum distance index  """
+    candidates = {} # always one elements
+    for freq_idx in arange(arrays[0].shape[0]):
+        qualified:bool = True
+        dis_sum = 0
+        for ary_idx, dis in enumerate(arrays):
+            if dis[freq_idx] < mean(dis) + threshold*std(dis):
+                qualified = False  # Once dis lower than the condition, it will not be the candidate.
+            else:
+                dis_sum += dis[freq_idx]
+        
+        if qualified:
+            if len(list(candidates.keys())) == 0:
+                candidates[freq_idx] = dis_sum
+            else:
+                if dis_sum > list(candidates.values())[0]: # new high dis sum, refresh the candidate
+                    candidates = {}
+                    candidates[freq_idx] = dis_sum
+    
+    if len(list(candidates.keys())) == 0:
+        return None
+    else:
+        return list(candidates.keys())[0]
+
+
+
 
 
 def find_minima(f, phase, start, stop):
@@ -453,9 +481,13 @@ class analysis_tools():
     
         self.fit_packs = Rabi_fit_analysis(data_to_fit,x_data,self.rabi_type)
         self.fit_packs.attrs["fix_variable"] = fixed
+        if "states" in self.ds.attrs:
+            self.fit_packs.attrs["states"] = self.ds.attrs["states"]
+        else:
+            self.fit_packs.attrs["states"] = "GE"
 
     def rabi_plot(self, save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{self.rabi_type}_{self.fit_packs.attrs['states']}_{self.ds.attrs['execution_time'] if 'execution_time' in list(self.ds.attrs) else Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "": slightly_print(f"pic saved located:\n{save_pic_path}")
         
         Fit_analysis_plot(self.fit_packs,save_path=save_pic_path,P_rescale=True if self.method.lower() == "shot" else False,Dis=1 if self.method.lower() == "shot" else None,q=self.qubit)
@@ -484,50 +516,55 @@ class analysis_tools():
                 self.effT_mK.append(0)
             self.RO_fidelity_percentage.append((p00+p11)*100/2)
 
-            
-            _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
-            self.RO_rotate_angle.append(rotate_angle)
+            if array(self.ds.coords["prepared_state"]).shape[0] == 2:
+                _, rotate_angle = rotate_onto_Inphase(self.gmm2d_fidelity.mapped_centers[0],self.gmm2d_fidelity.mapped_centers[1])
+                self.RO_rotate_angle.append(rotate_angle)
+            else:
+                self.RO_rotate_angle = [0]
+
             z = moveaxis(array(repetition),0,1) # (IQ, state, shots) -> (state, IQ, shots)
             
-            container = empty_like(array(repetition))
-            
+            container = empty_like(array(z))
             for state_idx, state_data in enumerate(z):
                 container[state_idx] = rotate_data(state_data,self.RO_rotate_angle[-1])
             
             rot_data.append(moveaxis(container,0,1).tolist())
-            
+        
             
         self.fit_packs = {"effT_mK":self.effT_mK,"thermal_population":self.thermal_populations,"RO_fidelity":self.RO_fidelity_percentage,"RO_rotation_angle":self.RO_rotate_angle, "threshold_01":self.threshold_01}
-        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array([0,1]), "index":array(self.ds.coords["index"])})
+        self.rotated_ds = Dataset({var:(["repeat","mixer","prepared_state","index"],array(rot_data))},coords={"repeat":array(self.ds.coords["repeat"]), "mixer":array(["I","Q"]), "prepared_state":array(self.ds.coords["prepared_state"]), "index":array(self.ds.coords["index"])})
     
     def oneshot_plot(self,save_pic_path:str=None):
         
         for var in self.rotated_ds.data_vars:
             for repetition in array(self.rotated_ds[var]):
-                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",[0,1]), ("index",arange(array(repetition).shape[2]))] )
+                da = DataArray(repetition, coords= [("mixer",["I","Q"]), ("prepared_state",array(self.rotated_ds.coords["prepared_state"])), ("index",arange(array(repetition).shape[2]))] )
                 self.gmm2d_fidelity._import_data(da)
                 self.gmm2d_fidelity._start_analysis()
                 g1d_fidelity = self.gmm2d_fidelity.export_G1DROFidelity()
-                plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                if array(self.rotated_ds.coords["prepared_state"]).shape[0] == 3:
+                    plot_readout_fidelity_GEF(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
+                else:
+                    plot_readout_fidelity(da, self.gmm2d_fidelity, g1d_fidelity,self.fq,save_pic_path,plot=True if save_pic_path is None else False)
                 plt.close()
 
     
     def oneshot_urgent_plot(self, data:ndarray, save_pic_path:str=None):
         """ data shape: ("mixer", "prepared_state", "index")"""
-        
-        data = moveaxis(data[0],0,1)
+        state_n = data.shape[1]
+        print(state_n)
+        data = moveaxis(data,1,0)
         Plotter = Artist(f"SingleShot raw data", save_pic_path)
-        fig, axs = Plotter.build_up_plot_frame((2,1),(6,9))
-        color = ['blue','red']
+        fig, axs = Plotter.build_up_plot_frame((state_n,1),(6,9))
+        color = ['blue','red',"green"]
+        sub_titles = []
         for idx, state in enumerate(data):
             ax = Plotter.add_scatter_on_ax(state[0],state[1],ax=axs[idx],c=color[idx],s=1)
             ax.set_aspect('equal')
             Plotter.includes_axes([ax])
+            sub_titles.append({'subtitle':f"Prepare |{idx}>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"})
 
-        Plotter.set_LabelandSubtitles(
-            [{'subtitle':"Prepare |0>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},
-            {'subtitle':"Prepare |1>", 'xlabel':"I (mV)", 'ylabel':"Q (mV)"},]
-        )
+        Plotter.set_LabelandSubtitles(sub_titles)
         Plotter.export_results()
 
 
@@ -596,7 +633,12 @@ class analysis_tools():
                 self.T2_fit.append(self.ans.params["tau"].value)
                 self.fit_packs["freq"] = 0
 
-        
+        if not self.echo:
+            if "states" in self.ds.attrs:
+                self.ans.attrs["states"] = self.ds.attrs["states"]
+            else:
+                self.ans.attrs["states"] = "GE"
+            
         self.fit_packs["median_T2"] = median(array(self.T2_fit))
         self.fit_packs["mean_T2"] = mean(array(self.T2_fit))
         self.fit_packs["std_T2"] = std(array(self.T2_fit))
@@ -768,10 +810,16 @@ class analysis_tools():
             # Normalize to range [0, 360)
             self.fit_packs['phase'] = (p_deg % 360 + 360) % 360
             self.fit_packs["freq"] = self.ans.attrs['f']
+            
+            if "states" in self.ds.attrs:
+                self.ans.attrs["states"] = self.ds.attrs["states"]
+            else:
+                self.ans.attrs["states"] = "GE"
+            
             eyeson_print(f"phase fit = {round(self.fit_packs['phase'],2)} deg")
         
     def T2_plot(self,save_pic_path:str=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_{'Echo' if self.echo else 'Ramsey'+'_'+self.ans.attrs['states']}_{self.ds.attrs['execution_time'].replace(' ', '_')}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         
         
@@ -795,7 +843,7 @@ class analysis_tools():
             Data_manager().save_histo_pic(None,{str(self.qubit):self.T2_fit},self.qubit,mode=f"{'t2' if self.echo else 't2*'}",pic_folder=os.path.split(save_pic_path)[0])
 
     def XYF_cali_plot(self,save_pic_path:str=None,fq_MHz:int=None):
-        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_XYFcalibration_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
+        save_pic_path = os.path.join(save_pic_path,f"{self.qubit}_FreqCalibration_{self.ans.attrs['states']}_{Data_manager().get_time_now()}.png") if save_pic_path is not None else ""
         if save_pic_path != "" : slightly_print(f"pic saved located:\n{save_pic_path}")
         Fit_analysis_plot(self.ans,P_rescale=False,Dis=None,save_path=save_pic_path,q=self.qubit,fq_MHz=fq_MHz)
 
@@ -980,6 +1028,58 @@ class analysis_tools():
         Plotter.add_plot_on_ax(self.rof,self.dis_diff,ax2,label='diff')
         Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.dis_diff,ax2,label="optimal",colors='black',linestyles='--')
         Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.dis_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
+        
+        Plotter.includes_axes([ax0,ax1,ax2])
+        Plotter.set_LabelandSubtitles(
+            [{'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Magnitude (V)"},
+                {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Phase (π)"},
+                {'subtitle':"", 'xlabel':"ROF (Hz)", 'ylabel':"Diff (V)"}]
+        )
+        Plotter.export_results()
+
+    def GEF_ROF_cali_ana(self,var:str):
+        self.qubit = var
+        IQ_data = moveaxis(array(self.ds[var]),1,0) # shape (mixer, state, rof) -> (state, mixer, rof)
+        self.rof = moveaxis(array(self.ds[f"{var}_rof"]),0,1)[0][0]
+        self.I_g, self.I_e, self.I_f = IQ_data[0][0], IQ_data[1][0], IQ_data[2][0]
+        self.Q_g, self.Q_e, self.Q_f = IQ_data[0][1], IQ_data[1][1], IQ_data[2][1]
+        I_diff_ge = self.I_e-self.I_g
+        Q_diff_ge = self.Q_e-self.Q_g
+        I_diff_ef = self.I_f-self.I_e
+        Q_diff_ef = self.Q_f-self.Q_e
+        I_diff_gf = self.I_f-self.I_g
+        Q_diff_gf = self.Q_f-self.Q_g
+        self.GE_diff = sqrt((I_diff_ge)**2+(Q_diff_ge)**2)
+        self.EF_diff = sqrt((I_diff_ef)**2+(Q_diff_ef)**2)
+        self.GF_diff = sqrt((I_diff_gf)**2+(Q_diff_gf)**2)
+        
+        for restriction in arange(1,3.5,0.5)[::-1]:
+            opti_freq_idx = find_indices_median_IQR([self.GE_diff, self.EF_diff, self.GE_diff], restriction)
+            if opti_freq_idx is not None:
+                slightly_print(f"Threshold = {restriction}")
+                break
+    
+        self.fit_packs[var] = {"optimal_rof":self.rof[opti_freq_idx]}
+    
+    def GEF_ROF_cali_plot(self,save_pic_folder:str=None):
+        
+        if save_pic_folder is not None: save_pic_folder = os.path.join(save_pic_folder,f"{self.qubit}_GEF_ROF_cali_{self.ds.attrs['execution_time']}.png")
+        Plotter = Artist(pic_title=f"{self.qubit}_GEF_ROF_calibration",save_pic_path=save_pic_folder)
+        fig, axs = Plotter.build_up_plot_frame((3,1),fig_size=(12,9))
+        ax0:plt.Axes = axs[0]
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_g**2+self.Q_g**2),ax0,label="|g>")
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_e**2+self.Q_e**2),ax0,label="|e>")
+        Plotter.add_plot_on_ax(self.rof,sqrt(self.I_f**2+self.Q_f**2),ax0,label="|f>")
+        ax1:plt.Axes = axs[1]
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_g,self.I_g)/pi,ax1,label="|g>")
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_e,self.I_e)/pi,ax1,label="|e>")
+        Plotter.add_plot_on_ax(self.rof,arctan2(self.Q_f,self.I_f)/pi,ax1,label="|f>")
+        ax2:plt.Axes = axs[2]
+        Plotter.add_plot_on_ax(self.rof,self.GE_diff,ax2,label='GE-diff')
+        Plotter.add_plot_on_ax(self.rof,self.EF_diff,ax2,label='EF-diff')
+        Plotter.add_plot_on_ax(self.rof,self.GF_diff,ax2,label='GF-diff')
+        Plotter.add_verline_on_ax(self.fit_packs[self.qubit]["optimal_rof"],self.GE_diff,ax2,label="optimal",colors='black',linestyles='--')
+        Plotter.add_verline_on_ax(float(self.ds.attrs[f"{self.qubit}_ori_rof"]),self.GE_diff,ax2,label="original",colors='#DCDCDC',linestyles='--')
         
         Plotter.includes_axes([ax0,ax1,ax2])
         Plotter.set_LabelandSubtitles(
@@ -1302,6 +1402,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.T2_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
             case 'm13':
                 self.T1_ana(kwargs["var_name"], self.refIQ, OSmodel=kwargs["OSmodel"] if "OSmodel" in kwargs else None)
+            case 's5':
+                self.GEF_ROF_cali_ana(kwargs["var_name"])
             case 'c1':
                 self.ROF_cali_ana(kwargs["var_name"])
             case 'c2':
@@ -1338,7 +1440,7 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
             case 'm14': 
                 self.oneshot_plot(pic_save_folder)
             case 'm14b':
-                self.oneshot_urgent_plot(array(self.ds),pic_save_folder)
+                self.oneshot_urgent_plot(array(self.ds)[0],pic_save_folder)
             case 'm12':
                 self.T2_plot(pic_save_folder)
             case 'm13':
@@ -1361,6 +1463,8 @@ class Multiplex_analyzer(QCATAna,analysis_tools):
                 self.gateError_plot(pic_save_folder)
             case 'a3':
                 self.parity_plot(pic_save_folder)
+            case 's5':
+                self.GEF_ROF_cali_plot(pic_save_folder)
 
 
 

@@ -31,6 +31,10 @@ from numpy import asarray, real, vstack, array, imag, arange
 from numpy import arctan2, pi, cos, sin, exp, rad2deg
 from qblox_drive_AS.support.UserFriend import *
 
+import quantify_core.data.handling as dh
+meas_datadir = '.data'
+dh.set_datadir(meas_datadir)
+
 def qs_on_a_boat(hcfg:dict, q:str='q')->list:
     qs = []
     for name in hcfg["hardware_options"]["modulation_frequencies"]:
@@ -68,11 +72,7 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
     mode: 'new'/'n' or 'load'/'l'. 'new' need a self defined hardware config. 'load' load the given path. 
     """
     from qblox_drive_AS.support.UserFriend import warning_print
-    import quantify_core.data.handling as dh
-    meas_datadir = '.data'
-    dh.set_datadir(meas_datadir)
-
-
+    
     cfg, pth = {}, QuantumDevice_path 
     dr_loc = get_dr_loca(QuantumDevice_path)
     cluster_ip = ip_register[dr_loc.lower()]
@@ -99,9 +99,11 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
     ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
-    QRM_nco_init(cluster)
+    
     Qmanager = QDmanager(pth)
     Qmanager.QD_loader()
+
+    QRM_nco_init(cluster, int(Qmanager.Notewriter.get_NcoPropDelay()*1e9))
     bias_controller = Qmanager.activate_str_Fctrl(cluster)
 
     meas_ctrl, ic = configure_measurement_control_loop(Qmanager.quantum_device, cluster)
@@ -330,12 +332,13 @@ def enable_QCMRF_LO(cluster):
     print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
 
 
-def QRM_nco_init(cluster):
+def QRM_nco_init(cluster, prop_delay_ns:float=50):
+    slightly_print(f"Recieved nco_prop_delay = {prop_delay_ns} ns")
     QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type and mod.is_rf_type)
     for slot_idx in QRM_RFs:
         for i in range(6):
             getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp_en(True)      
-            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp(50)
+            getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp(prop_delay_ns)
     
     print(f" NCO in QRM_RF: {list(QRM_RFs.keys())} had initialized NCO successfully!")
 

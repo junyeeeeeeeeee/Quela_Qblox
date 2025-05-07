@@ -8,7 +8,7 @@ from quantify_scheduler.gettables import ScheduleGettable
 from qblox_drive_AS.support import check_acq_channels
 from qblox_drive_AS.support.Pulse_schedule_library import pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import Schedule, electrical_delay, BinMode, Measure, Reset, X, ConditionalReset, IdlePulse
+from qblox_drive_AS.support.Pulse_schedule_library import Schedule, BinMode, Measure, Reset, X, ConditionalReset, IdlePulse
 from quantify_scheduler.operations.gate_library import Reset
 
 
@@ -64,7 +64,7 @@ class EnergyRelaxPS(ScheduleConductor):
                     reset = sched.add(Reset(q), ref_op=align_pulse)
 
                 sched.add(X(q), ref_op=reset)
-            sched.add(Measure(*qubits2read,acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), ref_pt="start", rel_time=electrical_delay+free_Dus[acq_idx])
+            sched.add(Measure(*qubits2read,acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), rel_time=free_Dus[acq_idx])
             
         self.schedule = sched
         return sched

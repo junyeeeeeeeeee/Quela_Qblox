@@ -8,7 +8,7 @@ from numpy import nan as NaN
 from qblox_drive_AS.support import Data_manager, check_acq_channels
 
 from qblox_drive_AS.support.Pulser import ScheduleConductor
-from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Reset, electrical_delay, Measure, IdlePulse, SetClockFrequency, ClockResource
+from qblox_drive_AS.support.Pulse_schedule_library import BinMode, Schedule, pulse_preview, X, Reset, Measure, IdlePulse, SetClockFrequency, ClockResource
 
 class ROFcalibrationPS(ScheduleConductor):
     def __init__(self):
@@ -60,7 +60,7 @@ class ROFcalibrationPS(ScheduleConductor):
                 if state:
                     pi_pulse = sched.add(X(q), ref_op=reset)
 
-            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), rel_time=electrical_delay, ref_op=pi_pulse if state else reset)
+            sched.add(Measure(*qubits2read,  acq_index=acq_idx, acq_protocol='SSBIntegrationComplex', bin_mode=BinMode.AVERAGE), ref_op=pi_pulse if state else reset)
                 
         self.schedule =  sched  
         return sched

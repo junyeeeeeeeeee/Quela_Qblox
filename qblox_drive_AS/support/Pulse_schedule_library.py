@@ -22,7 +22,7 @@ from quantify_scheduler.helpers.collections import find_port_clock_path
 from qblox_drive_AS.support.WaveformCtrl import XY_waveform, s_factor, half_pi_ratio, GateGenesis
 from typing import Hashable, Literal, Optional, Tuple, Union
 """ Global pulse settings """
-electrical_delay:float = 280e-9
+electrical_delay:float = 0
 
 
 def FlatTopGaussianPulse(Du:float,amp:float,s_factor:int=8,sampling_rate:float=4e-9):
@@ -1194,6 +1194,9 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
         ax.axhline(y=ans,linestyle='--',xmin=np.array(x).min(),xmax=np.array(x).max(),color="#DCDCDC")
     elif results.attrs['exper'] == 'T2':  
         title= 'Ramsey' if q =="" else f"{q} Ramsey"
+        if "states" in results.attrs:
+            title += f'_{results.attrs["states"]}'
+
         if fq_MHz is not None: title += f" @ fq = {int(fq_MHz)} MHz"
         x_label= r"$t_{f}$"+r"$\ [\mu$s]" 
         x= results.coords['freeDu']*1e6
@@ -1229,6 +1232,8 @@ def Fit_analysis_plot(results:xr.core.dataset.Dataset, P_rescale:bool, Dis:any, 
             x_label= r"$XY\ duration$"+x_unit
             x= results.coords['samples']*1e9
             x_fit= results.coords['para_fit']*1e9
+
+        title += f"_{results.attrs['states']}"
 
         if abs(float(pi_2)) > max(x):
             plot_fit = False
