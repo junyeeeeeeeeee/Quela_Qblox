@@ -114,10 +114,8 @@ class RabiPS(ScheduleConductor):
 
         
         for acq_idx in range(sample_len):
-            align_pulse = sched.add(IdlePulse(4e-9))    
+            reset = sched.add(Reset(*qubits2read))
             for qubit_idx, q in enumerate(qubits2read):
-                reset = sched.add(Reset(q), ref_op=align_pulse)
-
                 if self._RabiType.lower() == 'power':
                     sched.add(gate(qubit=q, amp180=pi_amp[q][acq_idx]), ref_op=reset)
                 else:

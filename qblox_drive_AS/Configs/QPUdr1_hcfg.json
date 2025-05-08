@@ -1,0 +1,87 @@
+{
+  "config_type": "quantify_scheduler.backends.qblox_backend.QbloxHardwareCompilationConfig",
+  "allow_off_grid_nco_ops": true,
+  "connectivity": {
+    "graph": [
+      [
+        "clusterdr1.module4.complex_output_1",
+        "q1:mw"
+      ],
+      [
+        "clusterdr1.module4.complex_output_0",
+        "q3:mw"
+      ],
+      [
+        "clusterdr1.module6.complex_output_0",
+        "q1:res"
+      ],
+      [
+        "clusterdr1.module6.complex_output_0",
+        "q3:res"
+      ]
+    ]
+  },
+  "hardware_description": {
+    "clusterdr1": {
+      "instrument_type": "Cluster",
+      "modules": {
+        "4": {
+          "instrument_type": "QCM_RF"
+        },
+        "6": {
+          "instrument_type": "QRM_RF"
+        }
+      },
+      "sequence_to_file": false,
+      "ref": "internal"
+    }
+  },
+  "hardware_options": {
+    "output_att": {
+      "q1:mw-q1.01": 0,
+      "q3:mw-q3.01": 0,
+      "q1:res-q1.ro": 32,
+      "q3:res-q3.ro": 32,
+      "q0:res-q0.ro": 32,
+      "q0:mw-q0.01": 0,
+      "q2:res-q2.ro": 32,
+      "q2:mw-q2.01": 0
+    },
+    "mixer_corrections": {
+      "q1:mw-q1.01": {
+        "auto_lo_cal": "on_lo_interm_freq_change",
+        "auto_sideband_cal": "on_interm_freq_change"
+      },
+      "q3:mw-q3.01": {
+        "auto_lo_cal": "on_lo_interm_freq_change",
+        "auto_sideband_cal": "on_interm_freq_change"
+      },
+      "q1:res-q1.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      }
+    },
+    "modulation_frequencies": {
+      "q1:mw-q1.01": {
+        "lo_freq": 3232017035
+      },
+      "q3:mw-q3.01": {
+        "lo_freq": 3232017035
+      },
+      "q1:res-q1.ro": {
+        "lo_freq": 5200000000.0
+      },
+      "q3:res-q3.ro": {
+        "lo_freq": 5200000000.0
+      }
+    }
+  }
+}

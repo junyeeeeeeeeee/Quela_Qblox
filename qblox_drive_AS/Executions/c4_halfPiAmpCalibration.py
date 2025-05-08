@@ -1,7 +1,7 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import hPiAcali
-#// 0.9.2 okay
+#// abandoned 
 
 
 ''' fill in '''

@@ -94,7 +94,7 @@ class SQRBPS(ScheduleConductor):
         """
 
         # ---- PycQED mappings ----#
-        pycqed_qubit_map = {f"q{idx}": name for idx, name in enumerate(qubit_names)}
+        pycqed_qubit_map = {name: name for name in qubit_names}
         
         pycqed_operation_map = {
             "X180": lambda q: X(pycqed_qubit_map[q]),
@@ -115,24 +115,25 @@ class SQRBPS(ScheduleConductor):
         operation_buffer_time = 0.0
 
         for idx, m in enumerate(lengths):
-            align_pulse = sched.add(IdlePulse(4e-9))
+            reset = sched.add(Reset(*qubit_names))
             if m > 0:
                 # m-sized random sample of representatives in the quotient group C_n / U(1)
                 # where C_n is the n-qubit Clifford group and U(1) is the circle group
                 rb_sequence_m: list[int] = randomized_benchmarking_sequence(
                     m, number_of_qubits=1, seed=seed, desired_net_cl=desired_net_clifford_index
                 )
-                for q in qubit_names:    
-                    sched.add(Reset(q), ref_op=align_pulse)
+                for q in qubit_names:   
+                    align_reset = 1
                     for clifford_gate_idx in rb_sequence_m:
                         cl_decomp = SingleQubitClifford(clifford_gate_idx).gate_decomposition
                         for gate, _ in  cl_decomp:
                             if gate != "I":
-                                sched.add(pycqed_operation_map[gate](q), rel_time=operation_buffer_time)
-        
+                                sched.add(pycqed_operation_map[gate](q), rel_time=operation_buffer_time, ref_op=reset if align_reset else None)
+                        align_reset = 0
+                                
+
                     sched.add(Measure(q, acq_index=idx))
             else:
-                sched.add(Reset(*qubit_names), ref_op=align_pulse)
                 sched.add(Measure(*qubit_names, acq_index=idx))
 
         return sched
@@ -150,7 +151,6 @@ class SQRBPS(ScheduleConductor):
         self.__random_circuit = ManualParameter(name="Circuit", unit="#", label="randoms")
         self.__random_circuit.batched = False
         self.QD_agent = check_acq_channels(self.QD_agent, self._target_qs)
-        
         self.__sched_kwargs = {"qubit_names": self._target_qs, "lengths": self.__length, "seed":self.__random_circuit}
     
     def __Compose__(self, *args, **kwargs):
@@ -170,8 +170,8 @@ class SQRBPS(ScheduleConductor):
             self.meas_ctrl.setpoints_grid([self._GateNum_samples, self.__circuits])
             
         else:
-            self.__sched_kwargs['lengths']= array([self._GateNum_samples[1], self._GateNum_samples[-1]])
-            
+            self.__sched_kwargs['lengths']= array([self._GateNum_samples[0], self._GateNum_samples[1], self._GateNum_samples[-1]])
+            self.__sched_kwargs['seed'] = self._circuits_num
     
     def __RunAndGet__(self, *args, **kwargs):
         

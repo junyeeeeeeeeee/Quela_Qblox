@@ -6,8 +6,8 @@ from qblox_drive_AS.support.ExpFrames import XYFcali
 
 ''' fill in '''
 Execution:bool = True
-DRandIP = {"dr":"dr4","last_ip":"81"}
-target_qs:list = ["q1"]
+DRandIP = {"dr":"dr1","last_ip":"11"}
+target_qs:list = ["q1","q3"]
 AVG:int = 500
 
 """ try change it ONLY when fitting goes wrong """

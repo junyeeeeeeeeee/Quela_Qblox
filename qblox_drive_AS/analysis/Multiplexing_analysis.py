@@ -1120,8 +1120,8 @@ class analysis_tools():
     def piamp_cali_ana(self,var:str):
         self.qubit = var
         self.pi_amp_coef =  moveaxis(array(self.ds[f"{var}_PIcoef"]),1,0)[0][0]
-        self.pi_pair_num = array(self.ds.coords["PiPairNum"])
-        data = moveaxis(array(self.ds[var]),1,0)
+        self.pi_pair_num = array(self.ds.coords["PiPairNum"])[1:] # skip the first one with 0 pi-pair 
+        data = moveaxis(array(self.ds[var]),1,0)[1:] # skip the first one with 0 pi-pair 
         refined_data_folder = []
         for PiPairNum_dep_data in data:
             if len(self.refIQ) == 2:

@@ -81,4 +81,5 @@ def plot_S21_nc(nc_path:str):
 if __name__ == "__main__":
     #plot_S21_fromVNAcsv("/Users/ratiswu/Downloads/postBandage3FQ3CQ_BBS21.csv","S21","E5080B")
     # plot_S21_fromPYQUMcsv("/Users/ratiswu/Downloads/4 to 8.csv")
-    plot_S21_nc("/Users/ratiswu/Desktop/FTP-ASqcMeas/BroadBandCS_20241216172608.nc")
+    plot_S21_nc("qblox_drive_AS/Meas_raw/20250508/H13M16S00/BroadBandCS_Slot6_20250508131825.nc")
+   

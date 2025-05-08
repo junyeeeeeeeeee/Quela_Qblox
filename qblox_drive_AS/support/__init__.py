@@ -82,6 +82,7 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
         # try maximum 3 connections to prevent connect timeout error 
         try:
             cluster = Cluster(name = f"cluster{dr_loc.lower()}",identifier = f"qum.phys.sinica.edu.tw", port=int(port_register[cluster_ip]))
+            
         except:
             try:
                 warning_print("First cluster connection trying")
@@ -99,7 +100,6 @@ def init_meas(QuantumDevice_path:str)->Tuple[QDmanager, Cluster, MeasurementCont
     ip = ip_register[dr_loc.lower()]
     
     # enable_QCMRF_LO(cluster) # for v0.6 firmware
-    
     Qmanager = QDmanager(pth)
     Qmanager.QD_loader()
 
@@ -316,25 +316,18 @@ def get_connected_modules(cluster: Cluster, filter_fn: Callable):
         if filter_fn is not None:
             return filter_fn(mod)
         return True
-
+   
     return {
         mod.slot_idx: mod for mod in cluster.modules if mod.present() and checked_filter_fn(mod)
     }
 
 
-def enable_QCMRF_LO(cluster):
-    QCM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qcm_type and mod.is_rf_type)
-    for slot_idx in QCM_RFs:
-        QCM_RFs[slot_idx].out0_lo_en(True)
-        QCM_RFs[slot_idx].out1_lo_en(True)
 
-    
-    print(f"QCM_RF: {list(QCM_RFs.keys())} had been enabled the LO source successfully!")
 
 
 def QRM_nco_init(cluster, prop_delay_ns:float=50):
     slightly_print(f"Recieved nco_prop_delay = {prop_delay_ns} ns")
-    QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type and mod.is_rf_type)
+    QRM_RFs = get_connected_modules(cluster,lambda mod: mod.is_qrm_type)
     for slot_idx in QRM_RFs:
         for i in range(6):
             getattr(QRM_RFs[slot_idx], f"sequencer{i}").nco_prop_delay_comp_en(True)      

@@ -459,8 +459,8 @@ def time_monitor_data_ana(QD_agent:QDmanager,folder_path:str,save_every_fit_pic:
 if __name__ == "__main__":
     #// 0.9.2 okay
 
-    QD_path = "qblox_drive_AS/QD_backup/20250323/DR4#81_SumInfo.pkl"
-    folder_path = "qblox_drive_AS/Meas_raw/20250323/H15M03S37"
+    QD_path = "qblox_drive_AS/QD_backup/20250508/DR1#11_SumInfo.pkl"
+    folder_path = "qblox_drive_AS/Meas_raw/20250508/H15M36S42"
     save_every_fit_fig:bool = False
 
     QD_agent = QDmanager(QD_path)

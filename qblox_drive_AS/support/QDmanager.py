@@ -1,4 +1,4 @@
-import os, datetime, pickle
+import os, datetime, pickle, rich
 from xarray import Dataset
 from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.FluxBiasDict import FluxBiasDict
@@ -10,7 +10,7 @@ from quantify_scheduler.device_under_test.transmon_element import BasicTransmonE
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from qblox_drive_AS.support.StatifyContainer import Statifier
-
+from numpy import asarray
 
 def ret_q(dict_a):
     x = []
@@ -112,6 +112,19 @@ def find_path_by_clock(hardware_config, port, clock):
     else:
         return answers
 
+def find_q_same_QCMRF(connectivity:dict)->dict:
+    pairs = {}
+    for con in connectivity["graph"]:
+        slot_idx = con[0].split(".")[1][6:]
+        if slot_idx not in pairs:
+            pairs[slot_idx] = []
+        if con[-1].split(":")[-1] == 'mw':    
+            pairs[slot_idx].append(con[-1])
+
+    return pairs
+        
+
+
 
 def find_flux_lines(hcfg:dict)->dict:
     answer = {}
@@ -207,7 +220,33 @@ class QDmanager():
         self.DiscriminatorVersion:str = ""
         self.activeReset:bool = False
 
+    def retrieve_complete_HCFG(self):
+        qs = asarray(self.quantum_device.elements())
+        HCFG = self.quantum_device.hardware_config()
+        
+        for q in qs:
+            # fill in attenuations
+            HCFG["hardware_options"]["output_att"][f'{q}:res-{q}.ro'] = self.Notewriter.get_DigiAtteFor(q, 'ro')
+            HCFG["hardware_options"]["output_att"][f'{q}:mw-{q}.01'] = self.Notewriter.get_DigiAtteFor(q, 'xy')
+            if f"{q}:mw-{q}.12" in HCFG["hardware_options"]["output_att"]:
+                HCFG["hardware_options"]["output_att"][f"{q}:mw-{q}.12"] = self.Notewriter.get_DigiAtteFor(q, 'xy')
             
+            # fill in XY-LO
+        drive_port_pairs = find_q_same_QCMRF(HCFG["connectivity"])
+        for slot in drive_port_pairs:
+            xyf_sum = 0
+            for port_name in drive_port_pairs[slot]:
+                q = port_name.split(":")[0]
+                xyf_sum += self.quantum_device.get_element(q).clock_freqs.f01()
+            
+            for port_name in drive_port_pairs[slot]:
+                q = port_name.split(":")[0]
+                HCFG["hardware_options"]["modulation_frequencies"][f'{q}:mw-{q}.01'] = {"lo_freq":round(xyf_sum/len(drive_port_pairs[slot]))} # LO = avg XYF with a same QCM-RF slot
+        
+        self.quantum_device.hardware_config(HCFG)
+        
+
+
     
     def register(self,cluster_ip_adress:str,which_dr:str,chip_name:str='',chip_type = ''):
         """
@@ -317,6 +356,7 @@ class QDmanager():
             self.c_num:int = len(list(filter(ret_c,self.Fluxmanager.get_bias_dict())))
             # the notebook needa active from the old one to avoid some new items didn't be initialize, like Ec, ...
             self.Notewriter: Notebook = Notebook(q_number=self.q_num)
+            
             self.Notewriter.activate_from_dict(gift.Notewriter.get_notebook())
             
             self.Waveformer = gift.Waveformer
@@ -810,46 +850,8 @@ class Data_manager:
 
 
 if __name__ == "__main__":
-    import rich 
-    dr_name = "dr1"
-    init_hcfg = {
-        "connectivity": {
-            "graph": [
-                [
-                    f"cluster{dr_name}.module4.complex_output_0",
-                    "q0:mw"
-                ],
-                [
-                    f"cluster{dr_name}.module4.complex_output_1",
-                    "q1:mw"
-                ],
-                [
-                    f"cluster{dr_name}.module8.complex_output_0",
-                    "q2:mw"
-                ],
-                [
-                    f"cluster{dr_name}.module8.complex_output_1",
-                    "q3:mw"
-                ],
-                [
-                    f"cluster{dr_name}.module6.complex_output_0",
-                    "q0:res"
-                ],
-                [
-                    f"cluster{dr_name}.module6.complex_output_0",
-                    "q1:res"
-                ],
-                [
-                    f"cluster{dr_name}.module6.complex_output_0",
-                    "q2:res"
-                ],
-                [
-                    f"cluster{dr_name}.module6.complex_output_0",
-                    "q3:res"
-                ],
-            ]
-        },
-    }
-    
-    Hcfg = hcfg_composer(init_hcfg)
-    rich.print(Hcfg)
+    QD = QDmanager("qblox_drive_AS/QD_backup/20250508/DR1#11_SumInfo.pkl")
+    QD.QD_loader()
+    QD.retrieve_complete_HCFG()
+
+

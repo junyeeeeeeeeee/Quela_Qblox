@@ -1,14 +1,14 @@
 from qblox_drive_AS.support.Path_Book import find_latest_QD_pkl_for_dr
 from qblox_drive_AS.support import Data_manager
 from qblox_drive_AS.support.ExpFrames import DragCali
-#// 0.9.2 okay
+
 
 
 ''' fill in '''
 Execution:bool = 1
-DRandIP = {"dr":"dr4","last_ip":"81"}
-drag_coef_range:list = [-0.5,0.5]
-target_qs = ["q2"]
+DRandIP = {"dr":"dr1","last_ip":"11"}
+drag_coef_range:list = [-1,1]
+target_qs = ["q1","q3"]
 coef_sampling_func:str = 'linspace'
 coef_ptsORstep:int|float = 50
 AVG:int = 500

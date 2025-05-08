@@ -51,11 +51,8 @@ class ReadoutFidelityPS( ScheduleConductor ):
         sameple_idx = states.shape[0]
         sched = Schedule("Single shot", repetitions=repetitions)
         for acq_idx in range(sameple_idx):
-            align_pulse = sched.add(IdlePulse(4e-9))
+            reset = sched.add(Reset(*meas_qs))
             for qubit_idx, q in enumerate(meas_qs):
-
-                reset = sched.add(Reset(q), ref_op=align_pulse)
-                
                 if acq_idx == 1:
                     pi_pulse = sched.add(Rxy(qubit=q, theta=180, phi=0), ref_op=reset)
                 
@@ -67,6 +64,7 @@ class ReadoutFidelityPS( ScheduleConductor ):
     def __SetParameters__(self, *args, **kwargs):
         for q in self._target_qs:
             qubit_info = self.QD_agent.quantum_device.get_element(q)
+            print(qubit_info.rxy.duration())
             eyeson_print(f"{q} Reset time: {round(qubit_info.reset.duration()*1e6,0)} µs")
             eyeson_print(f"{q} Integration time: {round(qubit_info.measure.integration_time()*1e6,1)} µs")
         

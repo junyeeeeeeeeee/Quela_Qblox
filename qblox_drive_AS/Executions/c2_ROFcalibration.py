@@ -5,9 +5,9 @@ from qblox_drive_AS.support.ExpFrames import ROFcali
 
 
 ''' fill in '''
-Execution:bool = True
-DRandIP = {"dr":"dr4","last_ip":"81"}
-freq_span_range:dict = {"q0":[-10e6,+10e6], "q1":[-10e6,+10e6], "q2":[-10e6, 10e6]}
+Execution:bool = 1
+DRandIP = {"dr":"dr1","last_ip":"11"}
+freq_span_range:dict = {"q1":[-3e6,+3e6], "q3":[-3e6, 3e6]}
 freq_pts = 100
 AVG:int = 500
 

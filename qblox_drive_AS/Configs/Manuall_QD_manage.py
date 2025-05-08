@@ -4,6 +4,7 @@ from qblox_drive_AS.support.UserFriend import *
 from qblox_drive_AS.support.StatifyContainer import Statifier
 from qblox_drive_AS.support import set_LO_frequency
 from typing import Literal, Optional
+from copy import deepcopy
 
 class QD_modifier():
     def __init__(self,QD_path:str):
@@ -39,7 +40,7 @@ class QD_modifier():
             status = True if switch == "ON" else False
             if self.QD_agent.activeReset != status:
                 print("Current ActiveReset status: ", self.QD_agent.activeReset)
-                self.QD_agent.activeReset = False # status
+                self.QD_agent.activeReset = status
                 self.to_modifiy_item.append("ActiveReset ON" if status else "ActiveReset OFF")
     
     def reset_discriminator(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
@@ -212,7 +213,15 @@ class QD_modifier():
             permission = mark_input("Is it correct ? [y/n] :")
             
             if permission.lower() in ["y", "yes"]:
-                self.export(target_q='all')   
+                self.export(target_q='all') 
+                if "QD_to_json" in self.to_modifiy_item:
+                    x = self.QD_agent.quantum_device.to_json_file("qblox_drive_AS/Configs/",add_timestamp=False)
+                    qd_name = os.path.split(x)[-1].split(".")[0]
+                    old_hcfg = deepcopy(self.QD_agent.quantum_device.hardware_config())
+                    self.QD_agent.retrieve_complete_HCFG()
+                    self.QD_agent.quantum_device.hardware_config.write_to_json_file(f"qblox_drive_AS/Configs/{qd_name}_hcfg.json")
+                    self.QD_agent.quantum_device.hardware_config(old_hcfg)
+                
                 self.QD_agent.QD_keeper() 
 
             else:
@@ -225,8 +234,13 @@ class QD_modifier():
             Hcfg = self.QD_agent.quantum_device.hardware_config()
             rich.print(Hcfg)
 
+    def serialize_QD(self, switch:Optional[Literal["ON", "OFF"]]="OFF"):
+        if switch == "ON":
+            self.to_modifiy_item.append("QD_to_json")
+
     def export(self, target_q:list=[]):
         """ Give a list contains qubit names you want to read info like: ['q0','q1'] or you can set target_q = 'all' to print all qubits."""
+        
         if isinstance(target_q,str):
             if target_q.lower() == 'all':
                 qs = self.QD_agent.quantum_device.elements()
@@ -238,8 +252,10 @@ class QD_modifier():
                 file.write(f"QD_file: {self.QD_path}\n")
                 file.write(f"Chip name: {self.QD_agent.chip_name}\n")
                 file.write(f"Comments: {self.QD_agent.Log if self.QD_agent.Log != '' else '---'}\n\n")
+
                 file.write(f"RO-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'ro')} dB\n")
                 file.write(f"XY-atte = {self.QD_agent.Notewriter.get_DigiAtteFor(qs[0],'xy')} dB\n")
+                file.write(f"TOF = {round(self.QD_agent.quantum_device.get_element(qs[0]).measure.acq_delay()*1e9)} ns\n")
                 if not self.QD_agent.activeReset:
                     file.write(f"Active Reset OFF, Reset time = {round(self.QD_agent.quantum_device.get_element(qs[0]).reset.duration()*1e6)} us\n\n")
                 else:
@@ -260,13 +276,14 @@ class QD_modifier():
                     file.write(f"    g       = {self.QD_agent.Notewriter.get_sweetGFor(q)*1e-6} MHz\n")
                     file.write(f"    Ec      = {self.QD_agent.Notewriter.get_EcFor(q)*1e-6} MHz\n")
                     file.write("\n")
+    
 
 if __name__ == "__main__":
 
 
 
 
-    QD_path = "qblox_drive_AS/QD_backup/20250418/DR1#11_SumInfo.pkl"
+    QD_path = "qblox_drive_AS/QD_backup/20250508/DR1#11_SumInfo.pkl"
 
 
     QMaster = QD_modifier(QD_path)
@@ -276,7 +293,7 @@ if __name__ == "__main__":
     QMaster.active_reset_switch(switch="OFF")   # On -> turn on the active reset. Otherwise, OFF for turning it off. 
 
     """ Reset Rotation angle """
-    QMaster.reset_rotation_angle(target_qs=["q1","q3"])    # target_qs = ['q0', 'q1', ...]
+    QMaster.reset_rotation_angle(target_qs=[])    # target_qs = ['q0', 'q1', ...]
 
     """ Set RO amp by a coef. """
     QMaster.set_ROamp_by_coef(roAmp_coef_dict={}) # roAmp_coef_dict = {"q0":0.93, "q1":0.96, ...}, set None or {} to bypass 
@@ -330,8 +347,9 @@ if __name__ == "__main__":
     """ Some comments for this QD file """
     QMaster.comment(message="")              # message is a str, like "Hello QD comments !", etc.
 
-
     QMaster.show_hcfg(switch="OFF")   # You can see the HCFG in the terminal if you switch on
+
+    QMaster.serialize_QD(switch="ON")  # serialize the quantum device, hcfg to json separately
 
     """ Reset the whole Statifier """
     QMaster.reset_discriminator(switch="OFF")  # trun on the switch if you wanna initialize it

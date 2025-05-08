@@ -1,6 +1,6 @@
-qblox-instruments==0.14.2
+qblox-instruments==0.15.0
 quantify-core==0.7.9
-quantify-scheduler==0.21.1
+quantify-scheduler==0.22.2
 colorama
 scikit-learn
 scipy

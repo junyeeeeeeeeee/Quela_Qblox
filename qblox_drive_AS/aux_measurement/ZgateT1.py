@@ -80,18 +80,16 @@ class ZEnergyRelaxPS(ScheduleConductor):
         sched = Schedule("T1", repetitions=repetitions)
 
         for acq_idx, freeDu in enumerate(free_Dus):
-            align_pulse = sched.add(IdlePulse(4e-9))
+        #    if activeReset:
+        #             ring_down_wait = sched.add(IdlePulse(1e-6), ref_op=align_pulse)
+        #             reset = sched.add(
+        #                 ConditionalReset(q, acq_index=acq_idx,acq_channel=qubit_idx+len(qubits2read)),
+        #                 label=f"Reset {q} {acq_idx}",
+        #                 ref_op=ring_down_wait
+        #             )
+        #         else:
+            reset = sched.add(Reset(*qubits2read))
             for qubit_idx, q in enumerate(qubits2read):
-                if activeReset:
-                    ring_down_wait = sched.add(IdlePulse(1e-6), ref_op=align_pulse)
-                    reset = sched.add(
-                        ConditionalReset(q, acq_index=acq_idx,acq_channel=qubit_idx+len(qubits2read)),
-                        label=f"Reset {q} {acq_idx}",
-                        ref_op=ring_down_wait
-                    )
-                else:
-                    reset = sched.add(Reset(q), ref_op=align_pulse)
-
                 if prepared_state:
                     pi_pulse = sched.add(X(q), ref_op=reset)
                 else:

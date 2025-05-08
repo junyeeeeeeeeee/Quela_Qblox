@@ -5,6 +5,7 @@ Quela_Qblox.egg-info/SOURCES.txt
 Quela_Qblox.egg-info/dependency_links.txt
 Quela_Qblox.egg-info/requires.txt
 Quela_Qblox.egg-info/top_level.txt
+qblox_drive_AS/PulseSchedule.py
 qblox_drive_AS/__init__.py
 qblox_drive_AS/support/Chip_Data_Store.py
 qblox_drive_AS/support/ExpFrames.py

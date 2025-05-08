@@ -1,11 +1,9 @@
-import os, sys, json
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 from xarray import Dataset, open_dataset
 from qblox_instruments import Cluster
-
+from qblox_drive_AS.support.UserFriend import slightly_print
 
 def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data:int):
 
@@ -75,12 +73,29 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
     readout_module.sequencers[0].nco_prop_delay_comp_en(True)
 
     lo_sweep_range = np.linspace(lo_start_freq, lo_stop_freq, num_data)
+    step = int(num_data * 0.05)
 
     I_data = []
     Q_data = []
-
-    for lo_val in lo_sweep_range:
+    mark = 0
+    from time import time
+    for idx, lo_val in enumerate(lo_sweep_range):
+       
         # Update the LO frequency.
+        if idx % step == 0:
+            if mark == 0:
+                start = time()
+            else:
+                end = time()
+                if mark == 1:
+                    times = round((end-start))
+
+                mark += 1
+            
+            print(f"\r Sweeping ... {round(idx*100/num_data)} %{f', still need ~ {times*(20-mark+1)} s' if mark>0 else '.'} ", end='',flush=True)
+            if mark == 0:
+                mark += 1
+                
         readout_module.out0_in0_lo_freq(lo_val)
 
         # Clear acquisitions
@@ -91,7 +106,7 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
         readout_module.start_sequencer()
 
         # Wait for the sequencer to stop with a timeout period of one minute.
-        readout_module.get_acquisition_state(0, timeout=1)
+        readout_module.get_acquisition_status(0)
 
         # Move acquisition data from temporary memory to acquisition list.
         readout_module.store_scope_acquisition(0, "acq")
@@ -104,7 +119,8 @@ def wideCS(readout_module:Cluster, lo_start_freq:int, lo_stop_freq:int, num_data
         # the units are correct.
         I_data.append(data["acquisition"]["bins"]["integration"]["path0"][0] / integration_length)
         Q_data.append(data["acquisition"]["bins"]["integration"]["path1"][0] / integration_length)
-
+    print(f"\r", end='',flush=True)
+    slightly_print("********** Sweeping complete ! **********")
     # Change data type
     I_data = np.asarray(I_data)
     Q_data = np.asarray(Q_data)

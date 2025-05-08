@@ -41,12 +41,10 @@ class PiAcalibrationPS(ScheduleConductor):
         sched = Schedule("Pi amp modification", repetitions=repetitions)
 
         for acq_idx in range(array(new_pi_amp[qubits2read[0]]).shape[0]):
-            align_pulse = sched.add(IdlePulse(4e-9))
+            sched.add(Reset(*qubits2read))
             for q in qubits2read:
                 new_amp180 = new_pi_amp[q][acq_idx]
-                
-                sched.add(Reset(q), ref_op=align_pulse)
-                
+        
                 for pi_num in range(pi_pair_num):
                     for pi_idx in range(2):
                         pi = sched.add(X(q, amp180=new_amp180))
@@ -81,6 +79,8 @@ class PiAcalibrationPS(ScheduleConductor):
     def __Compose__(self, *args, **kwargs):
         
         if self._execution:
+            self._pi_pairs.insert(0,1)  # start with 0 pi number to avoid bugs 
+            print(self._pi_pairs)
             self.__gettable = ScheduleGettable(
             self.QD_agent.quantum_device,
             schedule_function=self.__PulseSchedule__, 

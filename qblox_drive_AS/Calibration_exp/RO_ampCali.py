@@ -48,10 +48,10 @@ class ROLcalibrationPS(ScheduleConductor):
         sched = Schedule("ROL calibration",repetitions=repetitions)
 
         for acq_idx in range(sameple_idx):    
-            align_pulse = sched.add(IdlePulse(4e-9))
+            reset = sched.add(Reset(*qubits2read))
             for qubit_idx, q in enumerate(qubits2read):
                 R_amp = Ramps[q][acq_idx]
-                reset = sched.add(Reset(q),ref_op=align_pulse)
+                
                 if state:
                     pi_pulse = sched.add(X(q), ref_op=reset)
             

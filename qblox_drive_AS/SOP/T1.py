@@ -51,18 +51,20 @@ class EnergyRelaxPS(ScheduleConductor):
         sched = Schedule("T1", repetitions=repetitions)
 
         for acq_idx in range(sameple_idx):
-            align_pulse = sched.add(IdlePulse(4e-9))
-            for qubit_idx, q in enumerate(qubits2read):
-                if activeReset:
-                    ring_down_wait = sched.add(IdlePulse(1e-6), ref_op=align_pulse)
+            
+            if activeReset:
+                # ring_down_wait = sched.add(IdlePulse(1e-6), ref_op=align_pulse)
+                for qubit_idx, q in enumerate(qubits2read):
                     reset = sched.add(
                         ConditionalReset(q, acq_index=acq_idx,acq_channel=qubit_idx+len(qubits2read)),
                         label=f"Reset {q} {acq_idx}",
-                        ref_op=ring_down_wait
+                        ref_op=reset if qubit_idx!=0 else None,
+                        ref_pt="start" if qubit_idx!=0 else None
                     )
-                else:
-                    reset = sched.add(Reset(q), ref_op=align_pulse)
-
+            else:
+                reset = sched.add(Reset(*qubits2read))
+            
+            for qubit_idx, q in enumerate(qubits2read):
                 sched.add(X(q), ref_op=reset)
             sched.add(Measure(*qubits2read,acq_index=acq_idx, acq_protocol='SSBIntegrationComplex' if not activeReset else 'ThresholdedAcquisition', bin_mode=BinMode.APPEND if singleshot else BinMode.AVERAGE), rel_time=free_Dus[acq_idx])
             

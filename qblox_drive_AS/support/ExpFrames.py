@@ -2406,6 +2406,7 @@ class PiAcali(ExpGovernment):
         self.amp_coef_samples = {}
         for q in piamp_coef_range:
            self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
+        
         self.pi_pair_num = pi_pair_num
         self.avg_n = avg_n
         self.execution = execution

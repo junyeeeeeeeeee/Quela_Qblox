@@ -48,7 +48,8 @@ class ROFcalibrationPS(ScheduleConductor):
         sched = Schedule("One tone multi-spectroscopy (NCO sweep)",repetitions=repetitions)
 
         for acq_idx in range(sameple_idx):    
-            align_pulse = sched.add(IdlePulse(4e-9))
+            
+            reset = sched.add(Reset(*qubits2read))
             for qubit_idx, q in enumerate(qubits2read):
                 freq = frequencies[q][acq_idx]
                 if acq_idx == 0:
@@ -56,7 +57,6 @@ class ROFcalibrationPS(ScheduleConductor):
                 
                 sched.add(SetClockFrequency(clock=q+ ".ro", clock_freq_new=freq))
                 sched.add(IdlePulse(duration=4e-9), label=f"buffer {qubit_idx} {acq_idx}")
-                reset = sched.add(Reset(q), ref_op=align_pulse)
                 if state:
                     pi_pulse = sched.add(X(q), ref_op=reset)
 

@@ -34,9 +34,9 @@ class DRAGcalibrationPS(ScheduleConductor):
         sched = Schedule("Motzoi Calibration",repetitions=repetitions)
 
         for acq_idx, motzoi in enumerate(drag_samples):    
-            align_pulse = sched.add(IdlePulse(4e-9))
+            reset = sched.add(Reset(*qubits2read))
             for q in qubits2read:
-                reset = sched.add(Reset(q), ref_op=align_pulse)
+                
                 match operation:
                     case "(X,Y/2)":
                         sched.add(X(q, motzoi=motzoi), ref_op=reset)

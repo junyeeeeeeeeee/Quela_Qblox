@@ -27,6 +27,8 @@ def mark_input(msg:str)->str:
     
     return ans
 
+
+
 if __name__ == "__main__":
     highlight_print("hi")
     warning_print("hi")

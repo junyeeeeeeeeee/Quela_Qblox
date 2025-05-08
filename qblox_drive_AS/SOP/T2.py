@@ -78,18 +78,26 @@ class RamseyT2PS(ScheduleConductor):
         sched = Schedule("Ramsey", repetitions=repetitions)
         
         for acq_idx in range(array(freeduration[qubits2read[0]]).shape[0]): 
-            align_pulse = sched.add(IdlePulse(4e-9))
+            if not activeReset:
+                reset = sched.add(Reset(*qubits2read))
+            else:
+                for idx, q in enumerate(qubits2read):
+                    if idx == 0:
+                        reset = sched.add(
+                            ConditionalReset(q, acq_index=acq_idx),
+                            label=f"Reset {acq_idx}",
+                        )
+                    else:
+                        sched.add(
+                            ConditionalReset(q, acq_index=acq_idx),
+                            label=f"Reset {acq_idx}",
+                            ref_op=reset,
+                            ref_pt="start"
+                        )
+            
             for qubit_idx, q in enumerate(qubits2read):
                 
                 freeDu = freeduration[q][acq_idx]
-                if not activeReset:
-                    reset = sched.add(Reset(q), ref_op=align_pulse)
-                else:
-                    reset = sched.add(
-                        ConditionalReset(q, acq_index=acq_idx),
-                        label=f"Reset {acq_idx}",
-                        ref_op=align_pulse
-                    )
                 
                 # first pi/2
                 first_pulse = sched.add(X90(q), ref_op=reset)
