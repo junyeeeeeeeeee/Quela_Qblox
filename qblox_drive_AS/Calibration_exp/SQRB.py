@@ -94,7 +94,7 @@ class SQRBPS(ScheduleConductor):
         """
 
         # ---- PycQED mappings ----#
-        pycqed_qubit_map = {f"q{idx}": name for idx, name in enumerate(qubit_names)}
+        pycqed_qubit_map = {f"{name}": name for idx, name in enumerate(qubit_names)}
         
         pycqed_operation_map = {
             "X180": lambda q: X(pycqed_qubit_map[q]),
