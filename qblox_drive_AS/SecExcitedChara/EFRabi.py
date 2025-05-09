@@ -7,7 +7,7 @@ from qblox_drive_AS.support.UserFriend import *
 from xarray import Dataset, open_dataset
 from qblox_drive_AS.support.QDmanager import QDmanager, BasicTransmonElement
 from qblox_drive_AS.support.Notebook import Notebook
-from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
+from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels, sort_dict_with_qidx
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X, DRAGPulse, ConditionalReset, BinMode
@@ -214,13 +214,13 @@ class PowerRabi_12_Osci(ExpGovernment):
             sampling_func:callable = linspace
         
         self.pi_amp_samples = {}
-        for q in pi_amp:
+        for q in sort_dict_with_qidx(pi_amp):
             self.pi_amp_samples[q] = sampling_func(*pi_amp[q],pi_amp_pts_or_step)
             
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(pi_amp.keys())
+        self.target_qs = sort_dict_with_qidx(list(pi_amp.keys()))
 
         # FPGA memory limit guard
         if self.OSmode:

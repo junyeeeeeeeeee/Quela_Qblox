@@ -7,7 +7,7 @@ from qblox_drive_AS.support.UserFriend import *
 from xarray import Dataset, open_dataset, DataArray
 from qblox_drive_AS.support.QDmanager import QDmanager, BasicTransmonElement
 from qblox_drive_AS.support.Notebook import Notebook
-from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
+from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels, sort_dict_with_qidx
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X, DRAGPulse, ConditionalReset, BinMode
@@ -167,7 +167,7 @@ class GEF_ROFidelity(ExpGovernment):
         self.use_time_label:bool = False
         self.avg_n = shots
         self.execution = execution
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         self.histos = histo_counts
         self.counter:int = 0
         if self.histos > 1:

@@ -8,7 +8,7 @@ from qblox_drive_AS.support.UserFriend import *
 from xarray import Dataset, open_dataset
 from qblox_drive_AS.support.QDmanager import QDmanager, BasicTransmonElement
 from qblox_drive_AS.support.Notebook import Notebook
-from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
+from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels, sort_dict_with_qidx
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.Pulse_schedule_library import Schedule, IdlePulse, Measure, X90, Y90, DRAGPulse, Rxy, X, ConditionalReset, BinMode
@@ -235,10 +235,10 @@ class EF_Ramsey(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
-            for q in target_qs: 
+            for q in sort_dict_with_qidx(target_qs): 
                 self.time_samples[q] = sampling_func(0, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
@@ -253,7 +253,7 @@ class EF_Ramsey(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.spin_num = {}
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
         # FPGA memory limit guard
         if self.OSmode:
