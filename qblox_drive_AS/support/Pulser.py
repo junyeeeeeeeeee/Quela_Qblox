@@ -96,4 +96,9 @@ class ScheduleConductor(ABC):
         self.__SetParameters__()
         self.__Compose__()
         self.__RunAndGet__()
+    
+    def run_iteratively(self):
+        """ Run the schedule iteratively """
+        self.__SetParameters__()
+        self.__RunAndGet__()
         

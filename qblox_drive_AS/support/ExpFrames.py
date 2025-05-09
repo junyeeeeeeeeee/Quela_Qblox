@@ -248,7 +248,7 @@ class PowerCavity(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, freq_span_range:dict, roamp_range:list, roamp_sampling_func:str, freq_pts:int=100, avg_n:int=100, execution:bool=True):
+    def SetParameters(self, freq_span_range:dict, roamp_range:list, freq_pts:int=100, avg_n:int=100, execution:bool=True):
         """ ### Args:
             * freq_span_range: {"q0":[freq_span_start, freq_span_end], ...}, sampling function use linspace\n
             * roamp_range: [amp_start, amp_end, pts]\n
@@ -261,16 +261,18 @@ class PowerCavity(ExpGovernment):
         self.execution = execution
         self.target_qs = list(freq_span_range.keys())
 
-        if roamp_range[1] > 0.99/len(self.target_qs):
-            roamp_range[1] = 0.98/len(self.target_qs)
+        from numpy import arange
+        if roamp_range[-1] % 2 != 0:
+            raise ValueError("Step for attenuation must be even !")
 
 
-        if roamp_sampling_func in ['linspace','logspace','arange']:
-            sampling_func:callable = eval(roamp_sampling_func)
+        if roamp_range[1] <= 60:
+            x = [roamp_range[0], roamp_range[1] + roamp_range[-1], roamp_range[-1]]
         else:
-            sampling_func:callable = linspace
-        self.roamp_samples = sampling_func(*roamp_range)
+            x = [roamp_range[0], 60 + roamp_range[-1], roamp_range[-1]]
+        self.roamp_samples = arange(*x)
 
+        
         
 
     def PrepareHardware(self):
@@ -279,13 +281,17 @@ class PowerCavity(ExpGovernment):
         init_system_atte(self.QD_agent.quantum_device,self.target_qs,ro_out_att=self.QD_agent.Notewriter.get_DigiAtteFor(self.target_qs[0], 'ro'))
 
     def RunMeasurement(self):
-        from qblox_drive_AS.SOP.PowCavSpec import  PowerDepCavityPS
+        from qblox_drive_AS.SOP.nPowCavSpec import  PowerDepCavityPS
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init
         
         # set self.freq_range
+        self.ro_amp = 0.9/len(list(self.QD_agent.quantum_device.elements()))
         for q in self.tempor_freq[0]:
-            rof = self.QD_agent.quantum_device.get_element(q).clock_freqs.readout()
+            qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+            rof = qubit.clock_freqs.readout()
+            qubit.measure.pulse_amp(self.ro_amp)
             self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+        
         QD_RO_init(self.QD_agent,self.freq_range)
         
         meas = PowerDepCavityPS()
@@ -295,7 +301,7 @@ class PowerCavity(ExpGovernment):
         meas.n_avg = self.avg_n
         meas.meas_ctrl = self.meas_ctrl
         meas.QD_agent = self.QD_agent
-        meas.run()
+        meas.run_iteratively()
         dataset = meas.dataset
         
         if self.execution:
@@ -313,7 +319,7 @@ class PowerCavity(ExpGovernment):
 
     def RunAnalysis(self,new_QD_path:str=None,new_file_path:str=None):
         """ User callable analysis function pack """
-        from qblox_drive_AS.SOP.PowCavSpec import plot_powerCavity_S21
+        from qblox_drive_AS.SOP.nPowCavSpec import plot_powerCavity_S21
         if self.execution:
             if new_QD_path is None:
                 QD_file = self.QD_path
@@ -332,9 +338,17 @@ class PowerCavity(ExpGovernment):
 
             ds = open_dataset(file_path)
 
-            plot_powerCavity_S21(ds,QD_savior,fig_path)
+            rof = plot_powerCavity_S21(ds,QD_savior,fig_path)
             ds.close()
-        # QD_savior.QD_keeper()
+
+        for q in list(self.QD_agent.quantum_device.elements()):
+            qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+            qubit.measure.pulse_amp(self.ro_amp)
+        for q in rof:
+            qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
+            qubit.clock_freqs.readout(rof[q])
+        QD_savior.QD_keeper()
+        slightly_print("Please go 'manuall_QD_manage.py' setting the RO attenuation !")
 
 
     def WorkFlow(self):
@@ -358,7 +372,7 @@ class Dressed_CavitySearching(ExpGovernment):
     def RawDataPath(self):
         return self.__raw_data_location
 
-    def SetParameters(self, freq_range:dict, ro_amp:dict, freq_pts:int=100, avg_n:int=100, execution:bool=True):
+    def SetParameters(self, freq_range:dict, freq_pts:int=100, avg_n:int=100, execution:bool=True):
         """ 
         ### Args:\n
         * freq_range: {"q0":[freq_start, freq_end], ...}, sampling function use linspace\n
@@ -367,7 +381,7 @@ class Dressed_CavitySearching(ExpGovernment):
         self.freq_range = {}
         for q in freq_range:
             self.freq_range[q] = linspace(freq_range[q][0], freq_range[q][1], freq_pts)
-        self.ro_amp = ro_amp
+        
         self.avg_n = avg_n
         self.execution = execution
         self.target_qs = list(self.freq_range.keys())
@@ -382,8 +396,6 @@ class Dressed_CavitySearching(ExpGovernment):
     def RunMeasurement(self):
         from qblox_drive_AS.SOP.CavitySpec import QD_RO_init, CavitySearch
         QD_RO_init(self.QD_agent,self.freq_range)
-        for q in self.ro_amp:
-            self.QD_agent.quantum_device.get_element(q).measure.pulse_amp(self.ro_amp[q])
         
         meas = CavitySearch()
         meas.ro_elements = self.freq_range
@@ -427,8 +439,7 @@ class Dressed_CavitySearching(ExpGovernment):
             QD_savior.QD_loader()
 
             ds = open_dataset(file_path)
-            for q in self.ro_amp:
-                QD_savior.quantum_device.get_element(q).measure.pulse_amp(self.ro_amp[q])
+            
             CS_ana(QD_savior,ds,fig_path,keep_bare=False)
             ds.close()
             QD_savior.QD_keeper()

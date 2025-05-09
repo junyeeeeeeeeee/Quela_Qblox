@@ -7,15 +7,14 @@ from qblox_drive_AS.support.ExpFrames import PowerCavity
 Execution:bool = True
 DRandIP = {"dr":"dr1","last_ip":"11"}
 freq_span_range:dict = {"q1":[-1e6,+1e6], "q3":[-1e6,+1e6]}    # np.linspace(rof+span, rof+span, freq_pts)
-ro_amp_range:list = [0, 0.6, 20]                                 # amp [from, end, pts/step]
-ro_amp_sampling_func:str = 'linspace'                          # 'linspace'/ 'logspace'/ 'arange
+RO_atteuations:list = [0, 60, 4]                               # atte [from, end, step] , end MUST be less than 60, end step MUST be even.  
 
-freq_pts:int = 30
+freq_pts:int = 50
 AVG:int = 100
 
 ''' Don't Touch '''
 save_dir = Data_manager().build_packs_folder()
 EXP = PowerCavity(QD_path=find_latest_QD_pkl_for_dr(DRandIP["dr"],DRandIP["last_ip"]),data_folder=save_dir)
-EXP.SetParameters(freq_span_range,ro_amp_range,ro_amp_sampling_func,freq_pts,AVG,Execution)
+EXP.SetParameters(freq_span_range,RO_atteuations,freq_pts,AVG,Execution)
 EXP.WorkFlow()
 EXP.RunAnalysis()
