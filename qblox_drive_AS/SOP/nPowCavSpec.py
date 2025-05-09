@@ -59,7 +59,7 @@ def plot_powerCavity_S21(ds:Dataset, QD_agent:QDmanager=None, save_fig_folder:st
                         dress.append([fr, power[jdx]])
             
             
-            ax.vlines(average(array(bare)[:,0]*1e-9), min(array(bare)[:,1]), max(array(bare)[:,1]), colors='green', linestyles="--", label='Bare')
+            ax.vlines(average(array(bare)[:,0]*1e-9), min(array(bare)[:,1]),  min(array(dress)[:,1]), colors='green', linestyles="--", label='Bare')
             ax.vlines(average(array(dress)[:,0]*1e-9), min(array(dress)[:,1]), max(array(dress)[:,1]), colors='yellow', linestyles="--", label='Dress')
             rof[q] = average(array(dress)[:,0])
             fig.colorbar(d, ax=ax)

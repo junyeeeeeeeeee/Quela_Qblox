@@ -255,6 +255,8 @@ class PowerCavity(ExpGovernment):
             * roamp_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
+        freq_span_range = dict(sorted(freq_span_range.items(), key=lambda x: int(x[0][1:])))
+        
         self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
 
         self.avg_n = avg_n
@@ -287,10 +289,10 @@ class PowerCavity(ExpGovernment):
         # set self.freq_range
         self.ro_amp = 0.9/len(list(self.QD_agent.quantum_device.elements()))
         for q in self.tempor_freq[0]:
+            bare = self.QD_agent.Notewriter.get_bareFreqFor(q)
             qubit:BasicTransmonElement = self.QD_agent.quantum_device.get_element(q)
-            rof = qubit.clock_freqs.readout()
             qubit.measure.pulse_amp(self.ro_amp)
-            self.freq_range[q] = linspace(rof+self.tempor_freq[0][q][0],rof+self.tempor_freq[0][q][1],self.tempor_freq[1])
+            self.freq_range[q] = linspace(bare+self.tempor_freq[0][q][0],bare+self.tempor_freq[0][q][1],self.tempor_freq[1])
         
         QD_RO_init(self.QD_agent,self.freq_range)
         
