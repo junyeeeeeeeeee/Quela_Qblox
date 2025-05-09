@@ -22,9 +22,3 @@ EXP.WorkFlow()
 EXP.RunAnalysis()
 
 
-### Initialization measurement to get `time_of_flight` and `nco_prop_delay`
-CAL = TofCalirator(save_dir)
-CAL.QD_path = find_latest_QD_pkl_for_dr(DRandIP["dr"],DRandIP["last_ip"])
-CAL.q = list(freq_range.keys())[0]
-CAL.WorkFlow()
-CAL.RunAnalysis()
