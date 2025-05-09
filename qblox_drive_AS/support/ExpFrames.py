@@ -9,7 +9,7 @@ from qblox_drive_AS.support.UserFriend import *
 from xarray import open_dataset
 from numpy import array, linspace, logspace, median, std
 from abc import abstractmethod
-from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, ReadoutFidelity_acq_analyzer, check_OS_model_ready
+from qblox_drive_AS.support import init_meas, init_system_atte, shut_down, coupler_zctrl, advise_where_fq, set_LO_frequency, ReadoutFidelity_acq_analyzer, check_OS_model_ready, sort_dict_with_qidx
 from qblox_drive_AS.support.Pulse_schedule_library import QS_fit_analysis
 from qblox_drive_AS.analysis.raw_data_demolisher import ZgateT1_dataReducer
 
@@ -156,10 +156,11 @@ class Zoom_CavitySearching(ExpGovernment):
 
     def SetParameters(self, freq_range:dict, freq_pts:int=100, avg_n:int=100, execution:bool=True):
         """ freq_range: {"q0":[freq_start, freq_end], ...}, sampling function use linspace """
-        self.freq_range = {}
+        freq = {}
         for q in freq_range:
-            self.freq_range[q] = linspace(freq_range[q][0], freq_range[q][1], freq_pts)
+            freq[q] = linspace(freq_range[q][0], freq_range[q][1], freq_pts)
 
+        self.freq_range = sort_dict_with_qidx(freq)
         self.avg_n = avg_n
         self.execution = execution
         self.target_qs = list(self.freq_range.keys())
@@ -255,7 +256,7 @@ class PowerCavity(ExpGovernment):
             * roamp_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
-        freq_span_range = dict(sorted(freq_span_range.items(), key=lambda x: int(x[0][1:])))
+        freq_span_range = sort_dict_with_qidx(freq_span_range)
         
         self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
 
@@ -380,9 +381,10 @@ class Dressed_CavitySearching(ExpGovernment):
         * freq_range: {"q0":[freq_start, freq_end], ...}, sampling function use linspace\n
         * ro_amp: {"q0":0.1, "q2":.... }
         """
-        self.freq_range = {}
+        freq = {}
         for q in freq_range:
-            self.freq_range[q] = linspace(freq_range[q][0], freq_range[q][1], freq_pts)
+            freq[q] = linspace(freq_range[q][0], freq_range[q][1], freq_pts)
+        self.freq_range = sort_dict_with_qidx(freq)
         
         self.avg_n = avg_n
         self.execution = execution
@@ -475,7 +477,7 @@ class FluxCoupler(ExpGovernment):
             * flux_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
-        self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
+        self.tempor_freq:list = [sort_dict_with_qidx(freq_span_range),freq_pts] # After QD loaded, use it to set self.freq_range
         self.bias_targets = bias_elements
         self.avg_n = avg_n
         self.execution = execution
@@ -581,7 +583,7 @@ class FluxCavity(ExpGovernment):
             * flux_sampling_func (str): 'linspace', 'arange', 'logspace'
         """
         self.freq_range = {}
-        self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
+        self.tempor_freq:list = [sort_dict_with_qidx(freq_span_range),freq_pts] # After QD loaded, use it to set self.freq_range
         self.avg_n = avg_n
         self.execution = execution
         self.target_qs = list(freq_span_range.keys())
@@ -703,7 +705,7 @@ class IQ_references(ExpGovernment):
         * ro_amp_factor: {"q0":1.2, "q2":.... }, new ro amp = ro_amp*ro_amp_factor
         """
         self.ask_save:bool = False
-        self.ro_amp = ro_amp_factor
+        self.ro_amp = sort_dict_with_qidx(ro_amp_factor)
         self.avg_n = shots
         self.execution = execution
         self.target_qs = list(self.ro_amp.keys())
@@ -806,7 +808,7 @@ class PowerConti2tone(ExpGovernment):
                 self.freq_range[q] = freq_range[q][0]
             else:
                 self.freq_range[q] = linspace(freq_range[q][0],freq_range[q][1],freq_pts)
-        
+        self.freq_range = sort_dict_with_qidx(self.freq_range)
         self.avg_n = avg_n
         self.execution = execution
         self.target_qs = list(freq_range.keys())
@@ -937,7 +939,7 @@ class FluxQubit(ExpGovernment):
         self.tempor_freq:list = [freq_span_range,freq_pts] # After QD loaded, use it to set self.freq_range
         self.avg_n = avg_n
         self.execution = execution
-        self.target_qs = list(freq_span_range.keys())
+        self.target_qs = list(sort_dict_with_qidx(freq_span_range).keys())
         if z_amp_sampling_func in ['linspace','logspace','arange']:
             sampling_func:callable = eval(z_amp_sampling_func)
         else:
@@ -1067,7 +1069,7 @@ class PowerRabiOsci(ExpGovernment):
             sampling_func:callable = linspace
         
         self.pi_amp_samples = {}
-        for q in pi_amp:
+        for q in sort_dict_with_qidx(pi_amp):
             self.pi_amp_samples[q] = sampling_func(*pi_amp[q],pi_amp_pts_or_step)
             
         self.avg_n = avg_n
@@ -1203,7 +1205,7 @@ class TimeRabiOsci(ExpGovernment):
             sampling_func:callable = linspace
         
         self.pi_dura_samples = {}
-        for q in pi_dura:
+        for q in sort_dict_with_qidx(pi_dura):
             if min(pi_dura[q]) == 0: pi_dura[q] = [4e-9, max(pi_dura[q])]
             self.pi_dura_samples[q] = sort_elements_2_multiples_of(sampling_func(*pi_dura[q],pi_dura_pts_or_step)*1e9,1)*1e-9
             
@@ -1332,7 +1334,7 @@ class nSingleShot(ExpGovernment):
         self.use_time_label:bool = False
         self.avg_n = shots
         self.execution = execution
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         self.histos = histo_counts
         self.counter:int = 0
         if self.histos > 1:
@@ -1497,10 +1499,10 @@ class Ramsey(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
-            for q in target_qs: 
+            for q in sort_dict_with_qidx(target_qs): 
                 self.time_samples[q] = sampling_func(0, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
@@ -1515,7 +1517,7 @@ class Ramsey(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.spin_num = {}
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
         # FPGA memory limit guard
         if self.OSmode:
@@ -1677,10 +1679,10 @@ class SpinEcho(ExpGovernment):
         self.time_samples = {}
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0,max_evo_time,time_pts_or_step)*1e9,2)*1e-9
         else:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sampling_func(0,max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
@@ -1695,7 +1697,7 @@ class SpinEcho(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -1842,11 +1844,11 @@ class CPMG(ExpGovernment):
         self.time_samples = {}
         self.spin_num = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.spin_num[q] = pi_num
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(0, max_evo_time, time_pts_or_step)*1e9,(2*int(pi_num)))*1e-9
         else:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.spin_num[q] = pi_num
                 self.time_samples[q] = sampling_func(0, max_evo_time, time_pts_or_step)
         
@@ -1862,7 +1864,7 @@ class CPMG(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -2012,10 +2014,10 @@ class EnergyRelaxation(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(4e-9,max_evo_time,time_pts_or_step)*1e9,1)*1e-9
         else:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sampling_func(4e-9,max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
@@ -2029,7 +2031,7 @@ class EnergyRelaxation(ExpGovernment):
         
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
 
         # FPGA memory limit guard
         if self.OSmode:
@@ -2165,14 +2167,14 @@ class XYFcali(ExpGovernment):
         from qblox_drive_AS.SOP.RabiOsci import sort_elements_2_multiples_of
     
         self.time_samples = {}
-        for q in target_qs:
+        for q in sort_dict_with_qidx(target_qs):
             self.time_samples[q] = sort_elements_2_multiples_of(linspace(40e-9,evo_time,100)*1e9,4)*1e-9
         self.detu = detu
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
         self.spin_num = {}
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
 
     def PrepareHardware(self):
@@ -2301,7 +2303,7 @@ class ROFcali(ExpGovernment):
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(freq_span_range.keys())
+        self.target_qs = sort_dict_with_qidx(list(freq_span_range.keys()))
         
 
     def PrepareHardware(self):
@@ -2417,14 +2419,14 @@ class PiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in piamp_coef_range:
+        for q in sort_dict_with_qidx(piamp_coef_range):
            self.amp_coef_samples[q] = sampling_func(*piamp_coef_range[q],coef_ptsORstep)
         
         self.pi_pair_num = pi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(piamp_coef_range.keys())
+        self.target_qs = sort_dict_with_qidx(list(piamp_coef_range.keys()))
         
 
     def PrepareHardware(self):
@@ -2545,13 +2547,13 @@ class hPiAcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {amp_sampling_funct}")
         
         self.amp_coef_samples = {}
-        for q in target_qs:
+        for q in sort_dict_with_qidx(target_qs):
            self.amp_coef_samples[q] = sampling_func(*half_piamp_coef_range,coef_ptsORstep)
         self.halfPi_pair_num = halfPi_pair_num
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
 
     def PrepareHardware(self):
@@ -2668,13 +2670,13 @@ class ROLcali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_func}")
         
         self.amp_coef_samples = {}
-        for q in roamp_coef_range:
+        for q in sort_dict_with_qidx(roamp_coef_range):
            self.amp_coef_samples[q] = sampling_func(*roamp_coef_range[q],ro_coef_ptsORstep)
 
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = list(roamp_coef_range.keys())
+        self.target_qs = sort_dict_with_qidx(list(roamp_coef_range.keys()))
         
 
     def PrepareHardware(self):
@@ -2784,10 +2786,10 @@ class ZgateEnergyRelaxation(ExpGovernment):
         
         self.time_samples = {}
         if sampling_func in [linspace, logspace]:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sort_elements_2_multiples_of(sampling_func(4e-9, max_evo_time)*1e9,4)*1e-9
         else:
-            for q in target_qs:
+            for q in sort_dict_with_qidx(target_qs):
                 self.time_samples[q] = sampling_func(4e-9, max_evo_time,time_pts_or_step)
 
         self.avg_n = avg_n
@@ -2799,7 +2801,7 @@ class ZgateEnergyRelaxation(ExpGovernment):
         self.prepare_1 = int(prepare_excited)
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
 
     def PrepareHardware(self):
@@ -3023,12 +3025,12 @@ class DragCali(ExpGovernment):
             raise ValueError(f"Can't recognize the given sampling function name = {coef_sampling_funct}")
         
         self.drag_coef_samples = {}
-        for q in target_qs:
+        for q in sort_dict_with_qidx(target_qs):
            self.drag_coef_samples[q] = sampling_func(*drag_coef_range,coef_ptsORstep)
         self.avg_n = avg_n
         self.execution = execution
         self.OSmode = OSmode
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
 
     def PrepareHardware(self):
@@ -3155,7 +3157,7 @@ class XGateErrorTest(ExpGovernment):
         self.Max_Gate_num = MaxGate_num
         self.execution = execution
         self.use_de4t_wf = use_untrained_wf
-        self.target_qs = target_qs
+        self.target_qs = sort_dict_with_qidx(target_qs)
         
 
 
@@ -3255,9 +3257,9 @@ class ParitySwitch(ExpGovernment):
         
 
         self.time_samples = {}
-        for q in time_range:
+        for q in sort_dict_with_qidx(time_range):
             self.time_samples[q] = sort_elements_2_multiples_of(array([time_range[q]])*1e9,4)*1e-9
-            print(self.time_samples[q])
+            
         self.avg_n = avg_n
         # raise TimeoutError()
 
@@ -3271,7 +3273,7 @@ class ParitySwitch(ExpGovernment):
         self.execution = execution
         self.OSmode = OSmode
         self.spin_num = {}
-        self.target_qs = list(time_range.keys())
+        self.target_qs = sort_dict_with_qidx(list(time_range.keys()))
 
         # FPGA memory limit guard
         if self.OSmode:

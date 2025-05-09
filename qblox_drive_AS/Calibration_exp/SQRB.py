@@ -11,7 +11,7 @@ from qcodes.parameters import ManualParameter
 from qblox_drive_AS.support.UserFriend import *
 from xarray import Dataset, open_dataset
 from qblox_drive_AS.support.QDmanager import QDmanager, BasicTransmonElement
-from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels
+from qblox_drive_AS.support import Data_manager, check_OS_model_ready, init_meas, coupler_zctrl, set_LO_frequency, init_system_atte, shut_down, check_acq_channels, sort_dict_with_qidx
 from qblox_drive_AS.support.Pulse_schedule_library import  pulse_preview
 from qblox_drive_AS.support.Pulser import ScheduleConductor
 from qblox_drive_AS.support.ExpFrames import ExpGovernment
@@ -235,7 +235,7 @@ class SQRB(ExpGovernment):
 
     def RunMeasurement(self):
         meas = SQRBPS()
-        meas.target_qs = self.qs
+        meas.target_qs = sort_dict_with_qidx(self.qs)
         meas.set_random_times = self.circuits_num
         meas.set_gate_samples = self.gate_length
         meas.n_avg = self.avg_n

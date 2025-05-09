@@ -54,6 +54,14 @@ def check_acq_channels(QD_agent:QDmanager, join_measure_qs:list)->QDmanager:
     
     return QD_agent
 
+def sort_dict_with_qidx(D:dict|list)->dict|list:
+    """ Expect the every key names in D starts with q, like 'q1', 'q2', 'q99', etc. """
+    if isinstance(D, dict):
+        return dict(sorted(D.items(), key=lambda x: int(x[0][1:])))
+    elif isinstance(D, list):
+        return sorted(D, key=lambda x: int(x[1:]))
+    else:
+        raise TypeError("Arg must be a dict or list !")
 
 
 def find_nearest(ary:ndarray, value:float):
